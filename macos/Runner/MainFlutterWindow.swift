@@ -5,6 +5,8 @@ import UserNotifications
 class MainFlutterWindow: NSWindow {
   let blockedApps = ["discord"]
   private var isMonitoring = false
+  private var lastNotificationTimes: [String: Date] = [:]
+  private let notificationDebounceInterval: TimeInterval = 5.0 // 5 seconds
   
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
@@ -107,11 +109,23 @@ class MainFlutterWindow: NSWindow {
   private func checkActiveApplication(_ app: NSRunningApplication?) {
     if let app = app, let appName = app.localizedName?.lowercased(), blockedApps.contains(appName) {
       app.hide()
-      showBlockNotification(appName: app.localizedName ?? appName)
+      showBlockNotificationIfNeeded(appName: app.localizedName ?? appName)
     }
   }
   
-  private func showBlockNotification(appName: String) {
+  private func showBlockNotificationIfNeeded(appName: String) {
+    let now = Date()
+    if let lastTime = lastNotificationTimes[appName] {
+      let timeSinceLastNotification = now.timeIntervalSince(lastTime)
+      if timeSinceLastNotification < notificationDebounceInterval {
+        return // Skip notification if we're within the debounce interval
+      }
+    }
+    
+    // Update the last notification time
+    lastNotificationTimes[appName] = now
+    
+    // Show the notification
     let content = UNMutableNotificationContent()
     content.title = "App Blocked"
     content.body = "\(appName) was blocked"
