@@ -14,7 +14,7 @@ fn log_to_file(msg: &str) {
     if let Ok(mut file) = OpenOptions::new()
         .create(true)
         .append(true)
-        .open("/tmp/native_host.log")
+        .open("/tmp//Routine/native_messaging.log")
     {
         let _ = writeln!(file, "{}: {}", chrono::Local::now(), msg);
     }
