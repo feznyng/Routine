@@ -38,17 +38,6 @@ connectToNative();
 function blockRequest(details) {
   console.log("Blocking request:", details.url);
   
-  // Notify native app about blocked request
-  if (port) {
-    sendToNative({
-      action: "blocked",
-      data: {
-        url: details.url,
-        timestamp: Date.now()
-      }
-    });
-  }
-  
   return {
     redirectUrl: chrome.runtime.getURL('blocked.html')
   };
