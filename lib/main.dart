@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:io';
+import 'dart:convert';
+import 'dart:typed_data';
 
 void main() {
   runApp(const MyApp());
@@ -8,47 +11,21 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Routine',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'Routine'),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
   final String title;
 
   @override
@@ -59,11 +36,118 @@ class _MyHomePageState extends State<MyHomePage> {
   final TextEditingController _blockedAppsController = TextEditingController();
   List<String> _blockedApps = [];
   static const platform = MethodChannel('com.routine.blockedapps');
+  ServerSocket? _server;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTcpServer();
+  }
 
   @override
   void dispose() {
     _blockedAppsController.dispose();
+    _server?.close();
     super.dispose();
+  }
+
+  Future<void> _startTcpServer() async {
+    try {
+      _server = await ServerSocket.bind('127.0.0.1', 54321);
+      debugPrint('TCP Server listening on port 54321');
+
+      _server?.listen((socket) {
+        debugPrint('Native messaging host connected');
+        _handleConnection(socket);
+      });
+    } catch (e) {
+      debugPrint('Failed to start TCP server: $e');
+    }
+  }
+
+  void _handleConnection(Socket socket) {
+    // Buffer for length bytes
+    List<int> lengthBuffer = [];
+    // Buffer for message bytes
+    List<int> messageBuffer = [];
+    // Expected message length
+    int? expectedLength;
+
+    socket.listen(
+      (List<int> data) async {
+        if (expectedLength == null) {
+          // Still collecting length bytes
+          lengthBuffer.addAll(data);
+          if (lengthBuffer.length >= 4) {
+            // We have all 4 bytes for the length
+            var bytes = Uint8List.fromList(lengthBuffer.take(4).toList());
+            expectedLength = ByteData.view(bytes.buffer).getUint32(0, Endian.host);
+            // Start collecting message with any remaining bytes
+            messageBuffer.addAll(lengthBuffer.skip(4));
+            lengthBuffer.clear();
+          }
+        } else {
+          // Collecting message bytes
+          messageBuffer.addAll(data);
+        }
+
+        // Check if we have the complete message
+        if (expectedLength != null && messageBuffer.length >= expectedLength!) {
+          var messageStr = utf8.decode(messageBuffer.take(expectedLength!).toList());
+          var message = json.decode(messageStr);
+          
+          // Handle the message
+          var response = await _handleMessage(message);
+          
+          // Send response
+          var responseBytes = utf8.encode(json.encode(response));
+          var lengthBytes = ByteData(4)..setUint32(0, responseBytes.length, Endian.host);
+          socket.add(lengthBytes.buffer.asUint8List());
+          socket.add(responseBytes);
+          await socket.flush();
+
+          // Reset for next message
+          messageBuffer = messageBuffer.sublist(expectedLength!);
+          expectedLength = null;
+        }
+      },
+      onError: (error) {
+        debugPrint('Socket error: $error');
+        socket.close();
+      },
+      onDone: () {
+        debugPrint('Native messaging host disconnected');
+        socket.close();
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> _handleMessage(Map<String, dynamic> message) async {
+    debugPrint('Received message: $message');
+    
+    switch (message['action']) {
+      case 'updateBlockedApps':
+        if (message['data']['apps'] is List) {
+          setState(() {
+            _blockedApps = List<String>.from(message['data']['apps']);
+            _blockedAppsController.text = _blockedApps.join(', ');
+          });
+          return {'action': 'response', 'data': {'status': 'success'}};
+        }
+        return {'action': 'response', 'data': {'error': 'Invalid apps data'}};
+      
+      case 'getBlockedApps':
+        return {
+          'action': 'response',
+          'data': {'apps': _blockedApps}
+        };
+      
+      default:
+        return {
+          'action': 'response',
+          'data': {'error': 'Unknown action'}
+        };
+    }
   }
 
   Future<void> _notifyNative(List<String> apps) async {
