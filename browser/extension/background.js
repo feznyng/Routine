@@ -2,40 +2,45 @@
 const hostName = "com.routine.native_messaging";
 let port = null;
 
+// List of blocked sites
+let blockedSites = [];
+let webRequestListener = null;
+
 // Connect to native messaging host
 function connectToNative() {
   port = chrome.runtime.connectNative(hostName);
-
-  console.log("Connected to native app", port);
   
-  port.onMessage.addListener((message) => {
-    console.log("Received from native app:", message);
-    // Handle messages from native app here
-  });
+  console.log("Connected to native host", port);
 
+  port.onMessage.addListener((message) => {
+    console.log("Received message from native host:", message);
+    
+    if (message.action === "updateBlockedSites" && Array.isArray(message.data.sites)) {
+      // Update blocked sites list
+      blockedSites = message.data.sites;
+      
+      // Re-register web request listener with new patterns
+      updateWebRequestListener();
+      
+      console.log("Updated blocked sites:", blockedSites);
+    }
+  });
+  
   port.onDisconnect.addListener(() => {
-    console.log("Disconnected from native app");
+    console.log("Disconnected from native host");
     port = null;
-    // Attempt to reconnect after a delay
-    setTimeout(connectToNative, 5000);
   });
 }
 
 // Initialize connection
 connectToNative();
 
-// List of blocked sites
-const blockedSites = [
-  '*://*.discord.com/*',
-  '*://discord.com/*'
-];
-
 // Listener for web requests
 function blockRequest(details) {
   // Notify native app about blocked request
   if (port) {
-    port.postMessage({
-      action: "site_blocked",
+    sendToNative({
+      action: "blocked",
       data: {
         url: details.url,
         timestamp: Date.now()
@@ -43,19 +48,27 @@ function blockRequest(details) {
     });
   }
   
-  return {
-    redirectUrl: chrome.runtime.getURL('blocked.html')
-  };
+  return { cancel: true };
 }
 
-// Add the listener to block requests to specified sites
-chrome.webRequest.onBeforeRequest.addListener(
-  blockRequest,
-  { urls: blockedSites },
-  ['blocking']
-);
+// Update web request listener with current patterns
+function updateWebRequestListener() {
+  // Remove existing listener if any
+  if (webRequestListener) {
+    chrome.webRequest.onBeforeRequest.removeListener(webRequestListener);
+  }
+  
+  // Only add listener if we have patterns to match
+  if (blockedSites.length > 0) {
+    webRequestListener = chrome.webRequest.onBeforeRequest.addListener(
+      blockRequest,
+      { urls: blockedSites },
+      ["blocking"]
+    );
+  }
+}
 
-// Function to send message to native app
+// Send message to native host
 function sendToNative(message) {
   if (port) {
     port.postMessage(message);
@@ -64,12 +77,3 @@ function sendToNative(message) {
     connectToNative();
   }
 }
-
-// Example: Send ping every 30 seconds to keep connection alive
-setInterval(() => {
-  console.log("Sending ping");
-  sendToNative({
-    action: "ping",
-    data: { timestamp: Date.now() }
-  });
-}, 1000);

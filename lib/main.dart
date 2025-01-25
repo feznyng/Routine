@@ -34,9 +34,12 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final TextEditingController _blockedAppsController = TextEditingController();
+  final TextEditingController _blockedSitesController = TextEditingController();
   List<String> _blockedApps = [];
+  List<String> _blockedSites = [];
   static const platform = MethodChannel('com.routine.blockedapps');
   ServerSocket? _server;
+  final Set<Socket> _sockets = {};
 
   @override
   void initState() {
@@ -47,6 +50,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void dispose() {
     _blockedAppsController.dispose();
+    _blockedSitesController.dispose();
     _server?.close();
     super.dispose();
   }
@@ -66,6 +70,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _handleConnection(Socket socket) {
+    _sockets.add(socket);
+    
     // Buffer for length bytes
     List<int> lengthBuffer = [];
     // Buffer for message bytes
@@ -113,10 +119,12 @@ class _MyHomePageState extends State<MyHomePage> {
       },
       onError: (error) {
         debugPrint('Socket error: $error');
+        _sockets.remove(socket);
         socket.close();
       },
       onDone: () {
         debugPrint('Native messaging host disconnected');
+        _sockets.remove(socket);
         socket.close();
       },
     );
@@ -141,7 +149,12 @@ class _MyHomePageState extends State<MyHomePage> {
           'action': 'response',
           'data': {'apps': _blockedApps}
         };
-      
+      case 'ping':
+        return {
+          'action': 'response',
+          'data': 'pong'
+        };
+
       default:
         return {
           'action': 'response',
@@ -166,6 +179,38 @@ class _MyHomePageState extends State<MyHomePage> {
           .where((app) => app.isNotEmpty)
           .toList();
       _notifyNative(_blockedApps);
+    });
+  }
+
+  void _updateBlockedSites(String input) {
+    setState(() {
+      _blockedSites = input
+          .split(',')
+          .map((site) => site.trim())
+          .where((site) => site.isNotEmpty)
+          .map((site) => '*://*.$site/*')  // Convert to Chrome match pattern
+          .toList();
+      
+      debugPrint("Updated blocked sites: $_blockedSites");
+      // Send updated list to native messaging host
+      var message = {
+        'action': 'updateBlockedSites',
+        'data': {'sites': _blockedSites}
+      };
+      
+      // Send through TCP socket
+      if (_server != null) {
+        var messageBytes = utf8.encode(json.encode(message));
+        var lengthBytes = ByteData(4)..setUint32(0, messageBytes.length, Endian.host);
+        _sockets.forEach((socket) {
+          socket.add(lengthBytes.buffer.asUint8List());
+          socket.add(messageBytes);
+          socket.flush();
+        });
+        debugPrint('Native messaging host send update');
+      } else {
+        debugPrint('Native messaging host not connected - skipping update');
+      }
     });
   }
 
@@ -210,10 +255,40 @@ class _MyHomePageState extends State<MyHomePage> {
                         },
                       ))
                   .toList(),
-            )
+            ),
+            const SizedBox(height: 32),
+            TextField(
+              controller: _blockedSitesController,
+              decoration: const InputDecoration(
+                labelText: 'Blocked Sites',
+                hintText: 'Enter comma-separated sites (e.g., facebook.com, twitter.com)',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: _updateBlockedSites,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Currently blocked sites:',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: _blockedSites
+                  .map((site) => Chip(
+                        label: Text(site),
+                        onDeleted: () {
+                          setState(() {
+                            _blockedSites.remove(site);
+                            _blockedSitesController.text = _blockedSites.join(', ');
+                          });
+                        },
+                      ))
+                  .toList(),
+            ),
           ],
         ),
-      )
+      ),
     );
   }
 }
