@@ -71,6 +71,20 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _handleConnection(Socket socket) {
     _sockets.add(socket);
+    debugPrint('New native messaging host connected');
+
+    // Send initial blocked sites list
+    var message = {
+      'action': 'updateBlockedSites',
+      'data': {'sites': _blockedSites}
+    };
+    
+    var messageBytes = utf8.encode(json.encode(message));
+    var lengthBytes = ByteData(4)..setUint32(0, messageBytes.length, Endian.host);
+    socket.add(lengthBytes.buffer.asUint8List());
+    socket.add(messageBytes);
+    socket.flush();
+    debugPrint('Sent initial blocked sites: $_blockedSites');
     
     // Buffer for length bytes
     List<int> lengthBuffer = [];
@@ -200,17 +214,21 @@ class _MyHomePageState extends State<MyHomePage> {
       
       // Send through TCP socket
       if (_server != null) {
-        var messageBytes = utf8.encode(json.encode(message));
-        var lengthBytes = ByteData(4)..setUint32(0, messageBytes.length, Endian.host);
-        _sockets.forEach((socket) {
-          socket.add(lengthBytes.buffer.asUint8List());
-          socket.add(messageBytes);
-          socket.flush();
-        });
+        _sendMessageToNativeHosts(message);
         debugPrint('Native messaging host send update');
       } else {
         debugPrint('Native messaging host not connected - skipping update');
       }
+    });
+  }
+
+  void _sendMessageToNativeHosts(Map<String, dynamic> message) {
+    var messageBytes = utf8.encode(json.encode(message));
+    var lengthBytes = ByteData(4)..setUint32(0, messageBytes.length, Endian.host);
+    _sockets.forEach((socket) {
+      socket.add(lengthBytes.buffer.asUint8List());
+      socket.add(messageBytes);
+      socket.flush();
     });
   }
 

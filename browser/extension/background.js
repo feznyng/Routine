@@ -4,7 +4,6 @@ let port = null;
 
 // List of blocked sites
 let blockedSites = [];
-let webRequestListener = null;
 
 // Connect to native messaging host
 function connectToNative() {
@@ -20,7 +19,7 @@ function connectToNative() {
       blockedSites = message.data.sites;
       
       // Re-register web request listener with new patterns
-      updateWebRequestListener();
+      registerBlockingRules();
       
       console.log("Updated blocked sites:", blockedSites);
     }
@@ -37,6 +36,8 @@ connectToNative();
 
 // Listener for web requests
 function blockRequest(details) {
+  console.log("Blocking request:", details.url);
+  
   // Notify native app about blocked request
   if (port) {
     sendToNative({
@@ -48,23 +49,31 @@ function blockRequest(details) {
     });
   }
   
-  return { cancel: true };
+  return {
+    redirectUrl: chrome.runtime.getURL('blocked.html')
+  };
 }
 
-// Update web request listener with current patterns
-function updateWebRequestListener() {
-  // Remove existing listener if any
-  if (webRequestListener) {
-    chrome.webRequest.onBeforeRequest.removeListener(webRequestListener);
+// Register blocking rules
+function registerBlockingRules() {
+  // First remove existing listener
+  try {
+    chrome.webRequest.onBeforeRequest.removeListener(blockRequest);
+  } catch (e) {
+    // Listener might not exist yet
+    console.log("No existing listener to remove");
   }
   
   // Only add listener if we have patterns to match
   if (blockedSites.length > 0) {
-    webRequestListener = chrome.webRequest.onBeforeRequest.addListener(
+    console.log("Registering blocking rules for patterns:", blockedSites);
+    chrome.webRequest.onBeforeRequest.addListener(
       blockRequest,
       { urls: blockedSites },
       ["blocking"]
     );
+  } else {
+    console.log("No sites to block");
   }
 }
 
@@ -77,3 +86,6 @@ function sendToNative(message) {
     connectToNative();
   }
 }
+
+// Set up initial blocking rules
+registerBlockingRules();
