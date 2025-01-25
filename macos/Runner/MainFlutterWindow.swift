@@ -1,12 +1,14 @@
 import Cocoa
 import FlutterMacOS
 import UserNotifications
+import os.log
 
 class MainFlutterWindow: NSWindow {
-  let blockedApps = ["discord"]
+  private var blockedApps: [String] = []
   private var isMonitoring = false
   private var lastNotificationTimes: [String: Date] = [:]
   private let notificationDebounceInterval: TimeInterval = 5.0 // 5 seconds
+  private var methodChannel: FlutterMethodChannel?
   
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
@@ -16,12 +18,42 @@ class MainFlutterWindow: NSWindow {
     
     RegisterGeneratedPlugins(registry: flutterViewController)
     
+    // Set up method channel
+    methodChannel = FlutterMethodChannel(
+      name: "com.routine.blockedapps",
+      binaryMessenger: flutterViewController.engine.binaryMessenger
+    )
+    
+    methodChannel?.setMethodCallHandler { [weak self] call, result in
+      guard let self = self else { return }
+      
+      switch call.method {
+      case "updateBlockedApps":
+        if let args = call.arguments as? [String: Any],
+           let apps = args["apps"] as? [String] {
+          self.blockedApps = apps
+          os_log("Updated blocked apps list: %{public}@", log: OSLog.default, type: .info, apps.description)
+          result(nil)
+        } else {
+          os_log("Invalid arguments received for updateBlockedApps", log: OSLog.default, type: .error)
+          result(FlutterError(code: "INVALID_ARGUMENTS",
+                            message: "Invalid arguments for updateBlockedApps",
+                            details: nil))
+        }
+      default:
+        os_log("Method not implemented: %{public}@", log: OSLog.default, type: .info, call.method)
+        result(FlutterMethodNotImplemented)
+      }
+    }
+    
     super.awakeFromNib()
     
     // Request notification permissions
     UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
       if let error = error {
-        print("Error requesting notification permission: \(error)")
+        os_log("Failed to request notification permission: %{public}@", log: OSLog.default, type: .error, error.localizedDescription)
+      } else {
+        os_log("Notification permission granted: %{public}@", log: OSLog.default, type: .info, String(granted))
       }
     }
     
@@ -109,6 +141,7 @@ class MainFlutterWindow: NSWindow {
   private func checkActiveApplication(_ app: NSRunningApplication?) {
     if let app = app, let appName = app.localizedName?.lowercased(), blockedApps.contains(appName) {
       app.hide()
+      os_log("Hiding blocked application: %{public}@", log: OSLog.default, type: .debug, appName)
       showBlockNotificationIfNeeded(appName: app.localizedName ?? appName)
     }
   }
@@ -134,7 +167,7 @@ class MainFlutterWindow: NSWindow {
     let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
     UNUserNotificationCenter.current().add(request) { error in
       if let error = error {
-        print("Error showing notification: \(error)")
+        os_log("Error showing notification: %{public}@", log: OSLog.default, type: .error, error.localizedDescription)
       }
     }
   }
