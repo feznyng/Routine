@@ -1,0 +1,7 @@
+{
+  "name": "com.routine.native_messaging",
+  "description": "Routine Native Messaging Host",
+  "path": "/Users/ajan/Projects/routine/browser/native/target/release/native",
+  "type": "stdio",
+  "allowed_extensions": ["siteblocker@example.com"]
+}
