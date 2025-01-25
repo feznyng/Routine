@@ -142,33 +142,6 @@ class MainFlutterWindow: NSWindow {
     if let app = app, let appName = app.localizedName?.lowercased(), blockedApps.contains(appName) {
       app.hide()
       os_log("Hiding blocked application: %{public}@", log: OSLog.default, type: .debug, appName)
-      showBlockNotificationIfNeeded(appName: app.localizedName ?? appName)
-    }
-  }
-  
-  private func showBlockNotificationIfNeeded(appName: String) {
-    let now = Date()
-    if let lastTime = lastNotificationTimes[appName] {
-      let timeSinceLastNotification = now.timeIntervalSince(lastTime)
-      if timeSinceLastNotification < notificationDebounceInterval {
-        return // Skip notification if we're within the debounce interval
-      }
-    }
-    
-    // Update the last notification time
-    lastNotificationTimes[appName] = now
-    
-    // Show the notification
-    let content = UNMutableNotificationContent()
-    content.title = "App Blocked"
-    content.body = "\(appName) was blocked"
-    content.sound = .default
-    
-    let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-    UNUserNotificationCenter.current().add(request) { error in
-      if let error = error {
-        os_log("Error showing notification: %{public}@", log: OSLog.default, type: .error, error.localizedDescription)
-      }
     }
   }
 }
