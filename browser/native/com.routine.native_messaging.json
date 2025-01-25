@@ -1,7 +1,7 @@
 {
   "name": "com.routine.native_messaging",
   "description": "Routine Native Messaging Host",
-  "path": "/Users/ajan/Projects/routine/browser/native/target/release/native",
+  "path": "/Users/ajan/Projects/routine/target/debug/native",
   "type": "stdio",
   "allowed_extensions": ["blocker@routine-blocker.com"]
 }
