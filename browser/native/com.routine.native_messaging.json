@@ -3,5 +3,5 @@
   "description": "Routine Native Messaging Host",
   "path": "/Users/ajan/Projects/routine/browser/native/target/release/native",
   "type": "stdio",
-  "allowed_extensions": ["siteblocker@example.com"]
+  "allowed_extensions": ["blocker@routine-blocker.com"]
 }
