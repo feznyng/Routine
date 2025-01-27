@@ -36,13 +36,37 @@ function connectToNative() {
 // Initialize connection
 connectToNative();
 
+// Check if hostname matches any domain in the list (including subdomains)
+function matchesDomain(hostname, domainList) {
+  return domainList.some(domain => {
+    // Exact match
+    if (hostname === domain) return true;
+    // Subdomain match (ensure it ends with .domain)
+    return hostname.endsWith('.' + domain);
+  });
+}
+
 // Listener for web requests
 function blockRequest(details) {
-  console.log("Blocking request:", details.url);
-  
-  return {
-    redirectUrl: chrome.runtime.getURL('blocked.html')
-  };
+  const url = new URL(details.url);
+  const hostname = url.hostname;
+
+  console.log("blockRequest", hostname);
+
+  if (allowList) {
+    // In allowList mode, allow only sites in the list
+    const isAllowed = matchesDomain(hostname, blockedSites);
+    if (!isAllowed) {
+      console.log("Blocking non-allowed site:", hostname);
+      return { redirectUrl: chrome.runtime.getURL('blocked.html') };
+    }
+  } else {
+    // In blocklist mode, block only sites in the list
+    if (matchesDomain(hostname, blockedSites)) {
+      console.log("Blocking blocked site:", hostname);
+      return { redirectUrl: chrome.runtime.getURL('blocked.html') };
+    }
+  }
 }
 
 // Register blocking rules
@@ -55,12 +79,20 @@ function registerBlockingRules() {
     console.log("No existing listener to remove");
   }
   
-  // Only add listener if we have patterns to match
-  if (blockedSites.length > 0) {
-    console.log("Registering blocking rules for patterns:", blockedSites);
+  if (allowList || blockedSites.length > 0) {
+    // Register for all URLs since we need to check each request
+    console.log(`Registering ${allowList ? 'allowList' : 'blocklist'} mode with ${allowList ? 'allowed' : 'blocked'} sites:`, blockedSites);
     chrome.webRequest.onBeforeRequest.addListener(
       blockRequest,
-      { urls: blockedSites },
+      {
+        urls: ["<all_urls>"],
+        types: [
+          "main_frame",        // New page loads
+          "sub_frame",         // iframes
+          "xmlhttprequest",    // Ajax requests
+          "websocket"          // WebSocket connections
+        ]
+      },
       ["blocking"]
     );
   } else {
