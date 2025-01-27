@@ -1,6 +1,7 @@
 // Native messaging host name
 const hostName = "com.routine.native_messaging";
 let port = null;
+let isAppConnected = false;  // Track Flutter app connection state
 
 // List of blocked sites
 let blockedSites = [];
@@ -24,12 +25,22 @@ function connectToNative() {
       registerBlockingRules();
       
       console.log("Updated blocked sites:", blockedSites, allowList);
+    } else if (message.action === "appConnectionState") {
+      // Update app connection state
+      isAppConnected = message.data.connected;
+      console.log("App connection state changed:", isAppConnected ? "connected" : "disconnected", 
+                 "active connections:", message.data.connections);
+      
+      // Re-register blocking rules with new connection state
+      registerBlockingRules();
     }
   });
   
   port.onDisconnect.addListener(() => {
     console.log("Disconnected from native host");
     port = null;
+    isAppConnected = false;  // Reset app connection state
+    registerBlockingRules();  // Re-register rules with new connection state
   });
 }
 
@@ -48,6 +59,12 @@ function matchesDomain(hostname, domainList) {
 
 // Listener for web requests
 function blockRequest(details) {
+  // If app is not connected, allow all requests
+  if (!isAppConnected) {
+    console.log("App not connected, allowing request");
+    return;
+  }
+
   const url = new URL(details.url);
   const hostname = url.hostname;
 
@@ -77,8 +94,8 @@ function registerBlockingRules() {
     console.log("No existing listener to remove");
   }
   
-  if (allowList || blockedSites.length > 0) {
-    // Register for all URLs since we need to check each request
+  // Only register blocking if app is connected and have sites to block
+  if (isAppConnected && (allowList || blockedSites.length > 0)) {
     console.log(`Registering ${allowList ? 'allowList' : 'blocklist'} mode with ${allowList ? 'allowed' : 'blocked'} sites:`, blockedSites);
     chrome.webRequest.onBeforeRequest.addListener(
       blockRequest,
@@ -94,7 +111,7 @@ function registerBlockingRules() {
       ["blocking"]
     );
   } else {
-    console.log("No sites to block");
+    console.log(isAppConnected ? "No sites to block" : "App not connected, blocking disabled");
   }
 }
 

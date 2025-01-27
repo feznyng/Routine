@@ -6,6 +6,7 @@ use std::net::TcpStream;
 use chrono;
 use std::thread;
 use std::sync::mpsc;
+use std::sync::atomic::{AtomicI32, Ordering};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Message {
@@ -106,6 +107,10 @@ fn main() -> io::Result<()> {
         }
     });
 
+    // Track number of active Flutter connections
+    let active_connections = std::sync::Arc::new(AtomicI32::new(0));
+    let active_connections_clone = active_connections.clone();
+
     // Thread for accepting TCP connections and handling Flutter clients
     let listener_handle = thread::spawn(move || {
         // Accept connections in a loop
@@ -115,8 +120,21 @@ fn main() -> io::Result<()> {
                     let addr = tcp_stream.peer_addr().unwrap_or_else(|_| "unknown".parse().unwrap());
                     log_to_file(&format!("Flutter app connected from {}", addr));
                     
+                    // Increment active connections
+                    let prev_count = active_connections.fetch_add(1, Ordering::SeqCst);
+                    
+                    // Notify browser about connection state change
+                    let connection_msg = Message {
+                        action: "appConnectionState".to_string(),
+                        data: serde_json::json!({ "connected": true, "connections": prev_count + 1 }),
+                    };
+                    if let Err(e) = write_browser_message(&connection_msg) {
+                        log_to_file(&format!("Failed to notify browser of connection: {}", e));
+                    }
+                    
                     // Clone necessary handles for the new client thread
                     let tx_flutter = tx_clone.clone();
+                    let active_conns = active_connections.clone();
                     let mut tcp_stream_clone = match tcp_stream.try_clone() {
                         Ok(clone) => clone,
                         Err(e) => {
@@ -141,7 +159,20 @@ fn main() -> io::Result<()> {
                                 }
                             }
                         }
+                        // Client disconnected
                         log_to_file(&format!("Flutter client {} disconnected", addr));
+                        
+                        // Decrement active connections
+                        let prev_count = active_conns.fetch_sub(1, Ordering::SeqCst);
+                        
+                        // Notify browser about connection state change
+                        let connection_msg = Message {
+                            action: "appConnectionState".to_string(),
+                            data: serde_json::json!({ "connected": prev_count - 1 > 0, "connections": prev_count - 1 }),
+                        };
+                        if let Err(e) = write_browser_message(&connection_msg) {
+                            log_to_file(&format!("Failed to notify browser of disconnection: {}", e));
+                        }
                     });
                 },
                 Err(e) => {
