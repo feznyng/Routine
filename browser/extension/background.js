@@ -51,8 +51,6 @@ function blockRequest(details) {
   const url = new URL(details.url);
   const hostname = url.hostname;
 
-  console.log("blockRequest", hostname);
-
   if (allowList) {
     // In allowList mode, allow only sites in the list
     const isAllowed = matchesDomain(hostname, blockedSites);

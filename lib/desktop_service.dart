@@ -21,25 +21,17 @@ class DesktopService {
   static DesktopService get instance => _instance;
 
   final platform = const MethodChannel('com.routine.blockedapps');
-  ServerSocket? _server;
-  final Set<Socket> _sockets = {};
-
-  bool _allowList = false;
-  List<String> _blockedSites = []; 
+  Socket? _socket;
+  bool _connected = false;
+  List<int> _messageBuffer = [];
+  int? _expectedLength;
 
   Future<void> init() async {
     try {
-      _server = await ServerSocket.bind('127.0.0.1', 54321);
-      debugPrint('TCP Server listening on port 54321');
-
-      _server?.listen((socket) {
-        debugPrint('Native messaging host connected');
-        _handleConnection(socket);
-      });
+      await _connectToNMH();
     } catch (e) {
-      debugPrint('Failed to start TCP server: $e');
+      debugPrint('Failed to connect to NMH: $e');
     }
-
 
     Set<Schedule> evaluationTimes = {};
     for (final Routine routine in manager.routines) {
@@ -103,112 +95,118 @@ class DesktopService {
     debugPrint("Active sites: $sites");
     debugPrint("Allow list: $allowList");
 
-    updateLists(apps, sites, allowList);
+    updateLists(sites, apps, allowList);
   }
 
   void dispose() {
-    _server?.close();
-    for (var socket in _sockets) {
-      socket.close();
-    }
-    _sockets.clear();
+    _socket?.close();
   }
 
-  void _handleConnection(Socket socket) {
-    _sockets.add(socket);
-    debugPrint('New native messaging host connected');
-
-    _sendSitesToNativeHosts();
-
-    // Buffer for length bytes
-    List<int> lengthBuffer = [];
-    // Buffer for message bytes
-    List<int> messageBuffer = [];
-    // Expected message length
-    int? expectedLength;
-
-    socket.listen(
-      (List<int> data) async {
-        if (expectedLength == null) {
-          lengthBuffer.addAll(data);
-          if (lengthBuffer.length >= 4) {
-            var bytes = Uint8List.fromList(lengthBuffer.take(4).toList());
-            expectedLength = ByteData.view(bytes.buffer).getUint32(0, Endian.host);
-            messageBuffer.addAll(lengthBuffer.skip(4));
-            lengthBuffer.clear();
-          }
-        } else {
-          messageBuffer.addAll(data);
-        }
-
-        if (expectedLength != null && messageBuffer.length >= expectedLength!) {
-          var messageStr = utf8.decode(messageBuffer.take(expectedLength!).toList());
-          var message = json.decode(messageStr);
-          
-          var response = await _handleMessage(message);
-          
-          var responseBytes = utf8.encode(json.encode(response));
-          var lengthBytes = ByteData(4)..setUint32(0, responseBytes.length, Endian.host);
-          socket.add(lengthBytes.buffer.asUint8List());
-          socket.add(responseBytes);
-          await socket.flush();
-
-          messageBuffer = messageBuffer.sublist(expectedLength!);
-          expectedLength = null;
-        }
-      },
-      onError: (error) {
-        debugPrint('Socket error: $error');
-        _sockets.remove(socket);
-        socket.close();
-      },
-      onDone: () {
-        debugPrint('Native messaging host disconnected');
-        _sockets.remove(socket);
-        socket.close();
-      },
-    );
-  }
-
-  Future<Map<String, dynamic>> _handleMessage(Map<String, dynamic> message) async {
-    debugPrint('Received message: $message');
-    throw Exception("Not implemented");
-  }
-
-  Future<void> updateLists(List<String> apps, List<String> sites, bool allowList) async {
+  Future<void> _connectToNMH() async {
     try {
-      _blockedSites = sites;
-      _allowList = allowList;
+      _socket = await Socket.connect('127.0.0.1', 54322);
+      debugPrint('Connected to NMH TCP server');
+      _connected = true;
 
-      await platform.invokeMethod('updateBlockedApps', {'apps': apps, 'allowList': allowList});
-      _sendSitesToNativeHosts();
+      _socket?.listen(
+        (List<int> data) {
+          _messageBuffer.addAll(data);
+          
+          while (_messageBuffer.isNotEmpty) {
+            if (_expectedLength == null) {
+              if (_messageBuffer.length >= 4) {
+                // Read length prefix using Uint8List and ByteData
+                final lengthBytes = Uint8List.fromList(_messageBuffer.take(4).toList());
+                _expectedLength = ByteData.view(lengthBytes.buffer).getUint32(0, Endian.little);
+                _messageBuffer = _messageBuffer.sublist(4);
+              } else {
+                break;
+              }
+            }
 
-    } on PlatformException catch (e) {
-      debugPrint('Failed to notify native: ${e.message}');
+            if (_expectedLength != null && _messageBuffer.length >= _expectedLength!) {
+              // We have a complete message
+              final messageBytes = _messageBuffer.take(_expectedLength!).toList();
+              _messageBuffer = _messageBuffer.sublist(_expectedLength!);
+              _expectedLength = null;
+
+              try {
+                final String message = utf8.decode(messageBytes);
+                final Map<String, dynamic> decoded = json.decode(message);
+                debugPrint('Received from NMH: $decoded');
+              } catch (e) {
+                debugPrint('Error decoding message: $e');
+              }
+            } else {
+              break;
+            }
+          }
+        },
+        onError: (error) {
+          debugPrint('Socket error: $error');
+          _connected = false;
+        },
+        onDone: () {
+          debugPrint('Socket closed');
+          _connected = false;
+          // Try to reconnect after a delay
+          Future.delayed(Duration(seconds: 5), _connectToNMH);
+        },
+      );
+    } catch (e) {
+      debugPrint('Failed to connect to NMH: $e');
+      _connected = false;
+      // Try to reconnect after a delay
+      Future.delayed(Duration(seconds: 5), _connectToNMH);
     }
   }
 
-  void _sendSitesToNativeHosts() {
-    var message = {
-      'action': 'updateBlockedSites',
-      'data': {'sites': _blockedSites, 'allowList': _allowList}
-    };
+  void _sendToNMH(String action, Map<String, dynamic> data) {
+    if (!_connected || _socket == null) {
+      debugPrint('Not connected to NMH');
+      return;
+    }
+
+    try {
+      final message = {
+        'action': action,
+        'data': data,
+      };
+      
+      final String jsonMessage = json.encode(message);
+      final List<int> messageBytes = utf8.encode(jsonMessage);
+      
+      // Send length prefix followed by message
+      _socket?.add(Uint8List.fromList([
+        ...Uint32List.fromList([messageBytes.length]).buffer.asUint8List(),
+        ...messageBytes,
+      ]));
+      _socket?.flush();
+    } catch (e) {
+      debugPrint('Failed to send message to NMH: $e');
+    }
+  }
+
+  Future<void> updateLists(List<String> sites, List<String> apps, bool allowList) async {
+    if (!_connected) {
+      debugPrint('Not connected to NMH, attempting connection...');
+      await _connectToNMH();
+      if (!_connected) {
+        debugPrint('Failed to connect to NMH, skipping update');
+        return;
+      }
+    }
+
+    // Send update to NMH to forward to browser extension
+    _sendToNMH('updateBlockedSites', {
+      'sites': sites,
+      'allowList': allowList,
+    });
     
-    if (_server != null) {
-      _sendMessageToNativeHosts(message);
-      debugPrint('Native messaging host send update');
-    } else {
-      debugPrint('Native messaging host not connected - skipping update');
-    }
-  }
-
-  void _sendMessageToNativeHosts(Map<String, dynamic> message) {
-    var messageBytes = utf8.encode(json.encode(message));
-    var lengthBytes = ByteData(4)..setUint32(0, messageBytes.length, Endian.host);
-    for (var socket in _sockets) {
-      socket.add(lengthBytes.buffer.asUint8List());
-      socket.add(messageBytes);
-      socket.flush();
-    }
+    // Update platform channel
+    platform.invokeMethod('updateBlockedApps', {
+      'apps': apps,
+      'allowList': allowList,
+    });
   }
 }

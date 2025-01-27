@@ -86,57 +86,78 @@ fn main() -> io::Result<()> {
     let (tx, rx) = mpsc::channel();
     let tx_clone = tx.clone();
     
-    // Connect to Flutter app
-    let mut tcp_stream = match TcpStream::connect("127.0.0.1:54321") {
-        Ok(stream) => {
-            log_to_file("Connected to Flutter app successfully");
-            stream
+    // Create TCP server
+    let listener = match std::net::TcpListener::bind("127.0.0.1:54322") {
+        Ok(listener) => {
+            log_to_file("TCP server started on port 54322");
+            listener
         },
         Err(e) => {
-            log_to_file(&format!("Failed to connect to Flutter app: {}", e));
+            log_to_file(&format!("Failed to start TCP server: {}", e));
+            return Err(e);
+        }
+    };
+    
+    // Accept Flutter client connection
+    let (mut tcp_stream, addr) = match listener.accept() {
+        Ok((stream, addr)) => {
+            log_to_file(&format!("Flutter app connected from {}", addr));
+            (stream, addr)
+        },
+        Err(e) => {
+            log_to_file(&format!("Failed to accept Flutter connection: {}", e));
             return Err(e);
         }
     };
     
     let mut tcp_stream_clone = tcp_stream.try_clone()?;
-    
-    // Thread for reading from browser (stdin)
+
+    // Thread for reading from browser extension
     thread::spawn(move || {
-        while let Ok(message) = read_browser_message() {
-            if let Err(e) = tx.send(("browser", message)) {
-                log_to_file(&format!("Error sending browser message to channel: {}", e));
-                break;
+        loop {
+            match read_browser_message() {
+                Ok(message) => {
+                    if let Err(e) = tx.send(message) {
+                        log_to_file(&format!("Failed to send message to channel: {}", e));
+                        break;
+                    }
+                },
+                Err(e) => {
+                    log_to_file(&format!("Failed to read browser message: {}", e));
+                    break;
+                }
             }
         }
     });
-    
-    // Thread for reading from Flutter (TCP)
+
+    // Thread for reading from Flutter app
     thread::spawn(move || {
-        while let Ok(message) = read_flutter_message(&mut tcp_stream_clone) {
-            if let Err(e) = tx_clone.send(("flutter", message)) {
-                log_to_file(&format!("Error sending Flutter message to channel: {}", e));
-                break;
+        loop {
+            match read_flutter_message(&mut tcp_stream_clone) {
+                Ok(message) => {
+                    if let Err(e) = tx_clone.send(message) {
+                        log_to_file(&format!("Failed to send message to channel: {}", e));
+                        break;
+                    }
+                },
+                Err(e) => {
+                    log_to_file(&format!("Failed to read Flutter message: {}", e));
+                    break;
+                }
             }
         }
     });
-    
+
     // Main thread handles message routing
-    for (source, message) in rx {
-        match source {
-            "browser" => {
-                if let Err(e) = write_flutter_message(&mut tcp_stream, &message) {
-                    log_to_file(&format!("Error forwarding browser message to Flutter: {}", e));
-                }
-            },
-            "flutter" => {
-                if let Err(e) = write_browser_message(&message) {
-                    log_to_file(&format!("Error forwarding Flutter message to browser: {}", e));
-                }
-            },
-            _ => unreachable!(),
+    for message in rx {
+        // Forward messages to both browser and Flutter
+        if let Err(e) = write_browser_message(&message) {
+            log_to_file(&format!("Failed to write browser message: {}", e));
+        }
+        if let Err(e) = write_flutter_message(&mut tcp_stream, &message) {
+            log_to_file(&format!("Failed to write Flutter message: {}", e));
         }
     }
-    
-    log_to_file("Native messaging host stopped");
+
     Ok(())
 }
