@@ -4,6 +4,7 @@ let port = null;
 
 // List of blocked sites
 let blockedSites = [];
+let allowList = false;
 
 // Connect to native messaging host
 function connectToNative() {
@@ -17,11 +18,12 @@ function connectToNative() {
     if (message.action === "updateBlockedSites" && Array.isArray(message.data.sites)) {
       // Update blocked sites list
       blockedSites = message.data.sites;
+      allowList = message.data.allowList;
       
       // Re-register web request listener with new patterns
       registerBlockingRules();
       
-      console.log("Updated blocked sites:", blockedSites);
+      console.log("Updated blocked sites:", blockedSites, allowList);
     }
   });
   

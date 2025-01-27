@@ -1,8 +1,9 @@
 import 'routine.dart';
-import 'app_list.dart';
+import 'block_list.dart';
 import 'package:uuid/uuid.dart';
 import 'package:cron/cron.dart';
-
+import 'platform_service.dart';
+import 'package:flutter/material.dart';
 
 class Manager {
   static final Manager _instance = Manager._internal();
@@ -13,6 +14,8 @@ class Manager {
   final List<ScheduledTask> _scheduledTasks = [];
 
   Manager._internal() {
+    // temp initialization code - replace with sqlite/supabase later
+
     // block lists
     String workBlockListId = Uuid().v4();
     BlockList workBlockList = BlockList(name: 'Work');
@@ -26,7 +29,7 @@ class Manager {
 
     workBlockList.apps = [
       'discord',
-      'chrome',
+      'google chrome',
       'safari'
     ];
 
@@ -45,24 +48,24 @@ class Manager {
     morningRoutine.maxBreakDuration = 20;
 
     Routine afternoonRoutine = Routine(name: "Afternoon Work");
-    afternoonRoutine.setTimeRange(1, 0, 4, 0);
+    afternoonRoutine.setTimeRange(13, 0, 16, 0);
     afternoonRoutine.blockId = workBlockListId;
     afternoonRoutine.numBreaks = 2;
     afternoonRoutine.maxBreakDuration = 20;
 
     Routine exerciseRoutine = Routine(name: "Exercise");
-    exerciseRoutine.setTimeRange(4, 0, 5, 0);
+    exerciseRoutine.setTimeRange(16, 0, 17, 0);
     exerciseRoutine.blockId = everythingBlockListId;
     exerciseRoutine.numBreaks = 0;
 
     Routine eveningRoutine = Routine(name: "Evening Work");
-    eveningRoutine.setTimeRange(5, 0, 7, 30);
+    eveningRoutine.setTimeRange(17, 0, 19, 0);
     eveningRoutine.blockId = workBlockListId;
     eveningRoutine.numBreaks = 2;
     eveningRoutine.maxBreakDuration = 20;
 
     Routine nightRoutine = Routine(name: "Night Work");
-    nightRoutine.setTimeRange(8, 30, 10, 0);
+    nightRoutine.setTimeRange(20, 30, 22, 0);
     nightRoutine.blockId = workBlockListId;
     nightRoutine.numBreaks = 1;
     nightRoutine.maxBreakDuration = 20;
@@ -75,6 +78,9 @@ class Manager {
     
     _routines.sort((a, b) => a.startTime.compareTo(b.startTime));
 
+    // desktop specific code - add check later
+    PlatformService.startTcpServer();
+   
     Set<Schedule> evaluationTimes = {};
     for (final Routine routine in _routines) {
       evaluationTimes.add(Schedule(hours: routine.startHour, minutes: routine.startMinute));
@@ -83,27 +89,37 @@ class Manager {
 
     for (final Schedule time in evaluationTimes) {
       ScheduledTask task = cron.schedule(time, () async {
-        compile();
+        _evaluate();
       });
       _scheduledTasks.add(task);
     }
+
+    _evaluate();
   }
 
-  BlockList? compile() {
-    List<BlockList> activeBlockLists = [];
-    List<BlockList> activeAllowLists = [];
+  void _evaluate() {
+    Set<BlockList> activeBlockLists = {};
+    Set<BlockList> activeAllowLists = {};
 
     for (final Routine routine in _routines) {
+      debugPrint("Evaluating routine: ${routine.name} = ${routine.isActive()}");
+
       if (routine.isActive()) {
         final BlockList blockList = _blockLists[routine.blockId]!;
         (blockList.allowList ? activeAllowLists : activeBlockLists).add(blockList);
       }
     }
 
+    debugPrint("Active allow lists: $activeAllowLists");
+    debugPrint("Active block lists: $activeBlockLists");
+
     List<String> apps = []; 
-    List<String> sites = []; 
+    List<String> sites = [];
+    bool allowList = false;
 
     if (activeAllowLists.isNotEmpty) {
+      allowList = true;
+
       Map<String, int> appFrequency = {};
       Map<String, int> siteFrequency = {};
       for (final BlockList blockList in activeAllowLists) {
@@ -127,15 +143,11 @@ class Manager {
       }
     }
 
-    if (sites.isEmpty && apps.isEmpty) {
-      return null;
-    }
+    debugPrint("Active apps: $apps");
+    debugPrint("Active sites: $sites");
+    debugPrint("Allow list: $allowList");
 
-    BlockList compositeList = BlockList(name: "composite");
-    compositeList.sites = sites;
-    compositeList.apps = apps;
-
-    return compositeList;
+    PlatformService.updateLists(apps, sites, allowList);
   }
 
   factory Manager() {

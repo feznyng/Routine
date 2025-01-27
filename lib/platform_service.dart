@@ -8,8 +8,9 @@ class PlatformService {
   static const platform = MethodChannel('com.routine.blockedapps');
   static ServerSocket? _server;
   static final Set<Socket> _sockets = {};
-  static Function(List<String>)? onBlockedAppsChanged;
-  static Function(List<String>)? onBlockedSitesChanged;
+
+  static bool _allowList = false;
+  static List<String> _blockedSites = []; 
 
   static Future<void> startTcpServer() async {
     try {
@@ -36,6 +37,8 @@ class PlatformService {
   static void _handleConnection(Socket socket) {
     _sockets.add(socket);
     debugPrint('New native messaging host connected');
+
+    _sendSitesToNativeHosts();
 
     // Buffer for length bytes
     List<int> lengthBuffer = [];
@@ -89,47 +92,26 @@ class PlatformService {
 
   static Future<Map<String, dynamic>> _handleMessage(Map<String, dynamic> message) async {
     debugPrint('Received message: $message');
-    
-    switch (message['action']) {
-      case 'updateBlockedApps':
-        if (message['data']['apps'] is List) {
-          final apps = List<String>.from(message['data']['apps']);
-          onBlockedAppsChanged?.call(apps);
-          return {'action': 'response', 'data': {'status': 'success'}};
-        }
-        return {'action': 'response', 'data': {'error': 'Invalid apps data'}};
-      
-      case 'getBlockedApps':
-        return {
-          'action': 'response',
-          'data': {'apps': []} // This will be populated by the UI
-        };
-      case 'ping':
-        return {
-          'action': 'response',
-          'data': 'pong'
-        };
-
-      default:
-        return {
-          'action': 'response',
-          'data': {'error': 'Unknown action'}
-        };
-    }
+    throw Exception("Not implemented");
   }
 
-  static Future<void> updateBlockedApps(List<String> apps) async {
+  static Future<void> updateLists(List<String> apps, List<String> sites, bool allowList) async {
     try {
-      await platform.invokeMethod('updateBlockedApps', {'apps': apps});
+      PlatformService._blockedSites = sites;
+      PlatformService._allowList = allowList;
+
+      await platform.invokeMethod('updateBlockedApps', {'apps': apps, 'allowList': allowList});
+      _sendSitesToNativeHosts();
+
     } on PlatformException catch (e) {
       debugPrint('Failed to notify native: ${e.message}');
     }
   }
 
-  static void updateBlockedSites(List<String> sites) {
+  static void _sendSitesToNativeHosts() {
     var message = {
       'action': 'updateBlockedSites',
-      'data': {'sites': sites}
+      'data': {'sites': _blockedSites, 'allowList': _allowList}
     };
     
     if (_server != null) {

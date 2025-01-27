@@ -66,8 +66,6 @@ class Routine {
     _endTime = -1; 
   }
 
-  
-
   get frictionType => _frictionType;
   get frictionNum => _frictionNum;
   get frictionSource => _frictionSource;
@@ -81,12 +79,18 @@ class Routine {
 
   isActive() { 
     final DateTime now = DateTime.now();
-    final int dayOfWeek = now.weekday;
-
-    return _days[dayOfWeek] && _startTime != -1 && _endTime != -1 && !isComplete();
+    final int dayOfWeek = now.weekday - 1;
+    
+    final int currMins = now.hour * 60 + now.minute;
+    
+    return _days[dayOfWeek] && ((_startTime == -1 && _endTime == -1) || (currMins >= startTime && currMins < endTime)) && !isComplete();
   }
 
   isComplete() { 
+    if (conditions.isEmpty) {
+      return false;
+    }
+
     for (final Condition condition in conditions) {
       if (!condition.isComplete(_startTime, _endTime)) {
         return false;

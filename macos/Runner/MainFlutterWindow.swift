@@ -7,6 +7,7 @@ class MainFlutterWindow: NSWindow {
   private var blockedApps: Set<String> = []
   private var isMonitoring = false
   private var methodChannel: FlutterMethodChannel?
+  private var allowList = false
   
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
@@ -28,8 +29,10 @@ class MainFlutterWindow: NSWindow {
       switch call.method {
         case "updateBlockedApps":
           if let args = call.arguments as? [String: Any],
-            let apps = args["apps"] as? [String] {
+            let apps = args["apps"] as? [String], let allowList = args["allowList"] as? Bool {
+            NSLog("updating blocked apps to: \(apps), allowList: \(allowList)")
             self.blockedApps = Set(apps.map { $0.lowercased() })  // Store lowercase for case-insensitive comparison
+            self.allowList = allowList
             result(nil)
           } else {
             NSLog("Invalid arguments received for updateBlockedApps")
@@ -136,7 +139,7 @@ class MainFlutterWindow: NSWindow {
   private func checkActiveApplication(_ app: NSRunningApplication?) {
     if let app = app,
        let appName = app.localizedName?.lowercased(),
-       blockedApps.contains(appName) {
+       (!allowList && blockedApps.contains(appName)) || (allowList && !blockedApps.contains(appName)) {
       app.hide()
     }
   }
