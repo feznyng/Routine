@@ -27,11 +27,7 @@ class DesktopService {
   int? _expectedLength;
 
   Future<void> init() async {
-    try {
-      await _connectToNMH();
-    } catch (e) {
-      debugPrint('Failed to connect to NMH: $e');
-    }
+    await _connectToNMH();
 
     // Set up platform channel method handler
     platform.setMethodCallHandler((call) async {
@@ -159,21 +155,21 @@ class DesktopService {
         onDone: () {
           debugPrint('Socket closed');
           _connected = false;
-          // Try to reconnect after a delay
-          Future.delayed(Duration(seconds: 5), _connectToNMH);
         },
       );
-    } catch (e) {
-      debugPrint('Failed to connect to NMH: $e');
+    } on SocketException catch (e) {
       _connected = false;
-      // Try to reconnect after a delay
-      Future.delayed(Duration(seconds: 5), _connectToNMH);
+      if (e.osError?.errorCode == 61) {
+        debugPrint('NMH service is not running. The app will continue without NMH features.');
+      } else {
+        debugPrint('Socket connection error: ${e.message}. The app will continue without NMH features.');
+      }
     }
   }
 
   void _sendToNMH(String action, Map<String, dynamic> data) {
-    if (!_connected || _socket == null) {
-      debugPrint('Not connected to NMH');
+    if (!_connected) {
+      debugPrint('Cannot send to NMH: not connected');
       return;
     }
 
