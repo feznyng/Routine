@@ -97,20 +97,6 @@ fn main() -> io::Result<()> {
             return Err(e);
         }
     };
-    
-    // Accept Flutter client connection
-    let (mut tcp_stream, addr) = match listener.accept() {
-        Ok((stream, addr)) => {
-            log_to_file(&format!("Flutter app connected from {}", addr));
-            (stream, addr)
-        },
-        Err(e) => {
-            log_to_file(&format!("Failed to accept Flutter connection: {}", e));
-            return Err(e);
-        }
-    };
-    
-    let mut tcp_stream_clone = tcp_stream.try_clone()?;
 
     // Thread for reading from browser extension
     thread::spawn(move || {
@@ -130,33 +116,62 @@ fn main() -> io::Result<()> {
         }
     });
 
-    // Thread for reading from Flutter app
-    thread::spawn(move || {
-        loop {
-            match read_flutter_message(&mut tcp_stream_clone) {
-                Ok(message) => {
-                    if let Err(e) = tx_clone.send(message) {
-                        log_to_file(&format!("Failed to send message to channel: {}", e));
-                        break;
-                    }
+    // Thread for accepting TCP connections and handling Flutter clients
+    let listener_handle = thread::spawn(move || {
+        // Accept connections in a loop
+        for stream in listener.incoming() {
+            match stream {
+                Ok(mut tcp_stream) => {
+                    let addr = tcp_stream.peer_addr().unwrap_or_else(|_| "unknown".parse().unwrap());
+                    log_to_file(&format!("Flutter app connected from {}", addr));
+                    
+                    // Clone necessary handles for the new client thread
+                    let tx_flutter = tx_clone.clone();
+                    let mut tcp_stream_clone = match tcp_stream.try_clone() {
+                        Ok(clone) => clone,
+                        Err(e) => {
+                            log_to_file(&format!("Failed to clone TCP stream: {}", e));
+                            continue;
+                        }
+                    };
+
+                    // Spawn a new thread for each client
+                    thread::spawn(move || {
+                        loop {
+                            match read_flutter_message(&mut tcp_stream_clone) {
+                                Ok(message) => {
+                                    if let Err(e) = tx_flutter.send(message) {
+                                        log_to_file(&format!("Failed to send message to channel: {}", e));
+                                        break;
+                                    }
+                                },
+                                Err(e) => {
+                                    log_to_file(&format!("Failed to read Flutter message: {}", e));
+                                    break;
+                                }
+                            }
+                        }
+                        log_to_file(&format!("Flutter client {} disconnected", addr));
+                    });
                 },
                 Err(e) => {
-                    log_to_file(&format!("Failed to read Flutter message: {}", e));
-                    break;
+                    log_to_file(&format!("Error accepting connection: {}", e));
                 }
             }
         }
     });
 
-    // Main thread handles message routing
+    // Main thread handles message broadcasting to all connected clients
     for message in rx {
-        // Forward messages to both browser and Flutter
+        // Forward messages to browser
         if let Err(e) = write_browser_message(&message) {
             log_to_file(&format!("Failed to write browser message: {}", e));
         }
-        if let Err(e) = write_flutter_message(&mut tcp_stream, &message) {
-            log_to_file(&format!("Failed to write Flutter message: {}", e));
-        }
+    }
+
+    // Wait for the listener thread (this won't actually be reached in normal operation)
+    if let Err(e) = listener_handle.join() {
+        log_to_file(&format!("TCP listener thread panicked: {:?}", e));
     }
 
     Ok(())
