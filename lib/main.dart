@@ -4,11 +4,7 @@ import 'package:tray_manager/tray_manager.dart';
 import 'manager.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  // Initialize window_manager
-  await windowManager.ensureInitialized();
-  await windowManager.setPreventClose(true);
-  
+  WidgetsFlutterBinding.ensureInitialized();  
   runApp(const MyApp());
 }
 
@@ -75,11 +71,6 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
       ],
     );
     await trayManager.setContextMenu(menu);
-  }
-
-  @override
-  void onWindowClose() async {
-    await windowManager.hide();
   }
 
   @override
