@@ -69,16 +69,6 @@ fn read_flutter_message(stream: &mut TcpStream) -> io::Result<Message> {
     }
 }
 
-// Write a message to TCP (Flutter app)
-fn write_flutter_message(stream: &mut TcpStream, message: &Message) -> io::Result<()> {
-    let message_bytes = serde_json::to_vec(&message)?;
-    stream.write_u32::<NativeEndian>(message_bytes.len() as u32)?;
-    stream.write_all(&message_bytes)?;
-    stream.flush()?;
-    log_to_file(&format!("Browser -> Flutter: {:?}", message));
-    Ok(())
-}
-
 fn main() -> io::Result<()> {
     log_to_file("Native messaging host started");
     
@@ -121,7 +111,7 @@ fn main() -> io::Result<()> {
         // Accept connections in a loop
         for stream in listener.incoming() {
             match stream {
-                Ok(mut tcp_stream) => {
+                Ok(tcp_stream) => {
                     let addr = tcp_stream.peer_addr().unwrap_or_else(|_| "unknown".parse().unwrap());
                     log_to_file(&format!("Flutter app connected from {}", addr));
                     
