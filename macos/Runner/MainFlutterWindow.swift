@@ -8,46 +8,67 @@ class MainFlutterWindow: NSWindow {
   private var isMonitoring = false
   private var methodChannel: FlutterMethodChannel?
   private var allowList = false
-  
+  private var isFlutterReady = false
+  private var pendingMessages: [(String, Any)] = []
+
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
     let windowFrame = self.frame
     self.contentViewController = flutterViewController
     self.setFrame(windowFrame, display: true)
-    
+
     RegisterGeneratedPlugins(registry: flutterViewController)
-    
+
     // Set up method channel
     methodChannel = FlutterMethodChannel(
       name: "com.routine.blockedapps",
       binaryMessenger: flutterViewController.engine.binaryMessenger
     )
-    
+
     methodChannel?.setMethodCallHandler { [weak self] call, result in
       guard let self = self else { return }
-      
+
       switch call.method {
-        case "updateBlockedApps":
-          if let args = call.arguments as? [String: Any],
-            let apps = args["apps"] as? [String], let allowList = args["allowList"] as? Bool {
-            NSLog("updating blocked apps to: \(apps), allowList: \(allowList)")
-            self.blockedApps = Set(apps.map { $0.lowercased() })  // Store lowercase for case-insensitive comparison
-            self.allowList = allowList
-            result(nil)
-          } else {
-            NSLog("Invalid arguments received for updateBlockedApps")
-            result(FlutterError(code: "INVALID_ARGUMENTS",
+      case "updateBlockedApps":
+        if let args = call.arguments as? [String: Any],
+          let apps = args["apps"] as? [String], let allowList = args["allowList"] as? Bool {
+          NSLog("updating blocked apps to: \(apps), allowList: \(allowList)")
+          self.blockedApps = Set(apps.map { $0.lowercased() })  // Store lowercase for case-insensitive comparison
+          self.allowList = allowList
+          result(nil)
+        } else {
+          NSLog("Invalid arguments received for updateBlockedApps")
+          result(FlutterError(code: "INVALID_ARGUMENTS",
                               message: "Invalid arguments for updateBlockedApps",
                               details: nil))
-          }
-        default:
-          NSLog("Method not implemented: %@", call.method)
-          result(FlutterMethodNotImplemented)
         }
+      case "setBlockedApps":
+        if let apps = call.arguments as? [String] {
+          self.blockedApps = Set(apps.map { $0.lowercased() })
+          result(true)
+        } else {
+          result(FlutterError(code: "INVALID_ARGUMENTS", message: "Expected array of strings", details: nil))
+        }
+      case "setAllowList":
+        if let allow = call.arguments as? Bool {
+          self.allowList = allow
+          result(true)
+        } else {
+          result(FlutterError(code: "INVALID_ARGUMENTS", message: "Expected boolean", details: nil))
+        }
+      case "engineReady":
+        self.isFlutterReady = true
+        // Process any pending messages
+        self.processPendingMessages()
+        result(true)
+      default:
+        NSLog("Method not implemented: %@", call.method)
+        result(FlutterMethodNotImplemented)
+      }
     }
-    
+
     super.awakeFromNib()
-    
+
     // Request notification permissions
     UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
       if let error = error {
@@ -56,24 +77,24 @@ class MainFlutterWindow: NSWindow {
         NSLog("Notification permission granted: %@", String(granted))
       }
     }
-    
+
     startMonitoring()
-    
+
     // Check initial state
     checkActiveApplication(NSWorkspace.shared.frontmostApplication)
   }
-  
+
   deinit {
     stopMonitoring()
   }
-  
+
   private func startMonitoring() {
     guard !isMonitoring else { return }
     isMonitoring = true
-    
+
     let workspace = NSWorkspace.shared
     let notificationCenter = workspace.notificationCenter
-    
+
     // Monitor for application activation
     notificationCenter.addObserver(
       self,
@@ -81,7 +102,7 @@ class MainFlutterWindow: NSWindow {
       name: NSWorkspace.didActivateApplicationNotification,
       object: nil
     )
-    
+
     // Monitor for application unhiding
     notificationCenter.addObserver(
       self,
@@ -89,7 +110,7 @@ class MainFlutterWindow: NSWindow {
       name: NSWorkspace.didUnhideApplicationNotification,
       object: nil
     )
-    
+
     // Monitor for application launching
     notificationCenter.addObserver(
       self,
@@ -97,51 +118,66 @@ class MainFlutterWindow: NSWindow {
       name: NSWorkspace.didLaunchApplicationNotification,
       object: nil
     )
-    
+
     // Start periodic check
     Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
       self?.checkFrontmostApp()
     }
   }
-  
+
   private func stopMonitoring() {
     guard isMonitoring else { return }
     isMonitoring = false
     NSWorkspace.shared.notificationCenter.removeObserver(self)
   }
-  
+
   @objc private func activeAppDidChange(_ notification: Notification) {
     if let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication {
       checkActiveApplication(app)
     }
   }
-  
+
   @objc private func appDidUnhide(_ notification: Notification) {
     if let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication {
       checkActiveApplication(app)
     }
   }
-  
+
   @objc private func appDidLaunch(_ notification: Notification) {
     if let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication {
       checkActiveApplication(app)
     }
   }
-  
+
   private func checkFrontmostApp() {
     if let frontmostApp = NSWorkspace.shared.frontmostApplication {
       checkActiveApplication(frontmostApp)
     }
   }
-  
+
+  private func processPendingMessages() {
+    guard isFlutterReady, let channel = methodChannel else { return }
+
+    for (method, arguments) in pendingMessages {
+      channel.invokeMethod(method, arguments: arguments)
+    }
+    pendingMessages.removeAll()
+  }
+
   private func checkActiveApplication(_ app: NSRunningApplication?) {
     if let app = app,
        let appName = app.localizedName?.lowercased() {
       if (!allowList && blockedApps.contains(appName)) || (allowList && !blockedApps.contains(appName)) {
         app.hide()
       }
-      // Send back the active application name
-      methodChannel?.invokeMethod("activeApplication", arguments: appName)
+
+      // Queue or send the message depending on Flutter readiness
+      let message = (method: "activeApplication", arguments: appName as Any)
+      if isFlutterReady, let channel = methodChannel {
+        channel.invokeMethod(message.method, arguments: message.arguments)
+      } else {
+        pendingMessages.append(message)
+      }
     }
   }
 }

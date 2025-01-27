@@ -39,6 +39,13 @@ class DesktopService {
       }
     });
 
+    // Signal to native code that Flutter is ready to receive messages
+    try {
+      await platform.invokeMethod('engineReady');
+    } catch (e) {
+      debugPrint('Failed to signal engine ready: $e');
+    }
+
     Set<Schedule> evaluationTimes = {};
     for (final Routine routine in manager.routines) {
       evaluationTimes.add(Schedule(hours: routine.startHour, minutes: routine.startMinute));
@@ -194,6 +201,12 @@ class DesktopService {
   }
 
   Future<void> updateLists(List<String> sites, List<String> apps, bool allowList) async {
+    // Update platform channel
+    platform.invokeMethod('updateBlockedApps', {
+      'apps': apps,
+      'allowList': allowList,
+    });
+
     if (!_connected) {
       debugPrint('Not connected to NMH, attempting connection...');
       await _connectToNMH();
@@ -206,12 +219,6 @@ class DesktopService {
     // Send update to NMH to forward to browser extension
     _sendToNMH('updateBlockedSites', {
       'sites': sites,
-      'allowList': allowList,
-    });
-    
-    // Update platform channel
-    platform.invokeMethod('updateBlockedApps', {
-      'apps': apps,
       'allowList': allowList,
     });
   }
