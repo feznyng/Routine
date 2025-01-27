@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:window_manager/window_manager.dart';
+import 'package:tray_manager/tray_manager.dart';
 import 'manager.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Initialize window_manager
+  await windowManager.ensureInitialized();
+  await windowManager.setPreventClose(true);
+  
   runApp(const MyApp());
 }
 
@@ -29,8 +36,61 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListener {
   Manager manager = Manager();
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeTray();
+    windowManager.addListener(this);
+    trayManager.addListener(this);
+  }
+
+  @override
+  void dispose() {
+    windowManager.removeListener(this);
+    trayManager.removeListener(this);
+    super.dispose();
+  }
+
+  Future<void> _initializeTray() async {
+    await trayManager.setIcon(
+      'assets/app_icon.png',
+    );
+    Menu menu = Menu(
+      items: [
+        MenuItem(
+          label: 'Show',
+          onClick: (menuItem) async {
+            await windowManager.show();
+          },
+        ),
+        MenuItem(
+          label: 'Exit',
+          onClick: (menuItem) async {
+            await windowManager.destroy();
+          },
+        ),
+      ],
+    );
+    await trayManager.setContextMenu(menu);
+  }
+
+  @override
+  void onWindowClose() async {
+    await windowManager.hide();
+  }
+
+  @override
+  void onTrayIconMouseDown() async {
+    await trayManager.popUpContextMenu();
+  }
+
+  @override
+  void onTrayIconRightMouseDown() async {
+    await trayManager.popUpContextMenu();
+  }
 
   @override
   Widget build(BuildContext context) {
