@@ -26,6 +26,21 @@ class DesktopService {
   List<int> _messageBuffer = [];
   int? _expectedLength;
 
+  // Cache fields for blocked items
+  List<String> _cachedSites = [];
+  List<String> _cachedApps = [];
+  bool _isAllowList = false;
+
+  // Set of browser names in lowercase for O(1) lookup
+  final Set<String> _browserNames = {
+    'google chrome',
+    'firefox',
+    'safari',
+    'microsoft edge',
+    'opera',
+    'brave browser',
+  };
+
   Future<void> init() async {
     await _connectToNMH();
 
@@ -35,6 +50,13 @@ class DesktopService {
         case 'activeApplication':
           final appName = call.arguments as String;
           debugPrint('Currently active application: $appName');
+          
+          // Check if the active application is a browser using O(1) lookup
+          final lowerAppName = appName.toLowerCase();
+          if (_browserNames.any((browser) => lowerAppName.contains(browser))) {
+            debugPrint('Browser detected, refreshing blocked sites');
+            updateBlockedSites();
+          }
           break;
       }
     });
@@ -108,7 +130,14 @@ class DesktopService {
     debugPrint("Active sites: $sites");
     debugPrint("Allow list: $allowList");
 
-    updateLists(sites, apps, allowList);
+    // Update cached values
+    _cachedSites = sites;
+    _cachedApps = apps;
+    _isAllowList = allowList;
+
+    // Update both apps and sites
+    updateBlockedApps();
+    updateBlockedSites();
   }
 
   void dispose() {
@@ -200,13 +229,15 @@ class DesktopService {
     }
   }
 
-  Future<void> updateLists(List<String> sites, List<String> apps, bool allowList) async {
+  Future<void> updateBlockedApps() async {
     // Update platform channel
     platform.invokeMethod('updateBlockedApps', {
-      'apps': apps,
-      'allowList': allowList,
+      'apps': _cachedApps,
+      'allowList': _isAllowList,
     });
+  }
 
+  Future<void> updateBlockedSites() async {
     if (!_connected) {
       debugPrint('Not connected to NMH, attempting connection...');
       await _connectToNMH();
@@ -218,8 +249,8 @@ class DesktopService {
 
     // Send update to NMH to forward to browser extension
     _sendToNMH('updateBlockedSites', {
-      'sites': sites,
-      'allowList': allowList,
+      'sites': _cachedSites,
+      'allowList': _isAllowList,
     });
   }
 }
