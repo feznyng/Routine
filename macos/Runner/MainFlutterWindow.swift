@@ -100,7 +100,7 @@ class MainFlutterWindow: NSWindow {
     
     // Start periodic check
     Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
-      self?.checkAllBlockedApps()
+      self?.checkFrontmostApp()
     }
   }
   
@@ -128,19 +128,20 @@ class MainFlutterWindow: NSWindow {
     }
   }
   
-  private func checkAllBlockedApps() {
-    NSWorkspace.shared.runningApplications.forEach { app in
-      if let appName = app.localizedName?.lowercased(), blockedApps.contains(appName) {
-        checkActiveApplication(app)
-      }
+  private func checkFrontmostApp() {
+    if let frontmostApp = NSWorkspace.shared.frontmostApplication {
+      checkActiveApplication(frontmostApp)
     }
   }
   
   private func checkActiveApplication(_ app: NSRunningApplication?) {
     if let app = app,
-       let appName = app.localizedName?.lowercased(),
-       (!allowList && blockedApps.contains(appName)) || (allowList && !blockedApps.contains(appName)) {
-      app.hide()
+       let appName = app.localizedName?.lowercased() {
+      if (!allowList && blockedApps.contains(appName)) || (allowList && !blockedApps.contains(appName)) {
+        app.hide()
+      }
+      // Send back the active application name
+      methodChannel?.invokeMethod("activeApplication", arguments: appName)
     }
   }
 }

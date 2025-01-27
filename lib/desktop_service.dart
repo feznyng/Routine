@@ -33,6 +33,16 @@ class DesktopService {
       debugPrint('Failed to connect to NMH: $e');
     }
 
+    // Set up platform channel method handler
+    platform.setMethodCallHandler((call) async {
+      switch (call.method) {
+        case 'activeApplication':
+          final appName = call.arguments as String;
+          debugPrint('Currently active application: $appName');
+          break;
+      }
+    });
+
     Set<Schedule> evaluationTimes = {};
     for (final Routine routine in manager.routines) {
       evaluationTimes.add(Schedule(hours: routine.startHour, minutes: routine.startMinute));
