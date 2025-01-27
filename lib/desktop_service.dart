@@ -3,16 +3,31 @@ import 'package:flutter/services.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'routine.dart';
+import 'block_list.dart';
+import 'package:cron/cron.dart';
+import 'manager.dart';
 
-class PlatformService {
-  static const platform = MethodChannel('com.routine.blockedapps');
-  static ServerSocket? _server;
-  static final Set<Socket> _sockets = {};
+class DesktopService {
+  // Singleton instance
+  static final DesktopService _instance = DesktopService();
+  
+  final cron = Cron();
+  final List<ScheduledTask> _scheduledTasks = [];
+  final Manager manager = Manager();
 
-  static bool _allowList = false;
-  static List<String> _blockedSites = []; 
+  DesktopService();
 
-  static Future<void> startTcpServer() async {
+  static DesktopService get instance => _instance;
+
+  final platform = const MethodChannel('com.routine.blockedapps');
+  ServerSocket? _server;
+  final Set<Socket> _sockets = {};
+
+  bool _allowList = false;
+  List<String> _blockedSites = []; 
+
+  Future<void> init() async {
     try {
       _server = await ServerSocket.bind('127.0.0.1', 54321);
       debugPrint('TCP Server listening on port 54321');
@@ -24,9 +39,74 @@ class PlatformService {
     } catch (e) {
       debugPrint('Failed to start TCP server: $e');
     }
+
+
+    Set<Schedule> evaluationTimes = {};
+    for (final Routine routine in manager.routines) {
+      evaluationTimes.add(Schedule(hours: routine.startHour, minutes: routine.startMinute));
+      evaluationTimes.add(Schedule(hours: routine.endHour, minutes: routine.endMinute));
+    }
+
+    for (final Schedule time in evaluationTimes) {
+      ScheduledTask task = cron.schedule(time, () async {
+        _evaluate();
+      });
+      _scheduledTasks.add(task);
+    }
+
+    _evaluate();
   }
 
-  static void dispose() {
+
+  void _evaluate() {
+    Set<BlockList> activeBlockLists = {};
+    Set<BlockList> activeAllowLists = {};
+
+    for (final Routine routine in manager.routines) {
+      if (routine.isActive()) {
+        final BlockList blockList = manager.blockLists[routine.blockId]!;
+        (blockList.allowList ? activeAllowLists : activeBlockLists).add(blockList);
+      }
+    }
+
+    List<String> apps = []; 
+    List<String> sites = [];
+    bool allowList = false;
+
+    if (activeAllowLists.isNotEmpty) {
+      allowList = true;
+
+      Map<String, int> appFrequency = {};
+      Map<String, int> siteFrequency = {};
+      for (final BlockList blockList in activeAllowLists) {
+        for (final String app in blockList.apps) {
+          appFrequency[app] = appFrequency[app] ?? 0;
+          appFrequency[app] = appFrequency[app]! + 1;
+        }
+        for (final String site in blockList.sites) {
+          siteFrequency[site] = siteFrequency[site] ?? 0;
+          siteFrequency[site] = siteFrequency[site]! + 1;
+        }
+      }
+      apps = appFrequency.entries.where((entry) => entry.value == activeAllowLists.length).map((entry) => entry.key).toList();
+      sites = siteFrequency.entries.where((entry) => entry.value == activeAllowLists.length).map((entry) => entry.key).toList();
+    }
+
+    if (activeBlockLists.isNotEmpty) {
+      for (final BlockList blockList in activeBlockLists) {
+        sites.addAll(blockList.sites);
+        apps.addAll(blockList.apps);
+      }
+    }
+
+    debugPrint("Active apps: $apps");
+    debugPrint("Active sites: $sites");
+    debugPrint("Allow list: $allowList");
+
+    updateLists(apps, sites, allowList);
+  }
+
+  void dispose() {
     _server?.close();
     for (var socket in _sockets) {
       socket.close();
@@ -34,7 +114,7 @@ class PlatformService {
     _sockets.clear();
   }
 
-  static void _handleConnection(Socket socket) {
+  void _handleConnection(Socket socket) {
     _sockets.add(socket);
     debugPrint('New native messaging host connected');
 
@@ -90,15 +170,15 @@ class PlatformService {
     );
   }
 
-  static Future<Map<String, dynamic>> _handleMessage(Map<String, dynamic> message) async {
+  Future<Map<String, dynamic>> _handleMessage(Map<String, dynamic> message) async {
     debugPrint('Received message: $message');
     throw Exception("Not implemented");
   }
 
-  static Future<void> updateLists(List<String> apps, List<String> sites, bool allowList) async {
+  Future<void> updateLists(List<String> apps, List<String> sites, bool allowList) async {
     try {
-      PlatformService._blockedSites = sites;
-      PlatformService._allowList = allowList;
+      _blockedSites = sites;
+      _allowList = allowList;
 
       await platform.invokeMethod('updateBlockedApps', {'apps': apps, 'allowList': allowList});
       _sendSitesToNativeHosts();
@@ -108,7 +188,7 @@ class PlatformService {
     }
   }
 
-  static void _sendSitesToNativeHosts() {
+  void _sendSitesToNativeHosts() {
     var message = {
       'action': 'updateBlockedSites',
       'data': {'sites': _blockedSites, 'allowList': _allowList}
@@ -122,7 +202,7 @@ class PlatformService {
     }
   }
 
-  static void _sendMessageToNativeHosts(Map<String, dynamic> message) {
+  void _sendMessageToNativeHosts(Map<String, dynamic> message) {
     var messageBytes = utf8.encode(json.encode(message));
     var lengthBytes = ByteData(4)..setUint32(0, messageBytes.length, Endian.host);
     for (var socket in _sockets) {

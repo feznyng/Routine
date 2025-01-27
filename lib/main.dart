@@ -1,7 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:tray_manager/tray_manager.dart';
-import 'manager.dart';
+import 'desktop_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,7 +23,7 @@ void main() async {
     await windowManager.show();
     await windowManager.focus();
   });
-  
+
   runApp(const MyApp());
 }
 
@@ -51,7 +52,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListener {
-  Manager manager = Manager();
+  final DesktopService _desktopService = DesktopService();  
 
   @override
   void initState() {
@@ -59,6 +60,10 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
     _initializeTray();
     windowManager.addListener(this);
     trayManager.addListener(this);
+
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      _desktopService.init();
+    }
   }
 
   @override
