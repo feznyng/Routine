@@ -102,16 +102,11 @@ class Manager {
     Set<BlockList> activeAllowLists = {};
 
     for (final Routine routine in _routines) {
-      debugPrint("Evaluating routine: ${routine.name} = ${routine.isActive()}");
-
       if (routine.isActive()) {
         final BlockList blockList = _blockLists[routine.blockId]!;
         (blockList.allowList ? activeAllowLists : activeBlockLists).add(blockList);
       }
     }
-
-    debugPrint("Active allow lists: $activeAllowLists");
-    debugPrint("Active block lists: $activeBlockLists");
 
     List<String> apps = []; 
     List<String> sites = [];
