@@ -1,59 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:window_manager/window_manager.dart';
-import 'package:tray_manager/tray_manager.dart';
-import 'dart:io';
 import 'manager.dart';
 
-void main() async {
-  // WidgetsFlutterBinding.ensureInitialized();
-  
-  // // Initialize window_manager
-  // await windowManager.ensureInitialized();
-  
-  // // Configure window options
-  // WindowOptions windowOptions = const WindowOptions(
-  //   size: Size(800, 600),
-  //   skipTaskbar: true, // Hide from taskbar
-  //   titleBarStyle: TitleBarStyle.hidden,
-  // );
-  
-  // await windowManager.waitUntilReadyToShow(windowOptions, () async {
-  //   if (Platform.isMacOS) {
-  //     await windowManager.hide();
-  //   }
-  // });
-
-  // // Initialize tray
-  // // await trayManager.setIcon(
-  // //   Platform.isWindows ? 'assets/app_icon.ico' : 'assets/app_icon.png',
-  // // );
-  
-  // Menu menu = Menu(
-  //   items: [
-  //     MenuItem(
-  //       label: 'Show',
-  //       onClick: (_) async {
-  //         await windowManager.show();
-  //       },
-  //     ),
-  //     MenuItem(
-  //       label: 'Hide',
-  //       onClick: (_) async {
-  //         await windowManager.hide();
-  //       },
-  //     ),
-  //     MenuItem.separator(),
-  //     MenuItem(
-  //       label: 'Quit',
-  //       onClick: (_) async {
-  //         await windowManager.destroy();
-  //       },
-  //     ),
-  //   ],
-  // );
-  
-  // await trayManager.setContextMenu(menu);
-  
+void main() {
   runApp(const MyApp());
 }
 
@@ -81,32 +29,8 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> with TrayListener {
+class _MyHomePageState extends State<MyHomePage> {
   Manager manager = Manager();
-
-  @override
-  void initState() {
-    super.initState();
-    trayManager.addListener(this);
-  }
-
-  @override
-  void dispose() {
-    trayManager.removeListener(this);
-    super.dispose();
-  }
-
-  @override
-  void onTrayIconMouseDown() async {
-    if (Platform.isMacOS) {
-      final isVisible = await windowManager.isVisible();
-      if (isVisible) {
-        await windowManager.hide();
-      } else {
-        await windowManager.show();
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {

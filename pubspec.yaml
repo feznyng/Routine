@@ -36,8 +36,6 @@ dependencies:
   cupertino_icons: ^1.0.8
   uuid: ^4.4.2
   cron: ^0.6.1
-  tray_manager: ^0.2.1
-  window_manager: ^0.3.7
 
 dev_dependencies:
   flutter_test:
