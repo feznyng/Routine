@@ -20,7 +20,7 @@ class DesktopService {
 
   static DesktopService get instance => _instance;
 
-  final platform = const MethodChannel('com.routine.blockedapps');
+  final platform = const MethodChannel('com.routine.applist');
   Socket? _socket;
   bool _connected = false;
   List<int> _messageBuffer = [];
@@ -49,7 +49,7 @@ class DesktopService {
       switch (call.method) {
         case 'activeApplication':
           final appName = call.arguments as String;
-          debugPrint('Currently active application: $appName');
+          //debugPrint('Currently active application: $appName');
           
           // Check if the active application is a browser using O(1) lookup
           final lowerAppName = appName.toLowerCase();
@@ -75,6 +75,7 @@ class DesktopService {
     }
 
     for (final Schedule time in evaluationTimes) {
+      debugPrint("scheduling eval at ${time.hours}:${time.minutes}");
       ScheduledTask task = cron.schedule(time, () async {
         _evaluate();
       });
@@ -126,9 +127,9 @@ class DesktopService {
       }
     }
 
-    debugPrint("Active apps: $apps");
-    debugPrint("Active sites: $sites");
-    debugPrint("Allow list: $allowList");
+    debugPrint("App List: $apps");
+    debugPrint("Site List: $sites");
+    debugPrint("Allow List: $allowList");
 
     // Update cached values
     _cachedSites = sites;
@@ -136,7 +137,7 @@ class DesktopService {
     _isAllowList = allowList;
 
     // Update both apps and sites
-    updateBlockedApps();
+    updateAppList();
     updateBlockedSites();
   }
 
@@ -229,9 +230,9 @@ class DesktopService {
     }
   }
 
-  Future<void> updateBlockedApps() async {
+  Future<void> updateAppList() async {
     // Update platform channel
-    platform.invokeMethod('updateBlockedApps', {
+    platform.invokeMethod('updateAppList', {
       'apps': _cachedApps,
       'allowList': _isAllowList,
     });

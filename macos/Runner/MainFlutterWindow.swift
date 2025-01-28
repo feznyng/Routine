@@ -6,7 +6,7 @@ import ServiceManagement
 
 
 class MainFlutterWindow: NSWindow {
-  private var blockedApps: Set<String> = []
+  private var appList: Set<String> = []
   private var isMonitoring = false
   private var methodChannel: FlutterMethodChannel?
   private var allowList = false
@@ -23,7 +23,7 @@ class MainFlutterWindow: NSWindow {
 
     // Set up method channel
     methodChannel = FlutterMethodChannel(
-      name: "com.routine.blockedapps",
+      name: "com.routine.applist",
       binaryMessenger: flutterViewController.engine.binaryMessenger
     )
 
@@ -31,22 +31,22 @@ class MainFlutterWindow: NSWindow {
       guard let self = self else { return }
 
       switch call.method {
-      case "updateBlockedApps":
+      case "updateAppList":
         if let args = call.arguments as? [String: Any],
           let apps = args["apps"] as? [String], let allowList = args["allowList"] as? Bool {
-          NSLog("updating blocked apps to: \(apps), allowList: \(allowList)")
-          self.blockedApps = Set(apps.map { $0.lowercased() })  // Store lowercase for case-insensitive comparison
+          NSLog("updating app list to: \(apps), allowList: \(allowList)")
+          self.appList = Set(apps.map { $0.lowercased() })  // Store lowercase for case-insensitive comparison
           self.allowList = allowList
           result(nil)
         } else {
-          NSLog("Invalid arguments received for updateBlockedApps")
+          NSLog("Invalid arguments received for updateappList")
           result(FlutterError(code: "INVALID_ARGUMENTS",
-                              message: "Invalid arguments for updateBlockedApps",
+                              message: "Invalid arguments for updateappList",
                               details: nil))
         }
-      case "setBlockedApps":
+      case "setappList":
         if let apps = call.arguments as? [String] {
-          self.blockedApps = Set(apps.map { $0.lowercased() })
+          self.appList = Set(apps.map { $0.lowercased() })
           result(true)
         } else {
           result(FlutterError(code: "INVALID_ARGUMENTS", message: "Expected array of strings", details: nil))
@@ -203,7 +203,7 @@ class MainFlutterWindow: NSWindow {
   private func checkActiveApplication(_ app: NSRunningApplication?) {
     if let app = app,
        let appName = app.localizedName?.lowercased() {
-      if (!allowList && blockedApps.contains(appName)) || (allowList && !blockedApps.contains(appName)) {
+      if (!allowList && appList.contains(appName)) || (allowList && !appList.contains(appName)) {
         app.hide()
       }
 

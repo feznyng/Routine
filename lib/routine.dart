@@ -80,10 +80,26 @@ class Routine {
   isActive() { 
     final DateTime now = DateTime.now();
     final int dayOfWeek = now.weekday - 1;
+
+    if (!_days[dayOfWeek]) {
+      return false;
+    }
     
     final int currMins = now.hour * 60 + now.minute;
     
-    return _days[dayOfWeek] && ((_startTime == -1 && _endTime == -1) || (currMins >= startTime && currMins < endTime)) && !isComplete();
+    // All day routine or not scheduled
+    if (_startTime == -1 && _endTime == -1) {
+      return _days[dayOfWeek] && !isComplete();
+    }
+    
+    // Check if routine spans to next day (endTime < startTime)
+    if (_endTime < _startTime) {
+      // Active if current time is either after start time or before end time
+      return (currMins >= _startTime || currMins < _endTime) && !isComplete();
+    }
+    
+    // Normal case: routine starts and ends on same day
+    return (currMins >= _startTime && currMins < _endTime) && !isComplete();
   }
 
   isComplete() { 
