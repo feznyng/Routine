@@ -12,6 +12,7 @@ class MainFlutterWindow: NSWindow {
   private var allowList = false
   private var isFlutterReady = false
   private var pendingMessages: [(String, Any)] = []
+  private var isHiding = false
 
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
@@ -203,8 +204,19 @@ class MainFlutterWindow: NSWindow {
   private func checkActiveApplication(_ app: NSRunningApplication?) {
     if let app = app,
        let appName = app.localizedName?.lowercased() {
-      if (!allowList && appList.contains(appName)) || (allowList && !appList.contains(appName)) {
-        app.hide()
+      
+      let isAllowed = allowList ? appList.contains(appName) : !appList.contains(appName)
+      
+      if !isAllowed && !isHiding && appName != "finder" {
+        isHiding = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+          // Find and activate Finder
+          if let finder = NSWorkspace.shared.runningApplications.first(where: { $0.localizedName?.lowercased() == "finder" }) {
+            finder.activate(options: .activateIgnoringOtherApps)
+          }
+          app.hide()
+          self?.isHiding = false
+        }
       }
 
       // Queue or send the message depending on Flutter readiness
