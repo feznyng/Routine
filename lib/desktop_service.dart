@@ -253,4 +253,12 @@ class DesktopService {
       'allowList': _isAllowList,
     });
   }
+
+  Future<void> setStartOnLogin(bool enabled) async {
+    try {
+      await platform.invokeMethod('setStartOnLogin', enabled);
+    } catch (e) {
+      debugPrint('Failed to set start on login: $e');
+    }
+  }
 }

@@ -2,6 +2,8 @@ import Cocoa
 import FlutterMacOS
 import UserNotifications
 import os.log
+import ServiceManagement
+
 
 class MainFlutterWindow: NSWindow {
   private var blockedApps: Set<String> = []
@@ -60,7 +62,19 @@ class MainFlutterWindow: NSWindow {
         self.isFlutterReady = true
         // Process any pending messages
         self.processPendingMessages()
+
+        let isEnabled = SMAppService.mainApp.status == .enabled
+        NSLog("App starts at login = \(isEnabled)")
+
         result(true)
+          
+      case "setStartOnLogin":
+        if let allow = call.arguments as? Bool {
+          setStartOnLogin(enabled: allow)
+          result(true)
+        } else {
+          result(FlutterError(code: "INVALID_ARGUMENTS", message: "Expected boolean", details: nil))
+        }
       default:
         NSLog("Method not implemented: %@", call.method)
         result(FlutterMethodNotImplemented)
@@ -86,6 +100,25 @@ class MainFlutterWindow: NSWindow {
 
   deinit {
     stopMonitoring()
+  }
+    
+  private func setStartOnLogin(enabled: Bool) {
+      if enabled {
+          do {
+              try SMAppService.mainApp.register()
+          } catch {
+              NSLog("Failed to register app for launch at login: \(error)")
+          }
+      } else {
+          do {
+              try SMAppService.mainApp.unregister()
+          } catch {
+              NSLog("Failed to unregister app for launch at login: \(error)")
+          }
+      }
+      
+      let isEnabled = SMAppService.mainApp.status == .enabled
+      NSLog("App starts at login = \(isEnabled)")
   }
 
   private func startMonitoring() {

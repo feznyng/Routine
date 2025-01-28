@@ -53,6 +53,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListener {
   final DesktopService _desktopService = DesktopService();  
+  bool _startOnLogin = false;
 
   @override
   void initState() {
@@ -116,8 +117,17 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            SwitchListTile(
+              title: const Text('Start on Login'),
+              value: _startOnLogin,
+              onChanged: (bool value) {
+                setState(() {
+                  _startOnLogin = value;
+                });
+                DesktopService.instance.setStartOnLogin(value);
+              },
+            ),
             Text(
               'Tester',
               style: Theme.of(context).textTheme.titleMedium,
