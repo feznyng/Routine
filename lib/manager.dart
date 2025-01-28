@@ -32,10 +32,24 @@ class Manager {
     BlockList everythingBlockList = BlockList(name: 'Everything');
     everythingBlockList.allowList = true;
 
+    String foodBlockListId = Uuid().v4();
+    BlockList foodBlockList = BlockList(name: 'Food');
+    foodBlockList.sites = [
+      "doordash.com",
+      "ubereats.com"
+    ];
+
     blockLists[workBlockListId] = workBlockList;
     blockLists[everythingBlockListId] = everythingBlockList;
+    blockLists[foodBlockListId] = foodBlockList;
 
     // routines
+    Routine foodRoutine = Routine(name: "Food Routine");
+    foodRoutine.setAllDay();
+    foodRoutine.setDays([true, true, true, false, true, true, true]);
+    foodRoutine.blockId = foodBlockListId;
+    routines.add(foodRoutine);
+
     Routine morningRoutine = Routine(name: "Morning Work");
     morningRoutine.setTimeRange(9, 0, 12, 0);
     morningRoutine.blockId = workBlockListId;
@@ -50,11 +64,11 @@ class Manager {
     afternoonRoutine.maxBreakDuration = 20;
     routines.add(afternoonRoutine);
 
-    Routine exerciseRoutine = Routine(name: "Exercise");
-    exerciseRoutine.setTimeRange(16, 0, 17, 0);
-    exerciseRoutine.blockId = everythingBlockListId;
-    exerciseRoutine.numBreaks = 0;
-    routines.add(exerciseRoutine);
+    // Routine exerciseRoutine = Routine(name: "Exercise");
+    // exerciseRoutine.setTimeRange(16, 0, 17, 0);
+    // exerciseRoutine.blockId = everythingBlockListId;
+    // exerciseRoutine.numBreaks = 0;
+    // routines.add(exerciseRoutine);
 
     Routine eveningRoutine = Routine(name: "Evening Work");
     eveningRoutine.setTimeRange(17, 0, 19, 0);
