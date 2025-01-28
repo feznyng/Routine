@@ -261,4 +261,14 @@ class DesktopService {
       debugPrint('Failed to set start on login: $e');
     }
   }
+
+  Future<bool> getStartOnLogin() async {
+    try {
+      final bool enabled = await platform.invokeMethod('getStartOnLogin');
+      return enabled;
+    } catch (e) {
+      debugPrint('Failed to get start on login status: $e');
+      return false;
+    }
+  }
 }

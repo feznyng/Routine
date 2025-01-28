@@ -65,6 +65,7 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       _desktopService.init();
     }
+    _initializeStartOnLogin();
   }
 
   @override
@@ -97,6 +98,13 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
     await trayManager.setContextMenu(menu);
   }
 
+  Future<void> _initializeStartOnLogin() async {
+    final enabled = await _desktopService.getStartOnLogin();
+    setState(() {
+      _startOnLogin = enabled;
+    });
+  }
+
   @override
   void onTrayIconMouseDown() async {
     await trayManager.popUpContextMenu();
@@ -125,7 +133,7 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
                 setState(() {
                   _startOnLogin = value;
                 });
-                DesktopService.instance.setStartOnLogin(value);
+                _desktopService.setStartOnLogin(value);
               },
             ),
             Text(

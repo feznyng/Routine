@@ -75,6 +75,9 @@ class MainFlutterWindow: NSWindow {
         } else {
           result(FlutterError(code: "INVALID_ARGUMENTS", message: "Expected boolean", details: nil))
         }
+      case "getStartOnLogin":
+        let isEnabled = SMAppService.mainApp.status == .enabled
+        result(isEnabled)
       default:
         NSLog("Method not implemented: %@", call.method)
         result(FlutterMethodNotImplemented)
