@@ -25,7 +25,8 @@ class Manager {
     workBlockList.apps = [
       'discord',
       'google chrome',
-      'safari'
+      'safari',
+      'taskmgr'
     ];
 
     String everythingBlockListId = Uuid().v4();
