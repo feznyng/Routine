@@ -35,28 +35,23 @@ void CALLBACK FlutterWindow::WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD eve
     DWORD idEventThread, DWORD dwmsEventTime) {
     
     if (event == EVENT_SYSTEM_FOREGROUND && hwnd != NULL) {
-        wchar_t windowTitle[256];
-        if (GetWindowTextW(hwnd, windowTitle, 256) > 0) {
-            std::wstringstream logMessage;
-            logMessage << L"Window Focused - Title: " << windowTitle;
-            
-            // Get process information
-            DWORD processId;
-            GetWindowThreadProcessId(hwnd, &processId);
-            if (processId != 0) {
-                HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processId);
-                if (hProcess != NULL) {
-                    wchar_t processPath[MAX_PATH];
-                    DWORD size = MAX_PATH;
-                    if (QueryFullProcessImageNameW(hProcess, 0, processPath, &size)) {
-                        logMessage << L"\nProcess Path: " << processPath;
-                    }
-                    CloseHandle(hProcess);
+        std::wstringstream logMessage;
+        
+        DWORD processId;
+        GetWindowThreadProcessId(hwnd, &processId);
+        if (processId != 0) {
+            HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processId);
+            if (hProcess != NULL) {
+                wchar_t processPath[MAX_PATH];
+                DWORD size = MAX_PATH;
+                if (QueryFullProcessImageNameW(hProcess, 0, processPath, &size)) {
+                    logMessage << L"\nProcess Path: " << processPath;
                 }
+                CloseHandle(hProcess);
             }
-            
-            LogToFile(logMessage.str());
         }
+        
+        LogToFile(logMessage.str());
     }
 }
 
