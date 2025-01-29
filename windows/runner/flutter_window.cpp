@@ -90,7 +90,20 @@ void CALLBACK FlutterWindow::WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD eve
                     // Check if app should be blocked
                     if (g_appList.find(narrowExeName) != g_appList.end()) {
                         logMessage << L"\nBlocking application: " << exeName.c_str();
+                        
+                        // First minimize attempt
                         ShowWindow(hwnd, SW_MINIMIZE);
+                        
+                        // Small delay to let the window respond
+                        Sleep(1000);
+                        
+                        // Check if window is not minimized and try again
+                        WINDOWPLACEMENT placement = { sizeof(WINDOWPLACEMENT) };
+                        if (GetWindowPlacement(hwnd, &placement) && 
+                            placement.showCmd != SW_SHOWMINIMIZED) {
+                            ShowWindow(hwnd, SW_MINIMIZE);
+                            logMessage << L"\nSecond minimize attempt needed";
+                        }
                     }
                 }
                 CloseHandle(hProcess);
