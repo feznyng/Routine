@@ -21,6 +21,9 @@ std::mutex g_appListMutex;
 std::unordered_set<std::string> g_appList;
 bool g_allowList = false;
 
+// Timer ID for the window check
+const UINT_PTR WINDOW_CHECK_TIMER_ID = 1;
+
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
 
@@ -35,16 +38,14 @@ void LogToFile(const std::wstring& message) {
     logFile << message << std::endl;
 }
 
-// WinEventProc callback implementation
-void CALLBACK FlutterWindow::WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event,
-    HWND hwnd, LONG idObject, LONG idChild,
-    DWORD idEventThread, DWORD dwmsEventTime) {
-    
-    if (event == EVENT_SYSTEM_FOREGROUND && hwnd != NULL) {
+// Timer callback for checking active window
+void CALLBACK CheckActiveWindow(HWND hwnd, UINT message, UINT_PTR idTimer, DWORD dwTime) {
+    HWND foregroundWindow = GetForegroundWindow();
+    if (foregroundWindow != NULL) {
         std::wstringstream logMessage;
         
         DWORD processId;
-        GetWindowThreadProcessId(hwnd, &processId);
+        GetWindowThreadProcessId(foregroundWindow, &processId);
         if (processId != 0) {
             HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processId);
             if (hProcess != NULL) {
@@ -53,8 +54,6 @@ void CALLBACK FlutterWindow::WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD eve
                 if (QueryFullProcessImageNameW(hProcess, 0, processPath, &size)) {
                     logMessage << L"\nProcess Path: " << processPath;
 
-
-                    
                     // Convert process path to lowercase string for comparison
                     std::wstring wProcessPath(processPath);
                     size_t lastBackslash = wProcessPath.find_last_of(L"\\");
@@ -81,36 +80,30 @@ void CALLBACK FlutterWindow::WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD eve
                     
                     logMessage << L"\nExecutable Name: " << exeName.c_str();
 
-                    // Get window title
-                    // wchar_t windowTitle[256];
-                    // GetWindowTextW(hwnd, windowTitle, 256);
-                    // logMessage << L"\nWindow Title: " << windowTitle;
-
                     std::lock_guard lock{ g_appListMutex };
                     // Check if app should be blocked
                     if (g_appList.find(narrowExeName) != g_appList.end()) {
                         logMessage << L"\nBlocking application: " << exeName.c_str();
                         
                         // First minimize attempt
-                        ShowWindow(hwnd, SW_MINIMIZE);
+                        ShowWindow(foregroundWindow, SW_MINIMIZE);
                         
                         // Small delay to let the window respond
-                        Sleep(1000);
+                        Sleep(100);
                         
                         // Check if window is not minimized and try again
                         WINDOWPLACEMENT placement = { sizeof(WINDOWPLACEMENT) };
-                        if (GetWindowPlacement(hwnd, &placement) && 
+                        if (GetWindowPlacement(foregroundWindow, &placement) && 
                             placement.showCmd != SW_SHOWMINIMIZED) {
-                            ShowWindow(hwnd, SW_MINIMIZE);
-                            logMessage << L"\nSecond minimize attempt needed";
+                            ShowWindow(foregroundWindow, SW_MINIMIZE);
                         }
                     }
+
+                    LogToFile(logMessage.str());
                 }
                 CloseHandle(hProcess);
             }
         }
-        
-        LogToFile(logMessage.str());
     }
 }
 
@@ -181,20 +174,8 @@ bool FlutterWindow::OnCreate() {
 
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
-  // Set up window focus tracking
-  winEventHook = SetWinEventHook(
-      EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND,
-      NULL,
-      WinEventProc,
-      0, 0,
-      WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS
-  );
-
-  if (winEventHook == NULL) {
-      LogToFile(L"Failed to set up window focus tracking");
-  } else {
-      LogToFile(L"Successfully set up window focus tracking");
-  }
+  // Set up the timer to check active window every 200ms
+  SetTimer(GetHandle(), WINDOW_CHECK_TIMER_ID, 200, CheckActiveWindow);
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
@@ -209,17 +190,14 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
-  if (winEventHook != nullptr) {
-    UnhookWinEvent(winEventHook);
-    winEventHook = nullptr;
-    LogToFile(L"Window focus tracking stopped");
-  }
+    // Kill the timer when the window is destroyed
+    KillTimer(GetHandle(), WINDOW_CHECK_TIMER_ID);
 
-  if (flutter_controller_) {
-    flutter_controller_ = nullptr;
-  }
+    if (flutter_controller_) {
+        flutter_controller_ = nullptr;
+    }
 
-  Win32Window::OnDestroy();
+    Win32Window::OnDestroy();
 }
 
 LRESULT
