@@ -40,15 +40,37 @@ bool FlutterWindow::OnCreate() {
       flutter_controller_->engine()->messenger(), "com.routine.applist",
       &flutter::StandardMethodCodec::GetInstance());
   channel.SetMethodCallHandler(
-      [](const flutter::MethodCall<>& call, std::unique_ptr<flutter::MethodResult<>> result) {
+      [this](const flutter::MethodCall<>& call, std::unique_ptr<flutter::MethodResult<>> result) {
           const auto& methodType = call.method_name();
+          std::lock_guard lock{ this->appListMutex };
+
           if (methodType == "engineReady") {
               OutputDebugStringW(L"Received engineReady\n");
               result->Success(true);
           }
           else if (methodType == "updateAppList") {
               OutputDebugStringW(L"Received updateAppList\n");
-              result->Success(true);
+             
+              if (const auto* arguments = std::get_if<flutter::EncodableMap>(call.arguments())) {
+                  auto list_it = arguments->find(flutter::EncodableValue("apps"));
+                  auto allow_it = arguments->find(flutter::EncodableValue("allowList"));
+
+                  if (list_it != arguments->end() && allow_it != arguments->end()) {
+                      const auto& list = std::get<flutter::EncodableList>(list_it->second);
+                      std::vector<std::string> apps;
+                      for (const auto& item : list) {
+                          if (std::holds_alternative<std::string>(item)) {
+                              apps.push_back(std::get<std::string>(item));
+                          }
+                      }
+                      this->appList = std::unordered_set<std::string>{ apps.begin(), apps.end() };
+                      this->allowList = std::get<bool>(allow_it->second);
+
+                      return result->Success(true);
+                  }
+              }
+              
+              result->Error("Arguments for updateAppList are invalid");
           }
           else if (methodType == "setStartOnLogin") {
               OutputDebugStringW(L"Received setStartOnLogin\n");
@@ -56,7 +78,7 @@ bool FlutterWindow::OnCreate() {
           }
           else if (methodType == "getStartOnLogin") {
               OutputDebugStringW(L"Received getStartOnLogin\n");
-              result->Success(true);
+              result->Success(false);
           }
       });
 
