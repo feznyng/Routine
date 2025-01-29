@@ -29,6 +29,37 @@ void LogToFile(const std::wstring& message) {
     logFile << message << std::endl;
 }
 
+// WinEventProc callback implementation
+void CALLBACK FlutterWindow::WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event,
+    HWND hwnd, LONG idObject, LONG idChild,
+    DWORD idEventThread, DWORD dwmsEventTime) {
+    
+    if (event == EVENT_SYSTEM_FOREGROUND && hwnd != NULL) {
+        wchar_t windowTitle[256];
+        if (GetWindowTextW(hwnd, windowTitle, 256) > 0) {
+            std::wstringstream logMessage;
+            logMessage << L"Window Focused - Title: " << windowTitle;
+            
+            // Get process information
+            DWORD processId;
+            GetWindowThreadProcessId(hwnd, &processId);
+            if (processId != 0) {
+                HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processId);
+                if (hProcess != NULL) {
+                    wchar_t processPath[MAX_PATH];
+                    DWORD size = MAX_PATH;
+                    if (QueryFullProcessImageNameW(hProcess, 0, processPath, &size)) {
+                        logMessage << L"\nProcess Path: " << processPath;
+                    }
+                    CloseHandle(hProcess);
+                }
+            }
+            
+            LogToFile(logMessage.str());
+        }
+    }
+}
+
 bool FlutterWindow::OnCreate() {
   if (!Win32Window::OnCreate()) {
     return false;
@@ -96,6 +127,21 @@ bool FlutterWindow::OnCreate() {
 
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
+  // Set up window focus tracking
+  winEventHook = SetWinEventHook(
+      EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND,
+      NULL,
+      WinEventProc,
+      0, 0,
+      WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS
+  );
+
+  if (winEventHook == NULL) {
+      LogToFile(L"Failed to set up window focus tracking");
+  } else {
+      LogToFile(L"Successfully set up window focus tracking");
+  }
+
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
   });
@@ -109,6 +155,12 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  if (winEventHook != nullptr) {
+    UnhookWinEvent(winEventHook);
+    winEventHook = nullptr;
+    LogToFile(L"Window focus tracking stopped");
+  }
+
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
   }
