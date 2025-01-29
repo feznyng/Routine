@@ -32,6 +32,15 @@ class MainFlutterWindow: NSWindow {
       guard let self = self else { return }
 
       switch call.method {
+      case "engineReady":
+        self.isFlutterReady = true
+        // Process any pending messages
+        self.processPendingMessages()
+
+        let isEnabled = SMAppService.mainApp.status == .enabled
+        NSLog("App starts at login = \(isEnabled)")
+
+        result(true)
       case "updateAppList":
         if let args = call.arguments as? [String: Any],
           let apps = args["apps"] as? [String], let allowList = args["allowList"] as? Bool {
@@ -45,30 +54,6 @@ class MainFlutterWindow: NSWindow {
                               message: "Invalid arguments for updateappList",
                               details: nil))
         }
-      case "setappList":
-        if let apps = call.arguments as? [String] {
-          self.appList = Set(apps.map { $0.lowercased() })
-          result(true)
-        } else {
-          result(FlutterError(code: "INVALID_ARGUMENTS", message: "Expected array of strings", details: nil))
-        }
-      case "setAllowList":
-        if let allow = call.arguments as? Bool {
-          self.allowList = allow
-          result(true)
-        } else {
-          result(FlutterError(code: "INVALID_ARGUMENTS", message: "Expected boolean", details: nil))
-        }
-      case "engineReady":
-        self.isFlutterReady = true
-        // Process any pending messages
-        self.processPendingMessages()
-
-        let isEnabled = SMAppService.mainApp.status == .enabled
-        NSLog("App starts at login = \(isEnabled)")
-
-        result(true)
-          
       case "setStartOnLogin":
         if let allow = call.arguments as? Bool {
           setStartOnLogin(enabled: allow)
