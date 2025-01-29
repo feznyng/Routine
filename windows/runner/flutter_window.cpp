@@ -82,7 +82,9 @@ void CALLBACK CheckActiveWindow(HWND hwnd, UINT message, UINT_PTR idTimer, DWORD
 
                     std::lock_guard lock{ g_appListMutex };
                     // Check if app should be blocked
-                    if (g_appList.find(narrowExeName) != g_appList.end()) {
+                    bool inList = g_appList.find(exeName) != g_appList.end();
+
+                    if ((g_allowList && !inList) || (!g_allowList && inList)) {
                         logMessage << L"\nBlocking application: " << exeName.c_str();
                         
                         // First minimize attempt
