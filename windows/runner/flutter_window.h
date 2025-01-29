@@ -17,11 +17,6 @@ class FlutterWindow : public Win32Window {
   explicit FlutterWindow(const flutter::DartProject& project);
   virtual ~FlutterWindow();
 
-
-  std::mutex appListMutex;
-  std::unordered_set<std::string> appList;
-  bool allowList = false;
-
   // WinEventHook handle
   HWINEVENTHOOK winEventHook = nullptr;
   static void CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd, 

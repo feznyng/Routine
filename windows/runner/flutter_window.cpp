@@ -9,11 +9,17 @@
 #include <fstream>
 #include <ctime>
 #include <sstream>
+#include <algorithm>
+#include <string>
 
 #include <memory>
 #include <optional>
 
 #include "flutter/generated_plugin_registrant.h"
+
+std::mutex g_appListMutex;
+std::unordered_set<std::string> g_appList;
+bool g_allowList = false;
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
@@ -46,6 +52,46 @@ void CALLBACK FlutterWindow::WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD eve
                 DWORD size = MAX_PATH;
                 if (QueryFullProcessImageNameW(hProcess, 0, processPath, &size)) {
                     logMessage << L"\nProcess Path: " << processPath;
+
+
+                    
+                    // Convert process path to lowercase string for comparison
+                    std::wstring wProcessPath(processPath);
+                    size_t lastBackslash = wProcessPath.find_last_of(L"\\");
+                    std::wstring exeName = wProcessPath.substr(lastBackslash + 1);
+                    
+                    // Convert exe name to lowercase before removing extension
+                    std::transform(exeName.begin(), exeName.end(), exeName.begin(), ::towlower);
+                    
+                    size_t lastDot = exeName.find_last_of(L".");
+                    if (lastDot != std::wstring::npos) {
+                        exeName = exeName.substr(0, lastDot);
+                    }
+
+                    // Convert wide string to narrow string using Windows API
+                    int narrowSize = WideCharToMultiByte(CP_UTF8, 0, exeName.c_str(), -1, nullptr, 0, nullptr, nullptr);
+                    std::string narrowExeName(narrowSize, 0);
+                    WideCharToMultiByte(CP_UTF8, 0, exeName.c_str(), -1, &narrowExeName[0], narrowSize, nullptr, nullptr);
+                    narrowExeName.pop_back(); // Remove the null terminator
+                    
+                    // Convert to lowercase using explicit cast to avoid warning
+                    std::transform(narrowExeName.begin(), narrowExeName.end(), 
+                                 narrowExeName.begin(), 
+                                 [](unsigned char c) -> char { return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); });
+                    
+                    logMessage << L"\nExecutable Name: " << exeName.c_str();
+
+                    // Get window title
+                    // wchar_t windowTitle[256];
+                    // GetWindowTextW(hwnd, windowTitle, 256);
+                    // logMessage << L"\nWindow Title: " << windowTitle;
+
+                    std::lock_guard lock{ g_appListMutex };
+                    // Check if app should be blocked
+                    if (g_appList.find(narrowExeName) != g_appList.end()) {
+                        logMessage << L"\nBlocking application: " << exeName.c_str();
+                        ShowWindow(hwnd, SW_MINIMIZE);
+                    }
                 }
                 CloseHandle(hProcess);
             }
@@ -77,9 +123,9 @@ bool FlutterWindow::OnCreate() {
       flutter_controller_->engine()->messenger(), "com.routine.applist",
       &flutter::StandardMethodCodec::GetInstance());
   channel.SetMethodCallHandler(
-      [this](const flutter::MethodCall<>& call, std::unique_ptr<flutter::MethodResult<>> result) {
+      [](const flutter::MethodCall<>& call, std::unique_ptr<flutter::MethodResult<>> result) {
           const auto& methodType = call.method_name();
-          std::lock_guard lock{ this->appListMutex };
+          std::lock_guard lock{ g_appListMutex };
 
           if (methodType == "engineReady") {
               LogToFile(L"Received engineReady");
@@ -100,8 +146,8 @@ bool FlutterWindow::OnCreate() {
                               apps.push_back(std::get<std::string>(item));
                           }
                       }
-                      this->appList = std::unordered_set<std::string>{ apps.begin(), apps.end() };
-                      this->allowList = std::get<bool>(allow_it->second);
+                      g_appList = std::unordered_set<std::string>{ apps.begin(), apps.end() };
+                      g_allowList = std::get<bool>(allow_it->second);
 
                       return result->Success(true);
                   }
