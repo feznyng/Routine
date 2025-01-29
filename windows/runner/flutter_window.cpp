@@ -29,29 +29,6 @@ void LogToFile(const std::wstring& message) {
     logFile << message << std::endl;
 }
 
-void CALLBACK WinEventProc(HWINEVENTHOOK hook, DWORD event, HWND hwnd, LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime) {
-    // Check if the event is a foreground window change (EVENT_SYSTEM_FOREGROUND)
-    if (event == EVENT_SYSTEM_FOREGROUND) {
-        // Get the title of the foreground window
-        wchar_t windowTitle[256];
-        GetWindowText(hwnd, windowTitle, sizeof(windowTitle) / sizeof(wchar_t));
-
-        // Convert the wide-character window title to a standard string for comparison
-        std::wstring wstrTitle(windowTitle);
-
-        LogToFile(L"Current foreground window: ");
-        LogToFile(wstrTitle);
-
-        // Check if the window title matches your blocked app criteria
-        std::wstring blockedApp = L"BlockedApp";  // Replace with the name of the app you want to block
-        if (wstrTitle.find(blockedApp) != std::wstring::npos) {
-            // If the app is found, minimize it
-            ShowWindow(hwnd, SW_MINIMIZE);
-            std::wcout << L"Blocked app detected: " << windowTitle << L", minimized." << std::endl;
-        }
-    }
-}
-
 bool FlutterWindow::OnCreate() {
   if (!Win32Window::OnCreate()) {
     return false;
@@ -68,22 +45,6 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
-
-   HWINEVENTHOOK hook = SetWinEventHook(
-        EVENT_SYSTEM_FOREGROUND,      // Event type: foreground window change
-        EVENT_SYSTEM_FOREGROUND,      // We care about only this specific event
-        NULL,                         // Handle to the process for which we are registering (NULL for current process)
-        WinEventProc,                 // Callback function to be called when the event occurs
-        0,                            // Process ID (0 for current process)
-        0,                            // Thread ID (0 for all threads)
-        WINEVENT_OUTOFCONTEXT         // Event notification will happen in the current thread context
-    );
-
-    // Check if the hook was successfully registered
-    if (hook == NULL) {
-        std::cerr << "Failed to register WinEventHook!" << std::endl;
-        return 1;
-    }
 
 
   flutter::MethodChannel<> channel(
