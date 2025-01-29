@@ -237,6 +237,11 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   }
 
   switch (message) {
+    case WM_CLOSE:
+      // Instead of closing, minimize to system tray
+      ShowWindow(hwnd, SW_MINIMIZE);
+      return 0;  // Prevent default handling
+      
     case WM_FONTCHANGE:
       flutter_controller_->engine()->ReloadSystemFonts();
       break;
