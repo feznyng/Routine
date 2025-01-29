@@ -6,7 +6,9 @@
 #include <flutter/standard_method_codec.h>
 #include <windows.h>
 #include <debugapi.h>
-
+#include <fstream>
+#include <ctime>
+#include <sstream>
 
 #include <memory>
 #include <optional>
@@ -17,6 +19,15 @@ FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
 
 FlutterWindow::~FlutterWindow() {}
+
+void LogToFile(const std::wstring& message) {
+    static std::wofstream logFile;
+    if (!logFile.is_open()) {
+        logFile.open("routine_app.log", std::ios::app);
+    }
+    
+    logFile << message << std::endl;
+}
 
 bool FlutterWindow::OnCreate() {
   if (!Win32Window::OnCreate()) {
@@ -45,11 +56,11 @@ bool FlutterWindow::OnCreate() {
           std::lock_guard lock{ this->appListMutex };
 
           if (methodType == "engineReady") {
-              OutputDebugStringW(L"Received engineReady\n");
+              LogToFile(L"Received engineReady");
               result->Success(true);
           }
           else if (methodType == "updateAppList") {
-              OutputDebugStringW(L"Received updateAppList\n");
+              LogToFile(L"Received updateAppList");
              
               if (const auto* arguments = std::get_if<flutter::EncodableMap>(call.arguments())) {
                   auto list_it = arguments->find(flutter::EncodableValue("apps"));
@@ -73,11 +84,11 @@ bool FlutterWindow::OnCreate() {
               result->Error("Arguments for updateAppList are invalid");
           }
           else if (methodType == "setStartOnLogin") {
-              OutputDebugStringW(L"Received setStartOnLogin\n");
+              LogToFile(L"Received setStartOnLogin");
               result->Success(true);
           }
           else if (methodType == "getStartOnLogin") {
-              OutputDebugStringW(L"Received getStartOnLogin\n");
+              LogToFile(L"Received getStartOnLogin");
               result->Success(false);
           }
       });
