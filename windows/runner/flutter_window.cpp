@@ -21,6 +21,9 @@ std::mutex g_appListMutex;
 std::unordered_set<std::string> g_appList;
 bool g_allowList = false;
 
+const int POLL_TIMER_ID = 1;
+const int POLL_INTERVAL_MS = 20;
+
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
 
@@ -35,12 +38,9 @@ void LogToFile(const std::wstring& message) {
     logFile << message << std::endl;
 }
 
-// WinEventProc callback implementation
-void CALLBACK FlutterWindow::WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event,
-    HWND hwnd, LONG idObject, LONG idChild,
-    DWORD idEventThread, DWORD dwmsEventTime) {
-    
-    if (event == EVENT_SYSTEM_FOREGROUND && hwnd != NULL) {
+void FlutterWindow::CheckAndBlockApps() {
+    HWND hwnd = GetForegroundWindow();
+    if (hwnd != NULL) {
         std::wstringstream logMessage;
         
         DWORD processId;
@@ -52,8 +52,6 @@ void CALLBACK FlutterWindow::WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD eve
                 DWORD size = MAX_PATH;
                 if (QueryFullProcessImageNameW(hProcess, 0, processPath, &size)) {
                     logMessage << L"\nProcess Path: " << processPath;
-
-
                     
                     // Convert process path to lowercase string for comparison
                     std::wstring wProcessPath(processPath);
@@ -81,18 +79,35 @@ void CALLBACK FlutterWindow::WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD eve
                     
                     logMessage << L"\nExecutable Name: " << exeName.c_str();
 
-                    // Get window title
-                    // wchar_t windowTitle[256];
-                    // GetWindowTextW(hwnd, windowTitle, 256);
-                    // logMessage << L"\nWindow Title: " << windowTitle;
-
                     std::lock_guard lock{ g_appListMutex };
                     bool inList = g_appList.find(narrowExeName) != g_appList.end();
                     // Check if app should be blocked
                     if ((g_allowList && !inList) || (!g_allowList && inList)) {
                         logMessage << L"\nBlocking application: " << exeName.c_str();
-                        Sleep(1000);
+                        
+                        // Force minimize and disable window
                         ShowWindow(hwnd, SW_FORCEMINIMIZE);
+                        
+                        // Set the window to be always minimized
+                        LONG style = GetWindowLong(hwnd, GWL_STYLE);
+                        style |= WS_DISABLED;  // Disable the window
+                        SetWindowLong(hwnd, GWL_STYLE, style);
+                        
+                        // If window is still active after minimize, force it to lose focus
+                        if (GetForegroundWindow() == hwnd) {
+                            // Force focus to another window
+                            HWND nextWindow = GetWindow(hwnd, GW_HWNDNEXT);
+                            if (nextWindow) {
+                                SetForegroundWindow(nextWindow);
+                            }
+                        }
+                    } else {
+                        // Re-enable window if it's not supposed to be blocked
+                        LONG style = GetWindowLong(hwnd, GWL_STYLE);
+                        if (style & WS_DISABLED) {
+                            style &= ~WS_DISABLED;
+                            SetWindowLong(hwnd, GWL_STYLE, style);
+                        }
                     }
                 }
                 CloseHandle(hProcess);
@@ -119,7 +134,6 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
-
 
   flutter::MethodChannel<> channel(
       flutter_controller_->engine()->messenger(), "com.routine.applist",
@@ -167,74 +181,40 @@ bool FlutterWindow::OnCreate() {
           }
       });
 
-
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
-  // Set up window focus tracking
-  winEventHook = SetWinEventHook(
-      EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND,
-      NULL,
-      WinEventProc,
-      0, 0,
-      WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS
-  );
-
-  if (winEventHook == NULL) {
-      LogToFile(L"Failed to set up window focus tracking");
+  // Set up polling timer
+  if (!SetTimer(GetHandle(), POLL_TIMER_ID, POLL_INTERVAL_MS, nullptr)) {
+      LogToFile(L"Failed to set up polling timer");
   } else {
-      LogToFile(L"Successfully set up window focus tracking");
+      LogToFile(L"Successfully set up polling timer");
   }
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
   });
 
-  // Flutter can complete the first frame before the "show window" callback is
-  // registered. The following call ensures a frame is pending to ensure the
-  // window is shown. It is a no-op if the first frame hasn't completed yet.
   flutter_controller_->ForceRedraw();
 
   return true;
 }
 
 void FlutterWindow::OnDestroy() {
-  if (winEventHook != nullptr) {
-    UnhookWinEvent(winEventHook);
-    winEventHook = nullptr;
-    LogToFile(L"Window focus tracking stopped");
-  }
-
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
   }
 
+  // Kill the polling timer
+  KillTimer(GetHandle(), POLL_TIMER_ID);
+
   Win32Window::OnDestroy();
 }
 
-LRESULT
-FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
-                              WPARAM const wparam,
-                              LPARAM const lparam) noexcept {
-  // Give Flutter, including plugins, an opportunity to handle window messages.
-  if (flutter_controller_) {
-    std::optional<LRESULT> result =
-        flutter_controller_->HandleTopLevelWindowProc(hwnd, message, wparam,
-                                                      lparam);
-    if (result) {
-      return *result;
-    }
+LRESULT FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
+                                    WPARAM const wparam, LPARAM const lparam) noexcept {
+  if (message == WM_TIMER && wparam == POLL_TIMER_ID) {
+      CheckAndBlockApps();
+      return 0;
   }
-
-  switch (message) {
-    case WM_CLOSE:
-      // Hide window instantly instead of showing minimize animation
-      ShowWindow(hwnd, SW_HIDE);
-      return 0;  // Prevent default handling
-      
-    case WM_FONTCHANGE:
-      flutter_controller_->engine()->ReloadSystemFonts();
-      break;
-  }
-
   return Win32Window::MessageHandler(hwnd, message, wparam, lparam);
 }

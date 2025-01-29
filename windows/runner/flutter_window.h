@@ -17,11 +17,8 @@ class FlutterWindow : public Win32Window {
   explicit FlutterWindow(const flutter::DartProject& project);
   virtual ~FlutterWindow();
 
-  // WinEventHook handle
-  HWINEVENTHOOK winEventHook = nullptr;
-  static void CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd, 
-                                  LONG idObject, LONG idChild, 
-                                  DWORD idEventThread, DWORD dwmsEventTime);
+  static const UINT_PTR POLL_TIMER_ID = 1;
+  static const UINT POLL_INTERVAL_MS = 10000; // 10 seconds
 
  protected:
   // Win32Window:
@@ -37,7 +34,7 @@ class FlutterWindow : public Win32Window {
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
 
-
+  void CheckAndBlockApps();
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_
