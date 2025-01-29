@@ -87,23 +87,12 @@ void CALLBACK FlutterWindow::WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD eve
                     // logMessage << L"\nWindow Title: " << windowTitle;
 
                     std::lock_guard lock{ g_appListMutex };
+                    bool inList = g_appList.find(narrowExeName) != g_appList.end();
                     // Check if app should be blocked
-                    if (g_appList.find(narrowExeName) != g_appList.end()) {
+                    if ((g_allowList && !inList) || (!g_allowList && inList)) {
                         logMessage << L"\nBlocking application: " << exeName.c_str();
-                        
-                        // First minimize attempt
-                        ShowWindow(hwnd, SW_MINIMIZE);
-                        
-                        // Small delay to let the window respond
                         Sleep(1000);
-                        
-                        // Check if window is not minimized and try again
-                        WINDOWPLACEMENT placement = { sizeof(WINDOWPLACEMENT) };
-                        if (GetWindowPlacement(hwnd, &placement) && 
-                            placement.showCmd != SW_SHOWMINIMIZED) {
-                            ShowWindow(hwnd, SW_MINIMIZE);
-                            logMessage << L"\nSecond minimize attempt needed";
-                        }
+                        ShowWindow(hwnd, SW_FORCEMINIMIZE);
                     }
                 }
                 CloseHandle(hProcess);
@@ -238,8 +227,8 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
 
   switch (message) {
     case WM_CLOSE:
-      // Instead of closing, minimize to system tray
-      ShowWindow(hwnd, SW_MINIMIZE);
+      // Hide window instantly instead of showing minimize animation
+      ShowWindow(hwnd, SW_HIDE);
       return 0;  // Prevent default handling
       
     case WM_FONTCHANGE:
