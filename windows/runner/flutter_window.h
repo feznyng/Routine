@@ -18,7 +18,7 @@ class FlutterWindow : public Win32Window {
   virtual ~FlutterWindow();
 
   static const UINT_PTR POLL_TIMER_ID = 1;
-  static const UINT POLL_INTERVAL_MS = 10000; // 10 seconds
+  static const UINT POLL_INTERVAL_MS = 200; // 10 seconds
 
  protected:
   // Win32Window:

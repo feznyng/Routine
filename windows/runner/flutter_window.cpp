@@ -21,9 +21,6 @@ std::mutex g_appListMutex;
 std::unordered_set<std::string> g_appList;
 bool g_allowList = false;
 
-const int POLL_TIMER_ID = 1;
-const int POLL_INTERVAL_MS = 20;
-
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
 
@@ -87,27 +84,6 @@ void FlutterWindow::CheckAndBlockApps() {
                         
                         // Force minimize and disable window
                         ShowWindow(hwnd, SW_FORCEMINIMIZE);
-                        
-                        // Set the window to be always minimized
-                        LONG style = GetWindowLong(hwnd, GWL_STYLE);
-                        style |= WS_DISABLED;  // Disable the window
-                        SetWindowLong(hwnd, GWL_STYLE, style);
-                        
-                        // If window is still active after minimize, force it to lose focus
-                        if (GetForegroundWindow() == hwnd) {
-                            // Force focus to another window
-                            HWND nextWindow = GetWindow(hwnd, GW_HWNDNEXT);
-                            if (nextWindow) {
-                                SetForegroundWindow(nextWindow);
-                            }
-                        }
-                    } else {
-                        // Re-enable window if it's not supposed to be blocked
-                        LONG style = GetWindowLong(hwnd, GWL_STYLE);
-                        if (style & WS_DISABLED) {
-                            style &= ~WS_DISABLED;
-                            SetWindowLong(hwnd, GWL_STYLE, style);
-                        }
                     }
                 }
                 CloseHandle(hProcess);
