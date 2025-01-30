@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
-import 'package:path/path.dart' as path;
+import 'block_apps_dialog.dart';
+import 'block_sites_dialog.dart';
 
 class BlockListPage extends StatefulWidget {
   final List<String> selectedApps;
@@ -21,68 +21,40 @@ class BlockListPage extends StatefulWidget {
 class _BlockListPageState extends State<BlockListPage> {
   late List<String> _selectedApps;
   late List<String> _selectedSites;
-  final TextEditingController _siteController = TextEditingController();
-  List<String> _availableApps = [];
-  bool _isLoadingApps = true;
-  String _appSearchQuery = '';
-  final TextEditingController _appSearchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _selectedApps = List.from(widget.selectedApps);
     _selectedSites = List.from(widget.selectedSites);
-    _loadApplications();
   }
 
-  Future<void> _loadApplications() async {
-    if (!mounted) return;
-    setState(() {
-      _isLoadingApps = true;
-    });
+  Future<void> _openAppsDialog() async {
+    final result = await showDialog<List<String>>(
+      context: context,
+      builder: (context) => BlockAppsDialog(selectedApps: _selectedApps),
+    );
 
-    final List<String> apps = [];
-    final Directory applicationsDir = Directory('/Applications');
-    
-    try {
-      await for (final FileSystemEntity entity in applicationsDir.list()) {
-        if (entity.path.endsWith('.app')) {
-          apps.add(entity.path);
-        }
-      }
-
-      // Sort apps alphabetically
-      apps.sort();
-
-      if (!mounted) return;
+    if (result != null) {
       setState(() {
-        _availableApps = apps;
-        _isLoadingApps = false;
+        _selectedApps = result;
       });
-    } catch (e) {
-      debugPrint('Error loading applications: $e');
-      if (!mounted) return;
-      setState(() {
-        _isLoadingApps = false;
-      });
+      widget.onSave(_selectedApps, _selectedSites);
     }
   }
 
-  void _addSite(String site) {
-    if (site.isEmpty) return;
-    
-    // Basic URL cleanup
-    site = site.toLowerCase().trim();
-    if (site.startsWith('http://')) site = site.substring(7);
-    if (site.startsWith('https://')) site = site.substring(8);
-    if (site.startsWith('www.')) site = site.substring(4);
-    
-    setState(() {
-      if (!_selectedSites.contains(site)) {
-        _selectedSites.add(site);
-      }
-    });
-    _siteController.clear();
+  Future<void> _openSitesDialog() async {
+    final result = await showDialog<List<String>>(
+      context: context,
+      builder: (context) => BlockSitesDialog(selectedSites: _selectedSites),
+    );
+
+    if (result != null) {
+      setState(() {
+        _selectedSites = result;
+      });
+      widget.onSave(_selectedApps, _selectedSites);
+    }
   }
 
   @override
@@ -92,150 +64,25 @@ class _BlockListPageState extends State<BlockListPage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Left side - Sites
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Blocked Sites',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _siteController,
-                        decoration: InputDecoration(
-                          hintText: 'Enter a website (e.g., facebook.com)',
-                          border: const OutlineInputBorder(),
-                          suffixIcon: IconButton(
-                            icon: const Icon(Icons.add),
-                            onPressed: () => _addSite(_siteController.text),
-                          ),
-                        ),
-                        onSubmitted: _addSite,
-                      ),
-                      const SizedBox(height: 8),
-                      if (_selectedSites.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.all(8.0),
-                          child: Text('No sites blocked', 
-                            style: TextStyle(fontStyle: FontStyle.italic)),
-                        )
-                      else
-                        Container(
-                          constraints: const BoxConstraints(maxHeight: 200),
-                          child: Material(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(4),
-                            child: ListView(
-                              padding: const EdgeInsets.all(8),
-                              shrinkWrap: true,
-                              children: _selectedSites.map((site) => Chip(
-                                label: Text(site),
-                                onDeleted: () {
-                                  setState(() {
-                                    _selectedSites.remove(site);
-                                  });
-                                },
-                              )).toList(),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(width: 16),
-                
-                // Right side - Apps
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Blocked Applications',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _appSearchController,
-                        decoration: const InputDecoration(
-                          hintText: 'Search applications...',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.search),
-                        ),
-                        onChanged: (value) {
-                          setState(() {
-                            _appSearchQuery = value;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      if (_isLoadingApps)
-                        const Center(child: CircularProgressIndicator())
-                      else if (_availableApps.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.all(8.0),
-                          child: Text('No applications found', 
-                            style: TextStyle(fontStyle: FontStyle.italic)),
-                        )
-                      else
-                        Container(
-                          constraints: const BoxConstraints(maxHeight: 300),
-                          child: Material(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(4),
-                            child: ListView.builder(
-                              padding: const EdgeInsets.all(4),
-                              shrinkWrap: true,
-                              itemCount: _availableApps.length,
-                              itemBuilder: (context, index) {
-                                final app = _availableApps[index];
-                                final appName = path.basenameWithoutExtension(app);
-                                if (_appSearchQuery.isNotEmpty && 
-                                    !appName.toLowerCase().contains(_appSearchQuery.toLowerCase())) {
-                                  return const SizedBox.shrink();
-                                }
-                                
-                                return CheckboxListTile(
-                                  title: Text(appName),
-                                  value: _selectedApps.contains(app),
-                                  onChanged: (bool? value) {
-                                    setState(() {
-                                      if (value == true) {
-                                        _selectedApps.add(app);
-                                      } else {
-                                        _selectedApps.remove(app);
-                                      }
-                                    });
-                                  },
-                                  dense: true,
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
+            const SizedBox(height: 16),
+            _buildBlockButton(
+              title: 'Blocked Applications',
+              subtitle: _selectedApps.isEmpty 
+                ? 'No applications blocked'
+                : '${_selectedApps.length} applications blocked',
+              icon: Icons.apps,
+              onPressed: _openAppsDialog,
             ),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () {
-                    widget.onSave(_selectedApps, _selectedSites);
-                  },
-                  child: const Text('Apply'),
-                ),
-              ],
+            _buildBlockButton(
+              title: 'Blocked Sites',
+              subtitle: _selectedSites.isEmpty 
+                ? 'No sites blocked'
+                : '${_selectedSites.length} sites blocked',
+              icon: Icons.language,
+              onPressed: _openSitesDialog,
             ),
           ],
         ),
@@ -243,10 +90,59 @@ class _BlockListPageState extends State<BlockListPage> {
     );
   }
 
-  @override
-  void dispose() {
-    _siteController.dispose();
-    _appSearchController.dispose();
-    super.dispose();
+  Widget _buildBlockButton({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return Card(
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  icon,
+                  size: 32,
+                  color: Theme.of(context).primaryColor,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: Theme.of(context).textTheme.bodySmall?.color,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -176,7 +176,6 @@ class _RoutineDialogState extends State<RoutineDialog> {
                     _selectedApps = apps;
                     _selectedSites = sites;
                     _validateRoutine();
-                    _showBlockList = false;
                   });
                 },
               )
