@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:tray_manager/tray_manager.dart';
@@ -66,16 +65,14 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
     windowManager.addListener(this);
     trayManager.addListener(this);
     _loadRoutines();
+    _desktopService.init();
   }
 
   Future<void> _loadRoutines() async {
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      _desktopService.init();
-    }
-
     setState(() {
       _routines = _manager.routines;
     });
+    _desktopService.onRoutinesUpdated();
   }
 
   @override
@@ -122,25 +119,28 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
+        title: Text(
+          "Routines",
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        centerTitle: false,
       ),
       body: RoutineList(
         routines: _routines,
-        onRoutineCreated: () {
-          setState(() {
-            _loadRoutines();
-          });
+        onRoutineCreated: (routine) {
+          _manager.addRoutine(routine);
+          _loadRoutines();
         },
         onRoutineUpdated: (routine) {
-          setState(() {
-            _loadRoutines();
-          });
+          _manager.updateRoutine(routine);
+           _loadRoutines();
         },
         onRoutineDeleted: (routine) {
-          setState(() {
+          int index = _routines.indexWhere((r) => r.id == routine.id);
+          if (index != -1) {
+            _manager.removeRoutine(index);
             _loadRoutines();
-          });
+          }
         },
       ),
     );

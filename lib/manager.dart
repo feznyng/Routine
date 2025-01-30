@@ -45,7 +45,7 @@ class Manager {
     blockLists[foodBlockListId] = foodBlockList;
 
     // routines
-    Routine foodRoutine = Routine(id: Uuid().v4(), name: "Food Routine");
+    Routine foodRoutine = Routine(id: Uuid().v4(), name: "Meal Delivery");
     foodRoutine.setAllDay();
     foodRoutine.setDays([true, true, true, false, true, true, true]);
     foodRoutine.blockId = foodBlockListId;

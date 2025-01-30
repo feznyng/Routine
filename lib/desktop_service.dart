@@ -71,6 +71,10 @@ class DesktopService {
       debugPrint('Failed to signal engine ready: $e');
     }
 
+    onRoutinesUpdated();
+  }
+
+  void onRoutinesUpdated() async {
     Set<Schedule> evaluationTimes = {};
     for (final Routine routine in manager.routines) {
       evaluationTimes.add(Schedule(hours: routine.startHour, minutes: routine.startMinute));

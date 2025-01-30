@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../routine.dart';
 import '../condition.dart';
+import 'package:uuid/uuid.dart';
 
 class RoutineDialog extends StatefulWidget {
   final Routine? routine;
@@ -199,7 +200,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
     }
 
     final routine = widget.routine ?? Routine(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: const Uuid().v4(),
       name: _nameController.text,
     );
 
