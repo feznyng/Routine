@@ -26,6 +26,16 @@ class _RoutineDialogState extends State<RoutineDialog> {
   late TimeOfDay _startTime;
   late TimeOfDay _endTime;
   late List<Condition> _conditions;
+  bool _isValid = false;
+  bool _hasChanges = false;
+
+  // Store initial values for comparison
+  String? _initialName;
+  List<bool>? _initialDays;
+  bool? _initialIsAllDay;
+  TimeOfDay? _initialStartTime;
+  TimeOfDay? _initialEndTime;
+  List<Condition>? _initialConditions;
 
   @override
   void initState() {
@@ -46,6 +56,67 @@ class _RoutineDialogState extends State<RoutineDialog> {
           )
         : const TimeOfDay(hour: 17, minute: 0);
     _conditions = widget.routine?.conditions ?? [];
+
+    // Store initial values
+    if (widget.routine != null) {
+      _initialName = widget.routine!.name;
+      _initialDays = List.from(widget.routine!.days);
+      _initialIsAllDay = widget.routine!.startTime == -1;
+      _initialStartTime = widget.routine!.startTime != -1
+          ? TimeOfDay(
+              hour: widget.routine!.startHour,
+              minute: widget.routine!.startMinute,
+            )
+          : null;
+      _initialEndTime = widget.routine!.endTime != -1
+          ? TimeOfDay(
+              hour: widget.routine!.endHour,
+              minute: widget.routine!.endMinute,
+            )
+          : null;
+      _initialConditions = List.from(widget.routine!.conditions);
+    }
+    
+    _nameController.addListener(_validateRoutine);
+    _validateRoutine();
+  }
+
+  void _checkForChanges() {
+    if (widget.routine == null) {
+      _hasChanges = true;
+      return;
+    }
+
+    bool daysEqual = _initialDays != null && 
+        _selectedDays.length == _initialDays!.length &&
+        List.generate(_selectedDays.length, (i) => _selectedDays[i] == _initialDays![i])
+            .every((element) => element);
+
+    bool startTimeEqual = _isAllDay == _initialIsAllDay &&
+        (_isAllDay || 
+         (_startTime.hour == _initialStartTime?.hour && 
+          _startTime.minute == _initialStartTime?.minute));
+
+    bool endTimeEqual = _isAllDay == _initialIsAllDay &&
+        (_isAllDay || 
+         (_endTime.hour == _initialEndTime?.hour && 
+          _endTime.minute == _initialEndTime?.minute));
+
+    setState(() {
+      _hasChanges = _nameController.text != _initialName ||
+          !daysEqual ||
+          !startTimeEqual ||
+          !endTimeEqual ||
+          _conditions.length != _initialConditions?.length;
+    });
+  }
+
+  void _validateRoutine() {
+    _checkForChanges();
+    setState(() {
+      _isValid = _nameController.text.isNotEmpty && 
+                 _selectedDays.contains(true);
+    });
   }
 
   @override
@@ -94,7 +165,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
           child: const Text('Cancel'),
         ),
         TextButton(
-          onPressed: _saveRoutine,
+          onPressed: (_isValid && (_hasChanges || widget.routine == null)) ? _saveRoutine : null,
           child: const Text('Save'),
         ),
       ],
@@ -112,6 +183,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
             onSelected: (bool selected) {
               setState(() {
                 _selectedDays[i] = selected;
+                _validateRoutine();
               });
             },
           ),
@@ -129,6 +201,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
           onChanged: (value) {
             setState(() {
               _isAllDay = value;
+              _validateRoutine();
             });
           },
         ),
@@ -144,6 +217,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
               if (time != null) {
                 setState(() {
                   _startTime = time;
+                  _validateRoutine();
                 });
               }
             },
@@ -159,6 +233,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
               if (time != null) {
                 setState(() {
                   _endTime = time;
+                  _validateRoutine();
                 });
               }
             },
@@ -175,7 +250,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
         const Text('Conditions'),
         const SizedBox(height: 8),
         if (_conditions.isEmpty)
-          const Text('No conditions added', style: TextStyle(fontStyle: FontStyle.italic)),
+          const Text('None', style: TextStyle(fontStyle: FontStyle.italic)),
         ..._conditions.map((condition) => ListTile(
               title: Text(condition.runtimeType.toString()),
               trailing: IconButton(
@@ -183,6 +258,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
                 onPressed: () {
                   setState(() {
                     _conditions.remove(condition);
+                    _validateRoutine();
                   });
                 },
               ),
@@ -202,13 +278,6 @@ class _RoutineDialogState extends State<RoutineDialog> {
   }
 
   void _saveRoutine() {
-    if (_nameController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a routine name')),
-      );
-      return;
-    }
-
     final routine = widget.routine ?? Routine(
       id: const Uuid().v4(),
       name: _nameController.text,

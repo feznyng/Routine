@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../routine.dart';
 import 'routine_dialog.dart';
+import 'package:uuid/uuid.dart';
 
 class RoutineList extends StatelessWidget {
   final List<Routine> routines;
@@ -66,7 +67,10 @@ class RoutineList extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => RoutineDialog(
-        routine: routine,
+        routine: new Routine(
+          id: routine?.id ?? const Uuid().v4(),
+          name: routine?.name ?? '',
+        ),
         onSave: (updatedRoutine) {
           if (routine == null) {
             onRoutineCreated(updatedRoutine);
