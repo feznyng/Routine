@@ -65,14 +65,14 @@ class Manager {
     afternoonRoutine.maxBreakDuration = 20;
     routines.add(afternoonRoutine);
 
-    // Routine exerciseRoutine = Routine(name: "Exercise");
-    // exerciseRoutine.setTimeRange(16, 0, 17, 0);
-    // exerciseRoutine.blockId = everythingBlockListId;
-    // exerciseRoutine.numBreaks = 0;
-    // routines.add(exerciseRoutine);
+    Routine exerciseRoutine = Routine(name: "Exercise");
+    exerciseRoutine.setTimeRange(16, 0, 17, 0);
+    exerciseRoutine.blockId = everythingBlockListId;
+    exerciseRoutine.numBreaks = 0;
+    routines.add(exerciseRoutine);
 
     Routine eveningRoutine = Routine(name: "Evening Work");
-    eveningRoutine.setTimeRange(17, 0, 20, 0);
+    eveningRoutine.setTimeRange(17, 0, 19, 30);
     eveningRoutine.blockId = workBlockListId;
     eveningRoutine.numBreaks = 2;
     eveningRoutine.maxBreakDuration = 20;

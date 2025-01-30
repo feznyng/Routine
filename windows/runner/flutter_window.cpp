@@ -86,23 +86,7 @@ void CALLBACK CheckActiveWindow(HWND hwnd, UINT message, UINT_PTR idTimer, DWORD
 
                     if ((g_allowList && !inList) || (!g_allowList && inList)) {
                         logMessage << L"\nBlocking application: " << exeName.c_str();
-                        
-                        // Disable the window to prevent interaction
-                        EnableWindow(foregroundWindow, FALSE);
-                        
-                        // Also minimize it to reduce visibility
                         ShowWindow(foregroundWindow, SW_MINIMIZE);
-                        
-                        // Small delay to let the window respond
-                        Sleep(100);
-                        
-                        // Check if window is not minimized and try again
-                        WINDOWPLACEMENT placement = { sizeof(WINDOWPLACEMENT) };
-                        if (GetWindowPlacement(foregroundWindow, &placement) && 
-                            placement.showCmd != SW_SHOWMINIMIZED) {
-                            ShowWindow(foregroundWindow, SW_MINIMIZE);
-                            EnableWindow(foregroundWindow, FALSE);  // Ensure it stays disabled
-                        }
                     }
 
                     LogToFile(logMessage.str());
