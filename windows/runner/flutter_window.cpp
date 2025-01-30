@@ -21,6 +21,9 @@ std::mutex g_appListMutex;
 std::unordered_set<std::string> g_appList;
 bool g_allowList = false;
 
+// Timer ID for the window check
+const UINT_PTR WINDOW_CHECK_TIMER_ID = 1;
+
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
 
@@ -35,13 +38,14 @@ void LogToFile(const std::wstring& message) {
     logFile << message << std::endl;
 }
 
-void FlutterWindow::CheckAndBlockApps() {
-    HWND hwnd = GetForegroundWindow();
-    if (hwnd != NULL) {
+// Timer callback for checking active window
+void CALLBACK CheckActiveWindow(HWND hwnd, UINT message, UINT_PTR idTimer, DWORD dwTime) {
+    HWND foregroundWindow = GetForegroundWindow();
+    if (foregroundWindow != NULL) {
         std::wstringstream logMessage;
         
         DWORD processId;
-        GetWindowThreadProcessId(hwnd, &processId);
+        GetWindowThreadProcessId(foregroundWindow, &processId);
         if (processId != 0) {
             HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processId);
             if (hProcess != NULL) {
@@ -49,7 +53,7 @@ void FlutterWindow::CheckAndBlockApps() {
                 DWORD size = MAX_PATH;
                 if (QueryFullProcessImageNameW(hProcess, 0, processPath, &size)) {
                     logMessage << L"\nProcess Path: " << processPath;
-                    
+
                     // Convert process path to lowercase string for comparison
                     std::wstring wProcessPath(processPath);
                     size_t lastBackslash = wProcessPath.find_last_of(L"\\");
@@ -77,20 +81,19 @@ void FlutterWindow::CheckAndBlockApps() {
                     logMessage << L"\nExecutable Name: " << exeName.c_str();
 
                     std::lock_guard lock{ g_appListMutex };
-                    bool inList = g_appList.find(narrowExeName) != g_appList.end();
                     // Check if app should be blocked
+                    bool inList = g_appList.find(narrowExeName) != g_appList.end();
+
                     if ((g_allowList && !inList) || (!g_allowList && inList)) {
                         logMessage << L"\nBlocking application: " << exeName.c_str();
-                        
-                        // Force minimize and disable window
-                        ShowWindow(hwnd, SW_FORCEMINIMIZE);
+                        ShowWindow(foregroundWindow, SW_MINIMIZE);
                     }
+
+                    LogToFile(logMessage.str());
                 }
                 CloseHandle(hProcess);
             }
         }
-        
-        LogToFile(logMessage.str());
     }
 }
 
@@ -110,6 +113,7 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+
 
   flutter::MethodChannel<> channel(
       flutter_controller_->engine()->messenger(), "com.routine.applist",
@@ -157,40 +161,59 @@ bool FlutterWindow::OnCreate() {
           }
       });
 
+
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
-  // Set up polling timer
-  if (!SetTimer(GetHandle(), POLL_TIMER_ID, POLL_INTERVAL_MS, nullptr)) {
-      LogToFile(L"Failed to set up polling timer");
-  } else {
-      LogToFile(L"Successfully set up polling timer");
-  }
+  // Set up the timer to check active window every 200ms
+  SetTimer(GetHandle(), WINDOW_CHECK_TIMER_ID, 200, CheckActiveWindow);
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
   });
 
+  // Flutter can complete the first frame before the "show window" callback is
+  // registered. The following call ensures a frame is pending to ensure the
+  // window is shown. It is a no-op if the first frame hasn't completed yet.
   flutter_controller_->ForceRedraw();
 
   return true;
 }
 
 void FlutterWindow::OnDestroy() {
-  if (flutter_controller_) {
-    flutter_controller_ = nullptr;
-  }
+    // Kill the timer when the window is destroyed
+    KillTimer(GetHandle(), WINDOW_CHECK_TIMER_ID);
 
-  // Kill the polling timer
-  KillTimer(GetHandle(), POLL_TIMER_ID);
+    if (flutter_controller_) {
+        flutter_controller_ = nullptr;
+    }
 
-  Win32Window::OnDestroy();
+    Win32Window::OnDestroy();
 }
 
-LRESULT FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
-                                    WPARAM const wparam, LPARAM const lparam) noexcept {
-  if (message == WM_TIMER && wparam == POLL_TIMER_ID) {
-      CheckAndBlockApps();
-      return 0;
+LRESULT
+FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
+                              WPARAM const wparam,
+                              LPARAM const lparam) noexcept {
+  // Give Flutter, including plugins, an opportunity to handle window messages.
+  if (flutter_controller_) {
+    std::optional<LRESULT> result =
+        flutter_controller_->HandleTopLevelWindowProc(hwnd, message, wparam,
+                                                      lparam);
+    if (result) {
+      return *result;
+    }
   }
+
+  switch (message) {
+    case WM_CLOSE:
+      // Instead of closing, minimize to system tray
+      ShowWindow(hwnd, SW_MINIMIZE);
+      return 0;  // Prevent default handling
+      
+    case WM_FONTCHANGE:
+      flutter_controller_->engine()->ReloadSystemFonts();
+      break;
+  }
+
   return Win32Window::MessageHandler(hwnd, message, wparam, lparam);
 }
