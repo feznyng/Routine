@@ -7,11 +7,14 @@ import 'routine.dart';
 import 'block_list.dart';
 import 'package:cron/cron.dart';
 import 'manager.dart';
+import 'package:launch_at_startup/launch_at_startup.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+
 
 class DesktopService {
   // Singleton instance
   static final DesktopService _instance = DesktopService();
-  
+
   final cron = Cron();
   final List<ScheduledTask> _scheduledTasks = [];
   final Manager manager = Manager();
@@ -82,6 +85,15 @@ class DesktopService {
       _scheduledTasks.add(task);
     }
 
+    PackageInfo packageInfo = await PackageInfo.fromPlatform();
+
+    if (Platform.isWindows || Platform.isLinux) {
+      launchAtStartup.setup(
+        appName: packageInfo.appName,
+        appPath: Platform.resolvedExecutable
+      );
+    }
+    
     _evaluate();
   }
 
@@ -256,20 +268,38 @@ class DesktopService {
   }
 
   Future<void> setStartOnLogin(bool enabled) async {
-    try {
-      await platform.invokeMethod('setStartOnLogin', enabled);
-    } catch (e) {
-      debugPrint('Failed to set start on login: $e');
+    if (Platform.isWindows || Platform.isLinux) {
+      final bool before = await launchAtStartup.isEnabled();
+      debugPrint('Setting start on login to $before');
+      if (enabled) {
+        await launchAtStartup.enable();
+      } else {
+        await launchAtStartup.disable();
+      }
+      final bool result = await launchAtStartup.isEnabled();
+      debugPrint('set start on login to $result');
+    } else {
+      try {
+        await platform.invokeMethod('setStartOnLogin', enabled);
+      } catch (e) {
+        debugPrint('Failed to set start on login: $e');
+      }
     }
   }
 
   Future<bool> getStartOnLogin() async {
-    try {
-      final bool enabled = await platform.invokeMethod('getStartOnLogin');
+    if (Platform.isWindows || Platform.isLinux) {
+      final bool enabled = await launchAtStartup.isEnabled();
+      debugPrint('Getting start on login status $enabled');
       return enabled;
-    } catch (e) {
-      debugPrint('Failed to get start on login status: $e');
-      return false;
+    } else {
+      try {
+        final bool enabled = await platform.invokeMethod('getStartOnLogin');
+        return enabled;
+      } catch (e) {
+        debugPrint('Failed to get start on login status: $e');
+        return false;
+      }
     }
   }
 }

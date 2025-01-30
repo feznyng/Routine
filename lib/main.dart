@@ -63,9 +63,10 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
     trayManager.addListener(this);
 
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      _desktopService.init();
+      _desktopService.init().then((_) {
+        _initializeStartOnLogin();
+      });
     }
-    _initializeStartOnLogin();
   }
 
   @override
