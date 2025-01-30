@@ -6,12 +6,16 @@ class BlockListPage extends StatefulWidget {
   final List<String> selectedApps;
   final List<String> selectedSites;
   final Function(List<String>, List<String>) onSave;
+  final bool blockSelected;
+  final Function(bool) onBlockModeChanged;
 
   const BlockListPage({
     super.key,
     required this.selectedApps,
     required this.selectedSites,
     required this.onSave,
+    required this.blockSelected,
+    required this.onBlockModeChanged,
   });
 
   @override
@@ -66,21 +70,42 @@ class _BlockListPageState extends State<BlockListPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Padding(
+              padding: const EdgeInsets.all(0.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 8),
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment<bool>(
+                        value: true,
+                        label: Text('Blocklist'),
+                      ),
+                      ButtonSegment<bool>(
+                        value: false,
+                        label: Text('Allowlist'),
+                      ),
+                    ],
+                    selected: {widget.blockSelected},
+                    onSelectionChanged: (Set<bool> newSelection) {
+                      widget.onBlockModeChanged(newSelection.first);
+                    },
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 16),
             _buildBlockButton(
-              title: 'Blocked Applications',
-              subtitle: _selectedApps.isEmpty 
-                ? 'No applications blocked'
-                : '${_selectedApps.length} applications blocked',
+              title: 'Applications',
+              subtitle: _getAppSubtitle(),
               icon: Icons.apps,
               onPressed: _openAppsDialog,
             ),
             const SizedBox(height: 16),
             _buildBlockButton(
-              title: 'Blocked Sites',
-              subtitle: _selectedSites.isEmpty 
-                ? 'No sites blocked'
-                : '${_selectedSites.length} sites blocked',
+              title: 'Sites',
+              subtitle: _getSiteSubtitle(),
               icon: Icons.language,
               onPressed: _openSitesDialog,
             ),
@@ -88,6 +113,28 @@ class _BlockListPageState extends State<BlockListPage> {
         ),
       ),
     );
+  }
+
+  String _getAppSubtitle() {
+    if (_selectedApps.isEmpty) {
+      return widget.blockSelected
+          ? 'No applications blocked'
+          : 'All applications blocked';
+    }
+    return widget.blockSelected
+        ? '${_selectedApps.length} applications blocked'
+        : '${_selectedApps.length} applications allowed';
+  }
+
+  String _getSiteSubtitle() {
+    if (_selectedSites.isEmpty) {
+      return widget.blockSelected
+          ? 'No sites blocked'
+          : 'All sites blocked';
+    }
+    return widget.blockSelected
+        ? '${_selectedSites.length} sites blocked'
+        : '${_selectedSites.length} sites allowed';
   }
 
   Widget _buildBlockButton({

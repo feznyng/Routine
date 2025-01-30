@@ -35,6 +35,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
   bool _isValid = false;
   bool _hasChanges = false;
   bool _showBlockList = false;
+  bool _blockSelected = true;  // true = blocklist mode, false = allowlist mode
 
   // Store initial values for comparison
   String? _initialName;
@@ -72,6 +73,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
       final blockList = Manager().blockLists[_blockListId]!;
       _selectedApps = List.from(blockList.apps);
       _selectedSites = List.from(blockList.sites);
+      _blockSelected = !blockList.allowList;
     }
 
     // Store initial values
@@ -134,7 +136,8 @@ class _RoutineDialogState extends State<RoutineDialog> {
           !endTimeEqual ||
           _conditions.length != _initialConditions?.length ||
           !appsEqual ||
-          !sitesEqual;
+          !sitesEqual ||
+          _blockSelected != (_initialApps == null || _initialApps!.isEmpty);
     });
   }
 
@@ -171,6 +174,12 @@ class _RoutineDialogState extends State<RoutineDialog> {
             ? BlockListPage(
                 selectedApps: _selectedApps,
                 selectedSites: _selectedSites,
+                blockSelected: _blockSelected,
+                onBlockModeChanged: (value) {
+                  setState(() {
+                    _blockSelected = value;
+                  });
+                },
                 onSave: (apps, sites) {
                   setState(() {
                     _selectedApps = apps;
@@ -189,11 +198,11 @@ class _RoutineDialogState extends State<RoutineDialog> {
                       decoration: const InputDecoration(labelText: 'Routine Name'),
                     ),
                     const SizedBox(height: 16),
+                    _buildBlockListSection(),
+                    const SizedBox(height: 16),
                     _buildDaySelector(),
                     const SizedBox(height: 16),
                     _buildTimeSection(),
-                    const SizedBox(height: 16),
-                    _buildBlockListSection(),
                     const SizedBox(height: 16),
                     _buildConditionsList(),
                     if (widget.onDelete != null) ...[
@@ -303,94 +312,68 @@ class _RoutineDialogState extends State<RoutineDialog> {
   }
 
   Widget _buildBlockListSection() {
+    String summary = '';
+    if (_selectedApps.isEmpty && _selectedSites.isEmpty) {
+      summary = _blockSelected ? 'Nothing blocked' : 'Everything blocked';
+    } else {
+      List<String> parts = [];
+      if (_selectedApps.isNotEmpty) {
+        parts.add('${_selectedApps.length} apps');
+      }
+      if (_selectedSites.isNotEmpty) {
+        parts.add('${_selectedSites.length} sites');
+      }
+      summary = _blockSelected 
+          ? 'Blocking ${parts.join(", ")}'
+          : 'Allowing ${parts.join(", ")}';
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Block List',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-        ),
-        const SizedBox(height: 8),
         InkWell(
           onTap: () {
             setState(() {
-              _showBlockList = true;
+              _showBlockList = !_showBlockList;
             });
           },
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ListTile(
-                  title: Text(
-                    _selectedApps.isEmpty && _selectedSites.isEmpty
-                        ? 'Configure blocks'
-                        : 'Manage blocks',
-                    style: TextStyle(
-                      color: _selectedApps.isEmpty && _selectedSites.isEmpty
-                          ? Colors.grey.shade600
-                          : null,
-                    ),
+          child: AnimatedCrossFade(
+            firstChild: Card(
+              child: ListTile(
+                title: Text(
+                  'Manage blocks',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
                   ),
-                  trailing: const Icon(Icons.chevron_right),
                 ),
-                if (_selectedApps.isNotEmpty || _selectedSites.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (_selectedApps.isNotEmpty) ...[
-                          Text(
-                            'Apps (${_selectedApps.length})',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Wrap(
-                            spacing: 4,
-                            runSpacing: 4,
-                            children: _selectedApps.map((app) => Chip(
-                              label: Text(app),
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              visualDensity: VisualDensity.compact,
-                            )).toList(),
-                          ),
-                        ],
-                        if (_selectedSites.isNotEmpty) ...[
-                          if (_selectedApps.isNotEmpty)
-                            const SizedBox(height: 8),
-                          Text(
-                            'Sites (${_selectedSites.length})',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Wrap(
-                            spacing: 4,
-                            runSpacing: 4,
-                            children: _selectedSites.map((site) => Chip(
-                              label: Text(site),
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              visualDensity: VisualDensity.compact,
-                            )).toList(),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-              ],
+                subtitle: Text(summary),
+                trailing: const Icon(Icons.chevron_right),
+              ),
             ),
+            secondChild: _showBlockList
+                ? BlockListPage(
+                    selectedApps: _selectedApps,
+                    selectedSites: _selectedSites,
+                    blockSelected: _blockSelected,
+                    onBlockModeChanged: (value) {
+                      setState(() {
+                        _blockSelected = value;
+                      });
+                    },
+                    onSave: (apps, sites) {
+                      setState(() {
+                        _selectedApps = apps;
+                        _selectedSites = sites;
+                        _validateRoutine();
+                      });
+                    },
+                  )
+                : const SizedBox.shrink(),
+            crossFadeState: _showBlockList
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 200),
           ),
         ),
       ],
@@ -432,10 +415,18 @@ class _RoutineDialogState extends State<RoutineDialog> {
   }
 
   void _saveRoutine() {
-    final routine = widget.routine!;
+    final routine = _createRoutine();
+    Navigator.of(context).pop();
+    widget.onSave(routine);
+  }
+
+  Routine _createRoutine() {
+    final routine = Routine(
+      id: widget.routine?.id ?? const Uuid().v4(),
+      name: _nameController.text
+    );
 
     routine.setDays(_selectedDays);
-    
     if (_isAllDay) {
       routine.setAllDay();
     } else {
@@ -446,25 +437,16 @@ class _RoutineDialogState extends State<RoutineDialog> {
         _endTime.minute,
       );
     }
-
-    // Update conditions
-    routine.conditions = _conditions;
-
-    // Create or update block list
-    if (_selectedApps.isNotEmpty || _selectedSites.isNotEmpty) {
-      String blockListId = _blockListId ?? const Uuid().v4();
-      BlockList blockList = Manager().blockLists[blockListId] ?? 
-                           BlockList(name: '${routine.name} Blocks');
-      blockList.apps = _selectedApps;
-      blockList.sites = _selectedSites;
-      Manager().blockLists[blockListId] = blockList;
-      routine.blockId = blockListId;
-    } else {
-      routine.blockId = "";
-    }
-
-    Navigator.of(context).pop();
-    widget.onSave(routine);
+    
+    // Create block list
+    final blockList = BlockList(name: routine.id);
+    blockList.apps = _selectedApps;
+    blockList.sites = _selectedSites;
+    blockList.allowList = !_blockSelected;  // Convert blockSelected to allowList
+    
+    //routine.blockListId = blockList.id;
+    
+    return routine;
   }
 
   void _confirmDelete() {
