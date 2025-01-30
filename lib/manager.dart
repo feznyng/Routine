@@ -25,7 +25,8 @@ class Manager {
     workBlockList.apps = [
       'discord',
       'google chrome',
-      'safari'
+      'safari',
+      'taskmgr'
     ];
 
     String everythingBlockListId = Uuid().v4();
@@ -71,7 +72,7 @@ class Manager {
     // routines.add(exerciseRoutine);
 
     Routine eveningRoutine = Routine(name: "Evening Work");
-    eveningRoutine.setTimeRange(17, 0, 19, 0);
+    eveningRoutine.setTimeRange(17, 0, 20, 0);
     eveningRoutine.blockId = workBlockListId;
     eveningRoutine.numBreaks = 2;
     eveningRoutine.maxBreakDuration = 20;

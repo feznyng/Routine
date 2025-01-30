@@ -82,12 +82,15 @@ void CALLBACK CheckActiveWindow(HWND hwnd, UINT message, UINT_PTR idTimer, DWORD
 
                     std::lock_guard lock{ g_appListMutex };
                     // Check if app should be blocked
-                    bool inList = g_appList.find(exeName) != g_appList.end();
+                    bool inList = g_appList.find(narrowExeName) != g_appList.end();
 
                     if ((g_allowList && !inList) || (!g_allowList && inList)) {
                         logMessage << L"\nBlocking application: " << exeName.c_str();
                         
-                        // First minimize attempt
+                        // Disable the window to prevent interaction
+                        EnableWindow(foregroundWindow, FALSE);
+                        
+                        // Also minimize it to reduce visibility
                         ShowWindow(foregroundWindow, SW_MINIMIZE);
                         
                         // Small delay to let the window respond
@@ -98,6 +101,7 @@ void CALLBACK CheckActiveWindow(HWND hwnd, UINT message, UINT_PTR idTimer, DWORD
                         if (GetWindowPlacement(foregroundWindow, &placement) && 
                             placement.showCmd != SW_SHOWMINIMIZED) {
                             ShowWindow(foregroundWindow, SW_MINIMIZE);
+                            EnableWindow(foregroundWindow, FALSE);  // Ensure it stays disabled
                         }
                     }
 
