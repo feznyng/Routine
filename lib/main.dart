@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'desktop_service.dart';
+import 'widgets/routine_list.dart';
+import 'manager.dart';
+import 'routine.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,6 +56,8 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListener {
   final DesktopService _desktopService = DesktopService();  
+  final Manager _manager = Manager();
+  List<Routine> _routines = [];
 
   @override
   void initState() {
@@ -60,10 +65,17 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
     _initializeTray();
     windowManager.addListener(this);
     trayManager.addListener(this);
+    _loadRoutines();
+  }
 
+  Future<void> _loadRoutines() async {
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       _desktopService.init();
     }
+
+    setState(() {
+      _routines = _manager.routines;
+    });
   }
 
   @override
@@ -113,11 +125,23 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [],
-        ),
+      body: RoutineList(
+        routines: _routines,
+        onRoutineCreated: () {
+          setState(() {
+            _loadRoutines();
+          });
+        },
+        onRoutineUpdated: (routine) {
+          setState(() {
+            _loadRoutines();
+          });
+        },
+        onRoutineDeleted: (routine) {
+          setState(() {
+            _loadRoutines();
+          });
+        },
       ),
     );
   }

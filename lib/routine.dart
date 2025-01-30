@@ -9,7 +9,8 @@ enum FrictionType {
 }
 
 class Routine {
-  String name;
+  final String id;
+  final String name;
   
   // scheduling
   List<bool> _days = [true, true, true, true, true, true, true];
@@ -29,7 +30,7 @@ class Routine {
   // block
   String blockId = "";
 
-  Routine({required this.name});
+  Routine({required this.id, required this.name});
 
   setDays(List<bool> days) {
     if (days.length != 7) {
