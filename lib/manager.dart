@@ -23,10 +23,9 @@ class Manager {
     ];
 
     workBlockList.apps = [
-      'discord',
-      'google chrome',
-      'safari',
-      'taskmgr'
+      '/Applications/Sublime Text.app',
+      '/Applications/Google Chrome.app',
+      '/Applications/Safari.app'
     ];
 
     String everythingBlockListId = Uuid().v4();

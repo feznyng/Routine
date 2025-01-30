@@ -67,9 +67,9 @@ class RoutineList extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => RoutineDialog(
-        routine: new Routine(
-          id: routine?.id ?? const Uuid().v4(),
-          name: routine?.name ?? '',
+        routine: routine ?? Routine(
+          id: const Uuid().v4(),
+          name: '',
         ),
         onSave: (updatedRoutine) {
           if (routine == null) {
