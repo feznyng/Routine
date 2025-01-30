@@ -78,13 +78,6 @@ class Manager {
     eveningRoutine.maxBreakDuration = 20;
     routines.add(eveningRoutine);
 
-    Routine nightRoutine = Routine(name: "Night Work");
-    nightRoutine.setTimeRange(20, 30, 23, 30);
-    nightRoutine.blockId = workBlockListId;
-    nightRoutine.numBreaks = 1;
-    nightRoutine.maxBreakDuration = 20;
-    routines.add(nightRoutine);
-
     Routine sleepRoutine = Routine(name: "Sleep");
     sleepRoutine.setTimeRange(23, 0, 7, 0);
     sleepRoutine.blockId = everythingBlockListId;
