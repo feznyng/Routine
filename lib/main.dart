@@ -53,7 +53,6 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListener {
   final DesktopService _desktopService = DesktopService();  
-  bool _startOnLogin = false;
 
   @override
   void initState() {
@@ -63,9 +62,7 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
     trayManager.addListener(this);
 
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      _desktopService.init().then((_) {
-        _initializeStartOnLogin();
-      });
+      _desktopService.init();
     }
   }
 
@@ -99,13 +96,6 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
     await trayManager.setContextMenu(menu);
   }
 
-  Future<void> _initializeStartOnLogin() async {
-    final enabled = await _desktopService.getStartOnLogin();
-    setState(() {
-      _startOnLogin = enabled;
-    });
-  }
-
   @override
   void onTrayIconMouseDown() async {
     await trayManager.popUpContextMenu();
@@ -126,22 +116,7 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          children: [
-            SwitchListTile(
-              title: const Text('Start on Login'),
-              value: _startOnLogin,
-              onChanged: (bool value) {
-                setState(() {
-                  _startOnLogin = value;
-                });
-                _desktopService.setStartOnLogin(value);
-              },
-            ),
-            Text(
-              'Tester',
-              style: Theme.of(context).textTheme.titleMedium,
-            )
-          ],
+          children: [],
         ),
       ),
     );
