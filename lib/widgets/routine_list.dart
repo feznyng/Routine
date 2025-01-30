@@ -28,7 +28,9 @@ class RoutineList extends StatelessWidget {
             child: ListTile(
               title: Text(routine.name),
               subtitle: _buildRoutineSubtitle(context, routine),
-              onTap: () => _showRoutineDialog(context, routine),
+              onTap: () {
+                _showRoutineDialog(context, routine);
+              },
             ),
           );
         },

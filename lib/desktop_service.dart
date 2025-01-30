@@ -82,7 +82,6 @@ class DesktopService {
     }
 
     for (final Schedule time in evaluationTimes) {
-      debugPrint("scheduling eval at ${time.hours}:${time.minutes}");
       ScheduledTask task = cron.schedule(time, () async {
         _evaluate();
       });

@@ -37,7 +37,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Routine',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightBlue),
         useMaterial3: true,
       ),
       home: const MyHomePage(title: 'Routine'),
@@ -136,7 +136,7 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
            _loadRoutines();
         },
         onRoutineDeleted: (routine) {
-          int index = _routines.indexWhere((r) => r.id == routine.id);
+          int index = _routines.indexWhere((r) => r.id == routine.id);  
           if (index != -1) {
             _manager.removeRoutine(index);
             _loadRoutines();

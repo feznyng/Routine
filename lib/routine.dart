@@ -32,6 +32,7 @@ class Routine {
 
   Routine({required this.id, required this.name});
 
+  List<bool> get days => _days;
   setDays(List<bool> days) {
     if (days.length != 7) {
       throw Exception("Days must be a list of length 7");

@@ -31,7 +31,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.routine?.name ?? '');
-    _selectedDays = List.filled(7, true); // Default to all days selected
+    _selectedDays = widget.routine?.days ?? List.filled(7, true);
     _isAllDay = widget.routine?.startTime == -1;
     _startTime = widget.routine?.startTime != -1
         ? TimeOfDay(
@@ -67,18 +67,28 @@ class _RoutineDialogState extends State<RoutineDialog> {
             _buildTimeSection(),
             const SizedBox(height: 16),
             _buildConditionsList(),
+            if (widget.onDelete != null) ...[
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  onPressed: _confirmDelete,
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  label: const Text('Delete Routine', 
+                    style: TextStyle(color: Colors.red),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
       actions: [
-        if (widget.onDelete != null)
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              widget.onDelete!();
-            },
-            child: const Text('Delete'),
-          ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
@@ -222,6 +232,30 @@ class _RoutineDialogState extends State<RoutineDialog> {
 
     Navigator.of(context).pop();
     widget.onSave(routine);
+  }
+
+  void _confirmDelete() {
+    Navigator.of(context).pop(); // Close routine dialog first
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Routine'),
+        content: const Text('Are you sure you want to delete this routine? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Close confirmation dialog
+              widget.onDelete!();
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
