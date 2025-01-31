@@ -1,6 +1,7 @@
 import 'routine.dart';
 import 'group.dart';
 import 'package:uuid/uuid.dart';
+import 'package:flutter/material.dart';
 
 class Manager {
   static final Manager _instance = Manager._internal();
@@ -117,6 +118,7 @@ class Manager {
   }
 
   void updateRoutine(Routine routine) {
+    debugPrint('updateRoutine ${routine.id}');
     int index = routines.indexWhere((element) => element.id == routine.id);
     routines[index] = routine;
     routines.sort((a, b) => a.startTime.compareTo(b.startTime));
@@ -127,6 +129,7 @@ class Manager {
   }
 
   void upsertBlockList(Group blockList) {
+    debugPrint('upsertBlockList ${blockList.id}');
     (blockList.name != null ? namedBlockLists : anonblockLists)[blockList.id] = blockList;
   }
 

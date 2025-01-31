@@ -28,6 +28,7 @@ class BlockListPage extends StatefulWidget {
 class _BlockListPageState extends State<BlockListPage> {
   late List<String> _selectedApps;
   late List<String> _selectedSites;
+  late bool _blockSelected;  // Track block mode
   String? _selectedBlockListId; // Track selected block list ID
 
   @override
@@ -35,6 +36,7 @@ class _BlockListPageState extends State<BlockListPage> {
     super.initState();
     _selectedApps = List.from(widget.selectedApps);
     _selectedSites = List.from(widget.selectedSites);
+    _blockSelected = widget.blockSelected;  // Initialize block mode
   }
 
   Future<void> _openAppsDialog() async {
@@ -151,9 +153,12 @@ class _BlockListPageState extends State<BlockListPage> {
                             label: Text('Allow'),
                           ),
                         ],
-                        selected: {widget.blockSelected},
+                        selected: {_blockSelected},  // Use local state
                         onSelectionChanged: (Set<bool> newSelection) {
-                          widget.onBlockModeChanged(newSelection.first);
+                          setState(() {
+                            _blockSelected = newSelection.first;  // Update local state
+                          });
+                          widget.onBlockModeChanged(_blockSelected);  // Notify parent
                         },
                       ),
                     ],
@@ -186,22 +191,22 @@ class _BlockListPageState extends State<BlockListPage> {
 
   String _getAppSubtitle() {
     if (_selectedApps.isEmpty) {
-      return widget.blockSelected
+      return _blockSelected  // Use local state
           ? 'No applications blocked'
           : 'All applications blocked';
     }
-    return widget.blockSelected
+    return _blockSelected  // Use local state
         ? '${_selectedApps.length} applications blocked'
         : '${_selectedApps.length} applications allowed';
   }
 
   String _getSiteSubtitle() {
     if (_selectedSites.isEmpty) {
-      return widget.blockSelected
+      return _blockSelected  // Use local state
           ? 'No sites blocked'
           : 'All sites blocked';
     }
-    return widget.blockSelected
+    return _blockSelected  // Use local state
         ? '${_selectedSites.length} sites blocked'
         : '${_selectedSites.length} sites allowed';
   }

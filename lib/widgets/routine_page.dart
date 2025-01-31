@@ -128,6 +128,7 @@ class _RoutinePageState extends State<RoutinePage> {
           onBlockModeChanged: (value) {
             setState(() {
               _blockSelected = value;
+              _validateRoutine();
             });
           },
           onSave: (apps, sites) {
@@ -144,12 +145,21 @@ class _RoutinePageState extends State<RoutinePage> {
   }
 
   Future<void> _saveRoutine() async {
+    // Use existing block list ID if available, otherwise create a new one
     String blockListId = _blockListId ?? const Uuid().v4();
     
     // Create or update block list
     if (_selectedApps.isNotEmpty || _selectedSites.isNotEmpty) {
+      // Preserve the name if updating an existing block list
+      String? name;
+      if (_blockListId != null) {
+        final existingBlockList = Manager().findBlockList(_blockListId!);
+        name = existingBlockList?.name;
+      }
+
       final blockList = Group(
         id: blockListId,
+        name: name,
         apps: _selectedApps,
         sites: _selectedSites,
         allowList: !_blockSelected,
@@ -427,14 +437,13 @@ class _RoutinePageState extends State<RoutinePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 16),
               _buildBlockListSection(),
               const SizedBox(height: 16),
               _buildTimeSection(),
               const SizedBox(height: 16),
               _buildConditionsList(),
               if (widget.onDelete != null) ...[
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 TextButton.icon(
                   onPressed: _confirmDelete,
                   icon: const Icon(Icons.delete_outline, color: Colors.red),
@@ -442,7 +451,9 @@ class _RoutinePageState extends State<RoutinePage> {
                     style: TextStyle(color: Colors.red),
                   ),
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.all(16),
+                    alignment: Alignment.centerLeft,
+                    minimumSize: const Size.fromHeight(64),
                   ),
                 ),
                 const SizedBox(height: 32),
