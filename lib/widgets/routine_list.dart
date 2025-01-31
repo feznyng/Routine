@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../routine.dart';
-import 'routine_dialog.dart';
+import 'routine_page.dart';
 import 'package:uuid/uuid.dart';
 
 class RoutineList extends StatelessWidget {
@@ -64,21 +64,26 @@ class RoutineList extends StatelessWidget {
   }
 
   void _showRoutineDialog(BuildContext context, Routine? routine) {
-    showDialog(
-      context: context,
-      builder: (context) => RoutineDialog(
-        routine: routine ?? Routine(
-          id: const Uuid().v4(),
-          name: '',
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => RoutinePage(
+          routine: routine ?? Routine(
+            id: const Uuid().v4(),
+            name: '',
+          ),
+          onSave: (updatedRoutine) {
+            if (routine == null) {
+              onRoutineCreated(updatedRoutine);
+            } else {
+              onRoutineUpdated(updatedRoutine);
+            }
+            Navigator.of(context).pop();
+          },
+          onDelete: routine != null ? () {
+            onRoutineDeleted(routine);
+            Navigator.of(context).pop();
+          } : null,
         ),
-        onSave: (updatedRoutine) {
-          if (routine == null) {
-            onRoutineCreated(updatedRoutine);
-          } else {
-            onRoutineUpdated(updatedRoutine);
-          }
-        },
-        onDelete: routine != null ? () => onRoutineDeleted(routine) : null,
       ),
     );
   }
