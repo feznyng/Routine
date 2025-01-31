@@ -136,11 +136,8 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
           _loadRoutines();
         },
         onRoutineDeleted: (routine) {
-          int index = _routines.indexWhere((r) => r.id == routine.id);  
-          if (index != -1) {
-            _manager.removeRoutine(index);
-            _loadRoutines();
-          }
+          _manager.removeRoutine(routine.id);
+          _loadRoutines();
         },
       ),
     );

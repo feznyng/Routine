@@ -121,8 +121,20 @@ class Manager {
     routines.sort((a, b) => a.startTime.compareTo(b.startTime));
   }
 
-  void removeRoutine(int index) {
-    routines.removeAt(index);
+  void removeRoutine(String id) {
+    routines.removeWhere((element) => element.id == id);
+  }
+
+  void addBlockList(BlockList blockList) {
+    blockLists[blockList.id] = blockList;
+  }
+
+  void updateBlockList(String id, BlockList blockList) {
+    blockLists[id] = blockList;
+  }
+
+  void removeBlockList(String id) {
+    blockLists.remove(id);
   }
 
   factory Manager() {
