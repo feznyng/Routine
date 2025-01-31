@@ -107,13 +107,13 @@ class DesktopService {
 
 
   void _evaluate() {
-    Set<Group> activeBlockLists = {};
+    Set<Group> activeBlockGroups = {};
     Set<Group> activeAllowLists = {};
 
     for (final Routine routine in manager.routines) {
       if (routine.isActive()) {
-        final Group blockList = manager.findBlockList(routine.getGroupId()!)!;
-        (blockList.allow ? activeAllowLists : activeBlockLists).add(blockList);
+        final Group blockGroup = manager.findBlockGroup(routine.getGroupId()!)!;
+        (blockGroup.allow ? activeAllowLists : activeBlockGroups).add(blockGroup);
       }
     }
 
@@ -126,12 +126,12 @@ class DesktopService {
 
       Map<String, int> appFrequency = {};
       Map<String, int> siteFrequency = {};
-      for (final Group blockList in activeAllowLists) {
-        for (final String app in blockList.apps) {
+      for (final Group blockGroup in activeAllowLists) {
+        for (final String app in blockGroup.apps) {
           appFrequency[app] = appFrequency[app] ?? 0;
           appFrequency[app] = appFrequency[app]! + 1;
         }
-        for (final String site in blockList.sites) {
+        for (final String site in blockGroup.sites) {
           siteFrequency[site] = siteFrequency[site] ?? 0;
           siteFrequency[site] = siteFrequency[site]! + 1;
         }
@@ -140,10 +140,10 @@ class DesktopService {
       sites = siteFrequency.entries.where((entry) => entry.value == activeAllowLists.length).map((entry) => entry.key).toList();
     }
 
-    if (activeBlockLists.isNotEmpty) {
-      for (final Group blockList in activeBlockLists) {
-        sites.addAll(blockList.sites);
-        apps.addAll(blockList.apps);
+    if (activeBlockGroups.isNotEmpty) {
+      for (final Group blockGroup in activeBlockGroups) {
+        sites.addAll(blockGroup.sites);
+        apps.addAll(blockGroup.apps);
       }
     }
 

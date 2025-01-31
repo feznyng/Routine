@@ -31,11 +31,11 @@ class _RoutineDialogState extends State<RoutineDialog> {
   late List<Condition> _conditions;
   List<String> _selectedApps = [];
   List<String> _selectedSites = [];
-  String? _blockListId;
+  String? _blockGroupId;
   bool _isValid = false;
   bool _hasChanges = false;
-  bool _showBlockList = false;
-  bool _blockSelected = true;  // true = blocklist mode, false = allowlist mode
+  bool _showBlockGroup = false;
+  bool _blockSelected = true;  // true = blockgroup mode, false = allowlist mode
 
   @override
   void initState() {
@@ -58,12 +58,12 @@ class _RoutineDialogState extends State<RoutineDialog> {
     _conditions = List.from(widget.routine.conditions);
 
     // Load block list if exists
-    _blockListId = widget.routine.getGroupId();
-    if (_blockListId != null && _blockListId!.isNotEmpty && Manager().findBlockList(_blockListId!) != null) {
-      final blockList = Manager().findBlockList(_blockListId!)!;
-      _selectedApps = List.from(blockList.apps);
-      _selectedSites = List.from(blockList.sites);
-      _blockSelected = !blockList.allow;
+    _blockGroupId = widget.routine.getGroupId();
+    if (_blockGroupId != null && _blockGroupId!.isNotEmpty && Manager().findBlockGroup(_blockGroupId!) != null) {
+      final blockGroup = Manager().findBlockGroup(_blockGroupId!)!;
+      _selectedApps = List.from(blockGroup.apps);
+      _selectedSites = List.from(blockGroup.sites);
+      _blockSelected = !blockGroup.allow;
     }
     
     _nameController.addListener(_validateRoutine);
@@ -84,21 +84,21 @@ class _RoutineDialogState extends State<RoutineDialog> {
          (_endTime.hour * 60 + _endTime.minute == widget.routine.endTime));
 
     // Get current block list for comparison
-    final currentBlockList = _blockListId != null && _blockListId!.isNotEmpty && 
-        Manager().findBlockList(_blockListId!) != null
-        ? Manager().findBlockList(_blockListId!)!
+    final currentBlockGroup = _blockGroupId != null && _blockGroupId!.isNotEmpty && 
+        Manager().findBlockGroup(_blockGroupId!) != null
+        ? Manager().findBlockGroup(_blockGroupId!)!
         : null;
 
-    bool appsEqual = currentBlockList != null &&
-        _selectedApps.length == currentBlockList.apps.length &&
-        _selectedApps.every((app) => currentBlockList.apps.contains(app));
+    bool appsEqual = currentBlockGroup != null &&
+        _selectedApps.length == currentBlockGroup.apps.length &&
+        _selectedApps.every((app) => currentBlockGroup.apps.contains(app));
 
-    bool sitesEqual = currentBlockList != null &&
-        _selectedSites.length == currentBlockList.sites.length &&
-        _selectedSites.every((site) => currentBlockList.sites.contains(site));
+    bool sitesEqual = currentBlockGroup != null &&
+        _selectedSites.length == currentBlockGroup.sites.length &&
+        _selectedSites.every((site) => currentBlockGroup.sites.contains(site));
 
-    bool blockModeEqual = currentBlockList != null &&
-        _blockSelected == !currentBlockList.allow;
+    bool blockModeEqual = currentBlockGroup != null &&
+        _blockSelected == !currentBlockGroup.allow;
 
     setState(() {
       _hasChanges = _nameController.text != widget.routine.name ||
@@ -120,9 +120,9 @@ class _RoutineDialogState extends State<RoutineDialog> {
     });
   }
 
-  void _toggleBlockList() {
+  void _toggleBlockGroup() {
     setState(() {
-      _showBlockList = !_showBlockList;
+      _showBlockGroup = !_showBlockGroup;
     });
   }
 
@@ -132,7 +132,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
       content: SizedBox(
         width: 600,
         height: 500,
-        child: _showBlockList
+        child: _showBlockGroup
             ? BlockGroupPage(
                 selectedApps: _selectedApps,
                 selectedSites: _selectedSites,
@@ -149,7 +149,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
                     _validateRoutine();
                   });
                 },
-                onBack: _toggleBlockList,
+                onBack: _toggleBlockGroup,
               )
             : SingleChildScrollView(
                 child: Column(
@@ -161,7 +161,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
                       decoration: const InputDecoration(labelText: 'Routine Name'),
                     ),
                     const SizedBox(height: 16),
-                    _buildBlockListSection(),
+                    _buildBlockGroupSection(),
                     const SizedBox(height: 16),
                     _buildTimeSection(),
                     const SizedBox(height: 16),
@@ -190,7 +190,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
                 ),
               ),
       ),
-      actions: _showBlockList ? [] : [
+      actions: _showBlockGroup ? [] : [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
@@ -277,7 +277,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
     );
   }
 
-  Widget _buildBlockListSection() {
+  Widget _buildBlockGroupSection() {
     String summary = '';
     if (_selectedApps.isEmpty && _selectedSites.isEmpty) {
       summary = _blockSelected ? 'Nothing blocked' : 'Everything blocked';
@@ -298,7 +298,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         InkWell(
-          onTap: _toggleBlockList,
+          onTap: _toggleBlockGroup,
           child: Card(
             child: ListTile(
               title: Text(
@@ -361,7 +361,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
     final endTimeMinutes = !_isAllDay ? _endTime.hour * 60 + _endTime.minute : -1;
     
     // Create immutable block list
-    final blockList = Group(
+    final blockGroup = Group(
       id: Uuid().v4(),
       name: _nameController.text,
       deviceId: Manager().thisDevice.id,
@@ -371,7 +371,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
     );
 
     // Add block list to manager
-    Manager().upsertBlockList(blockList);
+    Manager().upsertBlockGroup(blockGroup);
     
     // Create immutable routine with all properties
     return Routine(
@@ -386,7 +386,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
       frictionNum: widget.routine.frictionNum,
       frictionSource: widget.routine.frictionSource,
       conditions: List.from(_conditions),
-      groupIds: {Manager().thisDevice.id: _blockListId!}
+      groupIds: {Manager().thisDevice.id: _blockGroupId!}
     );
   }
 

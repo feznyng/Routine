@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'block_apps_dialog.dart';
-import 'block_sites_dialog.dart';
 import '../manager.dart';
+import 'block_group_editor.dart';
+import 'block_groups_page.dart';
 
 class BlockGroupPage extends StatefulWidget {
   final List<String> selectedApps;
@@ -10,7 +10,7 @@ class BlockGroupPage extends StatefulWidget {
   final bool blockSelected;
   final Function(bool) onBlockModeChanged;
   final VoidCallback onBack;
-  final String? selectedBlockListId;
+  final String? selectedBlockGroupId;
 
   const BlockGroupPage({
     super.key,
@@ -20,7 +20,7 @@ class BlockGroupPage extends StatefulWidget {
     required this.blockSelected,
     required this.onBlockModeChanged,
     required this.onBack,
-    this.selectedBlockListId,
+    this.selectedBlockGroupId,
   });
 
   @override
@@ -31,7 +31,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
   late List<String> _selectedApps;
   late List<String> _selectedSites;
   late bool _blockSelected;
-  late String? _selectedBlockListId;
+  late String? _selectedBlockGroupId;
 
   @override
   void initState() {
@@ -41,42 +41,14 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
     _blockSelected = widget.blockSelected;
     
     // Get the block list ID for the current device
-    final currentGroupId = widget.selectedBlockListId;
-    // Only set _selectedBlockListId if it's a named block list
-    _selectedBlockListId = currentGroupId != null && 
-                         Manager().namedBlockLists.containsKey(currentGroupId)
+    final currentGroupId = widget.selectedBlockGroupId;
+    // Only set _selectedBlockGroupId if it's a named block list
+    _selectedBlockGroupId = currentGroupId != null && 
+                         Manager().namedBlockGroups.containsKey(currentGroupId)
         ? currentGroupId
         : null;
     
-    debugPrint('BlockGroupPage initState: currentGroupId=$currentGroupId, _selectedBlockListId=$_selectedBlockListId');
-  }
-
-  Future<void> _openAppsDialog() async {
-    final result = await showDialog<List<String>>(
-      context: context,
-      builder: (context) => BlockAppsDialog(selectedApps: _selectedApps),
-    );
-
-    if (result != null) {
-      setState(() {
-        _selectedApps = result;
-      });
-      widget.onSave(_selectedApps, _selectedSites);
-    }
-  }
-
-  Future<void> _openSitesDialog() async {
-    final result = await showDialog<List<String>>(
-      context: context,
-      builder: (context) => BlockSitesDialog(selectedSites: _selectedSites),
-    );
-
-    if (result != null) {
-      setState(() {
-        _selectedSites = result;
-      });
-      widget.onSave(_selectedApps, _selectedSites);
-    }
+    debugPrint('BlockGroupPage initState: currentGroupId=$currentGroupId, _selectedBlockGroupId=$_selectedBlockGroupId');
   }
 
   @override
@@ -101,33 +73,48 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Dropdown for block list selection
-              DropdownButtonFormField<String>(
-                value: _selectedBlockListId,
+              DropdownButtonFormField<String?>(
+                value: _selectedBlockGroupId,
                 decoration: const InputDecoration(
-                  labelText: 'Select Existing Block Group',
+                  labelText: 'Block Group',
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
                 items: [
                   const DropdownMenuItem<String>(
                     value: null,
-                    child: Text('None'),
+                    child: Text('Custom'),
                   ),
                   // Only show named block lists
-                  ...manager.namedBlockLists.values.map((blockList) {
+                  ...manager.namedBlockGroups.values.map((blockGroup) {
                     return DropdownMenuItem<String>(
-                      value: blockList.id,
-                      child: Text(blockList.name ?? 'Unnamed List'),
+                      value: blockGroup.id,
+                      child: Text(blockGroup.name ?? 'Unnamed List'),
                     );
                   }).toList(),
+                  // Add Manage Groups option
+                  const DropdownMenuItem<String>(
+                    value: 'manage',
+                    child: Text('Manage Groups...', style: TextStyle(fontStyle: FontStyle.italic)),
+                  ),
                 ],
                 onChanged: (String? newId) {
+                  if (newId == 'manage') {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const BlockGroupsPage(),
+                      ),
+                    );
+                    return;
+                  }
+                  
                   setState(() {
-                    _selectedBlockListId = newId;
+                    _selectedBlockGroupId = newId;
                     if (newId != null) {
-                      final selectedList = manager.findBlockList(newId);
+                      final selectedList = manager.findBlockGroup(newId);
                       _selectedApps = List.from(selectedList?.apps ?? []);
                       _selectedSites = List.from(selectedList?.sites ?? []);
+                      _blockSelected = !(selectedList?.allow ?? false);
                     } else {
                       _selectedApps = [];
                       _selectedSites = [];
@@ -137,7 +124,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                 },
               ),
               const SizedBox(height: 24),
-              if (_selectedBlockListId != null)
+              if (_selectedBlockGroupId != null && _selectedBlockGroupId != 'manage')
                 const Padding(
                   padding: EdgeInsets.only(bottom: 16.0),
                   child: Text(
@@ -148,137 +135,25 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                     textAlign: TextAlign.center,
                   ),
                 ),
-              if (_selectedBlockListId == null) 
-                Padding(
-                  padding: const EdgeInsets.all(0.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const SizedBox(height: 8),
-                      SegmentedButton<bool>(
-                        segments: const [
-                          ButtonSegment<bool>(
-                            value: true,
-                            label: Text('Block'),
-                          ),
-                          ButtonSegment<bool>(
-                            value: false,
-                            label: Text('Allow'),
-                          ),
-                        ],
-                        selected: {_blockSelected},  // Use local state
-                        onSelectionChanged: (Set<bool> newSelection) {
-                          setState(() {
-                            _blockSelected = newSelection.first;  // Update local state
-                          });
-                          widget.onBlockModeChanged(_blockSelected);  // Notify parent
-                        },
-                      ),
-                    ],
-                  ),
+              if (_selectedBlockGroupId == null) 
+                BlockGroupEditor(
+                  selectedApps: _selectedApps,
+                  selectedSites: _selectedSites,
+                  blockSelected: _blockSelected,
+                  onBlockModeChanged: (value) {
+                    setState(() {
+                      _blockSelected = value;
+                    });
+                    widget.onBlockModeChanged(_blockSelected);
+                  },
+                  onSave: (apps, sites) {
+                    setState(() {
+                      _selectedApps = apps;
+                      _selectedSites = sites;
+                    });
+                    widget.onSave(_selectedApps, _selectedSites);
+                  },
                 ),
-              if (_selectedBlockListId == null) 
-                const SizedBox(height: 10),
-              if (_selectedBlockListId == null) 
-                _buildBlockButton(
-                  title: 'Applications',
-                  subtitle: _getAppSubtitle(),
-                  icon: Icons.apps,
-                  onPressed: _openAppsDialog,
-                ),
-              if (_selectedBlockListId == null) 
-                const SizedBox(height: 5),
-              if (_selectedBlockListId == null) 
-                _buildBlockButton(
-                  title: 'Sites',
-                  subtitle: _getSiteSubtitle(),
-                  icon: Icons.language,
-                  onPressed: _openSitesDialog,
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _getAppSubtitle() {
-    if (_selectedApps.isEmpty) {
-      return _blockSelected  // Use local state
-          ? 'No applications blocked'
-          : 'All applications blocked';
-    }
-    return _blockSelected  // Use local state
-        ? '${_selectedApps.length} applications blocked'
-        : '${_selectedApps.length} applications allowed';
-  }
-
-  String _getSiteSubtitle() {
-    if (_selectedSites.isEmpty) {
-      return _blockSelected  // Use local state
-          ? 'No sites blocked'
-          : 'All sites blocked';
-    }
-    return _blockSelected  // Use local state
-        ? '${_selectedSites.length} sites blocked'
-        : '${_selectedSites.length} sites allowed';
-  }
-
-  Widget _buildBlockButton({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required VoidCallback onPressed,
-    bool enabled = true,
-  }) {
-    return Card(
-      color: enabled ? null : Theme.of(context).disabledColor.withOpacity(0.1),
-      child: InkWell(
-        onTap: enabled ? onPressed : null,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: enabled 
-                    ? Theme.of(context).primaryColor.withOpacity(0.1)
-                    : Colors.grey.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  icon,
-                  size: 32,
-                  color: enabled 
-                    ? Theme.of(context).primaryColor
-                    : Colors.grey,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        color: Theme.of(context).textTheme.bodySmall?.color,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right),
             ],
           ),
         ),

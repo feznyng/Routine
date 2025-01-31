@@ -11,8 +11,8 @@ class Manager {
   
   final List<Routine> routines = [];
   final Map<String, Device> devices = {};
-  final Map<String, Group> namedBlockLists = {};
-  final Map<String, Group> anonblockLists = {};
+  final Map<String, Group> namedBlockGroups = {};
+  final Map<String, Group> anonblockGroups = {};
 
   late Device thisDevice;
 
@@ -49,7 +49,7 @@ class Manager {
       sites: [],
       allowList: false,
     );
-    anonblockLists[tempGroup.id] = tempGroup;
+    anonblockGroups[tempGroup.id] = tempGroup;
 
     // Create temp routine that references the temp group
     tempRoutine = Routine(
@@ -67,9 +67,9 @@ class Manager {
     // temp initialization code - replace with sqlite/supabase later
 
     // block lists
-    String workBlockListId = Uuid().v4();
-    Group workBlockList = Group(
-      id: workBlockListId,
+    String workBlockGroupId = Uuid().v4();
+    Group workBlockGroup = Group(
+      id: workBlockGroupId,
       name: 'Work',
       deviceId: thisDevice.id,
       sites: [
@@ -86,17 +86,17 @@ class Manager {
       ]
     );
 
-    String everythingBlockListId = Uuid().v4();
-    Group everythingBlockList = Group(
-      id: everythingBlockListId,
+    String everythingBlockGroupId = Uuid().v4();
+    Group everythingBlockGroup = Group(
+      id: everythingBlockGroupId,
       deviceId: thisDevice.id,
       name: 'Everything',
       allowList: true
     );
 
-    String foodBlockListId = Uuid().v4();
-    Group foodBlockList = Group(
-      id: foodBlockListId,
+    String foodBlockGroupId = Uuid().v4();
+    Group foodBlockGroup = Group(
+      id: foodBlockGroupId,
       deviceId: thisDevice.id,
       name: 'Food',
       sites: [
@@ -105,16 +105,16 @@ class Manager {
       ]
     );
 
-    namedBlockLists[workBlockListId] = workBlockList;
-    namedBlockLists[everythingBlockListId] = everythingBlockList;
-    namedBlockLists[foodBlockListId] = foodBlockList;
+    namedBlockGroups[workBlockGroupId] = workBlockGroup;
+    namedBlockGroups[everythingBlockGroupId] = everythingBlockGroup;
+    namedBlockGroups[foodBlockGroupId] = foodBlockGroup;
 
     // routines
     routines.add(Routine(
       id: Uuid().v4(),
       name: "Meal Delivery",
       days: [true, true, true, false, true, true, true],
-      groupIds: {thisDevice.id: foodBlockListId},
+      groupIds: {thisDevice.id: foodBlockGroupId},
     ));
 
     routines.add(Routine(
@@ -122,7 +122,7 @@ class Manager {
       name: "Morning Work",
       startTime: 9 * 60,
       endTime: 12 * 60,
-      groupIds: {thisDevice.id: workBlockListId},
+      groupIds: {thisDevice.id: workBlockGroupId},
       numBreaks: 2,
       maxBreakDuration: 20
     ));
@@ -132,26 +132,26 @@ class Manager {
       name: "Afternoon Work",
       startTime: 13 * 60,
       endTime: 16 * 60,
-      groupIds: {thisDevice.id: workBlockListId},
+      groupIds: {thisDevice.id: workBlockGroupId},
       numBreaks: 2,
       maxBreakDuration: 20
     ));
 
-    routines.add(Routine(
-      id: Uuid().v4(),
-      name: "Exercise",
-      startTime: 16 * 60,
-      endTime: 17 * 60,
-      groupIds: {thisDevice.id: everythingBlockListId},
-      numBreaks: 0
-    ));
+    // routines.add(Routine(
+    //   id: Uuid().v4(),
+    //   name: "Exercise",
+    //   startTime: 16 * 60,
+    //   endTime: 17 * 60,
+    //   groupIds: {thisDevice.id: everythingBlockGroupId},
+    //   numBreaks: 0
+    // ));
 
     routines.add(Routine(
       id: Uuid().v4(),
       name: "Evening Work",
       startTime: 17 * 60,
       endTime: 19 * 60 + 30,
-      groupIds: {thisDevice.id: workBlockListId},
+      groupIds: {thisDevice.id: workBlockGroupId},
       numBreaks: 2,
       maxBreakDuration: 20
     ));
@@ -161,7 +161,7 @@ class Manager {
       name: "Sleep",
       startTime: 23 * 60,
       endTime: 7 * 60,
-      groupIds: {thisDevice.id: everythingBlockListId},
+      groupIds: {thisDevice.id: everythingBlockGroupId},
       numBreaks: 0
     ));
 
@@ -184,18 +184,18 @@ class Manager {
     routines.removeWhere((element) => element.id == id);
   }
 
-  void upsertBlockList(Group blockList) {
-    debugPrint('upsertBlockList ${blockList.id}');
-    (blockList.name != null ? namedBlockLists : anonblockLists)[blockList.id] = blockList;
+  void upsertBlockGroup(Group blockGroup) {
+    debugPrint('upsertBlockGroup ${blockGroup.id}');
+    (blockGroup.name != null ? namedBlockGroups : anonblockGroups)[blockGroup.id] = blockGroup;
   }
 
-  void removeBlockList(String id) {
-    namedBlockLists.remove(id);
-    anonblockLists.remove(id);
+  void removeBlockGroup(String id) {
+    namedBlockGroups.remove(id);
+    anonblockGroups.remove(id);
   }
 
-  Group? findBlockList(String id) {
-    return namedBlockLists[id] ?? anonblockLists[id]!;
+  Group? findBlockGroup(String id) {
+    return namedBlockGroups[id] ?? anonblockGroups[id]!;
   }
 
   factory Manager() {

@@ -27,7 +27,7 @@ class Group {
   List<String> get sites => List.unmodifiable(_sites);
   bool get allow => _allowList;
 
-  // Create a new BlockList with updated values
+  // Create a new BlockGroup with updated values
   Group copyWith({
     String? id,
     String? deviceId,

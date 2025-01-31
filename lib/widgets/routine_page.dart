@@ -31,10 +31,10 @@ class _RoutinePageState extends State<RoutinePage> {
   late List<Condition> _conditions;
   List<String> _selectedApps = [];
   List<String> _selectedSites = [];
-  String? _blockListId;
+  String? _blockGroupId;
   bool _isValid = false;
   bool _hasChanges = false;
-  bool _blockSelected = true;  // true = blocklist mode, false = allowlist mode
+  bool _blockSelected = true;  // true = blockgroup mode, false = allowlist mode
 
   @override
   void initState() {
@@ -62,7 +62,7 @@ class _RoutinePageState extends State<RoutinePage> {
     debugPrint("Routine: ${widget.routine.name}, blockGroup: ${blockGroup?.id}");
 
     if (blockGroup != null) {
-      _blockListId = blockGroup.id;
+      _blockGroupId = blockGroup.id;
       _selectedApps = List.from(blockGroup.apps);
       _selectedSites = List.from(blockGroup.sites);
       _blockSelected = !blockGroup.allow;
@@ -85,21 +85,21 @@ class _RoutinePageState extends State<RoutinePage> {
         (_isAllDay || 
          (_endTime.hour * 60 + _endTime.minute == widget.routine.endTime));
 
-    final currentBlockList = _blockListId != null && _blockListId!.isNotEmpty && 
-        Manager().findBlockList(_blockListId!) != null
-        ? Manager().findBlockList(_blockListId!)!
+    final currentBlockGroup = _blockGroupId != null && _blockGroupId!.isNotEmpty && 
+        Manager().findBlockGroup(_blockGroupId!) != null
+        ? Manager().findBlockGroup(_blockGroupId!)!
         : null;
 
-    bool appsEqual = currentBlockList != null &&
-        _selectedApps.length == currentBlockList.apps.length &&
-        _selectedApps.every((app) => currentBlockList.apps.contains(app));
+    bool appsEqual = currentBlockGroup != null &&
+        _selectedApps.length == currentBlockGroup.apps.length &&
+        _selectedApps.every((app) => currentBlockGroup.apps.contains(app));
 
-    bool sitesEqual = currentBlockList != null &&
-        _selectedSites.length == currentBlockList.sites.length &&
-        _selectedSites.every((site) => currentBlockList.sites.contains(site));
+    bool sitesEqual = currentBlockGroup != null &&
+        _selectedSites.length == currentBlockGroup.sites.length &&
+        _selectedSites.every((site) => currentBlockGroup.sites.contains(site));
 
-    bool blockModeEqual = currentBlockList != null &&
-        _blockSelected == !currentBlockList.allow;
+    bool blockModeEqual = currentBlockGroup != null &&
+        _blockSelected == !currentBlockGroup.allow;
 
     setState(() {
       _hasChanges = _nameController.text != widget.routine.name ||
@@ -121,14 +121,14 @@ class _RoutinePageState extends State<RoutinePage> {
     });
   }
 
-  void _toggleBlockList() {
+  void _toggleBlockGroup() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => BlockGroupPage(
           selectedApps: _selectedApps,
           selectedSites: _selectedSites,
           blockSelected: _blockSelected,
-          selectedBlockListId: widget.routine.getGroupId(),  
+          selectedBlockGroupId: widget.routine.getGroupId(),  
           onBlockModeChanged: (value) {
             setState(() {
               _blockSelected = value;
@@ -150,26 +150,26 @@ class _RoutinePageState extends State<RoutinePage> {
 
   Future<void> _saveRoutine() async {
     // Use existing block list ID if available, otherwise create a new one
-    String blockListId = _blockListId ?? const Uuid().v4();
+    String blockGroupId = _blockGroupId ?? const Uuid().v4();
     
     // Create or update block list
     if (_selectedApps.isNotEmpty || _selectedSites.isNotEmpty) {
       // Preserve the name if updating an existing block list
       String? name;
-      if (_blockListId != null) {
-        final existingBlockList = Manager().findBlockList(_blockListId!);
-        name = existingBlockList?.name;
+      if (_blockGroupId != null) {
+        final existingBlockGroup = Manager().findBlockGroup(_blockGroupId!);
+        name = existingBlockGroup?.name;
       }
 
-      final blockList = Group(
-        id: blockListId,
+      final blockGroup = Group(
+        id: blockGroupId,
         name: name,
         deviceId: Manager().thisDevice.id,
         apps: _selectedApps,
         sites: _selectedSites,
         allowList: !_blockSelected,
       );
-      Manager().upsertBlockList(blockList);
+      Manager().upsertBlockGroup(blockGroup);
     }
 
     final updatedRoutine = Routine(
@@ -179,7 +179,7 @@ class _RoutinePageState extends State<RoutinePage> {
       startTime: _isAllDay ? -1 : _startTime.hour * 60 + _startTime.minute,
       endTime: _isAllDay ? -1 : _endTime.hour * 60 + _endTime.minute,
       conditions: _conditions,
-      groupIds: (_selectedApps.isNotEmpty || _selectedSites.isNotEmpty) ? {Manager().thisDevice.id: _blockListId!} : {},
+      groupIds: (_selectedApps.isNotEmpty || _selectedSites.isNotEmpty) ? {Manager().thisDevice.id: _blockGroupId!} : {},
     );
 
     widget.onSave(updatedRoutine);
@@ -211,7 +211,7 @@ class _RoutinePageState extends State<RoutinePage> {
     }
   }
 
-  Widget _buildBlockListSection() {
+  Widget _buildBlockGroupSection() {
     String summary = '';
     if (_selectedApps.isEmpty && _selectedSites.isEmpty) {
       summary = _blockSelected ? 'Nothing blocked' : 'Everything blocked';
@@ -233,7 +233,7 @@ class _RoutinePageState extends State<RoutinePage> {
         title: const Text('Block Group'),
         subtitle: Text(summary),
         trailing: const Icon(Icons.chevron_right),
-        onTap: _toggleBlockList,
+        onTap: _toggleBlockGroup,
       ),
     );
   }
@@ -442,7 +442,7 @@ class _RoutinePageState extends State<RoutinePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildBlockListSection(),
+              _buildBlockGroupSection(),
               const SizedBox(height: 16),
               _buildTimeSection(),
               const SizedBox(height: 16),

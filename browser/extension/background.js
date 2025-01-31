@@ -76,7 +76,7 @@ function blockRequest(details) {
       return { redirectUrl: chrome.runtime.getURL('blocked.html') };
     }
   } else {
-    // In blocklist mode, block only sites in the list
+    // In blockgroup mode, block only sites in the list
     if (matchesDomain(hostname, blockedSites)) {
       console.log("Blocking blocked site:", hostname);
       return { redirectUrl: chrome.runtime.getURL('blocked.html') };
@@ -96,7 +96,7 @@ function registerBlockingRules() {
   
   // Only register blocking if app is connected and have sites to block
   if (isAppConnected && (allowList || blockedSites.length > 0)) {
-    console.log(`Registering ${allowList ? 'allowList' : 'blocklist'} mode with ${allowList ? 'allowed' : 'blocked'} sites:`, blockedSites);
+    console.log(`Registering ${allowList ? 'allowList' : 'blockgroup'} mode with ${allowList ? 'allowed' : 'blocked'} sites:`, blockedSites);
     chrome.webRequest.onBeforeRequest.addListener(
       blockRequest,
       {
