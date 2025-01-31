@@ -77,7 +77,7 @@ class _BlockListPageState extends State<BlockListPage> {
             widget.onBack();
           },
         ),
-        title: const Text('Manage Blocks'),
+        title: const Text('Block Group'),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -90,7 +90,7 @@ class _BlockListPageState extends State<BlockListPage> {
               DropdownButtonFormField<String>(
                 value: _selectedBlockListId,
                 decoration: const InputDecoration(
-                  labelText: 'Block List',
+                  labelText: 'Block Group',
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),

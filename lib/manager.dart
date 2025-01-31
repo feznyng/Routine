@@ -1,20 +1,20 @@
 import 'routine.dart';
-import 'block_list.dart';
+import 'group.dart';
 import 'package:uuid/uuid.dart';
 
 class Manager {
   static final Manager _instance = Manager._internal();
   
   final List<Routine> routines = [];
-  final Map<String, BlockList> namedBlockLists = {};
-  final Map<String, BlockList> anonblockLists = {};
+  final Map<String, Group> namedBlockLists = {};
+  final Map<String, Group> anonblockLists = {};
 
   Manager._internal() {
     // temp initialization code - replace with sqlite/supabase later
 
     // block lists
     String workBlockListId = Uuid().v4();
-    BlockList workBlockList = BlockList(
+    Group workBlockList = Group(
       id: workBlockListId,
       name: 'Work',
       sites: [
@@ -32,14 +32,14 @@ class Manager {
     );
 
     String everythingBlockListId = Uuid().v4();
-    BlockList everythingBlockList = BlockList(
+    Group everythingBlockList = Group(
       id: everythingBlockListId,
       name: 'Everything',
       allowList: true
     );
 
     String foodBlockListId = Uuid().v4();
-    BlockList foodBlockList = BlockList(
+    Group foodBlockList = Group(
       id: foodBlockListId,
       name: 'Food',
       sites: [
@@ -126,7 +126,7 @@ class Manager {
     routines.removeWhere((element) => element.id == id);
   }
 
-  void upsertBlockList(BlockList blockList) {
+  void upsertBlockList(Group blockList) {
     (blockList.name != null ? namedBlockLists : anonblockLists)[blockList.id] = blockList;
   }
 
@@ -135,7 +135,7 @@ class Manager {
     anonblockLists.remove(id);
   }
 
-  BlockList? findBlockList(String id) {
+  Group? findBlockList(String id) {
     return namedBlockLists[id] ?? anonblockLists[id]!;
   }
 

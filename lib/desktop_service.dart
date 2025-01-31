@@ -4,7 +4,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'routine.dart';
-import 'block_list.dart';
+import 'group.dart';
 import 'package:cron/cron.dart';
 import 'manager.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
@@ -107,12 +107,12 @@ class DesktopService {
 
 
   void _evaluate() {
-    Set<BlockList> activeBlockLists = {};
-    Set<BlockList> activeAllowLists = {};
+    Set<Group> activeBlockLists = {};
+    Set<Group> activeAllowLists = {};
 
     for (final Routine routine in manager.routines) {
       if (routine.isActive()) {
-        final BlockList blockList = manager.findBlockList(routine.blockId)!;
+        final Group blockList = manager.findBlockList(routine.blockId)!;
         (blockList.allowList ? activeAllowLists : activeBlockLists).add(blockList);
       }
     }
@@ -126,7 +126,7 @@ class DesktopService {
 
       Map<String, int> appFrequency = {};
       Map<String, int> siteFrequency = {};
-      for (final BlockList blockList in activeAllowLists) {
+      for (final Group blockList in activeAllowLists) {
         for (final String app in blockList.apps) {
           appFrequency[app] = appFrequency[app] ?? 0;
           appFrequency[app] = appFrequency[app]! + 1;
@@ -141,7 +141,7 @@ class DesktopService {
     }
 
     if (activeBlockLists.isNotEmpty) {
-      for (final BlockList blockList in activeBlockLists) {
+      for (final Group blockList in activeBlockLists) {
         sites.addAll(blockList.sites);
         apps.addAll(blockList.apps);
       }

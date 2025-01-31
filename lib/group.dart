@@ -1,4 +1,4 @@
-class BlockList {
+class Group {
   final String _id;
   final String? _routineId;
   final String? _name;
@@ -6,7 +6,7 @@ class BlockList {
   final List<String> _sites;
   final bool _allowList;
 
-  const BlockList({
+  const Group({
     required String id,
     String? routineId,
     String? name,
@@ -29,7 +29,7 @@ class BlockList {
   bool get allowList => _allowList;
 
   // Create a new BlockList with updated values
-  BlockList copyWith({
+  Group copyWith({
     String? id,
     String? routineId,
     String? name,
@@ -37,7 +37,7 @@ class BlockList {
     List<String>? sites,
     bool? allowList,
   }) {
-    return BlockList(
+    return Group(
       id: id ?? _id,
       routineId: routineId ?? _routineId,
       name: name ?? _name,

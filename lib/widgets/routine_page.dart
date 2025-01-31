@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../routine.dart';
 import '../condition.dart';
-import '../block_list.dart';
+import '../group.dart';
 import '../manager.dart';
 import 'block_list_page.dart';
 import 'package:uuid/uuid.dart';
@@ -148,7 +148,7 @@ class _RoutinePageState extends State<RoutinePage> {
     
     // Create or update block list
     if (_selectedApps.isNotEmpty || _selectedSites.isNotEmpty) {
-      final blockList = BlockList(
+      final blockList = Group(
         id: blockListId,
         apps: _selectedApps,
         sites: _selectedSites,
@@ -215,7 +215,7 @@ class _RoutinePageState extends State<RoutinePage> {
 
     return Card(
       child: ListTile(
-        title: const Text('Block List'),
+        title: const Text('Block Group'),
         subtitle: Text(summary),
         trailing: const Icon(Icons.chevron_right),
         onTap: _toggleBlockList,
