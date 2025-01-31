@@ -348,10 +348,33 @@ class _RoutinePageState extends State<RoutinePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.routine.name.isEmpty ? 'New Routine' : widget.routine.name),
+        toolbarHeight: 80,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    hintText: widget.routine.name.isEmpty ? 'New Routine' : 'Routine Name',
+                    border: InputBorder.none,
+                    isDense: true,
+                    suffixIcon: const Icon(Icons.edit, size: 18),
+                  ),
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -365,11 +388,6 @@ class _RoutinePageState extends State<RoutinePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(labelText: 'Routine Name'),
-            ),
-            const SizedBox(height: 16),
             _buildBlockListSection(),
             const SizedBox(height: 16),
             _buildTimeSection(),
