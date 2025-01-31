@@ -81,6 +81,11 @@ class DesktopService {
       evaluationTimes.add(Schedule(hours: routine.endHour, minutes: routine.endMinute));
     }
 
+    for (final ScheduledTask task in _scheduledTasks) {
+      task.cancel();
+    }
+    _scheduledTasks.clear();
+
     for (final Schedule time in evaluationTimes) {
       ScheduledTask task = cron.schedule(time, () async {
         _evaluate();
