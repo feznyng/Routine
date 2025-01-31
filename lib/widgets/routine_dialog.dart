@@ -393,7 +393,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
     );
 
     // Add block list to manager
-    Manager().blockLists[blockList.id] = blockList;
+    Manager().upsertBlockList(blockList);
     
     // Create immutable routine with all properties
     return Routine(
