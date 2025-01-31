@@ -133,7 +133,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
         width: 600,
         height: 500,
         child: _showBlockList
-            ? BlockListPage(
+            ? BlockGroupPage(
                 selectedApps: _selectedApps,
                 selectedSites: _selectedSites,
                 blockSelected: _blockSelected,
@@ -386,7 +386,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
       frictionNum: widget.routine.frictionNum,
       frictionSource: widget.routine.frictionSource,
       conditions: List.from(_conditions),
-      blockId: blockList.id
+      groupId: blockList.id
     );
   }
 

@@ -3,15 +3,16 @@ import 'block_apps_dialog.dart';
 import 'block_sites_dialog.dart';
 import '../manager.dart';
 
-class BlockListPage extends StatefulWidget {
+class BlockGroupPage extends StatefulWidget {
   final List<String> selectedApps;
   final List<String> selectedSites;
   final Function(List<String>, List<String>) onSave;
   final bool blockSelected;
   final Function(bool) onBlockModeChanged;
   final VoidCallback onBack;
+  final String? selectedBlockListId;
 
-  const BlockListPage({
+  const BlockGroupPage({
     super.key,
     required this.selectedApps,
     required this.selectedSites,
@@ -19,24 +20,30 @@ class BlockListPage extends StatefulWidget {
     required this.blockSelected,
     required this.onBlockModeChanged,
     required this.onBack,
+    this.selectedBlockListId,
   });
 
   @override
-  State<BlockListPage> createState() => _BlockListPageState();
+  State<BlockGroupPage> createState() => _BlockGroupPageState();
 }
 
-class _BlockListPageState extends State<BlockListPage> {
+class _BlockGroupPageState extends State<BlockGroupPage> {
   late List<String> _selectedApps;
   late List<String> _selectedSites;
-  late bool _blockSelected;  // Track block mode
-  String? _selectedBlockListId; // Track selected block list ID
+  late bool _blockSelected;
+  late String? _selectedBlockListId;
 
   @override
   void initState() {
     super.initState();
     _selectedApps = List.from(widget.selectedApps);
     _selectedSites = List.from(widget.selectedSites);
-    _blockSelected = widget.blockSelected;  // Initialize block mode
+    _blockSelected = widget.blockSelected;
+    // Only set _selectedBlockListId if it's a named block list
+    _selectedBlockListId = widget.selectedBlockListId != null && 
+                         Manager().namedBlockLists.containsKey(widget.selectedBlockListId)
+        ? widget.selectedBlockListId
+        : null;
   }
 
   Future<void> _openAppsDialog() async {
@@ -92,7 +99,7 @@ class _BlockListPageState extends State<BlockListPage> {
               DropdownButtonFormField<String>(
                 value: _selectedBlockListId,
                 decoration: const InputDecoration(
-                  labelText: 'Block Group',
+                  labelText: 'Select Existing Block Group',
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
@@ -101,6 +108,7 @@ class _BlockListPageState extends State<BlockListPage> {
                     value: null,
                     child: Text('None'),
                   ),
+                  // Only show named block lists
                   ...manager.namedBlockLists.values.map((blockList) {
                     return DropdownMenuItem<String>(
                       value: blockList.id,

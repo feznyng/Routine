@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../routine.dart';
 import 'routine_page.dart';
-import 'package:uuid/uuid.dart';
+import '../manager.dart';
 
 class RoutineList extends StatelessWidget {
   final List<Routine> routines;
@@ -30,14 +30,14 @@ class RoutineList extends StatelessWidget {
               title: Text(routine.name),
               subtitle: _buildRoutineSubtitle(context, routine),
               onTap: () {
-                _showRoutineDialog(context, routine);
+                _showRoutinePage(context, routine);
               },
             ),
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showRoutineDialog(context, null),
+        onPressed: () => _showRoutinePage(context, null),
         child: const Icon(Icons.add),
       ),
     );
@@ -63,14 +63,11 @@ class RoutineList extends StatelessWidget {
     return Text(details.join(' • '));
   }
 
-  void _showRoutineDialog(BuildContext context, Routine? routine) {
+  void _showRoutinePage(BuildContext context, Routine? routine) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => RoutinePage(
-          routine: routine ?? Routine(
-            id: const Uuid().v4(),
-            name: '',
-          ),
+          routine: routine ?? Manager().tempRoutine,
           onSave: (updatedRoutine) {
             if (routine == null) {
               onRoutineCreated(updatedRoutine);

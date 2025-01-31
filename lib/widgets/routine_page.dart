@@ -121,10 +121,11 @@ class _RoutinePageState extends State<RoutinePage> {
   void _toggleBlockList() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (context) => BlockListPage(
+        builder: (context) => BlockGroupPage(
           selectedApps: _selectedApps,
           selectedSites: _selectedSites,
           blockSelected: _blockSelected,
+          selectedBlockListId: _blockListId,
           onBlockModeChanged: (value) {
             setState(() {
               _blockSelected = value;
@@ -174,7 +175,7 @@ class _RoutinePageState extends State<RoutinePage> {
       startTime: _isAllDay ? -1 : _startTime.hour * 60 + _startTime.minute,
       endTime: _isAllDay ? -1 : _endTime.hour * 60 + _endTime.minute,
       conditions: _conditions,
-      blockId: (_selectedApps.isNotEmpty || _selectedSites.isNotEmpty) ? blockListId : '',
+      groupId: (_selectedApps.isNotEmpty || _selectedSites.isNotEmpty) ? blockListId : '',
     );
 
     widget.onSave(updatedRoutine);

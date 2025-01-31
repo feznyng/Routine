@@ -28,7 +28,7 @@ class Routine {
   final List<Condition> _conditions;
 
   // block
-  final String _blockId;
+  final String _groupId;
 
   Routine({
     required this.id, 
@@ -42,7 +42,7 @@ class Routine {
     int frictionNum = -1,
     String frictionSource = "",
     List<Condition>? conditions,
-    String blockId = ""
+    String groupId = ""
   }) : _days = days ?? List.filled(7, true),
        _startTime = startTime,
        _endTime = endTime,
@@ -52,7 +52,7 @@ class Routine {
        _frictionNum = frictionNum,
        _frictionSource = frictionSource,
        _conditions = conditions ?? [],
-       _blockId = blockId {
+       _groupId = groupId {
     if (_days.length != 7) {
       throw Exception("Days must be a list of length 7");
     }
@@ -81,7 +81,7 @@ class Routine {
   int get frictionNum => _frictionNum;
   String get frictionSource => _frictionSource;
   List<Condition> get conditions => List.unmodifiable(_conditions);
-  String get blockId => _blockId;
+  String get blockId => _groupId;
 
   int get startHour => _startTime ~/ 60;
   int get startMinute => _startTime % 60;
