@@ -1,5 +1,6 @@
 import 'routine.dart';
 import 'group.dart';
+import 'device.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter/material.dart';
 
@@ -7,8 +8,14 @@ class Manager {
   static final Manager _instance = Manager._internal();
   
   final List<Routine> routines = [];
+  final Map<String, Device> devices = {};
   final Map<String, Group> namedBlockLists = {};
   final Map<String, Group> anonblockLists = {};
+
+  final thisDevice = Device(
+    id: Uuid().v4(),
+    type: DeviceType.windows,
+  );
 
   // Temp items for new routines
   late Group tempGroup;
@@ -16,8 +23,11 @@ class Manager {
 
   Manager._internal() {
     // Create temp block group
+    devices[thisDevice.id] = thisDevice;
+
     tempGroup = Group(
       id: 'temp_group',
+      deviceId: thisDevice.id,
       apps: [],
       sites: [],
       allowList: false,
@@ -44,6 +54,7 @@ class Manager {
     Group workBlockList = Group(
       id: workBlockListId,
       name: 'Work',
+      deviceId: thisDevice.id,
       sites: [
         "facebook.com",
         "youtube.com",
@@ -61,6 +72,7 @@ class Manager {
     String everythingBlockListId = Uuid().v4();
     Group everythingBlockList = Group(
       id: everythingBlockListId,
+      deviceId: thisDevice.id,
       name: 'Everything',
       allowList: true
     );
@@ -68,6 +80,7 @@ class Manager {
     String foodBlockListId = Uuid().v4();
     Group foodBlockList = Group(
       id: foodBlockListId,
+      deviceId: thisDevice.id,
       name: 'Food',
       sites: [
         "doordash.com",
@@ -166,32 +179,6 @@ class Manager {
 
   Group? findBlockList(String id) {
     return namedBlockLists[id] ?? anonblockLists[id]!;
-  }
-
-  Routine createTempRoutine() {
-    // Create a temporary block group
-    final tempGroupId = Uuid().v4();
-    final tempGroup = Group(
-      id: tempGroupId,
-      apps: [],
-      sites: [],
-      allowList: false,
-    );
-    upsertBlockList(tempGroup);
-    
-    // Create a temporary routine with the block group
-    final tempRoutine = Routine(
-      id: Uuid().v4(),
-      name: "",
-      startTime: 9 * 60,  // Default to 9 AM
-      endTime: 17 * 60,   // Default to 5 PM
-      groupId: tempGroupId,
-    );
-    routines.add(tempRoutine);
-    routines.sort((a, b) => a.startTime.compareTo(b.startTime));
-    // _notifyListeners(); // This line is commented out because _notifyListeners is not defined in this class
-    
-    return tempRoutine;
   }
 
   factory Manager() {

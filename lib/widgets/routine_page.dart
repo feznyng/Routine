@@ -161,6 +161,7 @@ class _RoutinePageState extends State<RoutinePage> {
       final blockList = Group(
         id: blockListId,
         name: name,
+        deviceId: Manager().thisDevice.id,
         apps: _selectedApps,
         sites: _selectedSites,
         allowList: !_blockSelected,

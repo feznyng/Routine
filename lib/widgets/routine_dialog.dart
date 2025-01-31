@@ -364,7 +364,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
     final blockList = Group(
       id: Uuid().v4(),
       name: _nameController.text,
-      routineId: widget.routine.id,
+      deviceId: Manager().thisDevice.id,
       apps: _selectedApps,
       sites: _selectedSites,
       allowList: !_blockSelected
