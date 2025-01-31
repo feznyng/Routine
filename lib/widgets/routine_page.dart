@@ -57,7 +57,7 @@ class _RoutinePageState extends State<RoutinePage> {
     _conditions = List.from(widget.routine.conditions);
 
     // Load block list if exists
-    _blockListId = widget.routine.blockId;
+    _blockListId = widget.routine.groupIds[Manager().thisDevice.id];
     if (_blockListId != null && _blockListId!.isNotEmpty && Manager().findBlockList(_blockListId!) != null) {
       final blockList = Manager().findBlockList(_blockListId!)!;
       _selectedApps = List.from(blockList.apps);
@@ -176,7 +176,7 @@ class _RoutinePageState extends State<RoutinePage> {
       startTime: _isAllDay ? -1 : _startTime.hour * 60 + _startTime.minute,
       endTime: _isAllDay ? -1 : _endTime.hour * 60 + _endTime.minute,
       conditions: _conditions,
-      groupId: (_selectedApps.isNotEmpty || _selectedSites.isNotEmpty) ? blockListId : '',
+      groupIds: (_selectedApps.isNotEmpty || _selectedSites.isNotEmpty) ? {Manager().thisDevice.id: _blockListId!} : {},
     );
 
     widget.onSave(updatedRoutine);

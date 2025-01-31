@@ -1,4 +1,7 @@
 import 'condition.dart';
+import 'group.dart';
+import 'manager.dart';
+import 'package:flutter/material.dart';
 
 enum FrictionType {
   none,
@@ -28,7 +31,7 @@ class Routine {
   final List<Condition> _conditions;
 
   // block
-  final String _groupId;
+  final Map<String, String> _groupIds;
 
   Routine({
     required this.id, 
@@ -42,7 +45,7 @@ class Routine {
     int frictionNum = -1,
     String frictionSource = "",
     List<Condition>? conditions,
-    String groupId = ""
+    Map<String, String> groupIds = const {}
   }) : _days = days ?? List.filled(7, true),
        _startTime = startTime,
        _endTime = endTime,
@@ -52,7 +55,7 @@ class Routine {
        _frictionNum = frictionNum,
        _frictionSource = frictionSource,
        _conditions = conditions ?? [],
-       _groupId = groupId {
+       _groupIds = groupIds {
     if (_days.length != 7) {
       throw Exception("Days must be a list of length 7");
     }
@@ -81,7 +84,7 @@ class Routine {
   int get frictionNum => _frictionNum;
   String get frictionSource => _frictionSource;
   List<Condition> get conditions => List.unmodifiable(_conditions);
-  String get blockId => _groupId;
+  Map<String, String> get groupIds => Map.unmodifiable(_groupIds);
 
   int get startHour => _startTime ~/ 60;
   int get startMinute => _startTime % 60;
@@ -125,5 +128,21 @@ class Routine {
     }
 
     return true;
+  }
+
+  String? getGroupId() {
+    final id = _groupIds[Manager().thisDevice.id];
+    debugPrint('getGroupId: $id');
+    return id;
+  }
+
+  Group? getGroup() {
+    String? id = getGroupId();
+
+    if (id == null || id.isEmpty) {
+      return null;
+    }
+
+    return Manager().findBlockList(id);
   }
 }

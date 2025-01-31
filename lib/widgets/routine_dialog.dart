@@ -58,7 +58,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
     _conditions = List.from(widget.routine.conditions);
 
     // Load block list if exists
-    _blockListId = widget.routine.blockId;
+    _blockListId = widget.routine.getGroupId();
     if (_blockListId != null && _blockListId!.isNotEmpty && Manager().findBlockList(_blockListId!) != null) {
       final blockList = Manager().findBlockList(_blockListId!)!;
       _selectedApps = List.from(blockList.apps);
@@ -386,7 +386,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
       frictionNum: widget.routine.frictionNum,
       frictionSource: widget.routine.frictionSource,
       conditions: List.from(_conditions),
-      groupId: blockList.id
+      groupIds: {Manager().thisDevice.id: _blockListId!}
     );
   }
 

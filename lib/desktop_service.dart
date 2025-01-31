@@ -112,7 +112,7 @@ class DesktopService {
 
     for (final Routine routine in manager.routines) {
       if (routine.isActive()) {
-        final Group blockList = manager.findBlockList(routine.blockId)!;
+        final Group blockList = manager.findBlockList(routine.getGroupId()!)!;
         (blockList.allow ? activeAllowLists : activeBlockLists).add(blockList);
       }
     }
