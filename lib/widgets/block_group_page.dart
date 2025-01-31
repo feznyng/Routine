@@ -39,11 +39,16 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
     _selectedApps = List.from(widget.selectedApps);
     _selectedSites = List.from(widget.selectedSites);
     _blockSelected = widget.blockSelected;
+    
+    // Get the block list ID for the current device
+    final currentGroupId = widget.selectedBlockListId;
     // Only set _selectedBlockListId if it's a named block list
-    _selectedBlockListId = widget.selectedBlockListId != null && 
-                         Manager().namedBlockLists.containsKey(widget.selectedBlockListId)
-        ? widget.selectedBlockListId
+    _selectedBlockListId = currentGroupId != null && 
+                         Manager().namedBlockLists.containsKey(currentGroupId)
+        ? currentGroupId
         : null;
+    
+    debugPrint('BlockGroupPage initState: currentGroupId=$currentGroupId, _selectedBlockListId=$_selectedBlockListId');
   }
 
   Future<void> _openAppsDialog() async {

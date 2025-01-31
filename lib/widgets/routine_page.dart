@@ -57,12 +57,15 @@ class _RoutinePageState extends State<RoutinePage> {
     _conditions = List.from(widget.routine.conditions);
 
     // Load block list if exists
-    _blockListId = widget.routine.groupIds[Manager().thisDevice.id];
-    if (_blockListId != null && _blockListId!.isNotEmpty && Manager().findBlockList(_blockListId!) != null) {
-      final blockList = Manager().findBlockList(_blockListId!)!;
-      _selectedApps = List.from(blockList.apps);
-      _selectedSites = List.from(blockList.sites);
-      _blockSelected = !blockList.allow;
+    Group? blockGroup = widget.routine.getGroup();
+
+    debugPrint("Routine: ${widget.routine.name}, blockGroup: ${blockGroup?.id}");
+
+    if (blockGroup != null) {
+      _blockListId = blockGroup.id;
+      _selectedApps = List.from(blockGroup.apps);
+      _selectedSites = List.from(blockGroup.sites);
+      _blockSelected = !blockGroup.allow;
     }
     
     _nameController.addListener(_validateRoutine);
@@ -125,7 +128,7 @@ class _RoutinePageState extends State<RoutinePage> {
           selectedApps: _selectedApps,
           selectedSites: _selectedSites,
           blockSelected: _blockSelected,
-          selectedBlockListId: _blockListId,
+          selectedBlockListId: widget.routine.getGroupId(),  
           onBlockModeChanged: (value) {
             setState(() {
               _blockSelected = value;

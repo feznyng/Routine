@@ -132,7 +132,7 @@ class Routine {
 
   String? getGroupId() {
     final id = _groupIds[Manager().thisDevice.id];
-    debugPrint('getGroupId: $id');
+    debugPrint('groupIds: ${_groupIds}, deviceId: ${Manager().thisDevice.id}, getGroupId: $id');
     return id;
   }
 

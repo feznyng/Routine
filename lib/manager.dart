@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'routine.dart';
 import 'group.dart';
 import 'device.dart';
@@ -12,17 +14,32 @@ class Manager {
   final Map<String, Group> namedBlockLists = {};
   final Map<String, Group> anonblockLists = {};
 
-  final thisDevice = Device(
-    id: Uuid().v4(),
-    type: DeviceType.windows,
-  );
+  late Device thisDevice;
 
   // Temp items for new routines
   late Group tempGroup;
   late Routine tempRoutine;
 
   Manager._internal() {
-    // Create temp block group
+    DeviceType type;
+
+    if (Platform.isAndroid) {
+      type = DeviceType.android;
+    } else if (Platform.isIOS) {
+      type = DeviceType.ios;
+    } else if (Platform.isWindows) {
+      type = DeviceType.windows;
+    } else if (Platform.isLinux) {
+      type = DeviceType.linux;
+    } else {
+      type = DeviceType.macos;
+    }
+
+    thisDevice = Device(
+      id: Uuid().v4(),
+      type: type,
+    );
+
     devices[thisDevice.id] = thisDevice;
 
     tempGroup = Group(
@@ -97,7 +114,7 @@ class Manager {
       id: Uuid().v4(),
       name: "Meal Delivery",
       days: [true, true, true, false, true, true, true],
-      groupIds: {thisDevice.id: tempGroup.id},
+      groupIds: {thisDevice.id: foodBlockListId},
     ));
 
     routines.add(Routine(
@@ -105,7 +122,7 @@ class Manager {
       name: "Morning Work",
       startTime: 9 * 60,
       endTime: 12 * 60,
-      groupIds: {thisDevice.id: tempGroup.id},
+      groupIds: {thisDevice.id: workBlockListId},
       numBreaks: 2,
       maxBreakDuration: 20
     ));
@@ -115,7 +132,7 @@ class Manager {
       name: "Afternoon Work",
       startTime: 13 * 60,
       endTime: 16 * 60,
-      groupIds: {thisDevice.id: tempGroup.id},
+      groupIds: {thisDevice.id: workBlockListId},
       numBreaks: 2,
       maxBreakDuration: 20
     ));
@@ -125,7 +142,7 @@ class Manager {
       name: "Exercise",
       startTime: 16 * 60,
       endTime: 17 * 60,
-      groupIds: {thisDevice.id: tempGroup.id},
+      groupIds: {thisDevice.id: everythingBlockListId},
       numBreaks: 0
     ));
 
@@ -134,7 +151,7 @@ class Manager {
       name: "Evening Work",
       startTime: 17 * 60,
       endTime: 19 * 60 + 30,
-      groupIds: {thisDevice.id: tempGroup.id},
+      groupIds: {thisDevice.id: workBlockListId},
       numBreaks: 2,
       maxBreakDuration: 20
     ));
@@ -144,7 +161,7 @@ class Manager {
       name: "Sleep",
       startTime: 23 * 60,
       endTime: 7 * 60,
-      groupIds: {thisDevice.id: tempGroup.id},
+      groupIds: {thisDevice.id: everythingBlockListId},
       numBreaks: 0
     ));
 
