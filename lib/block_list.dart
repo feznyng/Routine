@@ -1,7 +1,7 @@
 class BlockList {
   final String _id;
   final String? _routineId;
-  final String _name;
+  final String? _name;
   final List<String> _apps;
   final List<String> _sites;
   final bool _allowList;
@@ -9,7 +9,7 @@ class BlockList {
   const BlockList({
     required String id,
     String? routineId,
-    required String name,
+    String? name,
     List<String>? apps,
     List<String>? sites,
     bool allowList = false,
@@ -23,7 +23,7 @@ class BlockList {
   // Getters
   String get id => _id;
   String? get routineId => _routineId;
-  String get name => _name;
+  String? get name => _name;
   List<String> get apps => List.unmodifiable(_apps);
   List<String> get sites => List.unmodifiable(_sites);
   bool get allowList => _allowList;

@@ -6,7 +6,8 @@ class Manager {
   static final Manager _instance = Manager._internal();
   
   final List<Routine> routines = [];
-  final Map<String, BlockList> blockLists = {};
+  final Map<String, BlockList> namedBlockLists = {};
+  final Map<String, BlockList> anonblockLists = {};
 
   Manager._internal() {
     // temp initialization code - replace with sqlite/supabase later
@@ -47,9 +48,9 @@ class Manager {
       ]
     );
 
-    blockLists[workBlockListId] = workBlockList;
-    blockLists[everythingBlockListId] = everythingBlockList;
-    blockLists[foodBlockListId] = foodBlockList;
+    namedBlockLists[workBlockListId] = workBlockList;
+    namedBlockLists[everythingBlockListId] = everythingBlockList;
+    namedBlockLists[foodBlockListId] = foodBlockList;
 
     // routines
     routines.add(Routine(
@@ -126,11 +127,16 @@ class Manager {
   }
 
   void upsertBlockList(BlockList blockList) {
-    blockLists[blockList.id] = blockList;
+    (blockList.name != null ? namedBlockLists : anonblockLists)[blockList.id] = blockList;
   }
 
   void removeBlockList(String id) {
-    blockLists.remove(id);
+    namedBlockLists.remove(id);
+    anonblockLists.remove(id);
+  }
+
+  BlockList? findBlockList(String id) {
+    return namedBlockLists[id] ?? anonblockLists[id]!;
   }
 
   factory Manager() {

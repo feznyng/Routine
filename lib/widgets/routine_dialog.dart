@@ -59,8 +59,8 @@ class _RoutineDialogState extends State<RoutineDialog> {
 
     // Load block list if exists
     _blockListId = widget.routine.blockId;
-    if (_blockListId != null && _blockListId!.isNotEmpty && Manager().blockLists.containsKey(_blockListId)) {
-      final blockList = Manager().blockLists[_blockListId]!;
+    if (_blockListId != null && _blockListId!.isNotEmpty && Manager().findBlockList(_blockListId!) != null) {
+      final blockList = Manager().findBlockList(_blockListId!)!;
       _selectedApps = List.from(blockList.apps);
       _selectedSites = List.from(blockList.sites);
       _blockSelected = !blockList.allowList;
@@ -85,8 +85,8 @@ class _RoutineDialogState extends State<RoutineDialog> {
 
     // Get current block list for comparison
     final currentBlockList = _blockListId != null && _blockListId!.isNotEmpty && 
-        Manager().blockLists.containsKey(_blockListId)
-        ? Manager().blockLists[_blockListId]!
+        Manager().findBlockList(_blockListId!) != null
+        ? Manager().findBlockList(_blockListId!)!
         : null;
 
     bool appsEqual = currentBlockList != null &&
