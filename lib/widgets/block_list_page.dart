@@ -95,14 +95,14 @@ class _BlockListPageState extends State<BlockListPage> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             _buildBlockButton(
               title: 'Applications',
               subtitle: _getAppSubtitle(),
               icon: Icons.apps,
               onPressed: _openAppsDialog,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 5),
             _buildBlockButton(
               title: 'Sites',
               subtitle: _getSiteSubtitle(),

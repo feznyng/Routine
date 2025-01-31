@@ -13,73 +13,82 @@ class Routine {
   final String name;
   
   // scheduling
-  List<bool> _days = [true, true, true, true, true, true, true];
-  int _startTime = -1;
-  int _endTime = -1;
+  final List<bool> _days;
+  final int _startTime;
+  final int _endTime;
   
   // breaks
-  int numBreaks = -1;
-  int maxBreakDuration = 15; // in minutes
-  FrictionType _frictionType = FrictionType.none;
-  int _frictionNum = -1; // fixed delay, code length
-  String _frictionSource = ""; // nfc id, code source
+  final int _numBreaks;
+  final int _maxBreakDuration; // in minutes
+  final FrictionType _frictionType;
+  final int _frictionNum; // fixed delay, code length
+  final String _frictionSource; // nfc id, code source
 
   // conditions
-  List<Condition> conditions = [];
+  final List<Condition> _conditions;
 
   // block
-  String blockId = "";
+  final String _blockId;
 
-  Routine({required this.id, required this.name});
-
-  List<bool> get days => _days;
-  setDays(List<bool> days) {
-    if (days.length != 7) {
+  Routine({
+    required this.id, 
+    required this.name,
+    List<bool>? days,
+    int startTime = -1,
+    int endTime = -1,
+    int numBreaks = -1,
+    int maxBreakDuration = 15,
+    FrictionType frictionType = FrictionType.none,
+    int frictionNum = -1,
+    String frictionSource = "",
+    List<Condition>? conditions,
+    String blockId = ""
+  }) : _days = days ?? List.filled(7, true),
+       _startTime = startTime,
+       _endTime = endTime,
+       _numBreaks = numBreaks,
+       _maxBreakDuration = maxBreakDuration,
+       _frictionType = frictionType,
+       _frictionNum = frictionNum,
+       _frictionSource = frictionSource,
+       _conditions = conditions ?? [],
+       _blockId = blockId {
+    if (_days.length != 7) {
       throw Exception("Days must be a list of length 7");
     }
+    if (_startTime >= 0 && _endTime >= 0) {
+      final startHour = _startTime ~/ 60;
+      final startMinute = _startTime % 60;
+      final endHour = _endTime ~/ 60;
+      final endMinute = _endTime % 60;
+      
+      if (startHour < 0 || startMinute < 0 || endHour < 0 || endMinute < 0) {
+        throw Exception("Start time and end time must be non-negative");
+      }
 
-    _days = days;
+      if (startHour > 24 || startMinute > 60 || endHour > 24 || endMinute > 60) {
+        throw Exception("Start time and end time must be in the range 0-1440");
+      }
+    }
   }
 
+  List<bool> get days => List.unmodifiable(_days);
   int get startTime => _startTime;
   int get endTime => _endTime;
+  int get numBreaks => _numBreaks;
+  int get maxBreakDuration => _maxBreakDuration;
+  FrictionType get frictionType => _frictionType;
+  int get frictionNum => _frictionNum;
+  String get frictionSource => _frictionSource;
+  List<Condition> get conditions => List.unmodifiable(_conditions);
+  String get blockId => _blockId;
 
   int get startHour => _startTime ~/ 60;
   int get startMinute => _startTime % 60;
-
   int get endHour => _endTime ~/ 60;
   int get endMinute => _endTime % 60;
 
-  setTimeRange(int startHour, int startMinute, int endHour, int endMinute) {
-    if (startHour < 0 || startMinute < 0 || endHour < 0 || endMinute < 0) {
-      throw Exception("Start time and end time must be non-negative");
-    }
-
-    if (startHour > 24 || startMinute > 60 || endHour > 24 || endMinute > 60) {
-      throw Exception("Start time and end time must be in the range 0-1440");
-    }
-
-    _startTime = startHour * 60 + startMinute;
-    _endTime = endHour * 60 + endMinute; 
-  }
-  
-  setAllDay() { 
-    _startTime = -1;
-    _endTime = -1; 
-  }
-
-  get frictionType => _frictionType;
-  get frictionNum => _frictionNum;
-  get frictionSource => _frictionSource;
-
-  setFriction(FrictionType type, int num, String source) {
-    // TODO: add validation based on type
-    _frictionType = type;
-    _frictionNum = num;
-    _frictionSource = source;
-  }
-
-  isActive() { 
+  bool isActive() { 
     final DateTime now = DateTime.now();
     final int dayOfWeek = now.weekday - 1;
 
@@ -104,12 +113,12 @@ class Routine {
     return (currMins >= _startTime && currMins < _endTime) && !isComplete();
   }
 
-  isComplete() { 
-    if (conditions.isEmpty) {
+  bool isComplete() { 
+    if (_conditions.isEmpty) {
       return false;
     }
 
-    for (final Condition condition in conditions) {
+    for (final Condition condition in _conditions) {
       if (!condition.isComplete(_startTime, _endTime)) {
         return false;
       }

@@ -37,21 +37,11 @@ class _RoutineDialogState extends State<RoutineDialog> {
   bool _showBlockList = false;
   bool _blockSelected = true;  // true = blocklist mode, false = allowlist mode
 
-  // Store initial values for comparison
-  String? _initialName;
-  List<bool>? _initialDays;
-  bool? _initialIsAllDay;
-  TimeOfDay? _initialStartTime;
-  TimeOfDay? _initialEndTime;
-  List<Condition>? _initialConditions;
-  List<String>? _initialApps;
-  List<String>? _initialSites;
-
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.routine.name);
-    _selectedDays = widget.routine.days;
+    _selectedDays = List.from(widget.routine.days);
     _isAllDay = widget.routine.startTime == -1;
     _startTime = widget.routine.startTime != -1
         ? TimeOfDay(
@@ -65,7 +55,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
             minute: widget.routine.endMinute,
           )
         : const TimeOfDay(hour: 17, minute: 0);
-    _conditions = widget.routine.conditions;
+    _conditions = List.from(widget.routine.conditions);
 
     // Load block list if exists
     _blockListId = widget.routine.blockId;
@@ -75,62 +65,50 @@ class _RoutineDialogState extends State<RoutineDialog> {
       _selectedSites = List.from(blockList.sites);
       _blockSelected = !blockList.allowList;
     }
-
-    // Store initial values
-    _initialName = widget.routine.name;
-    _initialDays = List.from(widget.routine.days);
-    _initialIsAllDay = widget.routine.startTime == -1;
-    _initialStartTime = widget.routine.startTime != -1
-        ? TimeOfDay(
-            hour: widget.routine.startHour,
-            minute: widget.routine.startMinute,
-          )
-        : null;
-    _initialEndTime = widget.routine.endTime != -1
-        ? TimeOfDay(
-            hour: widget.routine.endHour,
-            minute: widget.routine.endMinute,
-          )
-        : null;
-    _initialConditions = List.from(widget.routine.conditions);
-    _initialApps = List.from(_selectedApps);
-    _initialSites = List.from(_selectedSites);
     
     _nameController.addListener(_validateRoutine);
     _validateRoutine();
   }
 
   void _checkForChanges() {
-    bool daysEqual = _initialDays != null && 
-        _selectedDays.length == _initialDays!.length &&
-        List.generate(_selectedDays.length, (i) => _selectedDays[i] == _initialDays![i])
+    bool daysEqual = _selectedDays.length == widget.routine.days.length &&
+        List.generate(_selectedDays.length, (i) => _selectedDays[i] == widget.routine.days[i])
             .every((element) => element);
 
-    bool startTimeEqual = _isAllDay == _initialIsAllDay &&
+    bool startTimeEqual = _isAllDay == (widget.routine.startTime == -1) &&
         (_isAllDay || 
-         (_startTime.hour == _initialStartTime?.hour && 
-          _startTime.minute == _initialStartTime?.minute));
+         (_startTime.hour * 60 + _startTime.minute == widget.routine.startTime));
 
-    bool endTimeEqual = _isAllDay == _initialIsAllDay &&
+    bool endTimeEqual = _isAllDay == (widget.routine.endTime == -1) &&
         (_isAllDay || 
-         (_endTime.hour == _initialEndTime?.hour && 
-          _endTime.minute == _initialEndTime?.minute));
+         (_endTime.hour * 60 + _endTime.minute == widget.routine.endTime));
 
-    bool appsEqual = _selectedApps.length == _initialApps?.length &&
-        _selectedApps.every((app) => _initialApps?.contains(app) ?? false);
+    // Get current block list for comparison
+    final currentBlockList = _blockListId != null && _blockListId!.isNotEmpty && 
+        Manager().blockLists.containsKey(_blockListId)
+        ? Manager().blockLists[_blockListId]!
+        : null;
 
-    bool sitesEqual = _selectedSites.length == _initialSites?.length &&
-        _selectedSites.every((site) => _initialSites?.contains(site) ?? false);
+    bool appsEqual = currentBlockList != null &&
+        _selectedApps.length == currentBlockList.apps.length &&
+        _selectedApps.every((app) => currentBlockList.apps.contains(app));
+
+    bool sitesEqual = currentBlockList != null &&
+        _selectedSites.length == currentBlockList.sites.length &&
+        _selectedSites.every((site) => currentBlockList.sites.contains(site));
+
+    bool blockModeEqual = currentBlockList != null &&
+        _blockSelected == !currentBlockList.allowList;
 
     setState(() {
-      _hasChanges = _nameController.text != _initialName ||
+      _hasChanges = _nameController.text != widget.routine.name ||
           !daysEqual ||
           !startTimeEqual ||
           !endTimeEqual ||
-          _conditions.length != _initialConditions?.length ||
+          _conditions.length != widget.routine.conditions.length ||
           !appsEqual ||
           !sitesEqual ||
-          _blockSelected != (_initialApps == null || _initialApps!.isEmpty);
+          !blockModeEqual;
     });
   }
 
@@ -178,9 +156,9 @@ class _RoutineDialogState extends State<RoutineDialog> {
                     const SizedBox(height: 16),
                     _buildBlockListSection(),
                     const SizedBox(height: 16),
-                    _buildDaySelector(),
-                    const SizedBox(height: 16),
                     _buildTimeSection(),
+                    const SizedBox(height: 16),
+                    _buildDaySelector(),
                     const SizedBox(height: 16),
                     _buildConditionsList(),
                     if (widget.onDelete != null) ...[
@@ -219,21 +197,24 @@ class _RoutineDialogState extends State<RoutineDialog> {
   }
 
   Widget _buildDaySelector() {
-    return Wrap(
-      spacing: 4,
-      children: [
-        for (int i = 0; i < 7; i++)
-          FilterChip(
-            label: Text(['M', 'T', 'W', 'T', 'F', 'S', 'S'][i]),
-            selected: _selectedDays[i],
-            onSelected: (bool selected) {
-              setState(() {
-                _selectedDays[i] = selected;
-                _validateRoutine();
-              });
-            },
-          ),
-      ],
+    return Center(
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 4,
+        children: [
+          for (int i = 0; i < 7; i++)
+            FilterChip(
+              label: Text(['M', 'T', 'W', 'T', 'F', 'S', 'S'][i]),
+              selected: _selectedDays[i],
+              onSelected: (bool selected) {
+                setState(() {
+                  _selectedDays[i] = selected;
+                  _validateRoutine();
+                });
+              },
+            ),
+        ],
+      ),
     );
   }
 
@@ -362,10 +343,8 @@ class _RoutineDialogState extends State<RoutineDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Conditions'),
+        const Text('Unlock Conditions'),
         const SizedBox(height: 8),
-        if (_conditions.isEmpty)
-          const Text('None', style: TextStyle(fontStyle: FontStyle.italic)),
         ..._conditions.map((condition) => ListTile(
               title: Text(condition.runtimeType.toString()),
               trailing: IconButton(
@@ -399,36 +378,38 @@ class _RoutineDialogState extends State<RoutineDialog> {
   }
 
   Routine _createRoutine() {
-    final routine = Routine(
-      id: widget.routine.id,
-      name: _nameController.text
-    );
-
-    routine.setDays(_selectedDays);
-    if (_isAllDay) {
-      routine.setAllDay();
-    } else {
-      routine.setTimeRange(
-        _startTime.hour,
-        _startTime.minute,
-        _endTime.hour,
-        _endTime.minute,
-      );
-    }
+    // Convert TimeOfDay to minutes since midnight
+    final startTimeMinutes = !_isAllDay ? _startTime.hour * 60 + _startTime.minute : -1;
+    final endTimeMinutes = !_isAllDay ? _endTime.hour * 60 + _endTime.minute : -1;
     
-    // Create block list
+    // Create immutable block list
     final blockList = BlockList(
       id: Uuid().v4(),
-      name: routine.id,
+      name: _nameController.text,
+      routineId: widget.routine.id,
+      apps: _selectedApps,
+      sites: _selectedSites,
+      allowList: !_blockSelected
     );
-    blockList.routineId = routine.id;
-    blockList.apps = _selectedApps;
-    blockList.sites = _selectedSites;
-    blockList.allowList = !_blockSelected;  // Convert blockSelected to allowList
+
+    // Add block list to manager
+    Manager().blockLists[blockList.id] = blockList;
     
-    //routine.blockListId = blockList.id;
-    
-    return routine;
+    // Create immutable routine with all properties
+    return Routine(
+      id: widget.routine.id,
+      name: _nameController.text,
+      days: List.from(_selectedDays),
+      startTime: startTimeMinutes,
+      endTime: endTimeMinutes,
+      numBreaks: widget.routine.numBreaks,
+      maxBreakDuration: widget.routine.maxBreakDuration,
+      frictionType: widget.routine.frictionType,
+      frictionNum: widget.routine.frictionNum,
+      frictionSource: widget.routine.frictionSource,
+      conditions: List.from(_conditions),
+      blockId: blockList.id
+    );
   }
 
   void _confirmDelete() {

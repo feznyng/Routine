@@ -13,75 +13,99 @@ class Manager {
 
     // block lists
     String workBlockListId = Uuid().v4();
-    BlockList workBlockList = BlockList(id: workBlockListId, name: 'Work');
-    workBlockList.sites = [
-      "facebook.com",
-      "youtube.com",
-      "discord.com",
-      "reddit.com",
-      "news.ycombinator.com",
-    ];
-
-    workBlockList.apps = [
-      '/Applications/Sublime Text.app',
-      '/Applications/Google Chrome.app',
-      '/Applications/Safari.app'
-    ];
+    BlockList workBlockList = BlockList(
+      id: workBlockListId,
+      name: 'Work',
+      sites: [
+        "facebook.com",
+        "youtube.com",
+        "discord.com",
+        "reddit.com",
+        "news.ycombinator.com",
+      ],
+      apps: [
+        '/Applications/Sublime Text.app',
+        '/Applications/Google Chrome.app',
+        '/Applications/Safari.app'
+      ]
+    );
 
     String everythingBlockListId = Uuid().v4();
-    BlockList everythingBlockList = BlockList(id: everythingBlockListId, name: 'Everything');
-    everythingBlockList.allowList = true;
+    BlockList everythingBlockList = BlockList(
+      id: everythingBlockListId,
+      name: 'Everything',
+      allowList: true
+    );
 
     String foodBlockListId = Uuid().v4();
-    BlockList foodBlockList = BlockList(id: foodBlockListId, name: 'Food');
-    foodBlockList.sites = [
-      "doordash.com",
-      "ubereats.com"
-    ];
+    BlockList foodBlockList = BlockList(
+      id: foodBlockListId,
+      name: 'Food',
+      sites: [
+        "doordash.com",
+        "ubereats.com"
+      ]
+    );
 
     blockLists[workBlockListId] = workBlockList;
     blockLists[everythingBlockListId] = everythingBlockList;
     blockLists[foodBlockListId] = foodBlockList;
 
     // routines
-    Routine foodRoutine = Routine(id: Uuid().v4(), name: "Meal Delivery");
-    foodRoutine.setAllDay();
-    foodRoutine.setDays([true, true, true, false, true, true, true]);
-    foodRoutine.blockId = foodBlockListId;
-    routines.add(foodRoutine);
+    routines.add(Routine(
+      id: Uuid().v4(),
+      name: "Meal Delivery",
+      days: [true, true, true, false, true, true, true],
+      blockId: foodBlockListId
+    ));
 
-    Routine morningRoutine = Routine(id: Uuid().v4(), name: "Morning Work");
-    morningRoutine.setTimeRange(9, 0, 12, 0);
-    morningRoutine.blockId = workBlockListId;
-    morningRoutine.numBreaks = 2;
-    morningRoutine.maxBreakDuration = 20;
-    routines.add(morningRoutine);
+    routines.add(Routine(
+      id: Uuid().v4(),
+      name: "Morning Work",
+      startTime: 9 * 60,
+      endTime: 12 * 60,
+      blockId: workBlockListId,
+      numBreaks: 2,
+      maxBreakDuration: 20
+    ));
 
-    Routine afternoonRoutine = Routine(id: Uuid().v4(), name: "Afternoon Work");
-    afternoonRoutine.setTimeRange(13, 0, 16, 0);
-    afternoonRoutine.blockId = workBlockListId;
-    afternoonRoutine.numBreaks = 2;
-    afternoonRoutine.maxBreakDuration = 20;
-    routines.add(afternoonRoutine);
+    routines.add(Routine(
+      id: Uuid().v4(),
+      name: "Afternoon Work",
+      startTime: 13 * 60,
+      endTime: 16 * 60,
+      blockId: workBlockListId,
+      numBreaks: 2,
+      maxBreakDuration: 20
+    ));
 
-    Routine exerciseRoutine = Routine(id: Uuid().v4(), name: "Exercise");
-    exerciseRoutine.setTimeRange(16, 0, 17, 0);
-    exerciseRoutine.blockId = everythingBlockListId;
-    exerciseRoutine.numBreaks = 0;
-    routines.add(exerciseRoutine);
+    routines.add(Routine(
+      id: Uuid().v4(),
+      name: "Exercise",
+      startTime: 16 * 60,
+      endTime: 17 * 60,
+      blockId: everythingBlockListId,
+      numBreaks: 0
+    ));
 
-    Routine eveningRoutine = Routine(id: Uuid().v4(), name: "Evening Work"); 
-    eveningRoutine.setTimeRange(17, 0, 19, 30);
-    eveningRoutine.blockId = workBlockListId;
-    eveningRoutine.numBreaks = 2;
-    eveningRoutine.maxBreakDuration = 20;
-    routines.add(eveningRoutine);
+    routines.add(Routine(
+      id: Uuid().v4(),
+      name: "Evening Work",
+      startTime: 17 * 60,
+      endTime: 19 * 60 + 30,
+      blockId: workBlockListId,
+      numBreaks: 2,
+      maxBreakDuration: 20
+    ));
 
-    Routine sleepRoutine = Routine(id: Uuid().v4(), name: "Sleep");
-    sleepRoutine.setTimeRange(23, 0, 7, 0);
-    sleepRoutine.blockId = everythingBlockListId;
-    sleepRoutine.numBreaks = 0;
-    routines.add(sleepRoutine);
+    routines.add(Routine(
+      id: Uuid().v4(),
+      name: "Sleep",
+      startTime: 23 * 60,
+      endTime: 7 * 60,
+      blockId: everythingBlockListId,
+      numBreaks: 0
+    ));
 
     routines.sort((a, b) => a.startTime.compareTo(b.startTime));
   }
