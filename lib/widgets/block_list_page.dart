@@ -8,6 +8,7 @@ class BlockListPage extends StatefulWidget {
   final Function(List<String>, List<String>) onSave;
   final bool blockSelected;
   final Function(bool) onBlockModeChanged;
+  final VoidCallback onBack;
 
   const BlockListPage({
     super.key,
@@ -16,6 +17,7 @@ class BlockListPage extends StatefulWidget {
     required this.onSave,
     required this.blockSelected,
     required this.onBlockModeChanged,
+    required this.onBack,
   });
 
   @override
@@ -70,6 +72,30 @@ class _BlockListPageState extends State<BlockListPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () {
+                    widget.onSave(_selectedApps, _selectedSites);
+                    widget.onBack();
+                  },
+                ),
+                const Expanded(
+                  child: Text(
+                    'Manage Blocks',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                // Add a spacer with the same width as the back button for symmetry
+                const SizedBox(width: 48),
+              ],
+            ),
+            const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.all(0.0),
               child: Column(

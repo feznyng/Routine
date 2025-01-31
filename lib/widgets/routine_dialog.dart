@@ -120,6 +120,12 @@ class _RoutineDialogState extends State<RoutineDialog> {
     });
   }
 
+  void _toggleBlockList() {
+    setState(() {
+      _showBlockList = !_showBlockList;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -143,6 +149,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
                     _validateRoutine();
                   });
                 },
+                onBack: _toggleBlockList,
               )
             : SingleChildScrollView(
                 child: Column(
@@ -291,48 +298,19 @@ class _RoutineDialogState extends State<RoutineDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         InkWell(
-          onTap: () {
-            setState(() {
-              _showBlockList = !_showBlockList;
-            });
-          },
-          child: AnimatedCrossFade(
-            firstChild: Card(
-              child: ListTile(
-                title: Text(
-                  'Manage blocks',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
+          onTap: _toggleBlockList,
+          child: Card(
+            child: ListTile(
+              title: Text(
+                'Manage blocks',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
                 ),
-                subtitle: Text(summary),
-                trailing: const Icon(Icons.chevron_right),
               ),
+              subtitle: Text(summary),
+              trailing: const Icon(Icons.chevron_right),
             ),
-            secondChild: _showBlockList
-                ? BlockListPage(
-                    selectedApps: _selectedApps,
-                    selectedSites: _selectedSites,
-                    blockSelected: _blockSelected,
-                    onBlockModeChanged: (value) {
-                      setState(() {
-                        _blockSelected = value;
-                      });
-                    },
-                    onSave: (apps, sites) {
-                      setState(() {
-                        _selectedApps = apps;
-                        _selectedSites = sites;
-                        _validateRoutine();
-                      });
-                    },
-                  )
-                : const SizedBox.shrink(),
-            crossFadeState: _showBlockList
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 200),
           ),
         ),
       ],
