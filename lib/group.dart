@@ -3,7 +3,7 @@ class Group {
   final String? _name;
   final List<String> _apps;
   final List<String> _sites;
-  final bool _allowList;
+  final bool _allow;
   final String? _deviceId;
 
   const Group({
@@ -12,12 +12,12 @@ class Group {
     String? name,
     List<String>? apps,
     List<String>? sites,
-    bool allowList = false,
+    bool allow = false,
   }) : _id = id,
        _name = name,
        _apps = apps ?? const [],
        _sites = sites ?? const [],
-       _allowList = allowList,
+       _allow = allow,
        _deviceId = deviceId;
 
   // Getters
@@ -25,7 +25,7 @@ class Group {
   String? get name => _name;
   List<String> get apps => List.unmodifiable(_apps);
   List<String> get sites => List.unmodifiable(_sites);
-  bool get allow => _allowList;
+  bool get allow => _allow;
 
   // Create a new BlockGroup with updated values
   Group copyWith({
@@ -35,7 +35,7 @@ class Group {
     String? name,
     List<String>? apps,
     List<String>? sites,
-    bool? allowList,
+    bool? allow,
   }) {
     return Group(
       id: id ?? _id,
@@ -43,7 +43,7 @@ class Group {
       name: name ?? _name,
       apps: apps ?? List.from(_apps),
       sites: sites ?? List.from(_sites),
-      allowList: allowList ?? _allowList,
+      allow: allow ?? _allow,
     );
   }
 }

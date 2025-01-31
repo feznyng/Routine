@@ -47,7 +47,7 @@ class Manager {
       deviceId: thisDevice.id,
       apps: [],
       sites: [],
-      allowList: false,
+      allow: false,
     );
     anonblockGroups[tempGroup.id] = tempGroup;
 
@@ -91,7 +91,7 @@ class Manager {
       id: everythingBlockGroupId,
       deviceId: thisDevice.id,
       name: 'Everything',
-      allowList: true
+      allow: true
     );
 
     String foodBlockGroupId = Uuid().v4();

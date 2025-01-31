@@ -50,7 +50,7 @@ class _EditBlockGroupPageState extends State<EditBlockGroupPage> {
     final hasNameChange = _nameController.text != (widget.group?.name ?? '');
     final hasAppsChange = !_listEquals(_selectedApps, widget.group?.apps ?? []);
     final hasSitesChange = !_listEquals(_selectedSites, widget.group?.sites ?? []);
-    final hasBlockModeChange = _blockSelected == (widget.group?.allow ?? false);
+    final hasBlockModeChange = _blockSelected != !(widget.group?.allow ?? false);
 
     setState(() {
       _hasChanges = hasNameChange || hasAppsChange || hasSitesChange || hasBlockModeChange;
@@ -75,11 +75,10 @@ class _EditBlockGroupPageState extends State<EditBlockGroupPage> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
-          if (widget.onDelete != null)
-            IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: widget.onDelete,
-            ),
+          TextButton(
+            onPressed: _hasChanges ? _save : null,
+            child: const Text('Save'),
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -114,45 +113,37 @@ class _EditBlockGroupPageState extends State<EditBlockGroupPage> {
                   _checkChanges();
                 },
               ),
+              if (widget.onDelete != null) ...[
+                const SizedBox(height: 24),
+                OutlinedButton.icon(
+                  onPressed: widget.onDelete,
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  label: const Text(
+                    'Delete Group',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.red),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
       ),
-      floatingActionButton: _hasChanges
-          ? FloatingActionButton.extended(
-              onPressed: _save,
-              icon: const Icon(Icons.save),
-              label: const Text('Save'),
-            )
-          : null,
     );
   }
 
   void _save() {
-    if (_nameController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a group name'),
-        ),
-      );
-      return;
-    }
-
-    final updatedGroup = (widget.group ?? Group(
-      id: const Uuid().v4(),
-      deviceId: Manager().thisDevice.id,
-      name: null,
-      apps: const [],
-      sites: const [],
-      allowList: false,
-    )).copyWith(
+    final group = Group(
+      id: widget.group?.id ?? const Uuid().v4(),
       name: _nameController.text,
+      deviceId: Manager().thisDevice.id,
       apps: _selectedApps,
       sites: _selectedSites,
-      allowList: !_blockSelected,
+      allow: !_blockSelected,
     );
-
-    widget.onSave(updatedGroup);
+    widget.onSave(group);
     Navigator.of(context).pop();
   }
 }

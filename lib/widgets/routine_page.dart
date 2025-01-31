@@ -167,7 +167,7 @@ class _RoutinePageState extends State<RoutinePage> {
         deviceId: Manager().thisDevice.id,
         apps: _selectedApps,
         sites: _selectedSites,
-        allowList: !_blockSelected,
+        allow: !_blockSelected,
       );
       Manager().upsertBlockGroup(blockGroup);
     }

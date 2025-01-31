@@ -3,9 +3,14 @@ import '../group.dart';
 import '../manager.dart';
 import 'edit_block_group_page.dart';
 
-class BlockGroupsPage extends StatelessWidget {
+class BlockGroupsPage extends StatefulWidget {
   const BlockGroupsPage({super.key});
 
+  @override
+  State<BlockGroupsPage> createState() => _BlockGroupsPageState();
+}
+
+class _BlockGroupsPageState extends State<BlockGroupsPage> {
   @override
   Widget build(BuildContext context) {
     final manager = Manager();
@@ -41,17 +46,19 @@ class BlockGroupsPage extends StatelessWidget {
     );
   }
 
-  void _showEditPage(BuildContext context, Group? group) {
-    Navigator.of(context).push(
+  void _showEditPage(BuildContext context, Group? group) async {
+    await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => EditBlockGroupPage(
           group: group,
           onSave: (updatedGroup) {
             Manager().upsertBlockGroup(updatedGroup);
+            if (mounted) setState(() {});
           },
           onDelete: group != null ? () {
             Manager().removeBlockGroup(group.id);
             Navigator.of(context).pop();
+            setState(() {});
           } : null,
         ),
       ),

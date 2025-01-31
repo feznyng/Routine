@@ -113,8 +113,10 @@ class _BlockSitesDialogState extends State<BlockSitesDialog> {
                 ),
                 const SizedBox(width: 8),
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(_selectedSites),
-                  child: const Text('Save'),
+                  onPressed: () {
+                    Navigator.of(context).pop(_selectedSites);
+                  },
+                  child: const Text('Done'),
                 ),
               ],
             ),

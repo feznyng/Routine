@@ -152,8 +152,10 @@ class _BlockAppsDialogState extends State<BlockAppsDialog> {
                 ),
                 const SizedBox(width: 8),
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(_selectedApps),
-                  child: const Text('Save'),
+                  onPressed: () {
+                    Navigator.of(context).pop(_selectedApps);
+                  },
+                  child: const Text('Done'),
                 ),
               ],
             ),
