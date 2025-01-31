@@ -24,7 +24,7 @@ class Manager {
         "news.ycombinator.com",
       ],
       apps: [
-        '/Applications/Sublime Text.app',
+        '/Applications/Discord.app',
         '/Applications/Google Chrome.app',
         '/Applications/Safari.app'
       ]

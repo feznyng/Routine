@@ -188,11 +188,11 @@ class MainFlutterWindow: NSWindow {
 
   private func checkActiveApplication(_ app: NSRunningApplication?) {
     if let app = app,
-       let appName = app.localizedName?.lowercased() {
+       let appPath = app.bundleURL?.path.lowercased() {
       
-      let isAllowed = allowList ? appList.contains(appName) : !appList.contains(appName)
+      let isAllowed = allowList ? appList.contains(appPath) : !appList.contains(appPath)
       
-      if !isAllowed && !isHiding && appName != "finder" {
+      if !isAllowed && !isHiding && app.localizedName?.lowercased() != "finder" {
         isHiding = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
           // Find and activate Finder
@@ -205,7 +205,7 @@ class MainFlutterWindow: NSWindow {
       }
 
       // Queue or send the message depending on Flutter readiness
-      let message = (method: "activeApplication", arguments: appName as Any)
+      let message = (method: "activeApplication", arguments: appPath as Any)
       if isFlutterReady, let channel = methodChannel {
         channel.invokeMethod(message.method, arguments: message.arguments)
       } else {
