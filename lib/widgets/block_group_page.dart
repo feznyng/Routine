@@ -51,6 +51,15 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
     debugPrint('BlockGroupPage initState: currentGroupId=$currentGroupId, _selectedBlockGroupId=$_selectedBlockGroupId');
   }
 
+  Future<void> _navigateToManageGroups() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const BlockGroupsPage(),
+      ),
+    );
+    setState(() {}); // Refresh the list after returning
+  }
+
   @override
   Widget build(BuildContext context) {
     final manager = Manager();
@@ -72,59 +81,55 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Dropdown for block list selection
-              DropdownButtonFormField<String?>(
-                value: _selectedBlockGroupId,
-                decoration: const InputDecoration(
-                  labelText: 'Block Group',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-                items: [
-                  const DropdownMenuItem<String>(
-                    value: null,
-                    child: Text('Custom'),
+              // Group selection row
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String?>(
+                      value: _selectedBlockGroupId,
+                      decoration: const InputDecoration(
+                        labelText: 'Block Group',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      items: [
+                        const DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('Custom'),
+                        ),
+                        ...manager.namedBlockGroups.values.map((blockGroup) {
+                          return DropdownMenuItem<String>(
+                            value: blockGroup.id,
+                            child: Text(blockGroup.name ?? 'Unnamed List'),
+                          );
+                        }).toList(),
+                      ],
+                      onChanged: (String? newId) {
+                        setState(() {
+                          _selectedBlockGroupId = newId;
+                          if (newId != null) {
+                            final selectedList = manager.findBlockGroup(newId);
+                            _selectedApps = List.from(selectedList?.apps ?? []);
+                            _selectedSites = List.from(selectedList?.sites ?? []);
+                            _blockSelected = !(selectedList?.allow ?? false);
+                          } else {
+                            _selectedApps = [];
+                            _selectedSites = [];
+                          }
+                        });
+                        widget.onSave(_selectedApps, _selectedSites);
+                      },
+                    ),
                   ),
-                  // Only show named block lists
-                  ...manager.namedBlockGroups.values.map((blockGroup) {
-                    return DropdownMenuItem<String>(
-                      value: blockGroup.id,
-                      child: Text(blockGroup.name ?? 'Unnamed List'),
-                    );
-                  }).toList(),
-                  // Add Manage Groups option
-                  const DropdownMenuItem<String>(
-                    value: 'manage',
-                    child: Text('Manage Groups...', style: TextStyle(fontStyle: FontStyle.italic)),
+                  IconButton(
+                    icon: const Icon(Icons.edit),
+                    onPressed: _navigateToManageGroups,
+                    tooltip: 'Edit Groups',
                   ),
                 ],
-                onChanged: (String? newId) {
-                  if (newId == 'manage') {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const BlockGroupsPage(),
-                      ),
-                    );
-                    return;
-                  }
-                  
-                  setState(() {
-                    _selectedBlockGroupId = newId;
-                    if (newId != null) {
-                      final selectedList = manager.findBlockGroup(newId);
-                      _selectedApps = List.from(selectedList?.apps ?? []);
-                      _selectedSites = List.from(selectedList?.sites ?? []);
-                      _blockSelected = !(selectedList?.allow ?? false);
-                    } else {
-                      _selectedApps = [];
-                      _selectedSites = [];
-                    }
-                  });
-                  widget.onSave(_selectedApps, _selectedSites);
-                },
               ),
               const SizedBox(height: 24),
-              if (_selectedBlockGroupId != null && _selectedBlockGroupId != 'manage')
+              if (_selectedBlockGroupId != null)
                 const Padding(
                   padding: EdgeInsets.only(bottom: 16.0),
                   child: Text(
