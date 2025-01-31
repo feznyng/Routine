@@ -34,7 +34,6 @@ class _RoutinePageState extends State<RoutinePage> {
   String? _blockListId;
   bool _isValid = false;
   bool _hasChanges = false;
-  bool _showBlockList = false;
   bool _blockSelected = true;  // true = blocklist mode, false = allowlist mode
 
   @override
@@ -120,9 +119,28 @@ class _RoutinePageState extends State<RoutinePage> {
   }
 
   void _toggleBlockList() {
-    setState(() {
-      _showBlockList = !_showBlockList;
-    });
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => BlockListPage(
+          selectedApps: _selectedApps,
+          selectedSites: _selectedSites,
+          blockSelected: _blockSelected,
+          onBlockModeChanged: (value) {
+            setState(() {
+              _blockSelected = value;
+            });
+          },
+          onSave: (apps, sites) {
+            setState(() {
+              _selectedApps = apps;
+              _selectedSites = sites;
+              _validateRoutine();
+            });
+          },
+          onBack: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
   }
 
   Future<void> _saveRoutine() async {
@@ -332,7 +350,7 @@ class _RoutinePageState extends State<RoutinePage> {
       appBar: AppBar(
         title: Text(widget.routine.name.isEmpty ? 'New Routine' : widget.routine.name),
         leading: IconButton(
-          icon: const Icon(Icons.close),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
@@ -342,63 +360,44 @@ class _RoutinePageState extends State<RoutinePage> {
           ),
         ],
       ),
-      body: _showBlockList
-          ? BlockListPage(
-              selectedApps: _selectedApps,
-              selectedSites: _selectedSites,
-              blockSelected: _blockSelected,
-              onBlockModeChanged: (value) {
-                setState(() {
-                  _blockSelected = value;
-                });
-              },
-              onSave: (apps, sites) {
-                setState(() {
-                  _selectedApps = apps;
-                  _selectedSites = sites;
-                  _validateRoutine();
-                });
-              },
-              onBack: _toggleBlockList,
-            )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(labelText: 'Routine Name'),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildBlockListSection(),
-                  const SizedBox(height: 16),
-                  _buildTimeSection(),
-                  const SizedBox(height: 16),
-                  _buildDaySelector(),
-                  const SizedBox(height: 16),
-                  _buildConditionsList(),
-                  if (widget.onDelete != null) ...[
-                    const SizedBox(height: 24),
-                    const Divider(),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: TextButton.icon(
-                        onPressed: _confirmDelete,
-                        icon: const Icon(Icons.delete_outline, color: Colors.red),
-                        label: const Text('Delete Routine', 
-                          style: TextStyle(color: Colors.red),
-                        ),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'Routine Name'),
             ),
+            const SizedBox(height: 16),
+            _buildBlockListSection(),
+            const SizedBox(height: 16),
+            _buildTimeSection(),
+            const SizedBox(height: 16),
+            _buildDaySelector(),
+            const SizedBox(height: 16),
+            _buildConditionsList(),
+            if (widget.onDelete != null) ...[
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  onPressed: _confirmDelete,
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  label: const Text('Delete Routine', 
+                    style: TextStyle(color: Colors.red),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

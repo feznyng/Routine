@@ -68,129 +68,117 @@ class _BlockListPageState extends State<BlockListPage> {
   @override
   Widget build(BuildContext context) {
     final manager = Manager();
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () {
-                    widget.onSave(_selectedApps, _selectedSites);
-                    widget.onBack();
-                  },
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            widget.onSave(_selectedApps, _selectedSites);
+            widget.onBack();
+          },
+        ),
+        title: const Text('Manage Blocks'),
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Dropdown for block list selection
+              DropdownButtonFormField<String>(
+                value: _selectedBlockListId,
+                decoration: const InputDecoration(
+                  labelText: 'Block List',
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
-                const Expanded(
+                items: [
+                  const DropdownMenuItem<String>(
+                    value: null,
+                    child: Text('None'),
+                  ),
+                  ...manager.namedBlockLists.values.map((blockList) {
+                    return DropdownMenuItem<String>(
+                      value: blockList.id,
+                      child: Text(blockList.name ?? 'Unnamed List'),
+                    );
+                  }).toList(),
+                ],
+                onChanged: (String? newId) {
+                  setState(() {
+                    _selectedBlockListId = newId;
+                    if (newId != null) {
+                      final selectedList = manager.findBlockList(newId);
+                      _selectedApps = List.from(selectedList?.apps ?? []);
+                      _selectedSites = List.from(selectedList?.sites ?? []);
+                    } else {
+                      _selectedApps = [];
+                      _selectedSites = [];
+                    }
+                  });
+                  widget.onSave(_selectedApps, _selectedSites);
+                },
+              ),
+              const SizedBox(height: 24),
+              if (_selectedBlockListId != null)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 16.0),
                   child: Text(
-                    'Manage Blocks',
+                    'This routine will use the selected block list.',
                     style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w500,
+                      fontStyle: FontStyle.italic,
                     ),
                     textAlign: TextAlign.center,
                   ),
                 ),
-                // Add a spacer with the same width as the back button for symmetry
-                const SizedBox(width: 48),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // Dropdown for block list selection
-            DropdownButtonFormField<String>(
-              value: _selectedBlockListId,
-              decoration: InputDecoration(
-                labelText: 'Block List',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              ),
-              items: [
-                DropdownMenuItem<String>(
-                  value: null,
-                  child: Text('None'),
-                ),
-                ...manager.namedBlockLists.values.map((blockList) {
-                  return DropdownMenuItem<String>(
-                    value: blockList.id,
-                    child: Text(blockList.name ?? 'Unnamed List'),
-                  );
-                }).toList(),
-              ],
-              onChanged: (String? newId) {
-                setState(() {
-                  _selectedBlockListId = newId;
-                  if (newId != null) {
-                    final selectedList = manager.findBlockList(newId);
-                    _selectedApps = List.from(selectedList?.apps ?? []);
-                    _selectedSites = List.from(selectedList?.sites ?? []);
-                  } else {
-                    _selectedApps = [];
-                    _selectedSites = [];
-                  }
-                });
-                widget.onSave(_selectedApps, _selectedSites);
-              },
-            ),
-            const SizedBox(height: 24),
-            if (_selectedBlockListId != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: Text(
-                  'This routine will use the selected block list.',
-                  style: TextStyle(
-                    fontStyle: FontStyle.italic,
+              if (_selectedBlockListId == null) 
+                Padding(
+                  padding: const EdgeInsets.all(0.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 8),
+                      SegmentedButton<bool>(
+                        segments: const [
+                          ButtonSegment<bool>(
+                            value: true,
+                            label: Text('Blocklist'),
+                          ),
+                          ButtonSegment<bool>(
+                            value: false,
+                            label: Text('Allowlist'),
+                          ),
+                        ],
+                        selected: {widget.blockSelected},
+                        onSelectionChanged: (Set<bool> newSelection) {
+                          widget.onBlockModeChanged(newSelection.first);
+                        },
+                      ),
+                    ],
                   ),
-                  textAlign: TextAlign.center,
                 ),
-              ),
-            if (_selectedBlockListId == null) 
-              Padding(
-                padding: const EdgeInsets.all(0.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 8),
-                    SegmentedButton<bool>(
-                      segments: const [
-                        ButtonSegment<bool>(
-                          value: true,
-                          label: Text('Blocklist'),
-                        ),
-                        ButtonSegment<bool>(
-                          value: false,
-                          label: Text('Allowlist'),
-                        ),
-                      ],
-                      selected: {widget.blockSelected},
-                      onSelectionChanged: (Set<bool> newSelection) {
-                        widget.onBlockModeChanged(newSelection.first);
-                      },
-                    ),
-                  ],
+              if (_selectedBlockListId == null) 
+                const SizedBox(height: 10),
+              if (_selectedBlockListId == null) 
+                _buildBlockButton(
+                  title: 'Applications',
+                  subtitle: _getAppSubtitle(),
+                  icon: Icons.apps,
+                  onPressed: _openAppsDialog,
                 ),
-              ),
-            if (_selectedBlockListId == null) 
-              const SizedBox(height: 10),
-            if (_selectedBlockListId == null) 
-              _buildBlockButton(
-                title: 'Applications',
-                subtitle: _getAppSubtitle(),
-                icon: Icons.apps,
-                onPressed: _openAppsDialog,
-              ),
-            if (_selectedBlockListId == null) 
-              const SizedBox(height: 5),
-            if (_selectedBlockListId == null) 
-              _buildBlockButton(
-                title: 'Sites',
-                subtitle: _getSiteSubtitle(),
-                icon: Icons.language,
-                onPressed: _openSitesDialog,
-              ),
-          ],
+              if (_selectedBlockListId == null) 
+                const SizedBox(height: 5),
+              if (_selectedBlockListId == null) 
+                _buildBlockButton(
+                  title: 'Sites',
+                  subtitle: _getSiteSubtitle(),
+                  icon: Icons.language,
+                  onPressed: _openSitesDialog,
+                ),
+            ],
+          ),
         ),
       ),
     );
