@@ -3,7 +3,7 @@ import '../routine.dart';
 import '../condition.dart';
 import '../group.dart';
 import '../manager.dart';
-import 'block_list_page.dart';
+import 'block_group_page.dart';
 import 'package:uuid/uuid.dart';
 
 class RoutinePage extends StatefulWidget {
@@ -62,7 +62,7 @@ class _RoutinePageState extends State<RoutinePage> {
       final blockList = Manager().findBlockList(_blockListId!)!;
       _selectedApps = List.from(blockList.apps);
       _selectedSites = List.from(blockList.sites);
-      _blockSelected = !blockList.allowList;
+      _blockSelected = !blockList.allow;
     }
     
     _nameController.addListener(_validateRoutine);
@@ -96,7 +96,7 @@ class _RoutinePageState extends State<RoutinePage> {
         _selectedSites.every((site) => currentBlockList.sites.contains(site));
 
     bool blockModeEqual = currentBlockList != null &&
-        _blockSelected == !currentBlockList.allowList;
+        _blockSelected == !currentBlockList.allow;
 
     setState(() {
       _hasChanges = _nameController.text != widget.routine.name ||

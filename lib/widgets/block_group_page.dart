@@ -144,11 +144,11 @@ class _BlockListPageState extends State<BlockListPage> {
                         segments: const [
                           ButtonSegment<bool>(
                             value: true,
-                            label: Text('Blocklist'),
+                            label: Text('Block'),
                           ),
                           ButtonSegment<bool>(
                             value: false,
-                            label: Text('Allowlist'),
+                            label: Text('Allow'),
                           ),
                         ],
                         selected: {widget.blockSelected},

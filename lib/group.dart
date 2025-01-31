@@ -26,7 +26,7 @@ class Group {
   String? get name => _name;
   List<String> get apps => List.unmodifiable(_apps);
   List<String> get sites => List.unmodifiable(_sites);
-  bool get allowList => _allowList;
+  bool get allow => _allowList;
 
   // Create a new BlockList with updated values
   Group copyWith({
