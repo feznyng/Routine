@@ -215,19 +215,26 @@ class _RoutinePageState extends State<RoutinePage> {
 
   Widget _buildBlockGroupSection() {
     String summary = '';
-    if (_selectedApps.isEmpty && _selectedSites.isEmpty) {
-      summary = _blockSelected ? 'Nothing blocked' : 'Everything blocked';
+    final groupId = widget.routine.getGroupId();
+    final group = groupId != null ? Manager().findBlockGroup(groupId) : null;
+
+    if (group?.name != null) {
+      summary = group!.name!;
     } else {
-      List<String> parts = [];
-      if (_selectedApps.isNotEmpty) {
-        parts.add('${_selectedApps.length} apps');
+      if (_selectedApps.isEmpty && _selectedSites.isEmpty) {
+        summary = _blockSelected ? 'Nothing blocked' : 'Everything blocked';
+      } else {
+        List<String> parts = [];
+        if (_selectedApps.isNotEmpty) {
+          parts.add('${_selectedApps.length} apps');
+        }
+        if (_selectedSites.isNotEmpty) {
+          parts.add('${_selectedSites.length} sites');
+        }
+        summary = _blockSelected 
+            ? 'Blocking ${parts.join(", ")}'
+            : 'Allowing ${parts.join(", ")}';
       }
-      if (_selectedSites.isNotEmpty) {
-        parts.add('${_selectedSites.length} sites');
-      }
-      summary = _blockSelected 
-          ? 'Blocking ${parts.join(", ")}'
-          : 'Allowing ${parts.join(", ")}';
     }
 
     return Card(
