@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'block_apps_dialog.dart';
 import 'block_sites_dialog.dart';
+import '../manager.dart';
 
 class BlockListPage extends StatefulWidget {
   final List<String> selectedApps;
@@ -27,6 +28,7 @@ class BlockListPage extends StatefulWidget {
 class _BlockListPageState extends State<BlockListPage> {
   late List<String> _selectedApps;
   late List<String> _selectedSites;
+  String? _selectedBlockListId; // Track selected block list ID
 
   @override
   void initState() {
@@ -65,6 +67,7 @@ class _BlockListPageState extends State<BlockListPage> {
 
   @override
   Widget build(BuildContext context) {
+    final manager = Manager();
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -96,45 +99,97 @@ class _BlockListPageState extends State<BlockListPage> {
               ],
             ),
             const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.all(0.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 8),
-                  SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment<bool>(
-                        value: true,
-                        label: Text('Blocklist'),
-                      ),
-                      ButtonSegment<bool>(
-                        value: false,
-                        label: Text('Allowlist'),
-                      ),
-                    ],
-                    selected: {widget.blockSelected},
-                    onSelectionChanged: (Set<bool> newSelection) {
-                      widget.onBlockModeChanged(newSelection.first);
-                    },
-                  ),
-                ],
+            // Dropdown for block list selection
+            DropdownButtonFormField<String>(
+              value: _selectedBlockListId,
+              decoration: InputDecoration(
+                labelText: 'Block List',
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
+              items: [
+                DropdownMenuItem<String>(
+                  value: null,
+                  child: Text('None'),
+                ),
+                ...manager.namedBlockLists.values.map((blockList) {
+                  return DropdownMenuItem<String>(
+                    value: blockList.id,
+                    child: Text(blockList.name ?? 'Unnamed List'),
+                  );
+                }).toList(),
+              ],
+              onChanged: (String? newId) {
+                setState(() {
+                  _selectedBlockListId = newId;
+                  if (newId != null) {
+                    final selectedList = manager.findBlockList(newId);
+                    _selectedApps = List.from(selectedList?.apps ?? []);
+                    _selectedSites = List.from(selectedList?.sites ?? []);
+                  } else {
+                    _selectedApps = [];
+                    _selectedSites = [];
+                  }
+                });
+                widget.onSave(_selectedApps, _selectedSites);
+              },
             ),
-            const SizedBox(height: 10),
-            _buildBlockButton(
-              title: 'Applications',
-              subtitle: _getAppSubtitle(),
-              icon: Icons.apps,
-              onPressed: _openAppsDialog,
-            ),
-            const SizedBox(height: 5),
-            _buildBlockButton(
-              title: 'Sites',
-              subtitle: _getSiteSubtitle(),
-              icon: Icons.language,
-              onPressed: _openSitesDialog,
-            ),
+            const SizedBox(height: 24),
+            if (_selectedBlockListId != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: Text(
+                  'This routine will use the selected block list.',
+                  style: TextStyle(
+                    fontStyle: FontStyle.italic,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            if (_selectedBlockListId == null) 
+              Padding(
+                padding: const EdgeInsets.all(0.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 8),
+                    SegmentedButton<bool>(
+                      segments: const [
+                        ButtonSegment<bool>(
+                          value: true,
+                          label: Text('Blocklist'),
+                        ),
+                        ButtonSegment<bool>(
+                          value: false,
+                          label: Text('Allowlist'),
+                        ),
+                      ],
+                      selected: {widget.blockSelected},
+                      onSelectionChanged: (Set<bool> newSelection) {
+                        widget.onBlockModeChanged(newSelection.first);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            if (_selectedBlockListId == null) 
+              const SizedBox(height: 10),
+            if (_selectedBlockListId == null) 
+              _buildBlockButton(
+                title: 'Applications',
+                subtitle: _getAppSubtitle(),
+                icon: Icons.apps,
+                onPressed: _openAppsDialog,
+              ),
+            if (_selectedBlockListId == null) 
+              const SizedBox(height: 5),
+            if (_selectedBlockListId == null) 
+              _buildBlockButton(
+                title: 'Sites',
+                subtitle: _getSiteSubtitle(),
+                icon: Icons.language,
+                onPressed: _openSitesDialog,
+              ),
           ],
         ),
       ),
@@ -168,10 +223,12 @@ class _BlockListPageState extends State<BlockListPage> {
     required String subtitle,
     required IconData icon,
     required VoidCallback onPressed,
+    bool enabled = true,
   }) {
     return Card(
+      color: enabled ? null : Theme.of(context).disabledColor.withOpacity(0.1),
       child: InkWell(
-        onTap: onPressed,
+        onTap: enabled ? onPressed : null,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -180,13 +237,17 @@ class _BlockListPageState extends State<BlockListPage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withOpacity(0.1),
+                  color: enabled 
+                    ? Theme.of(context).primaryColor.withOpacity(0.1)
+                    : Colors.grey.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   icon,
                   size: 32,
-                  color: Theme.of(context).primaryColor,
+                  color: enabled 
+                    ? Theme.of(context).primaryColor
+                    : Colors.grey,
                 ),
               ),
               const SizedBox(width: 16),
