@@ -7,13 +7,13 @@ import 'block_list_page.dart';
 import 'package:uuid/uuid.dart';
 
 class RoutineDialog extends StatefulWidget {
-  final Routine? routine;
+  final Routine routine;
   final Function(Routine) onSave;
   final Function()? onDelete;
 
   const RoutineDialog({
     super.key,
-    this.routine,
+    required this.routine,
     required this.onSave,
     this.onDelete,
   });
@@ -50,25 +50,25 @@ class _RoutineDialogState extends State<RoutineDialog> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.routine?.name ?? '');
-    _selectedDays = widget.routine?.days ?? List.filled(7, true);
-    _isAllDay = widget.routine?.startTime == -1;
-    _startTime = widget.routine?.startTime != -1
+    _nameController = TextEditingController(text: widget.routine.name);
+    _selectedDays = widget.routine.days;
+    _isAllDay = widget.routine.startTime == -1;
+    _startTime = widget.routine.startTime != -1
         ? TimeOfDay(
-            hour: widget.routine!.startHour,
-            minute: widget.routine!.startMinute,
+            hour: widget.routine.startHour,
+            minute: widget.routine.startMinute,
           )
         : const TimeOfDay(hour: 9, minute: 0);
-    _endTime = widget.routine?.endTime != -1
+    _endTime = widget.routine.endTime != -1
         ? TimeOfDay(
-            hour: widget.routine!.endHour,
-            minute: widget.routine!.endMinute,
+            hour: widget.routine.endHour,
+            minute: widget.routine.endMinute,
           )
         : const TimeOfDay(hour: 17, minute: 0);
-    _conditions = widget.routine?.conditions ?? [];
+    _conditions = widget.routine.conditions;
 
     // Load block list if exists
-    _blockListId = widget.routine?.blockId;
+    _blockListId = widget.routine.blockId;
     if (_blockListId != null && _blockListId!.isNotEmpty && Manager().blockLists.containsKey(_blockListId)) {
       final blockList = Manager().blockLists[_blockListId]!;
       _selectedApps = List.from(blockList.apps);
@@ -77,37 +77,30 @@ class _RoutineDialogState extends State<RoutineDialog> {
     }
 
     // Store initial values
-    if (widget.routine != null) {
-      _initialName = widget.routine!.name;
-      _initialDays = List.from(widget.routine!.days);
-      _initialIsAllDay = widget.routine!.startTime == -1;
-      _initialStartTime = widget.routine!.startTime != -1
-          ? TimeOfDay(
-              hour: widget.routine!.startHour,
-              minute: widget.routine!.startMinute,
-            )
-          : null;
-      _initialEndTime = widget.routine!.endTime != -1
-          ? TimeOfDay(
-              hour: widget.routine!.endHour,
-              minute: widget.routine!.endMinute,
-            )
-          : null;
-      _initialConditions = List.from(widget.routine!.conditions);
-      _initialApps = List.from(_selectedApps);
-      _initialSites = List.from(_selectedSites);
-    }
+    _initialName = widget.routine.name;
+    _initialDays = List.from(widget.routine.days);
+    _initialIsAllDay = widget.routine.startTime == -1;
+    _initialStartTime = widget.routine.startTime != -1
+        ? TimeOfDay(
+            hour: widget.routine.startHour,
+            minute: widget.routine.startMinute,
+          )
+        : null;
+    _initialEndTime = widget.routine.endTime != -1
+        ? TimeOfDay(
+            hour: widget.routine.endHour,
+            minute: widget.routine.endMinute,
+          )
+        : null;
+    _initialConditions = List.from(widget.routine.conditions);
+    _initialApps = List.from(_selectedApps);
+    _initialSites = List.from(_selectedSites);
     
     _nameController.addListener(_validateRoutine);
     _validateRoutine();
   }
 
   void _checkForChanges() {
-    if (widget.routine == null) {
-      _hasChanges = true;
-      return;
-    }
-
     bool daysEqual = _initialDays != null && 
         _selectedDays.length == _initialDays!.length &&
         List.generate(_selectedDays.length, (i) => _selectedDays[i] == _initialDays![i])
@@ -152,21 +145,6 @@ class _RoutineDialogState extends State<RoutineDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: _showBlockList 
-          ? Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () {
-                    setState(() {
-                      _showBlockList = false;
-                    });
-                  },
-                ),
-                const Text('Block List'),
-              ],
-            )
-          : Text(widget.routine == null ? 'Create Routine' : 'Edit Routine'),
       content: SizedBox(
         width: 600,
         height: 500,
@@ -233,7 +211,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
           child: const Text('Cancel'),
         ),
         TextButton(
-          onPressed: (_isValid && (_hasChanges || widget.routine == null)) ? _saveRoutine : null,
+          onPressed: (_isValid && (_hasChanges)) ? _saveRoutine : null,
           child: const Text('Save'),
         ),
       ],
@@ -422,7 +400,7 @@ class _RoutineDialogState extends State<RoutineDialog> {
 
   Routine _createRoutine() {
     final routine = Routine(
-      id: widget.routine?.id ?? const Uuid().v4(),
+      id: widget.routine.id,
       name: _nameController.text
     );
 
@@ -439,7 +417,11 @@ class _RoutineDialogState extends State<RoutineDialog> {
     }
     
     // Create block list
-    final blockList = BlockList(name: routine.id);
+    final blockList = BlockList(
+      id: Uuid().v4(),
+      name: routine.id,
+    );
+    blockList.routineId = routine.id;
     blockList.apps = _selectedApps;
     blockList.sites = _selectedSites;
     blockList.allowList = !_blockSelected;  // Convert blockSelected to allowList

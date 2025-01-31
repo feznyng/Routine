@@ -13,7 +13,7 @@ class Manager {
 
     // block lists
     String workBlockListId = Uuid().v4();
-    BlockList workBlockList = BlockList(name: 'Work');
+    BlockList workBlockList = BlockList(id: workBlockListId, name: 'Work');
     workBlockList.sites = [
       "facebook.com",
       "youtube.com",
@@ -29,11 +29,11 @@ class Manager {
     ];
 
     String everythingBlockListId = Uuid().v4();
-    BlockList everythingBlockList = BlockList(name: 'Everything');
+    BlockList everythingBlockList = BlockList(id: everythingBlockListId, name: 'Everything');
     everythingBlockList.allowList = true;
 
     String foodBlockListId = Uuid().v4();
-    BlockList foodBlockList = BlockList(name: 'Food');
+    BlockList foodBlockList = BlockList(id: foodBlockListId, name: 'Food');
     foodBlockList.sites = [
       "doordash.com",
       "ubereats.com"
