@@ -196,151 +196,189 @@ class _RoutinePageState extends State<RoutinePage> {
     }
   }
 
-  Widget _buildTimeSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Time'),
-        const SizedBox(height: 8),
-        SwitchListTile(
-          title: const Text('All Day'),
-          value: _isAllDay,
-          onChanged: (value) {
-            setState(() {
-              _isAllDay = value;
-              _validateRoutine();
-            });
-          },
-        ),
-        if (!_isAllDay) ...[
-          ListTile(
-            title: const Text('Start Time'),
-            trailing: Text(_startTime.format(context)),
-            onTap: () async {
-              final TimeOfDay? time = await showTimePicker(
-                context: context,
-                initialTime: _startTime,
-              );
-              if (time != null) {
-                setState(() {
-                  _startTime = time;
-                  _validateRoutine();
-                });
-              }
-            },
-          ),
-          ListTile(
-            title: const Text('End Time'),
-            trailing: Text(_endTime.format(context)),
-            onTap: () async {
-              final TimeOfDay? time = await showTimePicker(
-                context: context,
-                initialTime: _endTime,
-              );
-              if (time != null) {
-                setState(() {
-                  _endTime = time;
-                  _validateRoutine();
-                });
-              }
-            },
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildDaySelector() {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Days'),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          children: List.generate(7, (index) {
-            return FilterChip(
-              label: Text(days[index]),
-              selected: _selectedDays[index],
-              onSelected: (selected) {
-                setState(() {
-                  _selectedDays[index] = selected;
-                  _validateRoutine();
-                });
-              },
-            );
-          }),
-        ),
-      ],
-    );
-  }
-
   Widget _buildBlockListSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        OutlinedButton.icon(
-          onPressed: _toggleBlockList,
-          icon: const Icon(Icons.block),
-          label: Text(_selectedApps.isEmpty && _selectedSites.isEmpty
-              ? 'Add List'
-              : 'Edit List'),
-        ),
-        if (_selectedApps.isNotEmpty || _selectedSites.isNotEmpty) ...[
+    String summary = '';
+    if (_selectedApps.isEmpty && _selectedSites.isEmpty) {
+      summary = _blockSelected ? 'Nothing blocked' : 'Everything blocked';
+    } else {
+      List<String> parts = [];
+      if (_selectedApps.isNotEmpty) {
+        parts.add('${_selectedApps.length} apps');
+      }
+      if (_selectedSites.isNotEmpty) {
+        parts.add('${_selectedSites.length} sites');
+      }
+      summary = _blockSelected 
+          ? 'Blocking ${parts.join(", ")}'
+          : 'Allowing ${parts.join(", ")}';
+    }
+
+    return Card(
+      child: ListTile(
+        title: const Text('Block List'),
+        subtitle: Text(summary),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: _toggleBlockList,
+      ),
+    );
+  }
+
+  Widget _buildTimeSection() {
+    return Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              'Schedule',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          SwitchListTile(
+            title: const Text('All Day'),
+            value: _isAllDay,
+            onChanged: (value) {
+              setState(() {
+                _isAllDay = value;
+                _validateRoutine();
+              });
+            },
+          ),
+          if (!_isAllDay) ...[
+            ListTile(
+              title: const Text('Start Time'),
+              trailing: TextButton.icon(
+                icon: const Icon(Icons.access_time),
+                label: Text(_startTime.format(context)),
+                onPressed: () async {
+                  final TimeOfDay? time = await showTimePicker(
+                    context: context,
+                    initialTime: _startTime,
+                  );
+                  if (time != null) {
+                    setState(() {
+                      _startTime = time;
+                      _validateRoutine();
+                    });
+                  }
+                },
+              ),
+            ),
+            ListTile(
+              title: const Text('End Time'),
+              trailing: TextButton.icon(
+                icon: const Icon(Icons.access_time),
+                label: Text(_endTime.format(context)),
+                onPressed: () async {
+                  final TimeOfDay? time = await showTimePicker(
+                    context: context,
+                    initialTime: _endTime,
+                  );
+                  if (time != null) {
+                    setState(() {
+                      _endTime = time;
+                      _validateRoutine();
+                    });
+                  }
+                },
+              ),
+            ),
+          ],
           const SizedBox(height: 8),
-          Text(
-            '${_blockSelected ? "Blocking" : "Allowing"} ${_selectedApps.length} apps'
-            '${_selectedSites.isNotEmpty ? " and ${_selectedSites.length} sites" : ""}',
-            style: Theme.of(context).textTheme.bodySmall,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Repeat on',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (int i = 0; i < 7; i++)
+                      FilterChip(
+                        label: Text(['M', 'T', 'W', 'T', 'F', 'S', 'S'][i]),
+                        selected: _selectedDays[i],
+                        onSelected: (bool selected) {
+                          setState(() {
+                            _selectedDays[i] = selected;
+                            _validateRoutine();
+                          });
+                        },
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
-      ],
+      ),
     );
   }
 
   Widget _buildConditionsList() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Conditions'),
-        const SizedBox(height: 8),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _conditions.length,
-          itemBuilder: (context, index) {
-            return ListTile(
-              title: Text('Condition ${index + 1}'),
-              trailing: IconButton(
-                icon: const Icon(Icons.delete_outline),
-                onPressed: () {
-                  setState(() {
-                    _conditions.removeAt(index);
-                    _validateRoutine();
-                  });
-                },
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          width: double.infinity,
-          child: TextButton.icon(
-            onPressed: () {
-              setState(() {
-                _validateRoutine();
-              });
-            },
-            icon: const Icon(Icons.add),
-            label: const Text('Add Condition'),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 12),
+    return Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              'Conditions',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
           ),
-        ),
-      ],
+          if (_conditions.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(
+                child: Text(
+                  'No conditions added',
+                  style: TextStyle(
+                    fontStyle: FontStyle.italic,
+                    color: Colors.grey,
+                  ),
+                ),
+              ),
+            ),
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _conditions.length,
+            itemBuilder: (context, index) {
+              return ListTile(
+                title: Text('Condition ${index + 1}'),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: () {
+                    setState(() {
+                      _conditions.removeAt(index);
+                      _validateRoutine();
+                    });
+                  },
+                ),
+              );
+            },
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: OutlinedButton.icon(
+              onPressed: () {
+                setState(() {
+                  //_conditions.add(Condition());
+                  _validateRoutine();
+                });
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add Condition'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -384,24 +422,20 @@ class _RoutinePageState extends State<RoutinePage> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildBlockListSection(),
-            const SizedBox(height: 16),
-            _buildTimeSection(),
-            const SizedBox(height: 16),
-            _buildDaySelector(),
-            const SizedBox(height: 16),
-            _buildConditionsList(),
-            if (widget.onDelete != null) ...[
-              const SizedBox(height: 24),
-              const Divider(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton.icon(
+              _buildBlockListSection(),
+              const SizedBox(height: 16),
+              _buildTimeSection(),
+              const SizedBox(height: 16),
+              _buildConditionsList(),
+              if (widget.onDelete != null) ...[
+                const SizedBox(height: 24),
+                TextButton.icon(
                   onPressed: _confirmDelete,
                   icon: const Icon(Icons.delete_outline, color: Colors.red),
                   label: const Text('Delete Routine', 
@@ -411,9 +445,10 @@ class _RoutinePageState extends State<RoutinePage> {
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
-              ),
+                const SizedBox(height: 32),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
