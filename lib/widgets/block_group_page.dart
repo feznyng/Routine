@@ -6,7 +6,7 @@ import 'block_groups_page.dart';
 class BlockGroupPage extends StatefulWidget {
   final List<String> selectedApps;
   final List<String> selectedSites;
-  final Function(List<String>, List<String>) onSave;
+  final Function(List<String>, List<String>, String?) onSave;
   final bool blockSelected;
   final Function(bool) onBlockModeChanged;
   final VoidCallback onBack;
@@ -47,9 +47,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                          Manager().namedBlockGroups.containsKey(currentGroupId)
         ? currentGroupId
         : null;
-    
-    debugPrint('BlockGroupPage initState: currentGroupId=$currentGroupId, _selectedBlockGroupId=$_selectedBlockGroupId');
-  }
+    }
 
   Future<void> _navigateToManageGroups() async {
     await Navigator.of(context).push(
@@ -68,11 +66,19 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            widget.onSave(_selectedApps, _selectedSites);
             widget.onBack();
           },
         ),
         title: const Text('Block Group'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              widget.onSave(_selectedApps, _selectedSites, _selectedBlockGroupId);
+              widget.onBack();
+            },
+            child: const Text('Save'),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -112,12 +118,12 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                             _selectedApps = List.from(selectedList?.apps ?? []);
                             _selectedSites = List.from(selectedList?.sites ?? []);
                             _blockSelected = !(selectedList?.allow ?? false);
+                            widget.onBlockModeChanged(_blockSelected);
                           } else {
                             _selectedApps = [];
                             _selectedSites = [];
                           }
                         });
-                        widget.onSave(_selectedApps, _selectedSites);
                       },
                     ),
                   ),
@@ -156,7 +162,6 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                       _selectedApps = apps;
                       _selectedSites = sites;
                     });
-                    widget.onSave(_selectedApps, _selectedSites);
                   },
                 ),
             ],

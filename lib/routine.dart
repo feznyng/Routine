@@ -1,7 +1,6 @@
 import 'condition.dart';
 import 'group.dart';
 import 'manager.dart';
-import 'package:flutter/material.dart';
 
 enum FrictionType {
   none,
@@ -130,19 +129,14 @@ class Routine {
     return true;
   }
 
-  String? getGroupId() {
-    final id = _groupIds[Manager().thisDevice.id];
-    debugPrint('groupIds: ${_groupIds}, deviceId: ${Manager().thisDevice.id}, getGroupId: $id');
+  String getGroupId() {
+    final id = _groupIds[Manager().thisDevice.id]!;
     return id;
   }
 
-  Group? getGroup() {
-    String? id = getGroupId();
+  Group getGroup() {
+    String id = getGroupId();
 
-    if (id == null || id.isEmpty) {
-      return null;
-    }
-
-    return Manager().findBlockGroup(id);
+    return Manager().findBlockGroup(id)!;
   }
 }
