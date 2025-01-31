@@ -149,17 +149,17 @@ class _RoutinePageState extends State<RoutinePage> {
   }
 
   Future<void> _saveRoutine() async {
-    // Use existing block list ID if available, otherwise create a new one
-    String blockGroupId = _blockGroupId ?? const Uuid().v4();
+    String? blockGroupId = widget.routine.getGroupId();
     
     // Create or update block list
     if (_selectedApps.isNotEmpty || _selectedSites.isNotEmpty) {
+      // Generate new ID if none exists
+      blockGroupId ??= const Uuid().v4();
+      
       // Preserve the name if updating an existing block list
       String? name;
-      if (_blockGroupId != null) {
-        final existingBlockGroup = Manager().findBlockGroup(_blockGroupId!);
-        name = existingBlockGroup?.name;
-      }
+      final existingBlockGroup = Manager().findBlockGroup(blockGroupId);
+      name = existingBlockGroup?.name;
 
       final blockGroup = Group(
         id: blockGroupId,
@@ -179,11 +179,13 @@ class _RoutinePageState extends State<RoutinePage> {
       startTime: _isAllDay ? -1 : _startTime.hour * 60 + _startTime.minute,
       endTime: _isAllDay ? -1 : _endTime.hour * 60 + _endTime.minute,
       conditions: _conditions,
-      groupIds: (_selectedApps.isNotEmpty || _selectedSites.isNotEmpty) ? {Manager().thisDevice.id: _blockGroupId!} : {},
+      groupIds: (_selectedApps.isNotEmpty || _selectedSites.isNotEmpty && blockGroupId != null) 
+          ? {Manager().thisDevice.id: blockGroupId!} 
+          : {},
     );
 
     widget.onSave(updatedRoutine);
-    Navigator.of(context).pop();
+    // Let the parent handle navigation
   }
 
   Future<void> _confirmDelete() async {
