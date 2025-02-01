@@ -23,7 +23,7 @@ class Routine {
   final int _numBreaks;
   final int _maxBreakDuration; // in minutes
   final FrictionType _frictionType;
-  final int _frictionNum; // fixed delay, code length
+  final int _frictionAmt; // fixed delay, code length
   final String _frictionSource; // nfc id, code source
 
   // conditions
@@ -41,7 +41,7 @@ class Routine {
     int numBreaks = -1,
     int maxBreakDuration = 15,
     FrictionType frictionType = FrictionType.none,
-    int frictionNum = -1,
+    int frictionAmt = -1,
     String frictionSource = "",
     List<Condition>? conditions,
     Map<String, String> groupIds = const {}
@@ -51,7 +51,7 @@ class Routine {
        _numBreaks = numBreaks,
        _maxBreakDuration = maxBreakDuration,
        _frictionType = frictionType,
-       _frictionNum = frictionNum,
+       _frictionAmt = frictionAmt,
        _frictionSource = frictionSource,
        _conditions = conditions ?? [],
        _groupIds = groupIds {
@@ -80,7 +80,7 @@ class Routine {
   int get numBreaks => _numBreaks;
   int get maxBreakDuration => _maxBreakDuration;
   FrictionType get frictionType => _frictionType;
-  int get frictionNum => _frictionNum;
+  int get frictionAmt => _frictionAmt;
   String get frictionSource => _frictionSource;
   List<Condition> get conditions => List.unmodifiable(_conditions);
   Map<String, String> get groupIds => Map.unmodifiable(_groupIds);
