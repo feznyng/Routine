@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 import '../routine.dart';
 import '../condition.dart';
 import '../group.dart';
@@ -160,7 +161,7 @@ class _RoutinePageState extends State<RoutinePage> {
   }
 
   Future<void> _saveRoutine() async {
-    String? blockGroupId = _blockGroupId;
+    String? blockGroupId = _blockGroupId == Manager().tempGroup.id ? Uuid().v4() : _blockGroupId;
     
     // Create or update block list
     if (_selectedApps.isNotEmpty || _selectedSites.isNotEmpty) {
@@ -181,7 +182,7 @@ class _RoutinePageState extends State<RoutinePage> {
     }
 
     final updatedRoutine = Routine(
-      id: widget.routine.id,
+      id: widget.routine.id == Manager().tempRoutine.id ? Uuid().v4() : widget.routine.id,
       name: _nameController.text,
       days: _selectedDays,
       startTime: _isAllDay ? -1 : _startTime.hour * 60 + _startTime.minute,
