@@ -3,6 +3,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 
 part 'database.g.dart';
 
+@DataClassName('RoutineEntry')
 class Routines extends Table {
   late final id = text()();
   late final name = text()();
@@ -31,6 +32,7 @@ class Routines extends Table {
   late final breaks = text()();
 }
 
+@DataClassName('ConditionEntry')
 class Conditions extends Table {
   late final id = text()();
 
@@ -45,6 +47,7 @@ class Conditions extends Table {
   late final lastCompletedAt = text().nullable()();
 }
 
+@DataClassName('DeviceEntry')
 class Devices extends Table {
   late final id = text()();
 
@@ -55,6 +58,7 @@ class Devices extends Table {
   late final type = text()();
 }
 
+@DataClassName('GroupEntry')
 class Groups extends Table {
   late final id = text()();
 
@@ -65,6 +69,7 @@ class Groups extends Table {
   late final device = text().references(Devices, #id)();
 }
 
+@DataClassName('RoutineGroupEntry')
 class RoutineGroups extends Table {
   late final id = text()();
 
@@ -76,6 +81,7 @@ class RoutineGroups extends Table {
 }
 
 // device only (no-sync)
+@DataClassName('GroupItemEntry')
 class GroupItems extends Table {
   late final value = text()();
   late final site = boolean()();
