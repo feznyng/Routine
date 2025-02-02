@@ -91,40 +91,11 @@ class $RoutinesTable extends Routines
   late final GeneratedColumn<int> endTime = GeneratedColumn<int>(
       'end_time', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _numBreaksMeta =
-      const VerificationMeta('numBreaks');
+  static const VerificationMeta _changesMeta =
+      const VerificationMeta('changes');
   @override
-  late final GeneratedColumn<int> numBreaks = GeneratedColumn<int>(
-      'num_breaks', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _maxBreakDurationMeta =
-      const VerificationMeta('maxBreakDuration');
-  @override
-  late final GeneratedColumn<int> maxBreakDuration = GeneratedColumn<int>(
-      'max_break_duration', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _frictionTypeMeta =
-      const VerificationMeta('frictionType');
-  @override
-  late final GeneratedColumn<String> frictionType = GeneratedColumn<String>(
-      'friction_type', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _frictionAmtMeta =
-      const VerificationMeta('frictionAmt');
-  @override
-  late final GeneratedColumn<int> frictionAmt = GeneratedColumn<int>(
-      'friction_amt', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _frictionSourceMeta =
-      const VerificationMeta('frictionSource');
-  @override
-  late final GeneratedColumn<String> frictionSource = GeneratedColumn<String>(
-      'friction_source', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _breaksMeta = const VerificationMeta('breaks');
-  @override
-  late final GeneratedColumn<String> breaks = GeneratedColumn<String>(
-      'breaks', aliasedName, false,
+  late final GeneratedColumn<String> changes = GeneratedColumn<String>(
+      'changes', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   @override
   List<GeneratedColumn> get $columns => [
@@ -139,12 +110,7 @@ class $RoutinesTable extends Routines
         sunday,
         startTime,
         endTime,
-        numBreaks,
-        maxBreakDuration,
-        frictionType,
-        frictionAmt,
-        frictionSource,
-        breaks
+        changes
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -221,49 +187,11 @@ class $RoutinesTable extends Routines
     } else if (isInserting) {
       context.missing(_endTimeMeta);
     }
-    if (data.containsKey('num_breaks')) {
-      context.handle(_numBreaksMeta,
-          numBreaks.isAcceptableOrUnknown(data['num_breaks']!, _numBreaksMeta));
+    if (data.containsKey('changes')) {
+      context.handle(_changesMeta,
+          changes.isAcceptableOrUnknown(data['changes']!, _changesMeta));
     } else if (isInserting) {
-      context.missing(_numBreaksMeta);
-    }
-    if (data.containsKey('max_break_duration')) {
-      context.handle(
-          _maxBreakDurationMeta,
-          maxBreakDuration.isAcceptableOrUnknown(
-              data['max_break_duration']!, _maxBreakDurationMeta));
-    } else if (isInserting) {
-      context.missing(_maxBreakDurationMeta);
-    }
-    if (data.containsKey('friction_type')) {
-      context.handle(
-          _frictionTypeMeta,
-          frictionType.isAcceptableOrUnknown(
-              data['friction_type']!, _frictionTypeMeta));
-    } else if (isInserting) {
-      context.missing(_frictionTypeMeta);
-    }
-    if (data.containsKey('friction_amt')) {
-      context.handle(
-          _frictionAmtMeta,
-          frictionAmt.isAcceptableOrUnknown(
-              data['friction_amt']!, _frictionAmtMeta));
-    } else if (isInserting) {
-      context.missing(_frictionAmtMeta);
-    }
-    if (data.containsKey('friction_source')) {
-      context.handle(
-          _frictionSourceMeta,
-          frictionSource.isAcceptableOrUnknown(
-              data['friction_source']!, _frictionSourceMeta));
-    } else if (isInserting) {
-      context.missing(_frictionSourceMeta);
-    }
-    if (data.containsKey('breaks')) {
-      context.handle(_breaksMeta,
-          breaks.isAcceptableOrUnknown(data['breaks']!, _breaksMeta));
-    } else if (isInserting) {
-      context.missing(_breaksMeta);
+      context.missing(_changesMeta);
     }
     return context;
   }
@@ -296,18 +224,8 @@ class $RoutinesTable extends Routines
           .read(DriftSqlType.int, data['${effectivePrefix}start_time'])!,
       endTime: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}end_time'])!,
-      numBreaks: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}num_breaks'])!,
-      maxBreakDuration: attachedDatabase.typeMapping.read(
-          DriftSqlType.int, data['${effectivePrefix}max_break_duration'])!,
-      frictionType: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}friction_type'])!,
-      frictionAmt: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}friction_amt'])!,
-      frictionSource: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}friction_source'])!,
-      breaks: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}breaks'])!,
+      changes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}changes'])!,
     );
   }
 
@@ -329,12 +247,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
   final bool sunday;
   final int startTime;
   final int endTime;
-  final int numBreaks;
-  final int maxBreakDuration;
-  final String frictionType;
-  final int frictionAmt;
-  final String frictionSource;
-  final String breaks;
+  final String changes;
   const RoutineEntry(
       {required this.id,
       required this.name,
@@ -347,12 +260,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       required this.sunday,
       required this.startTime,
       required this.endTime,
-      required this.numBreaks,
-      required this.maxBreakDuration,
-      required this.frictionType,
-      required this.frictionAmt,
-      required this.frictionSource,
-      required this.breaks});
+      required this.changes});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -367,12 +275,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
     map['sunday'] = Variable<bool>(sunday);
     map['start_time'] = Variable<int>(startTime);
     map['end_time'] = Variable<int>(endTime);
-    map['num_breaks'] = Variable<int>(numBreaks);
-    map['max_break_duration'] = Variable<int>(maxBreakDuration);
-    map['friction_type'] = Variable<String>(frictionType);
-    map['friction_amt'] = Variable<int>(frictionAmt);
-    map['friction_source'] = Variable<String>(frictionSource);
-    map['breaks'] = Variable<String>(breaks);
+    map['changes'] = Variable<String>(changes);
     return map;
   }
 
@@ -389,12 +292,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       sunday: Value(sunday),
       startTime: Value(startTime),
       endTime: Value(endTime),
-      numBreaks: Value(numBreaks),
-      maxBreakDuration: Value(maxBreakDuration),
-      frictionType: Value(frictionType),
-      frictionAmt: Value(frictionAmt),
-      frictionSource: Value(frictionSource),
-      breaks: Value(breaks),
+      changes: Value(changes),
     );
   }
 
@@ -413,12 +311,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       sunday: serializer.fromJson<bool>(json['sunday']),
       startTime: serializer.fromJson<int>(json['startTime']),
       endTime: serializer.fromJson<int>(json['endTime']),
-      numBreaks: serializer.fromJson<int>(json['numBreaks']),
-      maxBreakDuration: serializer.fromJson<int>(json['maxBreakDuration']),
-      frictionType: serializer.fromJson<String>(json['frictionType']),
-      frictionAmt: serializer.fromJson<int>(json['frictionAmt']),
-      frictionSource: serializer.fromJson<String>(json['frictionSource']),
-      breaks: serializer.fromJson<String>(json['breaks']),
+      changes: serializer.fromJson<String>(json['changes']),
     );
   }
   @override
@@ -436,12 +329,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       'sunday': serializer.toJson<bool>(sunday),
       'startTime': serializer.toJson<int>(startTime),
       'endTime': serializer.toJson<int>(endTime),
-      'numBreaks': serializer.toJson<int>(numBreaks),
-      'maxBreakDuration': serializer.toJson<int>(maxBreakDuration),
-      'frictionType': serializer.toJson<String>(frictionType),
-      'frictionAmt': serializer.toJson<int>(frictionAmt),
-      'frictionSource': serializer.toJson<String>(frictionSource),
-      'breaks': serializer.toJson<String>(breaks),
+      'changes': serializer.toJson<String>(changes),
     };
   }
 
@@ -457,12 +345,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           bool? sunday,
           int? startTime,
           int? endTime,
-          int? numBreaks,
-          int? maxBreakDuration,
-          String? frictionType,
-          int? frictionAmt,
-          String? frictionSource,
-          String? breaks}) =>
+          String? changes}) =>
       RoutineEntry(
         id: id ?? this.id,
         name: name ?? this.name,
@@ -475,12 +358,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
         sunday: sunday ?? this.sunday,
         startTime: startTime ?? this.startTime,
         endTime: endTime ?? this.endTime,
-        numBreaks: numBreaks ?? this.numBreaks,
-        maxBreakDuration: maxBreakDuration ?? this.maxBreakDuration,
-        frictionType: frictionType ?? this.frictionType,
-        frictionAmt: frictionAmt ?? this.frictionAmt,
-        frictionSource: frictionSource ?? this.frictionSource,
-        breaks: breaks ?? this.breaks,
+        changes: changes ?? this.changes,
       );
   RoutineEntry copyWithCompanion(RoutinesCompanion data) {
     return RoutineEntry(
@@ -495,19 +373,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       sunday: data.sunday.present ? data.sunday.value : this.sunday,
       startTime: data.startTime.present ? data.startTime.value : this.startTime,
       endTime: data.endTime.present ? data.endTime.value : this.endTime,
-      numBreaks: data.numBreaks.present ? data.numBreaks.value : this.numBreaks,
-      maxBreakDuration: data.maxBreakDuration.present
-          ? data.maxBreakDuration.value
-          : this.maxBreakDuration,
-      frictionType: data.frictionType.present
-          ? data.frictionType.value
-          : this.frictionType,
-      frictionAmt:
-          data.frictionAmt.present ? data.frictionAmt.value : this.frictionAmt,
-      frictionSource: data.frictionSource.present
-          ? data.frictionSource.value
-          : this.frictionSource,
-      breaks: data.breaks.present ? data.breaks.value : this.breaks,
+      changes: data.changes.present ? data.changes.value : this.changes,
     );
   }
 
@@ -525,35 +391,14 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           ..write('sunday: $sunday, ')
           ..write('startTime: $startTime, ')
           ..write('endTime: $endTime, ')
-          ..write('numBreaks: $numBreaks, ')
-          ..write('maxBreakDuration: $maxBreakDuration, ')
-          ..write('frictionType: $frictionType, ')
-          ..write('frictionAmt: $frictionAmt, ')
-          ..write('frictionSource: $frictionSource, ')
-          ..write('breaks: $breaks')
+          ..write('changes: $changes')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-      id,
-      name,
-      monday,
-      tuesday,
-      wednesday,
-      thursday,
-      friday,
-      saturday,
-      sunday,
-      startTime,
-      endTime,
-      numBreaks,
-      maxBreakDuration,
-      frictionType,
-      frictionAmt,
-      frictionSource,
-      breaks);
+  int get hashCode => Object.hash(id, name, monday, tuesday, wednesday,
+      thursday, friday, saturday, sunday, startTime, endTime, changes);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -569,12 +414,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           other.sunday == this.sunday &&
           other.startTime == this.startTime &&
           other.endTime == this.endTime &&
-          other.numBreaks == this.numBreaks &&
-          other.maxBreakDuration == this.maxBreakDuration &&
-          other.frictionType == this.frictionType &&
-          other.frictionAmt == this.frictionAmt &&
-          other.frictionSource == this.frictionSource &&
-          other.breaks == this.breaks);
+          other.changes == this.changes);
 }
 
 class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
@@ -589,12 +429,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
   final Value<bool> sunday;
   final Value<int> startTime;
   final Value<int> endTime;
-  final Value<int> numBreaks;
-  final Value<int> maxBreakDuration;
-  final Value<String> frictionType;
-  final Value<int> frictionAmt;
-  final Value<String> frictionSource;
-  final Value<String> breaks;
+  final Value<String> changes;
   final Value<int> rowid;
   const RoutinesCompanion({
     this.id = const Value.absent(),
@@ -608,12 +443,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     this.sunday = const Value.absent(),
     this.startTime = const Value.absent(),
     this.endTime = const Value.absent(),
-    this.numBreaks = const Value.absent(),
-    this.maxBreakDuration = const Value.absent(),
-    this.frictionType = const Value.absent(),
-    this.frictionAmt = const Value.absent(),
-    this.frictionSource = const Value.absent(),
-    this.breaks = const Value.absent(),
+    this.changes = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   RoutinesCompanion.insert({
@@ -628,12 +458,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     required bool sunday,
     required int startTime,
     required int endTime,
-    required int numBreaks,
-    required int maxBreakDuration,
-    required String frictionType,
-    required int frictionAmt,
-    required String frictionSource,
-    required String breaks,
+    required String changes,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name),
@@ -646,12 +471,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
         sunday = Value(sunday),
         startTime = Value(startTime),
         endTime = Value(endTime),
-        numBreaks = Value(numBreaks),
-        maxBreakDuration = Value(maxBreakDuration),
-        frictionType = Value(frictionType),
-        frictionAmt = Value(frictionAmt),
-        frictionSource = Value(frictionSource),
-        breaks = Value(breaks);
+        changes = Value(changes);
   static Insertable<RoutineEntry> custom({
     Expression<String>? id,
     Expression<String>? name,
@@ -664,12 +484,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     Expression<bool>? sunday,
     Expression<int>? startTime,
     Expression<int>? endTime,
-    Expression<int>? numBreaks,
-    Expression<int>? maxBreakDuration,
-    Expression<String>? frictionType,
-    Expression<int>? frictionAmt,
-    Expression<String>? frictionSource,
-    Expression<String>? breaks,
+    Expression<String>? changes,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -684,12 +499,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       if (sunday != null) 'sunday': sunday,
       if (startTime != null) 'start_time': startTime,
       if (endTime != null) 'end_time': endTime,
-      if (numBreaks != null) 'num_breaks': numBreaks,
-      if (maxBreakDuration != null) 'max_break_duration': maxBreakDuration,
-      if (frictionType != null) 'friction_type': frictionType,
-      if (frictionAmt != null) 'friction_amt': frictionAmt,
-      if (frictionSource != null) 'friction_source': frictionSource,
-      if (breaks != null) 'breaks': breaks,
+      if (changes != null) 'changes': changes,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -706,12 +516,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       Value<bool>? sunday,
       Value<int>? startTime,
       Value<int>? endTime,
-      Value<int>? numBreaks,
-      Value<int>? maxBreakDuration,
-      Value<String>? frictionType,
-      Value<int>? frictionAmt,
-      Value<String>? frictionSource,
-      Value<String>? breaks,
+      Value<String>? changes,
       Value<int>? rowid}) {
     return RoutinesCompanion(
       id: id ?? this.id,
@@ -725,12 +530,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       sunday: sunday ?? this.sunday,
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
-      numBreaks: numBreaks ?? this.numBreaks,
-      maxBreakDuration: maxBreakDuration ?? this.maxBreakDuration,
-      frictionType: frictionType ?? this.frictionType,
-      frictionAmt: frictionAmt ?? this.frictionAmt,
-      frictionSource: frictionSource ?? this.frictionSource,
-      breaks: breaks ?? this.breaks,
+      changes: changes ?? this.changes,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -771,23 +571,8 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     if (endTime.present) {
       map['end_time'] = Variable<int>(endTime.value);
     }
-    if (numBreaks.present) {
-      map['num_breaks'] = Variable<int>(numBreaks.value);
-    }
-    if (maxBreakDuration.present) {
-      map['max_break_duration'] = Variable<int>(maxBreakDuration.value);
-    }
-    if (frictionType.present) {
-      map['friction_type'] = Variable<String>(frictionType.value);
-    }
-    if (frictionAmt.present) {
-      map['friction_amt'] = Variable<int>(frictionAmt.value);
-    }
-    if (frictionSource.present) {
-      map['friction_source'] = Variable<String>(frictionSource.value);
-    }
-    if (breaks.present) {
-      map['breaks'] = Variable<String>(breaks.value);
+    if (changes.present) {
+      map['changes'] = Variable<String>(changes.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -809,12 +594,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
           ..write('sunday: $sunday, ')
           ..write('startTime: $startTime, ')
           ..write('endTime: $endTime, ')
-          ..write('numBreaks: $numBreaks, ')
-          ..write('maxBreakDuration: $maxBreakDuration, ')
-          ..write('frictionType: $frictionType, ')
-          ..write('frictionAmt: $frictionAmt, ')
-          ..write('frictionSource: $frictionSource, ')
-          ..write('breaks: $breaks, ')
+          ..write('changes: $changes, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -841,8 +621,17 @@ class $DevicesTable extends Devices with TableInfo<$DevicesTable, DeviceEntry> {
   late final GeneratedColumn<String> type = GeneratedColumn<String>(
       'type', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _thisDeviceMeta =
+      const VerificationMeta('thisDevice');
   @override
-  List<GeneratedColumn> get $columns => [id, name, type];
+  late final GeneratedColumn<bool> thisDevice = GeneratedColumn<bool>(
+      'this_device', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("this_device" IN (0, 1))'));
+  @override
+  List<GeneratedColumn> get $columns => [id, name, type, thisDevice];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -870,6 +659,14 @@ class $DevicesTable extends Devices with TableInfo<$DevicesTable, DeviceEntry> {
     } else if (isInserting) {
       context.missing(_typeMeta);
     }
+    if (data.containsKey('this_device')) {
+      context.handle(
+          _thisDeviceMeta,
+          thisDevice.isAcceptableOrUnknown(
+              data['this_device']!, _thisDeviceMeta));
+    } else if (isInserting) {
+      context.missing(_thisDeviceMeta);
+    }
     return context;
   }
 
@@ -885,6 +682,8 @@ class $DevicesTable extends Devices with TableInfo<$DevicesTable, DeviceEntry> {
           .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
       type: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}type'])!,
+      thisDevice: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}this_device'])!,
     );
   }
 
@@ -898,13 +697,19 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
   final String id;
   final String name;
   final String type;
-  const DeviceEntry({required this.id, required this.name, required this.type});
+  final bool thisDevice;
+  const DeviceEntry(
+      {required this.id,
+      required this.name,
+      required this.type,
+      required this.thisDevice});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
     map['type'] = Variable<String>(type);
+    map['this_device'] = Variable<bool>(thisDevice);
     return map;
   }
 
@@ -913,6 +718,7 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
       id: Value(id),
       name: Value(name),
       type: Value(type),
+      thisDevice: Value(thisDevice),
     );
   }
 
@@ -923,6 +729,7 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       type: serializer.fromJson<String>(json['type']),
+      thisDevice: serializer.fromJson<bool>(json['thisDevice']),
     );
   }
   @override
@@ -932,19 +739,25 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'type': serializer.toJson<String>(type),
+      'thisDevice': serializer.toJson<bool>(thisDevice),
     };
   }
 
-  DeviceEntry copyWith({String? id, String? name, String? type}) => DeviceEntry(
+  DeviceEntry copyWith(
+          {String? id, String? name, String? type, bool? thisDevice}) =>
+      DeviceEntry(
         id: id ?? this.id,
         name: name ?? this.name,
         type: type ?? this.type,
+        thisDevice: thisDevice ?? this.thisDevice,
       );
   DeviceEntry copyWithCompanion(DevicesCompanion data) {
     return DeviceEntry(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       type: data.type.present ? data.type.value : this.type,
+      thisDevice:
+          data.thisDevice.present ? data.thisDevice.value : this.thisDevice,
     );
   }
 
@@ -953,51 +766,59 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
     return (StringBuffer('DeviceEntry(')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('type: $type')
+          ..write('type: $type, ')
+          ..write('thisDevice: $thisDevice')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, type);
+  int get hashCode => Object.hash(id, name, type, thisDevice);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is DeviceEntry &&
           other.id == this.id &&
           other.name == this.name &&
-          other.type == this.type);
+          other.type == this.type &&
+          other.thisDevice == this.thisDevice);
 }
 
 class DevicesCompanion extends UpdateCompanion<DeviceEntry> {
   final Value<String> id;
   final Value<String> name;
   final Value<String> type;
+  final Value<bool> thisDevice;
   final Value<int> rowid;
   const DevicesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.type = const Value.absent(),
+    this.thisDevice = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   DevicesCompanion.insert({
     required String id,
     required String name,
     required String type,
+    required bool thisDevice,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name),
-        type = Value(type);
+        type = Value(type),
+        thisDevice = Value(thisDevice);
   static Insertable<DeviceEntry> custom({
     Expression<String>? id,
     Expression<String>? name,
     Expression<String>? type,
+    Expression<bool>? thisDevice,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (type != null) 'type': type,
+      if (thisDevice != null) 'this_device': thisDevice,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1006,11 +827,13 @@ class DevicesCompanion extends UpdateCompanion<DeviceEntry> {
       {Value<String>? id,
       Value<String>? name,
       Value<String>? type,
+      Value<bool>? thisDevice,
       Value<int>? rowid}) {
     return DevicesCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       type: type ?? this.type,
+      thisDevice: thisDevice ?? this.thisDevice,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1027,6 +850,9 @@ class DevicesCompanion extends UpdateCompanion<DeviceEntry> {
     if (type.present) {
       map['type'] = Variable<String>(type.value);
     }
+    if (thisDevice.present) {
+      map['this_device'] = Variable<bool>(thisDevice.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1039,398 +865,7 @@ class DevicesCompanion extends UpdateCompanion<DeviceEntry> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('type: $type, ')
-          ..write('rowid: $rowid')
-          ..write(')'))
-        .toString();
-  }
-}
-
-class $ConditionsTable extends Conditions
-    with TableInfo<$ConditionsTable, ConditionEntry> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $ConditionsTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
-      'id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _routineMeta =
-      const VerificationMeta('routine');
-  @override
-  late final GeneratedColumn<String> routine = GeneratedColumn<String>(
-      'routine', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: true,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES routines (id)'));
-  static const VerificationMeta _typeMeta = const VerificationMeta('type');
-  @override
-  late final GeneratedColumn<String> type = GeneratedColumn<String>(
-      'type', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _valueMeta = const VerificationMeta('value');
-  @override
-  late final GeneratedColumn<String> value = GeneratedColumn<String>(
-      'value', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _orderMeta = const VerificationMeta('order');
-  @override
-  late final GeneratedColumn<int> order = GeneratedColumn<int>(
-      'order', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _orMeta = const VerificationMeta('or');
-  @override
-  late final GeneratedColumn<bool> or = GeneratedColumn<bool>(
-      'or', aliasedName, false,
-      type: DriftSqlType.bool,
-      requiredDuringInsert: true,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('CHECK ("or" IN (0, 1))'));
-  static const VerificationMeta _lastCompletedAtMeta =
-      const VerificationMeta('lastCompletedAt');
-  @override
-  late final GeneratedColumn<String> lastCompletedAt = GeneratedColumn<String>(
-      'last_completed_at', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
-  @override
-  List<GeneratedColumn> get $columns =>
-      [id, routine, type, value, order, or, lastCompletedAt];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'conditions';
-  @override
-  VerificationContext validateIntegrity(Insertable<ConditionEntry> instance,
-      {bool isInserting = false}) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
-    }
-    if (data.containsKey('routine')) {
-      context.handle(_routineMeta,
-          routine.isAcceptableOrUnknown(data['routine']!, _routineMeta));
-    } else if (isInserting) {
-      context.missing(_routineMeta);
-    }
-    if (data.containsKey('type')) {
-      context.handle(
-          _typeMeta, type.isAcceptableOrUnknown(data['type']!, _typeMeta));
-    } else if (isInserting) {
-      context.missing(_typeMeta);
-    }
-    if (data.containsKey('value')) {
-      context.handle(
-          _valueMeta, value.isAcceptableOrUnknown(data['value']!, _valueMeta));
-    } else if (isInserting) {
-      context.missing(_valueMeta);
-    }
-    if (data.containsKey('order')) {
-      context.handle(
-          _orderMeta, order.isAcceptableOrUnknown(data['order']!, _orderMeta));
-    } else if (isInserting) {
-      context.missing(_orderMeta);
-    }
-    if (data.containsKey('or')) {
-      context.handle(_orMeta, or.isAcceptableOrUnknown(data['or']!, _orMeta));
-    } else if (isInserting) {
-      context.missing(_orMeta);
-    }
-    if (data.containsKey('last_completed_at')) {
-      context.handle(
-          _lastCompletedAtMeta,
-          lastCompletedAt.isAcceptableOrUnknown(
-              data['last_completed_at']!, _lastCompletedAtMeta));
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  ConditionEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return ConditionEntry(
-      id: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      routine: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}routine'])!,
-      type: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}type'])!,
-      value: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}value'])!,
-      order: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}order'])!,
-      or: attachedDatabase.typeMapping
-          .read(DriftSqlType.bool, data['${effectivePrefix}or'])!,
-      lastCompletedAt: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}last_completed_at']),
-    );
-  }
-
-  @override
-  $ConditionsTable createAlias(String alias) {
-    return $ConditionsTable(attachedDatabase, alias);
-  }
-}
-
-class ConditionEntry extends DataClass implements Insertable<ConditionEntry> {
-  final String id;
-  final String routine;
-  final String type;
-  final String value;
-  final int order;
-  final bool or;
-  final String? lastCompletedAt;
-  const ConditionEntry(
-      {required this.id,
-      required this.routine,
-      required this.type,
-      required this.value,
-      required this.order,
-      required this.or,
-      this.lastCompletedAt});
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<String>(id);
-    map['routine'] = Variable<String>(routine);
-    map['type'] = Variable<String>(type);
-    map['value'] = Variable<String>(value);
-    map['order'] = Variable<int>(order);
-    map['or'] = Variable<bool>(or);
-    if (!nullToAbsent || lastCompletedAt != null) {
-      map['last_completed_at'] = Variable<String>(lastCompletedAt);
-    }
-    return map;
-  }
-
-  ConditionsCompanion toCompanion(bool nullToAbsent) {
-    return ConditionsCompanion(
-      id: Value(id),
-      routine: Value(routine),
-      type: Value(type),
-      value: Value(value),
-      order: Value(order),
-      or: Value(or),
-      lastCompletedAt: lastCompletedAt == null && nullToAbsent
-          ? const Value.absent()
-          : Value(lastCompletedAt),
-    );
-  }
-
-  factory ConditionEntry.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return ConditionEntry(
-      id: serializer.fromJson<String>(json['id']),
-      routine: serializer.fromJson<String>(json['routine']),
-      type: serializer.fromJson<String>(json['type']),
-      value: serializer.fromJson<String>(json['value']),
-      order: serializer.fromJson<int>(json['order']),
-      or: serializer.fromJson<bool>(json['or']),
-      lastCompletedAt: serializer.fromJson<String?>(json['lastCompletedAt']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<String>(id),
-      'routine': serializer.toJson<String>(routine),
-      'type': serializer.toJson<String>(type),
-      'value': serializer.toJson<String>(value),
-      'order': serializer.toJson<int>(order),
-      'or': serializer.toJson<bool>(or),
-      'lastCompletedAt': serializer.toJson<String?>(lastCompletedAt),
-    };
-  }
-
-  ConditionEntry copyWith(
-          {String? id,
-          String? routine,
-          String? type,
-          String? value,
-          int? order,
-          bool? or,
-          Value<String?> lastCompletedAt = const Value.absent()}) =>
-      ConditionEntry(
-        id: id ?? this.id,
-        routine: routine ?? this.routine,
-        type: type ?? this.type,
-        value: value ?? this.value,
-        order: order ?? this.order,
-        or: or ?? this.or,
-        lastCompletedAt: lastCompletedAt.present
-            ? lastCompletedAt.value
-            : this.lastCompletedAt,
-      );
-  ConditionEntry copyWithCompanion(ConditionsCompanion data) {
-    return ConditionEntry(
-      id: data.id.present ? data.id.value : this.id,
-      routine: data.routine.present ? data.routine.value : this.routine,
-      type: data.type.present ? data.type.value : this.type,
-      value: data.value.present ? data.value.value : this.value,
-      order: data.order.present ? data.order.value : this.order,
-      or: data.or.present ? data.or.value : this.or,
-      lastCompletedAt: data.lastCompletedAt.present
-          ? data.lastCompletedAt.value
-          : this.lastCompletedAt,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('ConditionEntry(')
-          ..write('id: $id, ')
-          ..write('routine: $routine, ')
-          ..write('type: $type, ')
-          ..write('value: $value, ')
-          ..write('order: $order, ')
-          ..write('or: $or, ')
-          ..write('lastCompletedAt: $lastCompletedAt')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode =>
-      Object.hash(id, routine, type, value, order, or, lastCompletedAt);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is ConditionEntry &&
-          other.id == this.id &&
-          other.routine == this.routine &&
-          other.type == this.type &&
-          other.value == this.value &&
-          other.order == this.order &&
-          other.or == this.or &&
-          other.lastCompletedAt == this.lastCompletedAt);
-}
-
-class ConditionsCompanion extends UpdateCompanion<ConditionEntry> {
-  final Value<String> id;
-  final Value<String> routine;
-  final Value<String> type;
-  final Value<String> value;
-  final Value<int> order;
-  final Value<bool> or;
-  final Value<String?> lastCompletedAt;
-  final Value<int> rowid;
-  const ConditionsCompanion({
-    this.id = const Value.absent(),
-    this.routine = const Value.absent(),
-    this.type = const Value.absent(),
-    this.value = const Value.absent(),
-    this.order = const Value.absent(),
-    this.or = const Value.absent(),
-    this.lastCompletedAt = const Value.absent(),
-    this.rowid = const Value.absent(),
-  });
-  ConditionsCompanion.insert({
-    required String id,
-    required String routine,
-    required String type,
-    required String value,
-    required int order,
-    required bool or,
-    this.lastCompletedAt = const Value.absent(),
-    this.rowid = const Value.absent(),
-  })  : id = Value(id),
-        routine = Value(routine),
-        type = Value(type),
-        value = Value(value),
-        order = Value(order),
-        or = Value(or);
-  static Insertable<ConditionEntry> custom({
-    Expression<String>? id,
-    Expression<String>? routine,
-    Expression<String>? type,
-    Expression<String>? value,
-    Expression<int>? order,
-    Expression<bool>? or,
-    Expression<String>? lastCompletedAt,
-    Expression<int>? rowid,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (routine != null) 'routine': routine,
-      if (type != null) 'type': type,
-      if (value != null) 'value': value,
-      if (order != null) 'order': order,
-      if (or != null) 'or': or,
-      if (lastCompletedAt != null) 'last_completed_at': lastCompletedAt,
-      if (rowid != null) 'rowid': rowid,
-    });
-  }
-
-  ConditionsCompanion copyWith(
-      {Value<String>? id,
-      Value<String>? routine,
-      Value<String>? type,
-      Value<String>? value,
-      Value<int>? order,
-      Value<bool>? or,
-      Value<String?>? lastCompletedAt,
-      Value<int>? rowid}) {
-    return ConditionsCompanion(
-      id: id ?? this.id,
-      routine: routine ?? this.routine,
-      type: type ?? this.type,
-      value: value ?? this.value,
-      order: order ?? this.order,
-      or: or ?? this.or,
-      lastCompletedAt: lastCompletedAt ?? this.lastCompletedAt,
-      rowid: rowid ?? this.rowid,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<String>(id.value);
-    }
-    if (routine.present) {
-      map['routine'] = Variable<String>(routine.value);
-    }
-    if (type.present) {
-      map['type'] = Variable<String>(type.value);
-    }
-    if (value.present) {
-      map['value'] = Variable<String>(value.value);
-    }
-    if (order.present) {
-      map['order'] = Variable<int>(order.value);
-    }
-    if (or.present) {
-      map['or'] = Variable<bool>(or.value);
-    }
-    if (lastCompletedAt.present) {
-      map['last_completed_at'] = Variable<String>(lastCompletedAt.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('ConditionsCompanion(')
-          ..write('id: $id, ')
-          ..write('routine: $routine, ')
-          ..write('type: $type, ')
-          ..write('value: $value, ')
-          ..write('order: $order, ')
-          ..write('or: $or, ')
-          ..write('lastCompletedAt: $lastCompletedAt, ')
+          ..write('thisDevice: $thisDevice, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1460,8 +895,14 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupEntry> {
       requiredDuringInsert: true,
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('REFERENCES devices (id)'));
+  static const VerificationMeta _changesMeta =
+      const VerificationMeta('changes');
   @override
-  List<GeneratedColumn> get $columns => [id, name, device];
+  late final GeneratedColumn<String> changes = GeneratedColumn<String>(
+      'changes', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [id, name, device, changes];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1487,6 +928,12 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupEntry> {
     } else if (isInserting) {
       context.missing(_deviceMeta);
     }
+    if (data.containsKey('changes')) {
+      context.handle(_changesMeta,
+          changes.isAcceptableOrUnknown(data['changes']!, _changesMeta));
+    } else if (isInserting) {
+      context.missing(_changesMeta);
+    }
     return context;
   }
 
@@ -1502,6 +949,8 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupEntry> {
           .read(DriftSqlType.string, data['${effectivePrefix}name']),
       device: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}device'])!,
+      changes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}changes'])!,
     );
   }
 
@@ -1515,7 +964,12 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
   final String id;
   final String? name;
   final String device;
-  const GroupEntry({required this.id, this.name, required this.device});
+  final String changes;
+  const GroupEntry(
+      {required this.id,
+      this.name,
+      required this.device,
+      required this.changes});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1524,6 +978,7 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
       map['name'] = Variable<String>(name);
     }
     map['device'] = Variable<String>(device);
+    map['changes'] = Variable<String>(changes);
     return map;
   }
 
@@ -1532,6 +987,7 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
       id: Value(id),
       name: name == null && nullToAbsent ? const Value.absent() : Value(name),
       device: Value(device),
+      changes: Value(changes),
     );
   }
 
@@ -1542,6 +998,7 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String?>(json['name']),
       device: serializer.fromJson<String>(json['device']),
+      changes: serializer.fromJson<String>(json['changes']),
     );
   }
   @override
@@ -1551,23 +1008,27 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String?>(name),
       'device': serializer.toJson<String>(device),
+      'changes': serializer.toJson<String>(changes),
     };
   }
 
   GroupEntry copyWith(
           {String? id,
           Value<String?> name = const Value.absent(),
-          String? device}) =>
+          String? device,
+          String? changes}) =>
       GroupEntry(
         id: id ?? this.id,
         name: name.present ? name.value : this.name,
         device: device ?? this.device,
+        changes: changes ?? this.changes,
       );
   GroupEntry copyWithCompanion(GroupsCompanion data) {
     return GroupEntry(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       device: data.device.present ? data.device.value : this.device,
+      changes: data.changes.present ? data.changes.value : this.changes,
     );
   }
 
@@ -1576,50 +1037,58 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
     return (StringBuffer('GroupEntry(')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('device: $device')
+          ..write('device: $device, ')
+          ..write('changes: $changes')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, device);
+  int get hashCode => Object.hash(id, name, device, changes);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is GroupEntry &&
           other.id == this.id &&
           other.name == this.name &&
-          other.device == this.device);
+          other.device == this.device &&
+          other.changes == this.changes);
 }
 
 class GroupsCompanion extends UpdateCompanion<GroupEntry> {
   final Value<String> id;
   final Value<String?> name;
   final Value<String> device;
+  final Value<String> changes;
   final Value<int> rowid;
   const GroupsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.device = const Value.absent(),
+    this.changes = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   GroupsCompanion.insert({
     required String id,
     this.name = const Value.absent(),
     required String device,
+    required String changes,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
-        device = Value(device);
+        device = Value(device),
+        changes = Value(changes);
   static Insertable<GroupEntry> custom({
     Expression<String>? id,
     Expression<String>? name,
     Expression<String>? device,
+    Expression<String>? changes,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (device != null) 'device': device,
+      if (changes != null) 'changes': changes,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1628,11 +1097,13 @@ class GroupsCompanion extends UpdateCompanion<GroupEntry> {
       {Value<String>? id,
       Value<String?>? name,
       Value<String>? device,
+      Value<String>? changes,
       Value<int>? rowid}) {
     return GroupsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       device: device ?? this.device,
+      changes: changes ?? this.changes,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1649,6 +1120,9 @@ class GroupsCompanion extends UpdateCompanion<GroupEntry> {
     if (device.present) {
       map['device'] = Variable<String>(device.value);
     }
+    if (changes.present) {
+      map['changes'] = Variable<String>(changes.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1661,6 +1135,7 @@ class GroupsCompanion extends UpdateCompanion<GroupEntry> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('device: $device, ')
+          ..write('changes: $changes, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2141,7 +1616,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $RoutinesTable routines = $RoutinesTable(this);
   late final $DevicesTable devices = $DevicesTable(this);
-  late final $ConditionsTable conditions = $ConditionsTable(this);
   late final $GroupsTable groups = $GroupsTable(this);
   late final $GroupItemsTable groupItems = $GroupItemsTable(this);
   late final $RoutineGroupsTable routineGroups = $RoutineGroupsTable(this);
@@ -2150,7 +1624,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [routines, devices, conditions, groups, groupItems, routineGroups];
+      [routines, devices, groups, groupItems, routineGroups];
 }
 
 typedef $$RoutinesTableCreateCompanionBuilder = RoutinesCompanion Function({
@@ -2165,12 +1639,7 @@ typedef $$RoutinesTableCreateCompanionBuilder = RoutinesCompanion Function({
   required bool sunday,
   required int startTime,
   required int endTime,
-  required int numBreaks,
-  required int maxBreakDuration,
-  required String frictionType,
-  required int frictionAmt,
-  required String frictionSource,
-  required String breaks,
+  required String changes,
   Value<int> rowid,
 });
 typedef $$RoutinesTableUpdateCompanionBuilder = RoutinesCompanion Function({
@@ -2185,33 +1654,13 @@ typedef $$RoutinesTableUpdateCompanionBuilder = RoutinesCompanion Function({
   Value<bool> sunday,
   Value<int> startTime,
   Value<int> endTime,
-  Value<int> numBreaks,
-  Value<int> maxBreakDuration,
-  Value<String> frictionType,
-  Value<int> frictionAmt,
-  Value<String> frictionSource,
-  Value<String> breaks,
+  Value<String> changes,
   Value<int> rowid,
 });
 
 final class $$RoutinesTableReferences
     extends BaseReferences<_$AppDatabase, $RoutinesTable, RoutineEntry> {
   $$RoutinesTableReferences(super.$_db, super.$_table, super.$_typedResult);
-
-  static MultiTypedResultKey<$ConditionsTable, List<ConditionEntry>>
-      _conditionsRefsTable(_$AppDatabase db) =>
-          MultiTypedResultKey.fromTable(db.conditions,
-              aliasName:
-                  $_aliasNameGenerator(db.routines.id, db.conditions.routine));
-
-  $$ConditionsTableProcessedTableManager get conditionsRefs {
-    final manager = $$ConditionsTableTableManager($_db, $_db.conditions)
-        .filter((f) => f.routine.id.sqlEquals($_itemColumn<String>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_conditionsRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
-  }
 
   static MultiTypedResultKey<$RoutineGroupsTable, List<RoutineGroupEntry>>
       _routineGroupsRefsTable(_$AppDatabase db) =>
@@ -2271,46 +1720,8 @@ class $$RoutinesTableFilterComposer
   ColumnFilters<int> get endTime => $composableBuilder(
       column: $table.endTime, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<int> get numBreaks => $composableBuilder(
-      column: $table.numBreaks, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get maxBreakDuration => $composableBuilder(
-      column: $table.maxBreakDuration,
-      builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get frictionType => $composableBuilder(
-      column: $table.frictionType, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get frictionAmt => $composableBuilder(
-      column: $table.frictionAmt, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get frictionSource => $composableBuilder(
-      column: $table.frictionSource,
-      builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get breaks => $composableBuilder(
-      column: $table.breaks, builder: (column) => ColumnFilters(column));
-
-  Expression<bool> conditionsRefs(
-      Expression<bool> Function($$ConditionsTableFilterComposer f) f) {
-    final $$ConditionsTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.conditions,
-        getReferencedColumn: (t) => t.routine,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ConditionsTableFilterComposer(
-              $db: $db,
-              $table: $db.conditions,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
+  ColumnFilters<String> get changes => $composableBuilder(
+      column: $table.changes, builder: (column) => ColumnFilters(column));
 
   Expression<bool> routineGroupsRefs(
       Expression<bool> Function($$RoutineGroupsTableFilterComposer f) f) {
@@ -2376,26 +1787,8 @@ class $$RoutinesTableOrderingComposer
   ColumnOrderings<int> get endTime => $composableBuilder(
       column: $table.endTime, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<int> get numBreaks => $composableBuilder(
-      column: $table.numBreaks, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get maxBreakDuration => $composableBuilder(
-      column: $table.maxBreakDuration,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get frictionType => $composableBuilder(
-      column: $table.frictionType,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get frictionAmt => $composableBuilder(
-      column: $table.frictionAmt, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get frictionSource => $composableBuilder(
-      column: $table.frictionSource,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get breaks => $composableBuilder(
-      column: $table.breaks, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get changes => $composableBuilder(
+      column: $table.changes, builder: (column) => ColumnOrderings(column));
 }
 
 class $$RoutinesTableAnnotationComposer
@@ -2440,44 +1833,8 @@ class $$RoutinesTableAnnotationComposer
   GeneratedColumn<int> get endTime =>
       $composableBuilder(column: $table.endTime, builder: (column) => column);
 
-  GeneratedColumn<int> get numBreaks =>
-      $composableBuilder(column: $table.numBreaks, builder: (column) => column);
-
-  GeneratedColumn<int> get maxBreakDuration => $composableBuilder(
-      column: $table.maxBreakDuration, builder: (column) => column);
-
-  GeneratedColumn<String> get frictionType => $composableBuilder(
-      column: $table.frictionType, builder: (column) => column);
-
-  GeneratedColumn<int> get frictionAmt => $composableBuilder(
-      column: $table.frictionAmt, builder: (column) => column);
-
-  GeneratedColumn<String> get frictionSource => $composableBuilder(
-      column: $table.frictionSource, builder: (column) => column);
-
-  GeneratedColumn<String> get breaks =>
-      $composableBuilder(column: $table.breaks, builder: (column) => column);
-
-  Expression<T> conditionsRefs<T extends Object>(
-      Expression<T> Function($$ConditionsTableAnnotationComposer a) f) {
-    final $$ConditionsTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.conditions,
-        getReferencedColumn: (t) => t.routine,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ConditionsTableAnnotationComposer(
-              $db: $db,
-              $table: $db.conditions,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
+  GeneratedColumn<String> get changes =>
+      $composableBuilder(column: $table.changes, builder: (column) => column);
 
   Expression<T> routineGroupsRefs<T extends Object>(
       Expression<T> Function($$RoutineGroupsTableAnnotationComposer a) f) {
@@ -2512,7 +1869,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
     $$RoutinesTableUpdateCompanionBuilder,
     (RoutineEntry, $$RoutinesTableReferences),
     RoutineEntry,
-    PrefetchHooks Function({bool conditionsRefs, bool routineGroupsRefs})> {
+    PrefetchHooks Function({bool routineGroupsRefs})> {
   $$RoutinesTableTableManager(_$AppDatabase db, $RoutinesTable table)
       : super(TableManagerState(
           db: db,
@@ -2535,12 +1892,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             Value<bool> sunday = const Value.absent(),
             Value<int> startTime = const Value.absent(),
             Value<int> endTime = const Value.absent(),
-            Value<int> numBreaks = const Value.absent(),
-            Value<int> maxBreakDuration = const Value.absent(),
-            Value<String> frictionType = const Value.absent(),
-            Value<int> frictionAmt = const Value.absent(),
-            Value<String> frictionSource = const Value.absent(),
-            Value<String> breaks = const Value.absent(),
+            Value<String> changes = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               RoutinesCompanion(
@@ -2555,12 +1907,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             sunday: sunday,
             startTime: startTime,
             endTime: endTime,
-            numBreaks: numBreaks,
-            maxBreakDuration: maxBreakDuration,
-            frictionType: frictionType,
-            frictionAmt: frictionAmt,
-            frictionSource: frictionSource,
-            breaks: breaks,
+            changes: changes,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -2575,12 +1922,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             required bool sunday,
             required int startTime,
             required int endTime,
-            required int numBreaks,
-            required int maxBreakDuration,
-            required String frictionType,
-            required int frictionAmt,
-            required String frictionSource,
-            required String breaks,
+            required String changes,
             Value<int> rowid = const Value.absent(),
           }) =>
               RoutinesCompanion.insert(
@@ -2595,41 +1937,22 @@ class $$RoutinesTableTableManager extends RootTableManager<
             sunday: sunday,
             startTime: startTime,
             endTime: endTime,
-            numBreaks: numBreaks,
-            maxBreakDuration: maxBreakDuration,
-            frictionType: frictionType,
-            frictionAmt: frictionAmt,
-            frictionSource: frictionSource,
-            breaks: breaks,
+            changes: changes,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) =>
                   (e.readTable(table), $$RoutinesTableReferences(db, table, e)))
               .toList(),
-          prefetchHooksCallback: (
-              {conditionsRefs = false, routineGroupsRefs = false}) {
+          prefetchHooksCallback: ({routineGroupsRefs = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
-                if (conditionsRefs) db.conditions,
                 if (routineGroupsRefs) db.routineGroups
               ],
               addJoins: null,
               getPrefetchedDataCallback: (items) async {
                 return [
-                  if (conditionsRefs)
-                    await $_getPrefetchedData(
-                        currentTable: table,
-                        referencedTable:
-                            $$RoutinesTableReferences._conditionsRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$RoutinesTableReferences(db, table, p0)
-                                .conditionsRefs,
-                        referencedItemsForCurrentItem: (item,
-                                referencedItems) =>
-                            referencedItems.where((e) => e.routine == item.id),
-                        typedResults: items),
                   if (routineGroupsRefs)
                     await $_getPrefetchedData(
                         currentTable: table,
@@ -2660,17 +1983,19 @@ typedef $$RoutinesTableProcessedTableManager = ProcessedTableManager<
     $$RoutinesTableUpdateCompanionBuilder,
     (RoutineEntry, $$RoutinesTableReferences),
     RoutineEntry,
-    PrefetchHooks Function({bool conditionsRefs, bool routineGroupsRefs})>;
+    PrefetchHooks Function({bool routineGroupsRefs})>;
 typedef $$DevicesTableCreateCompanionBuilder = DevicesCompanion Function({
   required String id,
   required String name,
   required String type,
+  required bool thisDevice,
   Value<int> rowid,
 });
 typedef $$DevicesTableUpdateCompanionBuilder = DevicesCompanion Function({
   Value<String> id,
   Value<String> name,
   Value<String> type,
+  Value<bool> thisDevice,
   Value<int> rowid,
 });
 
@@ -2711,6 +2036,9 @@ class $$DevicesTableFilterComposer
   ColumnFilters<String> get type => $composableBuilder(
       column: $table.type, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<bool> get thisDevice => $composableBuilder(
+      column: $table.thisDevice, builder: (column) => ColumnFilters(column));
+
   Expression<bool> groupsRefs(
       Expression<bool> Function($$GroupsTableFilterComposer f) f) {
     final $$GroupsTableFilterComposer composer = $composerBuilder(
@@ -2750,6 +2078,9 @@ class $$DevicesTableOrderingComposer
 
   ColumnOrderings<String> get type => $composableBuilder(
       column: $table.type, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get thisDevice => $composableBuilder(
+      column: $table.thisDevice, builder: (column) => ColumnOrderings(column));
 }
 
 class $$DevicesTableAnnotationComposer
@@ -2769,6 +2100,9 @@ class $$DevicesTableAnnotationComposer
 
   GeneratedColumn<String> get type =>
       $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<bool> get thisDevice => $composableBuilder(
+      column: $table.thisDevice, builder: (column) => column);
 
   Expression<T> groupsRefs<T extends Object>(
       Expression<T> Function($$GroupsTableAnnotationComposer a) f) {
@@ -2818,24 +2152,28 @@ class $$DevicesTableTableManager extends RootTableManager<
             Value<String> id = const Value.absent(),
             Value<String> name = const Value.absent(),
             Value<String> type = const Value.absent(),
+            Value<bool> thisDevice = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               DevicesCompanion(
             id: id,
             name: name,
             type: type,
+            thisDevice: thisDevice,
             rowid: rowid,
           ),
           createCompanionCallback: ({
             required String id,
             required String name,
             required String type,
+            required bool thisDevice,
             Value<int> rowid = const Value.absent(),
           }) =>
               DevicesCompanion.insert(
             id: id,
             name: name,
             type: type,
+            thisDevice: thisDevice,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
@@ -2879,320 +2217,18 @@ typedef $$DevicesTableProcessedTableManager = ProcessedTableManager<
     (DeviceEntry, $$DevicesTableReferences),
     DeviceEntry,
     PrefetchHooks Function({bool groupsRefs})>;
-typedef $$ConditionsTableCreateCompanionBuilder = ConditionsCompanion Function({
-  required String id,
-  required String routine,
-  required String type,
-  required String value,
-  required int order,
-  required bool or,
-  Value<String?> lastCompletedAt,
-  Value<int> rowid,
-});
-typedef $$ConditionsTableUpdateCompanionBuilder = ConditionsCompanion Function({
-  Value<String> id,
-  Value<String> routine,
-  Value<String> type,
-  Value<String> value,
-  Value<int> order,
-  Value<bool> or,
-  Value<String?> lastCompletedAt,
-  Value<int> rowid,
-});
-
-final class $$ConditionsTableReferences
-    extends BaseReferences<_$AppDatabase, $ConditionsTable, ConditionEntry> {
-  $$ConditionsTableReferences(super.$_db, super.$_table, super.$_typedResult);
-
-  static $RoutinesTable _routineTable(_$AppDatabase db) => db.routines
-      .createAlias($_aliasNameGenerator(db.conditions.routine, db.routines.id));
-
-  $$RoutinesTableProcessedTableManager get routine {
-    final $_column = $_itemColumn<String>('routine')!;
-
-    final manager = $$RoutinesTableTableManager($_db, $_db.routines)
-        .filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_routineTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-}
-
-class $$ConditionsTableFilterComposer
-    extends Composer<_$AppDatabase, $ConditionsTable> {
-  $$ConditionsTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get type => $composableBuilder(
-      column: $table.type, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get value => $composableBuilder(
-      column: $table.value, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get order => $composableBuilder(
-      column: $table.order, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<bool> get or => $composableBuilder(
-      column: $table.or, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get lastCompletedAt => $composableBuilder(
-      column: $table.lastCompletedAt,
-      builder: (column) => ColumnFilters(column));
-
-  $$RoutinesTableFilterComposer get routine {
-    final $$RoutinesTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.routine,
-        referencedTable: $db.routines,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RoutinesTableFilterComposer(
-              $db: $db,
-              $table: $db.routines,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$ConditionsTableOrderingComposer
-    extends Composer<_$AppDatabase, $ConditionsTable> {
-  $$ConditionsTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get type => $composableBuilder(
-      column: $table.type, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get value => $composableBuilder(
-      column: $table.value, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get order => $composableBuilder(
-      column: $table.order, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<bool> get or => $composableBuilder(
-      column: $table.or, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get lastCompletedAt => $composableBuilder(
-      column: $table.lastCompletedAt,
-      builder: (column) => ColumnOrderings(column));
-
-  $$RoutinesTableOrderingComposer get routine {
-    final $$RoutinesTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.routine,
-        referencedTable: $db.routines,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RoutinesTableOrderingComposer(
-              $db: $db,
-              $table: $db.routines,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$ConditionsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $ConditionsTable> {
-  $$ConditionsTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get type =>
-      $composableBuilder(column: $table.type, builder: (column) => column);
-
-  GeneratedColumn<String> get value =>
-      $composableBuilder(column: $table.value, builder: (column) => column);
-
-  GeneratedColumn<int> get order =>
-      $composableBuilder(column: $table.order, builder: (column) => column);
-
-  GeneratedColumn<bool> get or =>
-      $composableBuilder(column: $table.or, builder: (column) => column);
-
-  GeneratedColumn<String> get lastCompletedAt => $composableBuilder(
-      column: $table.lastCompletedAt, builder: (column) => column);
-
-  $$RoutinesTableAnnotationComposer get routine {
-    final $$RoutinesTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.routine,
-        referencedTable: $db.routines,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RoutinesTableAnnotationComposer(
-              $db: $db,
-              $table: $db.routines,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$ConditionsTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $ConditionsTable,
-    ConditionEntry,
-    $$ConditionsTableFilterComposer,
-    $$ConditionsTableOrderingComposer,
-    $$ConditionsTableAnnotationComposer,
-    $$ConditionsTableCreateCompanionBuilder,
-    $$ConditionsTableUpdateCompanionBuilder,
-    (ConditionEntry, $$ConditionsTableReferences),
-    ConditionEntry,
-    PrefetchHooks Function({bool routine})> {
-  $$ConditionsTableTableManager(_$AppDatabase db, $ConditionsTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$ConditionsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$ConditionsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$ConditionsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<String> id = const Value.absent(),
-            Value<String> routine = const Value.absent(),
-            Value<String> type = const Value.absent(),
-            Value<String> value = const Value.absent(),
-            Value<int> order = const Value.absent(),
-            Value<bool> or = const Value.absent(),
-            Value<String?> lastCompletedAt = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              ConditionsCompanion(
-            id: id,
-            routine: routine,
-            type: type,
-            value: value,
-            order: order,
-            or: or,
-            lastCompletedAt: lastCompletedAt,
-            rowid: rowid,
-          ),
-          createCompanionCallback: ({
-            required String id,
-            required String routine,
-            required String type,
-            required String value,
-            required int order,
-            required bool or,
-            Value<String?> lastCompletedAt = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              ConditionsCompanion.insert(
-            id: id,
-            routine: routine,
-            type: type,
-            value: value,
-            order: order,
-            or: or,
-            lastCompletedAt: lastCompletedAt,
-            rowid: rowid,
-          ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (
-                    e.readTable(table),
-                    $$ConditionsTableReferences(db, table, e)
-                  ))
-              .toList(),
-          prefetchHooksCallback: ({routine = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins: <
-                  T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic>>(state) {
-                if (routine) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.routine,
-                    referencedTable:
-                        $$ConditionsTableReferences._routineTable(db),
-                    referencedColumn:
-                        $$ConditionsTableReferences._routineTable(db).id,
-                  ) as T;
-                }
-
-                return state;
-              },
-              getPrefetchedDataCallback: (items) async {
-                return [];
-              },
-            );
-          },
-        ));
-}
-
-typedef $$ConditionsTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $ConditionsTable,
-    ConditionEntry,
-    $$ConditionsTableFilterComposer,
-    $$ConditionsTableOrderingComposer,
-    $$ConditionsTableAnnotationComposer,
-    $$ConditionsTableCreateCompanionBuilder,
-    $$ConditionsTableUpdateCompanionBuilder,
-    (ConditionEntry, $$ConditionsTableReferences),
-    ConditionEntry,
-    PrefetchHooks Function({bool routine})>;
 typedef $$GroupsTableCreateCompanionBuilder = GroupsCompanion Function({
   required String id,
   Value<String?> name,
   required String device,
+  required String changes,
   Value<int> rowid,
 });
 typedef $$GroupsTableUpdateCompanionBuilder = GroupsCompanion Function({
   Value<String> id,
   Value<String?> name,
   Value<String> device,
+  Value<String> changes,
   Value<int> rowid,
 });
 
@@ -3258,6 +2294,9 @@ class $$GroupsTableFilterComposer
 
   ColumnFilters<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get changes => $composableBuilder(
+      column: $table.changes, builder: (column) => ColumnFilters(column));
 
   $$DevicesTableFilterComposer get device {
     final $$DevicesTableFilterComposer composer = $composerBuilder(
@@ -3337,6 +2376,9 @@ class $$GroupsTableOrderingComposer
   ColumnOrderings<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get changes => $composableBuilder(
+      column: $table.changes, builder: (column) => ColumnOrderings(column));
+
   $$DevicesTableOrderingComposer get device {
     final $$DevicesTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -3372,6 +2414,9 @@ class $$GroupsTableAnnotationComposer
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get changes =>
+      $composableBuilder(column: $table.changes, builder: (column) => column);
 
   $$DevicesTableAnnotationComposer get device {
     final $$DevicesTableAnnotationComposer composer = $composerBuilder(
@@ -3463,24 +2508,28 @@ class $$GroupsTableTableManager extends RootTableManager<
             Value<String> id = const Value.absent(),
             Value<String?> name = const Value.absent(),
             Value<String> device = const Value.absent(),
+            Value<String> changes = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               GroupsCompanion(
             id: id,
             name: name,
             device: device,
+            changes: changes,
             rowid: rowid,
           ),
           createCompanionCallback: ({
             required String id,
             Value<String?> name = const Value.absent(),
             required String device,
+            required String changes,
             Value<int> rowid = const Value.absent(),
           }) =>
               GroupsCompanion.insert(
             id: id,
             name: name,
             device: device,
+            changes: changes,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
@@ -4139,8 +3188,6 @@ class $AppDatabaseManager {
       $$RoutinesTableTableManager(_db, _db.routines);
   $$DevicesTableTableManager get devices =>
       $$DevicesTableTableManager(_db, _db.devices);
-  $$ConditionsTableTableManager get conditions =>
-      $$ConditionsTableTableManager(_db, _db.conditions);
   $$GroupsTableTableManager get groups =>
       $$GroupsTableTableManager(_db, _db.groups);
   $$GroupItemsTableTableManager get groupItems =>

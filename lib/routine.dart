@@ -1,6 +1,9 @@
-import 'condition.dart';
+import 'package:uuid/uuid.dart';
+import 'package:drift/drift.dart';
 import 'setup.dart';
 import 'database.dart';
+import 'group.dart';
+import 'device.dart';
 
 enum FrictionType {
   none,
@@ -16,59 +19,75 @@ class Routine {
   
   // scheduling
   final List<bool> _days;
-  final int _startTime;
-  final int _endTime;
-  
-  // breaks
-  final int _numBreaks;
-  final int _maxBreakDuration; // in minutes
-  final FrictionType _frictionType;
-  final int _frictionAmt; // fixed delay, code length
-  final String _frictionSource; // nfc id, code source
+  int _startTime;
+  int _endTime;
 
-  static Stream<List<Routine>> getAll() => getIt<AppDatabase>().getRoutines().map((entries) => entries.map((e) => Routine.fromEntry(e)).toList());
+  late final Map<String, Group> _groups;
+
+  late RoutineEntry? _entry;
+
+  static Stream<List<Routine>> getAll() {
+    return getIt<AppDatabase>()
+      .getRoutines()
+      .map((entries) => entries.map((e) => Routine.fromEntry(e)).toList());
+  }
 
   Routine() :
-    _id = '',
-    _name = '',
+    _id = Uuid().v4(),
+    _name = 'Routine',
     _days = [true, true, true, true, true, true, true],
     _startTime = -1,
     _endTime = -1,
-    _numBreaks = 0,
-    _maxBreakDuration = 0,
-    _frictionType = FrictionType.none,
-    _frictionAmt = 0,
-    _frictionSource = '';
+    _entry = null {
+      _groups = {
+        getIt<Device>().id: Group()
+      };
+    }
 
   Routine.fromEntry(RoutineEntry entry) : 
-      _id = entry.id,
-      _name = entry.name,
-      _days = [entry.monday, entry.tuesday, entry.wednesday, entry.thursday, entry.friday, entry.saturday, entry.sunday],
-      _startTime = entry.startTime,
-      _endTime = entry.endTime,
-      _numBreaks = entry.numBreaks,
-      _maxBreakDuration = entry.maxBreakDuration,
-      _frictionType = FrictionType.values.byName(entry.frictionType),
-      _frictionAmt = entry.frictionAmt,
-      _frictionSource = entry.frictionSource
-      {
-    if (_days.length != 7) {
-      throw Exception("Days must be a list of length 7");
-    }
-    if (_startTime >= 0 && _endTime >= 0) {
-      final startHour = _startTime ~/ 60;
-      final startMinute = _startTime % 60;
-      final endHour = _endTime ~/ 60;
-      final endMinute = _endTime % 60;
-      
-      if (startHour < 0 || startMinute < 0 || endHour < 0 || endMinute < 0) {
-        throw Exception("Start time and end time must be non-negative");
-      }
+    _id = entry.id,
+    _name = entry.name,
+    _days = [entry.monday, entry.tuesday, entry.wednesday, entry.thursday, entry.friday, entry.saturday, entry.sunday],
+    _startTime = entry.startTime,
+    _endTime = entry.endTime {
+      _groups = {};
+      _entry = entry;
+  }
 
-      if (startHour > 24 || startMinute > 60 || endHour > 24 || endMinute > 60) {
-        throw Exception("Start time and end time must be in the range 0-1440");
-      }
-    }
+  save() {
+    getIt<AppDatabase>().upsertRoutine(RoutinesCompanion(
+      id: Value(_id), 
+      name: Value(_name),
+      monday: Value(_days[0]), 
+      tuesday: Value(_days[1]), 
+      wednesday: Value(_days[2]), 
+      thursday: Value(_days[3]), 
+      friday: Value(_days[4]), 
+      saturday: Value(_days[5]), 
+      sunday: Value(_days[6]), 
+      startTime: Value(_startTime), 
+      endTime: Value(_endTime)
+    ));
+  }
+
+  bool modified() {
+    if (_entry == null) return true;
+
+    return _entry!.name != _name ||
+           _entry!.monday != _days[0] ||
+           _entry!.tuesday != _days[1] ||
+           _entry!.wednesday != _days[2] ||
+           _entry!.thursday != _days[3] ||
+           _entry!.friday != _days[4] ||
+           _entry!.saturday != _days[5] ||
+           _entry!.sunday != _days[6] ||
+           _entry!.startTime != _startTime ||
+           _entry!.endTime != _endTime;
+  }
+
+  bool valid() {
+    return _name.isNotEmpty && 
+           _days.contains(true);
   }
 
   String get id => _id;
@@ -76,12 +95,30 @@ class Routine {
   List<bool> get days => List.unmodifiable(_days);
   int get startTime => _startTime;
   int get endTime => _endTime;
-  int get numBreaks => _numBreaks;
-  int get maxBreakDuration => _maxBreakDuration;
-  FrictionType get frictionType => _frictionType;
-  int get frictionAmt => _frictionAmt;
-  String get frictionSource => _frictionSource;
-  List<Condition> get conditions => [];
+  set startTime(int value) {
+    if (value < 0 || value > 1440) { 
+      throw Exception("Start time must be between 0 and 1440");
+    }
+
+    _startTime = value;
+  }
+  set endTime(int value) {
+    if (value < 0 || value > 1440) { 
+      throw Exception("End time must be between 0 and 1440");
+    }
+
+    _endTime = value;
+  }
+  bool get allDay => _startTime == -1 && _endTime == -1;
+  set allDay(bool value) {
+    if (value) {
+      _startTime = -1;
+      _endTime = -1;
+    } else {
+      _startTime = 540;
+      _endTime = 1010;
+    }
+  }
   Map<String, String> get groupIds => {};
 
   int get startHour => _startTime ~/ 60;
@@ -100,22 +137,22 @@ class Routine {
     final int currMins = now.hour * 60 + now.minute;
     
     if (_startTime == -1 && _endTime == -1) {
-      return _days[dayOfWeek] && !isComplete();
+      return _days[dayOfWeek];
     }
     
     if (_endTime < _startTime) {
-      return (currMins >= _startTime || currMins < _endTime) && !isComplete();
+      return (currMins >= _startTime || currMins < _endTime);
     }
     
-    return (currMins >= _startTime && currMins < _endTime) && !isComplete();
+    return (currMins >= _startTime && currMins < _endTime);
   }
 
-  bool isComplete() { 
-    // TODO: implement
-    return false;
+  Group getGroup() {
+    final Device device = getIt<Device>();
+    return _groups[device.id]!;
   }
 
-  List<String> get apps => [];
-  List<String> get sites => [];
-  bool get allow => false;
+  List<String> get apps => getGroup().apps;
+  List<String> get sites => getGroup().sites;
+  bool get allow => getGroup().allow;
 }

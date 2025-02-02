@@ -1,49 +1,15 @@
+import 'package:uuid/uuid.dart';
+
 class Group {
   final String _id;
-  final String? _name;
-  final List<String> _apps;
-  final List<String> _sites;
-  final bool _allow;
-  final String? _deviceId;
+  final String? name;
+  final List<String> apps;
+  final List<String> sites;
+  final bool allow;
+  final String? deviceId;
 
-  const Group({
-    required String id,
-    required String? deviceId,
-    String? name,
-    List<String>? apps,
-    List<String>? sites,
-    bool allow = false,
-  }) : _id = id,
-       _name = name,
-       _apps = apps ?? const [],
-       _sites = sites ?? const [],
-       _allow = allow,
-       _deviceId = deviceId;
+  Group({this.name, this.apps = const [], this.sites = const [], this.allow = false, this.deviceId})
+      : _id = Uuid().v4();
 
-  // Getters
-  String get id => _id;
-  String? get name => _name;
-  List<String> get apps => List.unmodifiable(_apps);
-  List<String> get sites => List.unmodifiable(_sites);
-  bool get allow => _allow;
-
-  // Create a new BlockGroup with updated values
-  Group copyWith({
-    String? id,
-    String? deviceId,
-    String? routineId,
-    String? name,
-    List<String>? apps,
-    List<String>? sites,
-    bool? allow,
-  }) {
-    return Group(
-      id: id ?? _id,
-      deviceId: deviceId ?? _deviceId,
-      name: name ?? _name,
-      apps: apps ?? List.from(_apps),
-      sites: sites ?? List.from(_sites),
-      allow: allow ?? _allow,
-    );
-  }
+  get id => _id;
 }

@@ -62,11 +62,6 @@ class _RoutineListState extends State<RoutineList> {
       details.add('${startTimeOfDay.format(context)} - ${endTimeOfDay.format(context)}');
     }
 
-    // Add conditions count
-    if (routine.conditions.isNotEmpty) {
-      details.add('${routine.conditions.length} conditions');
-    }
-
     return Text(details.join(' • '));
   }
 
