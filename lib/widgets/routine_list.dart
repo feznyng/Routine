@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../routine.dart';
 import 'routine_page.dart';
-import '../manager.dart';
 
 class RoutineList extends StatefulWidget {
   const RoutineList({super.key});
@@ -11,18 +10,17 @@ class RoutineList extends StatefulWidget {
 }
 
 class _RoutineListState extends State<RoutineList> {
-  final Manager _manager = Manager();
   late List<Routine> _routines;
 
   @override
   void initState() {
     super.initState();
-    _routines = _manager.routines;
-  }
-
-  void _updateRoutines() {
-    setState(() {
-      _routines = _manager.routines;
+    _routines = [];
+   
+    Routine.getAll().listen((routines) {
+      setState(() {
+        _routines = routines;
+      });
     });
   }
 
@@ -76,19 +74,11 @@ class _RoutineListState extends State<RoutineList> {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => RoutinePage(
-          routine: routine ?? _manager.tempRoutine,
+          routine: routine ?? Routine(),
           onSave: (updatedRoutine) {
-            if (routine == null) {
-              _manager.addRoutine(updatedRoutine);
-            } else {
-              _manager.updateRoutine(updatedRoutine);
-            }
-            _updateRoutines();
             Navigator.of(context).pop();
           },
           onDelete: routine != null ? () {
-            _manager.removeRoutine(routine.id);
-            _updateRoutines();
             Navigator.of(context).pop();
           } : null,
         ),

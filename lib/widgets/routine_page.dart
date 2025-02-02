@@ -3,7 +3,6 @@ import 'package:uuid/uuid.dart';
 import '../routine.dart';
 import '../condition.dart';
 import '../group.dart';
-import '../manager.dart';
 import 'block_group_page.dart';
 
 class RoutinePage extends StatefulWidget {

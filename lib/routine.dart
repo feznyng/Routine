@@ -1,6 +1,6 @@
 import 'condition.dart';
-import 'group.dart';
-import 'manager.dart';
+import 'setup.dart';
+import 'database.dart';
 
 enum FrictionType {
   none,
@@ -11,8 +11,8 @@ enum FrictionType {
 }
 
 class Routine {
-  final String id;
-  final String name;
+  final String _id;
+  final String _name;
   
   // scheduling
   final List<bool> _days;
@@ -26,35 +26,32 @@ class Routine {
   final int _frictionAmt; // fixed delay, code length
   final String _frictionSource; // nfc id, code source
 
-  // conditions
-  final List<Condition> _conditions;
+  static Stream<List<Routine>> getAll() => getIt<AppDatabase>().getRoutines().map((entries) => entries.map((e) => Routine.fromEntry(e)).toList());
 
-  // block
-  final Map<String, String> _groupIds;
+  Routine() :
+    _id = '',
+    _name = '',
+    _days = [true, true, true, true, true, true, true],
+    _startTime = -1,
+    _endTime = -1,
+    _numBreaks = 0,
+    _maxBreakDuration = 0,
+    _frictionType = FrictionType.none,
+    _frictionAmt = 0,
+    _frictionSource = '';
 
-  Routine({
-    required this.id, 
-    required this.name,
-    List<bool>? days,
-    int startTime = -1,
-    int endTime = -1,
-    int numBreaks = -1,
-    int maxBreakDuration = 15,
-    FrictionType frictionType = FrictionType.none,
-    int frictionAmt = -1,
-    String frictionSource = "",
-    List<Condition>? conditions,
-    Map<String, String> groupIds = const {}
-  }) : _days = days ?? List.filled(7, true),
-       _startTime = startTime,
-       _endTime = endTime,
-       _numBreaks = numBreaks,
-       _maxBreakDuration = maxBreakDuration,
-       _frictionType = frictionType,
-       _frictionAmt = frictionAmt,
-       _frictionSource = frictionSource,
-       _conditions = conditions ?? [],
-       _groupIds = groupIds {
+  Routine.fromEntry(RoutineEntry entry) : 
+      _id = entry.id,
+      _name = entry.name,
+      _days = [entry.monday, entry.tuesday, entry.wednesday, entry.thursday, entry.friday, entry.saturday, entry.sunday],
+      _startTime = entry.startTime,
+      _endTime = entry.endTime,
+      _numBreaks = entry.numBreaks,
+      _maxBreakDuration = entry.maxBreakDuration,
+      _frictionType = FrictionType.values.byName(entry.frictionType),
+      _frictionAmt = entry.frictionAmt,
+      _frictionSource = entry.frictionSource
+      {
     if (_days.length != 7) {
       throw Exception("Days must be a list of length 7");
     }
@@ -74,6 +71,8 @@ class Routine {
     }
   }
 
+  String get id => _id;
+  String get name => _name;
   List<bool> get days => List.unmodifiable(_days);
   int get startTime => _startTime;
   int get endTime => _endTime;
@@ -82,8 +81,8 @@ class Routine {
   FrictionType get frictionType => _frictionType;
   int get frictionAmt => _frictionAmt;
   String get frictionSource => _frictionSource;
-  List<Condition> get conditions => List.unmodifiable(_conditions);
-  Map<String, String> get groupIds => Map.unmodifiable(_groupIds);
+  List<Condition> get conditions => [];
+  Map<String, String> get groupIds => {};
 
   int get startHour => _startTime ~/ 60;
   int get startMinute => _startTime % 60;
@@ -100,43 +99,23 @@ class Routine {
     
     final int currMins = now.hour * 60 + now.minute;
     
-    // All day routine or not scheduled
     if (_startTime == -1 && _endTime == -1) {
       return _days[dayOfWeek] && !isComplete();
     }
     
-    // Check if routine spans to next day (endTime < startTime)
     if (_endTime < _startTime) {
-      // Active if current time is either after start time or before end time
       return (currMins >= _startTime || currMins < _endTime) && !isComplete();
     }
     
-    // Normal case: routine starts and ends on same day
     return (currMins >= _startTime && currMins < _endTime) && !isComplete();
   }
 
   bool isComplete() { 
-    if (_conditions.isEmpty) {
-      return false;
-    }
-
-    for (final Condition condition in _conditions) {
-      if (!condition.isComplete(_startTime, _endTime)) {
-        return false;
-      }
-    }
-
-    return true;
+    // TODO: implement
+    return false;
   }
 
-  String getGroupId() {
-    final id = _groupIds[Manager().thisDevice.id]!;
-    return id;
-  }
-
-  Group getGroup() {
-    String id = getGroupId();
-
-    return Manager().findBlockGroup(id)!;
-  }
+  List<String> get apps => [];
+  List<String> get sites => [];
+  bool get allow => false;
 }

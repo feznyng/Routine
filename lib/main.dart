@@ -3,6 +3,8 @@ import 'package:window_manager/window_manager.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'desktop_service.dart';
 import 'widgets/routine_list.dart';
+import 'setup.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -22,6 +24,8 @@ void main() async {
     await windowManager.show();
     await windowManager.focus();
   });
+
+  setup();
 
   runApp(const MyApp());
 }

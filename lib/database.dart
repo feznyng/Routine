@@ -104,4 +104,8 @@ class AppDatabase extends _$AppDatabase {
       native: const DriftNativeOptions(),
     );
   }
+
+  Stream<List<RoutineEntry>> getRoutines() {
+    return select(routines).watch();
+  }
 }

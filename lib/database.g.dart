@@ -3,7 +3,8 @@
 part of 'database.dart';
 
 // ignore_for_file: type=lint
-class $RoutinesTable extends Routines with TableInfo<$RoutinesTable, Routine> {
+class $RoutinesTable extends Routines
+    with TableInfo<$RoutinesTable, RoutineEntry> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -151,7 +152,7 @@ class $RoutinesTable extends Routines with TableInfo<$RoutinesTable, Routine> {
   String get actualTableName => $name;
   static const String $name = 'routines';
   @override
-  VerificationContext validateIntegrity(Insertable<Routine> instance,
+  VerificationContext validateIntegrity(Insertable<RoutineEntry> instance,
       {bool isInserting = false}) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
@@ -270,9 +271,9 @@ class $RoutinesTable extends Routines with TableInfo<$RoutinesTable, Routine> {
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  Routine map(Map<String, dynamic> data, {String? tablePrefix}) {
+  RoutineEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Routine(
+    return RoutineEntry(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       name: attachedDatabase.typeMapping
@@ -316,7 +317,7 @@ class $RoutinesTable extends Routines with TableInfo<$RoutinesTable, Routine> {
   }
 }
 
-class Routine extends DataClass implements Insertable<Routine> {
+class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
   final String id;
   final String name;
   final bool monday;
@@ -334,7 +335,7 @@ class Routine extends DataClass implements Insertable<Routine> {
   final int frictionAmt;
   final String frictionSource;
   final String breaks;
-  const Routine(
+  const RoutineEntry(
       {required this.id,
       required this.name,
       required this.monday,
@@ -397,10 +398,10 @@ class Routine extends DataClass implements Insertable<Routine> {
     );
   }
 
-  factory Routine.fromJson(Map<String, dynamic> json,
+  factory RoutineEntry.fromJson(Map<String, dynamic> json,
       {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Routine(
+    return RoutineEntry(
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       monday: serializer.fromJson<bool>(json['monday']),
@@ -444,7 +445,7 @@ class Routine extends DataClass implements Insertable<Routine> {
     };
   }
 
-  Routine copyWith(
+  RoutineEntry copyWith(
           {String? id,
           String? name,
           bool? monday,
@@ -462,7 +463,7 @@ class Routine extends DataClass implements Insertable<Routine> {
           int? frictionAmt,
           String? frictionSource,
           String? breaks}) =>
-      Routine(
+      RoutineEntry(
         id: id ?? this.id,
         name: name ?? this.name,
         monday: monday ?? this.monday,
@@ -481,8 +482,8 @@ class Routine extends DataClass implements Insertable<Routine> {
         frictionSource: frictionSource ?? this.frictionSource,
         breaks: breaks ?? this.breaks,
       );
-  Routine copyWithCompanion(RoutinesCompanion data) {
-    return Routine(
+  RoutineEntry copyWithCompanion(RoutinesCompanion data) {
+    return RoutineEntry(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       monday: data.monday.present ? data.monday.value : this.monday,
@@ -512,7 +513,7 @@ class Routine extends DataClass implements Insertable<Routine> {
 
   @override
   String toString() {
-    return (StringBuffer('Routine(')
+    return (StringBuffer('RoutineEntry(')
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('monday: $monday, ')
@@ -556,7 +557,7 @@ class Routine extends DataClass implements Insertable<Routine> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is Routine &&
+      (other is RoutineEntry &&
           other.id == this.id &&
           other.name == this.name &&
           other.monday == this.monday &&
@@ -576,7 +577,7 @@ class Routine extends DataClass implements Insertable<Routine> {
           other.breaks == this.breaks);
 }
 
-class RoutinesCompanion extends UpdateCompanion<Routine> {
+class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
   final Value<String> id;
   final Value<String> name;
   final Value<bool> monday;
@@ -651,7 +652,7 @@ class RoutinesCompanion extends UpdateCompanion<Routine> {
         frictionAmt = Value(frictionAmt),
         frictionSource = Value(frictionSource),
         breaks = Value(breaks);
-  static Insertable<Routine> custom({
+  static Insertable<RoutineEntry> custom({
     Expression<String>? id,
     Expression<String>? name,
     Expression<bool>? monday,
@@ -820,7 +821,7 @@ class RoutinesCompanion extends UpdateCompanion<Routine> {
   }
 }
 
-class $DevicesTable extends Devices with TableInfo<$DevicesTable, Device> {
+class $DevicesTable extends Devices with TableInfo<$DevicesTable, DeviceEntry> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -848,7 +849,7 @@ class $DevicesTable extends Devices with TableInfo<$DevicesTable, Device> {
   String get actualTableName => $name;
   static const String $name = 'devices';
   @override
-  VerificationContext validateIntegrity(Insertable<Device> instance,
+  VerificationContext validateIntegrity(Insertable<DeviceEntry> instance,
       {bool isInserting = false}) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
@@ -875,9 +876,9 @@ class $DevicesTable extends Devices with TableInfo<$DevicesTable, Device> {
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  Device map(Map<String, dynamic> data, {String? tablePrefix}) {
+  DeviceEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Device(
+    return DeviceEntry(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       name: attachedDatabase.typeMapping
@@ -893,11 +894,11 @@ class $DevicesTable extends Devices with TableInfo<$DevicesTable, Device> {
   }
 }
 
-class Device extends DataClass implements Insertable<Device> {
+class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
   final String id;
   final String name;
   final String type;
-  const Device({required this.id, required this.name, required this.type});
+  const DeviceEntry({required this.id, required this.name, required this.type});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -915,10 +916,10 @@ class Device extends DataClass implements Insertable<Device> {
     );
   }
 
-  factory Device.fromJson(Map<String, dynamic> json,
+  factory DeviceEntry.fromJson(Map<String, dynamic> json,
       {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Device(
+    return DeviceEntry(
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       type: serializer.fromJson<String>(json['type']),
@@ -934,13 +935,13 @@ class Device extends DataClass implements Insertable<Device> {
     };
   }
 
-  Device copyWith({String? id, String? name, String? type}) => Device(
+  DeviceEntry copyWith({String? id, String? name, String? type}) => DeviceEntry(
         id: id ?? this.id,
         name: name ?? this.name,
         type: type ?? this.type,
       );
-  Device copyWithCompanion(DevicesCompanion data) {
-    return Device(
+  DeviceEntry copyWithCompanion(DevicesCompanion data) {
+    return DeviceEntry(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       type: data.type.present ? data.type.value : this.type,
@@ -949,7 +950,7 @@ class Device extends DataClass implements Insertable<Device> {
 
   @override
   String toString() {
-    return (StringBuffer('Device(')
+    return (StringBuffer('DeviceEntry(')
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('type: $type')
@@ -962,13 +963,13 @@ class Device extends DataClass implements Insertable<Device> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is Device &&
+      (other is DeviceEntry &&
           other.id == this.id &&
           other.name == this.name &&
           other.type == this.type);
 }
 
-class DevicesCompanion extends UpdateCompanion<Device> {
+class DevicesCompanion extends UpdateCompanion<DeviceEntry> {
   final Value<String> id;
   final Value<String> name;
   final Value<String> type;
@@ -987,7 +988,7 @@ class DevicesCompanion extends UpdateCompanion<Device> {
   })  : id = Value(id),
         name = Value(name),
         type = Value(type);
-  static Insertable<Device> custom({
+  static Insertable<DeviceEntry> custom({
     Expression<String>? id,
     Expression<String>? name,
     Expression<String>? type,
@@ -1045,7 +1046,7 @@ class DevicesCompanion extends UpdateCompanion<Device> {
 }
 
 class $ConditionsTable extends Conditions
-    with TableInfo<$ConditionsTable, Condition> {
+    with TableInfo<$ConditionsTable, ConditionEntry> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -1102,7 +1103,7 @@ class $ConditionsTable extends Conditions
   String get actualTableName => $name;
   static const String $name = 'conditions';
   @override
-  VerificationContext validateIntegrity(Insertable<Condition> instance,
+  VerificationContext validateIntegrity(Insertable<ConditionEntry> instance,
       {bool isInserting = false}) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
@@ -1152,9 +1153,9 @@ class $ConditionsTable extends Conditions
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  Condition map(Map<String, dynamic> data, {String? tablePrefix}) {
+  ConditionEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Condition(
+    return ConditionEntry(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       routine: attachedDatabase.typeMapping
@@ -1178,7 +1179,7 @@ class $ConditionsTable extends Conditions
   }
 }
 
-class Condition extends DataClass implements Insertable<Condition> {
+class ConditionEntry extends DataClass implements Insertable<ConditionEntry> {
   final String id;
   final String routine;
   final String type;
@@ -1186,7 +1187,7 @@ class Condition extends DataClass implements Insertable<Condition> {
   final int order;
   final bool or;
   final String? lastCompletedAt;
-  const Condition(
+  const ConditionEntry(
       {required this.id,
       required this.routine,
       required this.type,
@@ -1223,10 +1224,10 @@ class Condition extends DataClass implements Insertable<Condition> {
     );
   }
 
-  factory Condition.fromJson(Map<String, dynamic> json,
+  factory ConditionEntry.fromJson(Map<String, dynamic> json,
       {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Condition(
+    return ConditionEntry(
       id: serializer.fromJson<String>(json['id']),
       routine: serializer.fromJson<String>(json['routine']),
       type: serializer.fromJson<String>(json['type']),
@@ -1250,7 +1251,7 @@ class Condition extends DataClass implements Insertable<Condition> {
     };
   }
 
-  Condition copyWith(
+  ConditionEntry copyWith(
           {String? id,
           String? routine,
           String? type,
@@ -1258,7 +1259,7 @@ class Condition extends DataClass implements Insertable<Condition> {
           int? order,
           bool? or,
           Value<String?> lastCompletedAt = const Value.absent()}) =>
-      Condition(
+      ConditionEntry(
         id: id ?? this.id,
         routine: routine ?? this.routine,
         type: type ?? this.type,
@@ -1269,8 +1270,8 @@ class Condition extends DataClass implements Insertable<Condition> {
             ? lastCompletedAt.value
             : this.lastCompletedAt,
       );
-  Condition copyWithCompanion(ConditionsCompanion data) {
-    return Condition(
+  ConditionEntry copyWithCompanion(ConditionsCompanion data) {
+    return ConditionEntry(
       id: data.id.present ? data.id.value : this.id,
       routine: data.routine.present ? data.routine.value : this.routine,
       type: data.type.present ? data.type.value : this.type,
@@ -1285,7 +1286,7 @@ class Condition extends DataClass implements Insertable<Condition> {
 
   @override
   String toString() {
-    return (StringBuffer('Condition(')
+    return (StringBuffer('ConditionEntry(')
           ..write('id: $id, ')
           ..write('routine: $routine, ')
           ..write('type: $type, ')
@@ -1303,7 +1304,7 @@ class Condition extends DataClass implements Insertable<Condition> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is Condition &&
+      (other is ConditionEntry &&
           other.id == this.id &&
           other.routine == this.routine &&
           other.type == this.type &&
@@ -1313,7 +1314,7 @@ class Condition extends DataClass implements Insertable<Condition> {
           other.lastCompletedAt == this.lastCompletedAt);
 }
 
-class ConditionsCompanion extends UpdateCompanion<Condition> {
+class ConditionsCompanion extends UpdateCompanion<ConditionEntry> {
   final Value<String> id;
   final Value<String> routine;
   final Value<String> type;
@@ -1347,7 +1348,7 @@ class ConditionsCompanion extends UpdateCompanion<Condition> {
         value = Value(value),
         order = Value(order),
         or = Value(or);
-  static Insertable<Condition> custom({
+  static Insertable<ConditionEntry> custom({
     Expression<String>? id,
     Expression<String>? routine,
     Expression<String>? type,
@@ -1436,7 +1437,7 @@ class ConditionsCompanion extends UpdateCompanion<Condition> {
   }
 }
 
-class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
+class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupEntry> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -1467,7 +1468,7 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
   String get actualTableName => $name;
   static const String $name = 'groups';
   @override
-  VerificationContext validateIntegrity(Insertable<Group> instance,
+  VerificationContext validateIntegrity(Insertable<GroupEntry> instance,
       {bool isInserting = false}) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
@@ -1492,9 +1493,9 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  Group map(Map<String, dynamic> data, {String? tablePrefix}) {
+  GroupEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Group(
+    return GroupEntry(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       name: attachedDatabase.typeMapping
@@ -1510,11 +1511,11 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
   }
 }
 
-class Group extends DataClass implements Insertable<Group> {
+class GroupEntry extends DataClass implements Insertable<GroupEntry> {
   final String id;
   final String? name;
   final String device;
-  const Group({required this.id, this.name, required this.device});
+  const GroupEntry({required this.id, this.name, required this.device});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1534,10 +1535,10 @@ class Group extends DataClass implements Insertable<Group> {
     );
   }
 
-  factory Group.fromJson(Map<String, dynamic> json,
+  factory GroupEntry.fromJson(Map<String, dynamic> json,
       {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Group(
+    return GroupEntry(
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String?>(json['name']),
       device: serializer.fromJson<String>(json['device']),
@@ -1553,17 +1554,17 @@ class Group extends DataClass implements Insertable<Group> {
     };
   }
 
-  Group copyWith(
+  GroupEntry copyWith(
           {String? id,
           Value<String?> name = const Value.absent(),
           String? device}) =>
-      Group(
+      GroupEntry(
         id: id ?? this.id,
         name: name.present ? name.value : this.name,
         device: device ?? this.device,
       );
-  Group copyWithCompanion(GroupsCompanion data) {
-    return Group(
+  GroupEntry copyWithCompanion(GroupsCompanion data) {
+    return GroupEntry(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       device: data.device.present ? data.device.value : this.device,
@@ -1572,7 +1573,7 @@ class Group extends DataClass implements Insertable<Group> {
 
   @override
   String toString() {
-    return (StringBuffer('Group(')
+    return (StringBuffer('GroupEntry(')
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('device: $device')
@@ -1585,13 +1586,13 @@ class Group extends DataClass implements Insertable<Group> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is Group &&
+      (other is GroupEntry &&
           other.id == this.id &&
           other.name == this.name &&
           other.device == this.device);
 }
 
-class GroupsCompanion extends UpdateCompanion<Group> {
+class GroupsCompanion extends UpdateCompanion<GroupEntry> {
   final Value<String> id;
   final Value<String?> name;
   final Value<String> device;
@@ -1609,7 +1610,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         device = Value(device);
-  static Insertable<Group> custom({
+  static Insertable<GroupEntry> custom({
     Expression<String>? id,
     Expression<String>? name,
     Expression<String>? device,
@@ -1667,7 +1668,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
 }
 
 class $GroupItemsTable extends GroupItems
-    with TableInfo<$GroupItemsTable, GroupItem> {
+    with TableInfo<$GroupItemsTable, GroupItemEntry> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -1701,7 +1702,7 @@ class $GroupItemsTable extends GroupItems
   String get actualTableName => $name;
   static const String $name = 'group_items';
   @override
-  VerificationContext validateIntegrity(Insertable<GroupItem> instance,
+  VerificationContext validateIntegrity(Insertable<GroupItemEntry> instance,
       {bool isInserting = false}) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
@@ -1729,9 +1730,9 @@ class $GroupItemsTable extends GroupItems
   @override
   Set<GeneratedColumn> get $primaryKey => {group, value};
   @override
-  GroupItem map(Map<String, dynamic> data, {String? tablePrefix}) {
+  GroupItemEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return GroupItem(
+    return GroupItemEntry(
       value: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}value'])!,
       site: attachedDatabase.typeMapping
@@ -1747,11 +1748,11 @@ class $GroupItemsTable extends GroupItems
   }
 }
 
-class GroupItem extends DataClass implements Insertable<GroupItem> {
+class GroupItemEntry extends DataClass implements Insertable<GroupItemEntry> {
   final String value;
   final bool site;
   final String group;
-  const GroupItem(
+  const GroupItemEntry(
       {required this.value, required this.site, required this.group});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1770,10 +1771,10 @@ class GroupItem extends DataClass implements Insertable<GroupItem> {
     );
   }
 
-  factory GroupItem.fromJson(Map<String, dynamic> json,
+  factory GroupItemEntry.fromJson(Map<String, dynamic> json,
       {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return GroupItem(
+    return GroupItemEntry(
       value: serializer.fromJson<String>(json['value']),
       site: serializer.fromJson<bool>(json['site']),
       group: serializer.fromJson<String>(json['group']),
@@ -1789,13 +1790,14 @@ class GroupItem extends DataClass implements Insertable<GroupItem> {
     };
   }
 
-  GroupItem copyWith({String? value, bool? site, String? group}) => GroupItem(
+  GroupItemEntry copyWith({String? value, bool? site, String? group}) =>
+      GroupItemEntry(
         value: value ?? this.value,
         site: site ?? this.site,
         group: group ?? this.group,
       );
-  GroupItem copyWithCompanion(GroupItemsCompanion data) {
-    return GroupItem(
+  GroupItemEntry copyWithCompanion(GroupItemsCompanion data) {
+    return GroupItemEntry(
       value: data.value.present ? data.value.value : this.value,
       site: data.site.present ? data.site.value : this.site,
       group: data.group.present ? data.group.value : this.group,
@@ -1804,7 +1806,7 @@ class GroupItem extends DataClass implements Insertable<GroupItem> {
 
   @override
   String toString() {
-    return (StringBuffer('GroupItem(')
+    return (StringBuffer('GroupItemEntry(')
           ..write('value: $value, ')
           ..write('site: $site, ')
           ..write('group: $group')
@@ -1817,13 +1819,13 @@ class GroupItem extends DataClass implements Insertable<GroupItem> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is GroupItem &&
+      (other is GroupItemEntry &&
           other.value == this.value &&
           other.site == this.site &&
           other.group == this.group);
 }
 
-class GroupItemsCompanion extends UpdateCompanion<GroupItem> {
+class GroupItemsCompanion extends UpdateCompanion<GroupItemEntry> {
   final Value<String> value;
   final Value<bool> site;
   final Value<String> group;
@@ -1842,7 +1844,7 @@ class GroupItemsCompanion extends UpdateCompanion<GroupItem> {
   })  : value = Value(value),
         site = Value(site),
         group = Value(group);
-  static Insertable<GroupItem> custom({
+  static Insertable<GroupItemEntry> custom({
     Expression<String>? value,
     Expression<bool>? site,
     Expression<String>? group,
@@ -1900,7 +1902,7 @@ class GroupItemsCompanion extends UpdateCompanion<GroupItem> {
 }
 
 class $RoutineGroupsTable extends RoutineGroups
-    with TableInfo<$RoutineGroupsTable, RoutineGroup> {
+    with TableInfo<$RoutineGroupsTable, RoutineGroupEntry> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -1935,7 +1937,7 @@ class $RoutineGroupsTable extends RoutineGroups
   String get actualTableName => $name;
   static const String $name = 'routine_groups';
   @override
-  VerificationContext validateIntegrity(Insertable<RoutineGroup> instance,
+  VerificationContext validateIntegrity(Insertable<RoutineGroupEntry> instance,
       {bool isInserting = false}) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
@@ -1962,9 +1964,9 @@ class $RoutineGroupsTable extends RoutineGroups
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  RoutineGroup map(Map<String, dynamic> data, {String? tablePrefix}) {
+  RoutineGroupEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return RoutineGroup(
+    return RoutineGroupEntry(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       routine: attachedDatabase.typeMapping
@@ -1980,11 +1982,12 @@ class $RoutineGroupsTable extends RoutineGroups
   }
 }
 
-class RoutineGroup extends DataClass implements Insertable<RoutineGroup> {
+class RoutineGroupEntry extends DataClass
+    implements Insertable<RoutineGroupEntry> {
   final String id;
   final String routine;
   final String group;
-  const RoutineGroup(
+  const RoutineGroupEntry(
       {required this.id, required this.routine, required this.group});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2003,10 +2006,10 @@ class RoutineGroup extends DataClass implements Insertable<RoutineGroup> {
     );
   }
 
-  factory RoutineGroup.fromJson(Map<String, dynamic> json,
+  factory RoutineGroupEntry.fromJson(Map<String, dynamic> json,
       {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return RoutineGroup(
+    return RoutineGroupEntry(
       id: serializer.fromJson<String>(json['id']),
       routine: serializer.fromJson<String>(json['routine']),
       group: serializer.fromJson<String>(json['group']),
@@ -2022,14 +2025,14 @@ class RoutineGroup extends DataClass implements Insertable<RoutineGroup> {
     };
   }
 
-  RoutineGroup copyWith({String? id, String? routine, String? group}) =>
-      RoutineGroup(
+  RoutineGroupEntry copyWith({String? id, String? routine, String? group}) =>
+      RoutineGroupEntry(
         id: id ?? this.id,
         routine: routine ?? this.routine,
         group: group ?? this.group,
       );
-  RoutineGroup copyWithCompanion(RoutineGroupsCompanion data) {
-    return RoutineGroup(
+  RoutineGroupEntry copyWithCompanion(RoutineGroupsCompanion data) {
+    return RoutineGroupEntry(
       id: data.id.present ? data.id.value : this.id,
       routine: data.routine.present ? data.routine.value : this.routine,
       group: data.group.present ? data.group.value : this.group,
@@ -2038,7 +2041,7 @@ class RoutineGroup extends DataClass implements Insertable<RoutineGroup> {
 
   @override
   String toString() {
-    return (StringBuffer('RoutineGroup(')
+    return (StringBuffer('RoutineGroupEntry(')
           ..write('id: $id, ')
           ..write('routine: $routine, ')
           ..write('group: $group')
@@ -2051,13 +2054,13 @@ class RoutineGroup extends DataClass implements Insertable<RoutineGroup> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is RoutineGroup &&
+      (other is RoutineGroupEntry &&
           other.id == this.id &&
           other.routine == this.routine &&
           other.group == this.group);
 }
 
-class RoutineGroupsCompanion extends UpdateCompanion<RoutineGroup> {
+class RoutineGroupsCompanion extends UpdateCompanion<RoutineGroupEntry> {
   final Value<String> id;
   final Value<String> routine;
   final Value<String> group;
@@ -2076,7 +2079,7 @@ class RoutineGroupsCompanion extends UpdateCompanion<RoutineGroup> {
   })  : id = Value(id),
         routine = Value(routine),
         group = Value(group);
-  static Insertable<RoutineGroup> custom({
+  static Insertable<RoutineGroupEntry> custom({
     Expression<String>? id,
     Expression<String>? routine,
     Expression<String>? group,
@@ -2192,10 +2195,10 @@ typedef $$RoutinesTableUpdateCompanionBuilder = RoutinesCompanion Function({
 });
 
 final class $$RoutinesTableReferences
-    extends BaseReferences<_$AppDatabase, $RoutinesTable, Routine> {
+    extends BaseReferences<_$AppDatabase, $RoutinesTable, RoutineEntry> {
   $$RoutinesTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static MultiTypedResultKey<$ConditionsTable, List<Condition>>
+  static MultiTypedResultKey<$ConditionsTable, List<ConditionEntry>>
       _conditionsRefsTable(_$AppDatabase db) =>
           MultiTypedResultKey.fromTable(db.conditions,
               aliasName:
@@ -2210,7 +2213,7 @@ final class $$RoutinesTableReferences
         manager.$state.copyWith(prefetchedData: cache));
   }
 
-  static MultiTypedResultKey<$RoutineGroupsTable, List<RoutineGroup>>
+  static MultiTypedResultKey<$RoutineGroupsTable, List<RoutineGroupEntry>>
       _routineGroupsRefsTable(_$AppDatabase db) =>
           MultiTypedResultKey.fromTable(db.routineGroups,
               aliasName: $_aliasNameGenerator(
@@ -2501,14 +2504,14 @@ class $$RoutinesTableAnnotationComposer
 class $$RoutinesTableTableManager extends RootTableManager<
     _$AppDatabase,
     $RoutinesTable,
-    Routine,
+    RoutineEntry,
     $$RoutinesTableFilterComposer,
     $$RoutinesTableOrderingComposer,
     $$RoutinesTableAnnotationComposer,
     $$RoutinesTableCreateCompanionBuilder,
     $$RoutinesTableUpdateCompanionBuilder,
-    (Routine, $$RoutinesTableReferences),
-    Routine,
+    (RoutineEntry, $$RoutinesTableReferences),
+    RoutineEntry,
     PrefetchHooks Function({bool conditionsRefs, bool routineGroupsRefs})> {
   $$RoutinesTableTableManager(_$AppDatabase db, $RoutinesTable table)
       : super(TableManagerState(
@@ -2649,14 +2652,14 @@ class $$RoutinesTableTableManager extends RootTableManager<
 typedef $$RoutinesTableProcessedTableManager = ProcessedTableManager<
     _$AppDatabase,
     $RoutinesTable,
-    Routine,
+    RoutineEntry,
     $$RoutinesTableFilterComposer,
     $$RoutinesTableOrderingComposer,
     $$RoutinesTableAnnotationComposer,
     $$RoutinesTableCreateCompanionBuilder,
     $$RoutinesTableUpdateCompanionBuilder,
-    (Routine, $$RoutinesTableReferences),
-    Routine,
+    (RoutineEntry, $$RoutinesTableReferences),
+    RoutineEntry,
     PrefetchHooks Function({bool conditionsRefs, bool routineGroupsRefs})>;
 typedef $$DevicesTableCreateCompanionBuilder = DevicesCompanion Function({
   required String id,
@@ -2672,10 +2675,10 @@ typedef $$DevicesTableUpdateCompanionBuilder = DevicesCompanion Function({
 });
 
 final class $$DevicesTableReferences
-    extends BaseReferences<_$AppDatabase, $DevicesTable, Device> {
+    extends BaseReferences<_$AppDatabase, $DevicesTable, DeviceEntry> {
   $$DevicesTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static MultiTypedResultKey<$GroupsTable, List<Group>> _groupsRefsTable(
+  static MultiTypedResultKey<$GroupsTable, List<GroupEntry>> _groupsRefsTable(
           _$AppDatabase db) =>
       MultiTypedResultKey.fromTable(db.groups,
           aliasName: $_aliasNameGenerator(db.devices.id, db.groups.device));
@@ -2792,14 +2795,14 @@ class $$DevicesTableAnnotationComposer
 class $$DevicesTableTableManager extends RootTableManager<
     _$AppDatabase,
     $DevicesTable,
-    Device,
+    DeviceEntry,
     $$DevicesTableFilterComposer,
     $$DevicesTableOrderingComposer,
     $$DevicesTableAnnotationComposer,
     $$DevicesTableCreateCompanionBuilder,
     $$DevicesTableUpdateCompanionBuilder,
-    (Device, $$DevicesTableReferences),
-    Device,
+    (DeviceEntry, $$DevicesTableReferences),
+    DeviceEntry,
     PrefetchHooks Function({bool groupsRefs})> {
   $$DevicesTableTableManager(_$AppDatabase db, $DevicesTable table)
       : super(TableManagerState(
@@ -2867,14 +2870,14 @@ class $$DevicesTableTableManager extends RootTableManager<
 typedef $$DevicesTableProcessedTableManager = ProcessedTableManager<
     _$AppDatabase,
     $DevicesTable,
-    Device,
+    DeviceEntry,
     $$DevicesTableFilterComposer,
     $$DevicesTableOrderingComposer,
     $$DevicesTableAnnotationComposer,
     $$DevicesTableCreateCompanionBuilder,
     $$DevicesTableUpdateCompanionBuilder,
-    (Device, $$DevicesTableReferences),
-    Device,
+    (DeviceEntry, $$DevicesTableReferences),
+    DeviceEntry,
     PrefetchHooks Function({bool groupsRefs})>;
 typedef $$ConditionsTableCreateCompanionBuilder = ConditionsCompanion Function({
   required String id,
@@ -2898,7 +2901,7 @@ typedef $$ConditionsTableUpdateCompanionBuilder = ConditionsCompanion Function({
 });
 
 final class $$ConditionsTableReferences
-    extends BaseReferences<_$AppDatabase, $ConditionsTable, Condition> {
+    extends BaseReferences<_$AppDatabase, $ConditionsTable, ConditionEntry> {
   $$ConditionsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
   static $RoutinesTable _routineTable(_$AppDatabase db) => db.routines
@@ -3065,14 +3068,14 @@ class $$ConditionsTableAnnotationComposer
 class $$ConditionsTableTableManager extends RootTableManager<
     _$AppDatabase,
     $ConditionsTable,
-    Condition,
+    ConditionEntry,
     $$ConditionsTableFilterComposer,
     $$ConditionsTableOrderingComposer,
     $$ConditionsTableAnnotationComposer,
     $$ConditionsTableCreateCompanionBuilder,
     $$ConditionsTableUpdateCompanionBuilder,
-    (Condition, $$ConditionsTableReferences),
-    Condition,
+    (ConditionEntry, $$ConditionsTableReferences),
+    ConditionEntry,
     PrefetchHooks Function({bool routine})> {
   $$ConditionsTableTableManager(_$AppDatabase db, $ConditionsTable table)
       : super(TableManagerState(
@@ -3171,14 +3174,14 @@ class $$ConditionsTableTableManager extends RootTableManager<
 typedef $$ConditionsTableProcessedTableManager = ProcessedTableManager<
     _$AppDatabase,
     $ConditionsTable,
-    Condition,
+    ConditionEntry,
     $$ConditionsTableFilterComposer,
     $$ConditionsTableOrderingComposer,
     $$ConditionsTableAnnotationComposer,
     $$ConditionsTableCreateCompanionBuilder,
     $$ConditionsTableUpdateCompanionBuilder,
-    (Condition, $$ConditionsTableReferences),
-    Condition,
+    (ConditionEntry, $$ConditionsTableReferences),
+    ConditionEntry,
     PrefetchHooks Function({bool routine})>;
 typedef $$GroupsTableCreateCompanionBuilder = GroupsCompanion Function({
   required String id,
@@ -3194,7 +3197,7 @@ typedef $$GroupsTableUpdateCompanionBuilder = GroupsCompanion Function({
 });
 
 final class $$GroupsTableReferences
-    extends BaseReferences<_$AppDatabase, $GroupsTable, Group> {
+    extends BaseReferences<_$AppDatabase, $GroupsTable, GroupEntry> {
   $$GroupsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
   static $DevicesTable _deviceTable(_$AppDatabase db) => db.devices
@@ -3211,7 +3214,7 @@ final class $$GroupsTableReferences
         manager.$state.copyWith(prefetchedData: [item]));
   }
 
-  static MultiTypedResultKey<$GroupItemsTable, List<GroupItem>>
+  static MultiTypedResultKey<$GroupItemsTable, List<GroupItemEntry>>
       _groupItemsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
           db.groupItems,
           aliasName: $_aliasNameGenerator(db.groups.id, db.groupItems.group));
@@ -3225,7 +3228,7 @@ final class $$GroupsTableReferences
         manager.$state.copyWith(prefetchedData: cache));
   }
 
-  static MultiTypedResultKey<$RoutineGroupsTable, List<RoutineGroup>>
+  static MultiTypedResultKey<$RoutineGroupsTable, List<RoutineGroupEntry>>
       _routineGroupsRefsTable(_$AppDatabase db) =>
           MultiTypedResultKey.fromTable(db.routineGroups,
               aliasName:
@@ -3436,14 +3439,14 @@ class $$GroupsTableAnnotationComposer
 class $$GroupsTableTableManager extends RootTableManager<
     _$AppDatabase,
     $GroupsTable,
-    Group,
+    GroupEntry,
     $$GroupsTableFilterComposer,
     $$GroupsTableOrderingComposer,
     $$GroupsTableAnnotationComposer,
     $$GroupsTableCreateCompanionBuilder,
     $$GroupsTableUpdateCompanionBuilder,
-    (Group, $$GroupsTableReferences),
-    Group,
+    (GroupEntry, $$GroupsTableReferences),
+    GroupEntry,
     PrefetchHooks Function(
         {bool device, bool groupItemsRefs, bool routineGroupsRefs})> {
   $$GroupsTableTableManager(_$AppDatabase db, $GroupsTable table)
@@ -3555,14 +3558,14 @@ class $$GroupsTableTableManager extends RootTableManager<
 typedef $$GroupsTableProcessedTableManager = ProcessedTableManager<
     _$AppDatabase,
     $GroupsTable,
-    Group,
+    GroupEntry,
     $$GroupsTableFilterComposer,
     $$GroupsTableOrderingComposer,
     $$GroupsTableAnnotationComposer,
     $$GroupsTableCreateCompanionBuilder,
     $$GroupsTableUpdateCompanionBuilder,
-    (Group, $$GroupsTableReferences),
-    Group,
+    (GroupEntry, $$GroupsTableReferences),
+    GroupEntry,
     PrefetchHooks Function(
         {bool device, bool groupItemsRefs, bool routineGroupsRefs})>;
 typedef $$GroupItemsTableCreateCompanionBuilder = GroupItemsCompanion Function({
@@ -3579,7 +3582,7 @@ typedef $$GroupItemsTableUpdateCompanionBuilder = GroupItemsCompanion Function({
 });
 
 final class $$GroupItemsTableReferences
-    extends BaseReferences<_$AppDatabase, $GroupItemsTable, GroupItem> {
+    extends BaseReferences<_$AppDatabase, $GroupItemsTable, GroupItemEntry> {
   $$GroupItemsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
   static $GroupsTable _groupTable(_$AppDatabase db) => db.groups
@@ -3708,14 +3711,14 @@ class $$GroupItemsTableAnnotationComposer
 class $$GroupItemsTableTableManager extends RootTableManager<
     _$AppDatabase,
     $GroupItemsTable,
-    GroupItem,
+    GroupItemEntry,
     $$GroupItemsTableFilterComposer,
     $$GroupItemsTableOrderingComposer,
     $$GroupItemsTableAnnotationComposer,
     $$GroupItemsTableCreateCompanionBuilder,
     $$GroupItemsTableUpdateCompanionBuilder,
-    (GroupItem, $$GroupItemsTableReferences),
-    GroupItem,
+    (GroupItemEntry, $$GroupItemsTableReferences),
+    GroupItemEntry,
     PrefetchHooks Function({bool group})> {
   $$GroupItemsTableTableManager(_$AppDatabase db, $GroupItemsTable table)
       : super(TableManagerState(
@@ -3798,14 +3801,14 @@ class $$GroupItemsTableTableManager extends RootTableManager<
 typedef $$GroupItemsTableProcessedTableManager = ProcessedTableManager<
     _$AppDatabase,
     $GroupItemsTable,
-    GroupItem,
+    GroupItemEntry,
     $$GroupItemsTableFilterComposer,
     $$GroupItemsTableOrderingComposer,
     $$GroupItemsTableAnnotationComposer,
     $$GroupItemsTableCreateCompanionBuilder,
     $$GroupItemsTableUpdateCompanionBuilder,
-    (GroupItem, $$GroupItemsTableReferences),
-    GroupItem,
+    (GroupItemEntry, $$GroupItemsTableReferences),
+    GroupItemEntry,
     PrefetchHooks Function({bool group})>;
 typedef $$RoutineGroupsTableCreateCompanionBuilder = RoutineGroupsCompanion
     Function({
@@ -3822,8 +3825,8 @@ typedef $$RoutineGroupsTableUpdateCompanionBuilder = RoutineGroupsCompanion
   Value<int> rowid,
 });
 
-final class $$RoutineGroupsTableReferences
-    extends BaseReferences<_$AppDatabase, $RoutineGroupsTable, RoutineGroup> {
+final class $$RoutineGroupsTableReferences extends BaseReferences<_$AppDatabase,
+    $RoutineGroupsTable, RoutineGroupEntry> {
   $$RoutineGroupsTableReferences(
       super.$_db, super.$_table, super.$_typedResult);
 
@@ -4019,14 +4022,14 @@ class $$RoutineGroupsTableAnnotationComposer
 class $$RoutineGroupsTableTableManager extends RootTableManager<
     _$AppDatabase,
     $RoutineGroupsTable,
-    RoutineGroup,
+    RoutineGroupEntry,
     $$RoutineGroupsTableFilterComposer,
     $$RoutineGroupsTableOrderingComposer,
     $$RoutineGroupsTableAnnotationComposer,
     $$RoutineGroupsTableCreateCompanionBuilder,
     $$RoutineGroupsTableUpdateCompanionBuilder,
-    (RoutineGroup, $$RoutineGroupsTableReferences),
-    RoutineGroup,
+    (RoutineGroupEntry, $$RoutineGroupsTableReferences),
+    RoutineGroupEntry,
     PrefetchHooks Function({bool routine, bool group})> {
   $$RoutineGroupsTableTableManager(_$AppDatabase db, $RoutineGroupsTable table)
       : super(TableManagerState(
@@ -4119,14 +4122,14 @@ class $$RoutineGroupsTableTableManager extends RootTableManager<
 typedef $$RoutineGroupsTableProcessedTableManager = ProcessedTableManager<
     _$AppDatabase,
     $RoutineGroupsTable,
-    RoutineGroup,
+    RoutineGroupEntry,
     $$RoutineGroupsTableFilterComposer,
     $$RoutineGroupsTableOrderingComposer,
     $$RoutineGroupsTableAnnotationComposer,
     $$RoutineGroupsTableCreateCompanionBuilder,
     $$RoutineGroupsTableUpdateCompanionBuilder,
-    (RoutineGroup, $$RoutineGroupsTableReferences),
-    RoutineGroup,
+    (RoutineGroupEntry, $$RoutineGroupsTableReferences),
+    RoutineGroupEntry,
     PrefetchHooks Function({bool routine, bool group})>;
 
 class $AppDatabaseManager {

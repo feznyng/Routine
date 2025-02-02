@@ -4,9 +4,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'routine.dart';
-import 'group.dart';
 import 'package:cron/cron.dart';
-import 'manager.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -17,7 +15,6 @@ class DesktopService {
 
   final cron = Cron();
   final List<ScheduledTask> _scheduledTasks = [];
-  final Manager manager = Manager();
 
   DesktopService();
 
@@ -71,12 +68,14 @@ class DesktopService {
       debugPrint('Failed to signal engine ready: $e');
     }
 
-    onRoutinesUpdated();
+    Routine.getAll().listen((routines) {
+      onRoutinesUpdated(routines);
+    });
   }
 
-  void onRoutinesUpdated() async {
+  void onRoutinesUpdated(List<Routine> routines) async {
     Set<Schedule> evaluationTimes = {};
-    for (final Routine routine in manager.routines) {
+    for (final Routine routine in routines) {
       evaluationTimes.add(Schedule(hours: routine.startHour, minutes: routine.startMinute));
       evaluationTimes.add(Schedule(hours: routine.endHour, minutes: routine.endMinute));
     }
@@ -88,7 +87,7 @@ class DesktopService {
 
     for (final Schedule time in evaluationTimes) {
       ScheduledTask task = cron.schedule(time, () async {
-        _evaluate();
+        _evaluate(routines);
       });
       _scheduledTasks.add(task);
     }
@@ -102,51 +101,34 @@ class DesktopService {
       );
     }
     
-    _evaluate();
+    _evaluate(routines);
   }
 
 
-  void _evaluate() {
-    Set<Group> activeBlockGroups = {};
-    Set<Group> activeAllowLists = {};
+  void _evaluate(List<Routine> routines) {
+    Set<String> apps = {}; 
+    Set<String> sites = {};
+    bool allowList = routines.any((r) => r.allow);
 
-    for (final Routine routine in manager.routines) {
-      if (routine.isActive()) {
-        final groupId = routine.getGroupId();
-        final Group? blockGroup = manager.findBlockGroup(groupId);
-        if (blockGroup != null) {
-          (blockGroup.allow ? activeAllowLists : activeBlockGroups).add(blockGroup);
+    if (allowList) {
+      Map<String, int> appCounts = {};
+      Map<String, int> siteCounts = {};
+
+      for (final Routine routine in routines) {
+        for (final String app in routine.apps) {
+          appCounts[app] = (appCounts[app] ?? 0) + 1;
+        }
+        for (final String site in routine.sites) {
+          siteCounts[site] = (siteCounts[site] ?? 0) + 1;
         }
       }
-    }
 
-    List<String> apps = []; 
-    List<String> sites = [];
-    bool allowList = false;
-
-    if (activeAllowLists.isNotEmpty) {
-      allowList = true;
-
-      Map<String, int> appFrequency = {};
-      Map<String, int> siteFrequency = {};
-      for (final Group blockGroup in activeAllowLists) {
-        for (final String app in blockGroup.apps) {
-          appFrequency[app] = appFrequency[app] ?? 0;
-          appFrequency[app] = appFrequency[app]! + 1;
-        }
-        for (final String site in blockGroup.sites) {
-          siteFrequency[site] = siteFrequency[site] ?? 0;
-          siteFrequency[site] = siteFrequency[site]! + 1;
-        }
-      }
-      apps = appFrequency.entries.where((entry) => entry.value == activeAllowLists.length).map((entry) => entry.key).toList();
-      sites = siteFrequency.entries.where((entry) => entry.value == activeAllowLists.length).map((entry) => entry.key).toList();
-    }
-
-    if (activeBlockGroups.isNotEmpty) {
-      for (final Group blockGroup in activeBlockGroups) {
-        sites.addAll(blockGroup.sites);
-        apps.addAll(blockGroup.apps);
+      apps.addAll(appCounts.keys.where((app) => appCounts[app] == routines.length));
+      sites.addAll(siteCounts.keys.where((site) => siteCounts[site] == routines.length));
+    } else {
+      for (final Routine routine in routines) {
+        apps.addAll(routine.apps);
+        sites.addAll(routine.sites);
       }
     }
 
@@ -155,8 +137,8 @@ class DesktopService {
     debugPrint("Allow List: $allowList");
 
     // Update cached values
-    _cachedSites = sites;
-    _cachedApps = apps;
+    _cachedSites = sites.toList();
+    _cachedApps = apps.toList();
     _isAllowList = allowList;
 
     // Update both apps and sites
