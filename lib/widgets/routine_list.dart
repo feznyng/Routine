@@ -3,27 +3,36 @@ import '../routine.dart';
 import 'routine_page.dart';
 import '../manager.dart';
 
-class RoutineList extends StatelessWidget {
-  final List<Routine> routines;
-  final Function(Routine) onRoutineUpdated;
-  final Function(Routine) onRoutineDeleted;
-  final Function(Routine) onRoutineCreated;
+class RoutineList extends StatefulWidget {
+  const RoutineList({super.key});
 
-  const RoutineList({
-    super.key,
-    required this.routines,
-    required this.onRoutineUpdated,
-    required this.onRoutineDeleted,
-    required this.onRoutineCreated,
-  });
+  @override
+  State<RoutineList> createState() => _RoutineListState();
+}
+
+class _RoutineListState extends State<RoutineList> {
+  final Manager _manager = Manager();
+  late List<Routine> _routines;
+
+  @override
+  void initState() {
+    super.initState();
+    _routines = _manager.routines;
+  }
+
+  void _updateRoutines() {
+    setState(() {
+      _routines = _manager.routines;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: ListView.builder(
-        itemCount: routines.length,
+        itemCount: _routines.length,
         itemBuilder: (context, index) {
-          final routine = routines[index];
+          final routine = _routines[index];
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: ListTile(
@@ -67,17 +76,19 @@ class RoutineList extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => RoutinePage(
-          routine: routine ?? Manager().tempRoutine,
+          routine: routine ?? _manager.tempRoutine,
           onSave: (updatedRoutine) {
             if (routine == null) {
-              onRoutineCreated(updatedRoutine);
+              _manager.addRoutine(updatedRoutine);
             } else {
-              onRoutineUpdated(updatedRoutine);
+              _manager.updateRoutine(updatedRoutine);
             }
+            _updateRoutines();
             Navigator.of(context).pop();
           },
           onDelete: routine != null ? () {
-            onRoutineDeleted(routine);
+            _manager.removeRoutine(routine.id);
+            _updateRoutines();
             Navigator.of(context).pop();
           } : null,
         ),
