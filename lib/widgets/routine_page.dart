@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../routine.dart';
+import 'block_group_page.dart';
 
 class RoutinePage extends StatefulWidget {
   final Routine routine;
@@ -152,6 +153,58 @@ class _RoutinePageState extends State<RoutinePage> {
     );
   }
 
+  void _toggleBlockGroup() {
+    final group = _routine.getGroup()!;
+
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => BlockGroupPage(
+          selectedGroup: group,
+          onSave: (group) {
+            setState(() {
+              _routine.setGroup(group);
+              _validateRoutine();
+            });
+          },
+          onBack: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBlockGroupSection() {
+    String summary = '';
+    final group = _routine.getGroup();
+
+    if (group?.name != null) {
+      summary = group!.name!;
+    } else {
+      if (group!.apps.isEmpty && group.sites.isEmpty) {
+        summary = group.allow ? 'Nothing blocked' : 'Everything blocked';
+      } else {
+        List<String> parts = [];
+        if (group.apps.isNotEmpty) {
+          parts.add('${group.apps.length} apps');
+        }
+        if (group.sites.isNotEmpty) {
+          parts.add('${group.sites.length} sites');
+        }
+        summary = group!.allow 
+            ? 'Blocking ${parts.join(", ")}'
+            : 'Allowing ${parts.join(", ")}';
+      }
+    }
+
+    return Card(
+      child: ListTile(
+        title: const Text('Block Group'),
+        subtitle: Text(summary),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: _toggleBlockGroup,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -197,6 +250,8 @@ class _RoutinePageState extends State<RoutinePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _buildBlockGroupSection(),
+              const SizedBox(height: 16),
               _buildTimeSection()
             ],
           ),

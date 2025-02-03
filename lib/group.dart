@@ -2,6 +2,7 @@ import 'package:uuid/uuid.dart';
 import 'database.dart';
 import 'setup.dart';
 import 'device.dart';
+import 'package:drift/drift.dart';
 
 class Group {
   final String _id;
@@ -35,20 +36,28 @@ class Group {
         _entry = entry;
 
   save() async {
-    await getIt<AppDatabase>().upsertGroup(GroupEntry(
-      id: _id, 
-      name: name, 
-      allow: allow, 
-      device: deviceId,
-      apps: apps,
-      sites: sites,
-      changes: changes,
-      status: _entry == null ? Status.created : Status.updated,
+    await getIt<AppDatabase>().upsertGroup(GroupsCompanion(
+      id: Value(_id), 
+      name: Value(name), 
+      allow: Value(allow), 
+      device: Value(deviceId),
+      apps: Value(apps),
+      sites: Value(sites),
+      changes: Value(changes),
+      updatedAt: Value(DateTime.now()),
     ));
   }
 
   delete() async {
     await getIt<AppDatabase>().tempDeleteGroup(_id);
+  }
+
+  bool get saved {
+    return _entry != null;
+  }
+
+  bool get named {
+    return name != null && name!.isNotEmpty;
   }
 
   List<String> get changes {

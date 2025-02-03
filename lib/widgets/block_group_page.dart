@@ -4,23 +4,15 @@ import 'block_groups_page.dart';
 import '../group.dart';
 
 class BlockGroupPage extends StatefulWidget {
-  final List<String> selectedApps;
-  final List<String> selectedSites;
-  final Function(List<String>, List<String>, String?) onSave;
-  final bool blockSelected;
-  final Function(bool) onBlockModeChanged;
+  final Group selectedGroup;
+  final Function(Group) onSave;
   final VoidCallback onBack;
-  final String? selectedBlockGroupId;
 
   const BlockGroupPage({
     super.key,
-    required this.selectedApps,
-    required this.selectedSites,
+    required this.selectedGroup,
     required this.onSave,
-    required this.blockSelected,
-    required this.onBlockModeChanged,
     required this.onBack,
-    this.selectedBlockGroupId,
   });
 
   @override
@@ -29,27 +21,18 @@ class BlockGroupPage extends StatefulWidget {
 
 class _BlockGroupPageState extends State<BlockGroupPage> {
   late List<Group> _blockGroups;
-  late List<String> _selectedApps;
-  late List<String> _selectedSites;
-  late bool _blockSelected;
-  late String? _selectedBlockGroupId;
+  late Group _selectedGroup;
 
   @override
   void initState() {
     super.initState();
-    _selectedApps = List.from(widget.selectedApps);
-    _selectedSites = List.from(widget.selectedSites);
-    _blockSelected = widget.blockSelected;
-    
-    final currentGroupId = widget.selectedBlockGroupId;
+    _selectedGroup = widget.selectedGroup;
 
     Group.watchAllNamed().listen((event) {
       setState(() {
         _blockGroups = event;
       });
     });
-
-    _selectedBlockGroupId = currentGroupId;
   }
 
   Future<void> _navigateToManageGroups() async {
@@ -62,6 +45,8 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
 
   @override
   Widget build(BuildContext context) {
+    final usingNamedGroup = _blockGroups.any((group) => group.id == _selectedGroup.id);
+    
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -74,7 +59,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
         actions: [
           TextButton(
             onPressed: () {
-              widget.onSave(_selectedApps, _selectedSites, _selectedBlockGroupId);
+              widget.onSave(_selectedGroup);
               widget.onBack();
             },
             child: const Text('Save'),
@@ -93,7 +78,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String?>(
-                      value: _blockGroups.any((group) => group.id == _selectedBlockGroupId) ? _selectedBlockGroupId : null,
+                      value: _blockGroups.any((group) => group.id == _selectedGroup.id) ? _selectedGroup.id : null,
                       decoration: const InputDecoration(
                         labelText: 'Block Group',
                         border: OutlineInputBorder(),
@@ -113,17 +98,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                       ],
                       onChanged: (String? newId) {
                         setState(() {
-                          _selectedBlockGroupId = newId;
-                          if (newId != null) {
-                            final selectedList = _blockGroups.firstWhere((group) => group.id == newId);
-                            _selectedApps = List.from(selectedList.apps);
-                            _selectedSites = List.from(selectedList.sites);
-                            _blockSelected = !(selectedList.allow);
-                            widget.onBlockModeChanged(_blockSelected);
-                          } else {
-                            _selectedApps = [];
-                            _selectedSites = [];
-                          }
+                          _selectedGroup = newId == null ? Group() : _blockGroups.firstWhere((group) => group.id == newId);
                         });
                       },
                     ),
@@ -136,7 +111,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                 ],
               ),
               const SizedBox(height: 24),
-              if (_selectedBlockGroupId != null)
+              if (usingNamedGroup)
                 const Padding(
                   padding: EdgeInsets.only(bottom: 16.0),
                   child: Text(
@@ -147,21 +122,20 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                     textAlign: TextAlign.center,
                   ),
                 ),
-              if (_selectedBlockGroupId == null) 
+              if (!usingNamedGroup) 
                 BlockGroupEditor(
-                  selectedApps: _selectedApps,
-                  selectedSites: _selectedSites,
-                  blockSelected: _blockSelected,
+                  selectedApps: _selectedGroup.apps,
+                  selectedSites: _selectedGroup.sites,
+                  blockSelected: _selectedGroup.allow,
                   onBlockModeChanged: (value) {
                     setState(() {
-                      _blockSelected = value;
+                      _selectedGroup.allow = value;
                     });
-                    widget.onBlockModeChanged(_blockSelected);
                   },
                   onSave: (apps, sites) {
                     setState(() {
-                      _selectedApps = apps;
-                      _selectedSites = sites;
+                      _selectedGroup.apps = apps;
+                      _selectedGroup.sites = sites;
                     });
                   },
                 ),

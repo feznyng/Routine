@@ -3,6 +3,7 @@ import 'setup.dart';
 import 'database.dart';
 import 'group.dart';
 import 'device.dart';
+import 'package:drift/drift.dart';
 
 class Routine {
   final String _id;
@@ -47,27 +48,36 @@ class Routine {
 
   save() async {
     final changes = this.changes;
-    await getIt<AppDatabase>().upsertRoutine(RoutineEntry(
-      id: _id, 
-      name: _name,
-      monday: _days[0], 
-      tuesday: _days[1], 
-      wednesday: _days[2], 
-      thursday: _days[3], 
-      friday: _days[4], 
-      saturday: _days[5], 
-      sunday: _days[6], 
-      startTime: _startTime, 
-      endTime: _endTime,
-      changes: changes,
-      status: _entry == null ? Status.created : Status.updated
-    ));
+    List<GroupsCompanion> groups = [];
 
-    final currGroup = getGroup();
-
-    if (currGroup != null && currGroup.modified && currGroup.name == null) {
-      currGroup.save();
+    for (final group in _groups.values) {
+      if (!group.named && group.modified) {
+        groups.add(GroupsCompanion(
+          id: Value(group.id),
+          name: Value(group.name),
+          allow: Value(group.allow),
+          apps: Value(group.apps),
+          sites: Value(group.sites),
+          updatedAt: Value(DateTime.now()),
+        ));
+      }
     }
+
+    await getIt<AppDatabase>().upsertRoutine(RoutinesCompanion(
+      id: Value(_id), 
+      name: Value(_name),
+      monday: Value(_days[0]), 
+      tuesday: Value(_days[1]), 
+      wednesday: Value(_days[2]), 
+      thursday: Value(_days[3]), 
+      friday: Value(_days[4]), 
+      saturday: Value(_days[5]), 
+      sunday: Value(_days[6]), 
+      startTime: Value(_startTime), 
+      endTime: Value(_endTime),
+      changes: Value(changes),
+      updatedAt: Value(DateTime.now()),
+    ), groups);
   }
 
   Future<void> delete() async {
@@ -191,9 +201,14 @@ class Routine {
     return (currMins >= _startTime && currMins < _endTime);
   }
 
-  Group? getGroup() {
-    final Device device = getIt<Device>();
-    return _groups[device.id];
+  Group? getGroup([String? deviceId]) {
+    deviceId = deviceId ?? getIt<Device>().id;
+    return _groups[deviceId];
+  }
+
+  void setGroup(Group group, [String? deviceId]) {
+    deviceId = deviceId ?? getIt<Device>().id;
+    _groups[deviceId] = group;
   }
 
   List<String> get apps => getGroup()?.apps ?? const [];

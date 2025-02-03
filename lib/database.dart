@@ -4,12 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'converters/string_list_converter.dart';
 part 'database.g.dart';
 
-enum Status {
-  created,
-  updated,
-  deleted
-}
-
 @DataClassName('RoutineEntry')
 class Routines extends Table {
   late final id = text()();
@@ -30,7 +24,8 @@ class Routines extends Table {
   late final endTime = integer()();
 
   late final changes = text().map(StringListTypeConverter())();
-  late final status = textEnum<Status>()();
+  late final deleted = boolean().nullable()();
+  late final updatedAt = dateTime()();
 }
 
 @DataClassName('DeviceEntry')
@@ -61,7 +56,8 @@ class Groups extends Table {
   late final sites = text().map(StringListTypeConverter())();
 
   late final changes = text().map(StringListTypeConverter())();
-  late final status = textEnum<Status>()();
+  late final deleted = boolean().nullable()();
+  late final updatedAt = dateTime()();
 }
 
 @DataClassName('RoutineGroupEntry')
@@ -73,6 +69,11 @@ class RoutineGroups extends Table {
 
   late final routine = text().references(Routines, #id)();
   late final group = text().references(Groups, #id)();
+  late final deleted = boolean().nullable()();
+  late final updatedAt = dateTime()();
+
+  @override
+  List<Set<Column>> get uniqueKeys => [{routine, group}];
 }
 
 @DriftDatabase(tables: [Routines, Devices, Groups, RoutineGroups])
@@ -107,16 +108,18 @@ class AppDatabase extends _$AppDatabase {
     return (select(routineGroups)..where((t) => t.routine.equals(routineId))).getSingle();
   }
 
-  Future<int> upsertRoutine(RoutineEntry routine) {
-    return into(routines).insertOnConflictUpdate(routine);
+  Future<void> upsertRoutine(RoutinesCompanion routine, List<GroupsCompanion> groups) {
+    return transaction(() async {
+      into(routines).insertOnConflictUpdate(routine);
+    });
   }
 
-  Future<void> upsertGroup(GroupEntry group) async {
+  Future<void> upsertGroup(GroupsCompanion group) async {
     await into(groups).insertOnConflictUpdate(group);
   }
 
   Future<void> tempDeleteRoutine(routineId) async {
-    await (update(routines)..where((t) => t.id.equals(routineId))).write(RoutinesCompanion(status: Value(Status.deleted)));
+    await (update(routines)..where((t) => t.id.equals(routineId))).write(RoutinesCompanion(deleted: Value(true)));
   }
 
   Future<void> deleteRoutine(routineId) async {
@@ -124,7 +127,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> tempDeleteGroup(routineId) async {
-    await (update(groups)..where((t) => t.id.equals(routineId))).write(GroupsCompanion(status: Value(Status.deleted)));
+    await (update(groups)..where((t) => t.id.equals(routineId))).write(GroupsCompanion(deleted: Value(true)));
   }
 
   Future<DeviceEntry?> getThisDevice() async {
