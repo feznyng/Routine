@@ -38,7 +38,7 @@ class Group {
       apps: apps,
       sites: sites,
       changes: changes,
-      status: _entry == null ? Status.created : Status.updated,
+      status: _entry == null ? Status.created : (changes.isEmpty ? _entry.status : Status.updated),
     ));
   }
 
@@ -51,5 +51,9 @@ class Group {
     if (_entry.allow != allow) changes.add('allow');
 
     return changes;
+  }
+
+  bool get modified {
+    return _entry == null || changes.isNotEmpty;
   }
 }

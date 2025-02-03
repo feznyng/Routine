@@ -667,17 +667,16 @@ class $DevicesTable extends Devices with TableInfo<$DevicesTable, DeviceEntry> {
   late final GeneratedColumn<String> type = GeneratedColumn<String>(
       'type', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _thisDeviceMeta =
-      const VerificationMeta('thisDevice');
+  static const VerificationMeta _currMeta = const VerificationMeta('curr');
   @override
-  late final GeneratedColumn<bool> thisDevice = GeneratedColumn<bool>(
-      'this_device', aliasedName, false,
+  late final GeneratedColumn<bool> curr = GeneratedColumn<bool>(
+      'curr', aliasedName, false,
       type: DriftSqlType.bool,
       requiredDuringInsert: true,
-      defaultConstraints: GeneratedColumn.constraintIsAlways(
-          'CHECK ("this_device" IN (0, 1))'));
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("curr" IN (0, 1))'));
   @override
-  List<GeneratedColumn> get $columns => [id, name, type, thisDevice];
+  List<GeneratedColumn> get $columns => [id, name, type, curr];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -705,13 +704,11 @@ class $DevicesTable extends Devices with TableInfo<$DevicesTable, DeviceEntry> {
     } else if (isInserting) {
       context.missing(_typeMeta);
     }
-    if (data.containsKey('this_device')) {
+    if (data.containsKey('curr')) {
       context.handle(
-          _thisDeviceMeta,
-          thisDevice.isAcceptableOrUnknown(
-              data['this_device']!, _thisDeviceMeta));
+          _currMeta, curr.isAcceptableOrUnknown(data['curr']!, _currMeta));
     } else if (isInserting) {
-      context.missing(_thisDeviceMeta);
+      context.missing(_currMeta);
     }
     return context;
   }
@@ -728,8 +725,8 @@ class $DevicesTable extends Devices with TableInfo<$DevicesTable, DeviceEntry> {
           .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
       type: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}type'])!,
-      thisDevice: attachedDatabase.typeMapping
-          .read(DriftSqlType.bool, data['${effectivePrefix}this_device'])!,
+      curr: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}curr'])!,
     );
   }
 
@@ -743,19 +740,19 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
   final String id;
   final String name;
   final String type;
-  final bool thisDevice;
+  final bool curr;
   const DeviceEntry(
       {required this.id,
       required this.name,
       required this.type,
-      required this.thisDevice});
+      required this.curr});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
     map['type'] = Variable<String>(type);
-    map['this_device'] = Variable<bool>(thisDevice);
+    map['curr'] = Variable<bool>(curr);
     return map;
   }
 
@@ -764,7 +761,7 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
       id: Value(id),
       name: Value(name),
       type: Value(type),
-      thisDevice: Value(thisDevice),
+      curr: Value(curr),
     );
   }
 
@@ -775,7 +772,7 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       type: serializer.fromJson<String>(json['type']),
-      thisDevice: serializer.fromJson<bool>(json['thisDevice']),
+      curr: serializer.fromJson<bool>(json['curr']),
     );
   }
   @override
@@ -785,25 +782,23 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'type': serializer.toJson<String>(type),
-      'thisDevice': serializer.toJson<bool>(thisDevice),
+      'curr': serializer.toJson<bool>(curr),
     };
   }
 
-  DeviceEntry copyWith(
-          {String? id, String? name, String? type, bool? thisDevice}) =>
+  DeviceEntry copyWith({String? id, String? name, String? type, bool? curr}) =>
       DeviceEntry(
         id: id ?? this.id,
         name: name ?? this.name,
         type: type ?? this.type,
-        thisDevice: thisDevice ?? this.thisDevice,
+        curr: curr ?? this.curr,
       );
   DeviceEntry copyWithCompanion(DevicesCompanion data) {
     return DeviceEntry(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       type: data.type.present ? data.type.value : this.type,
-      thisDevice:
-          data.thisDevice.present ? data.thisDevice.value : this.thisDevice,
+      curr: data.curr.present ? data.curr.value : this.curr,
     );
   }
 
@@ -813,13 +808,13 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('type: $type, ')
-          ..write('thisDevice: $thisDevice')
+          ..write('curr: $curr')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, type, thisDevice);
+  int get hashCode => Object.hash(id, name, type, curr);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -827,44 +822,44 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
           other.id == this.id &&
           other.name == this.name &&
           other.type == this.type &&
-          other.thisDevice == this.thisDevice);
+          other.curr == this.curr);
 }
 
 class DevicesCompanion extends UpdateCompanion<DeviceEntry> {
   final Value<String> id;
   final Value<String> name;
   final Value<String> type;
-  final Value<bool> thisDevice;
+  final Value<bool> curr;
   final Value<int> rowid;
   const DevicesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.type = const Value.absent(),
-    this.thisDevice = const Value.absent(),
+    this.curr = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   DevicesCompanion.insert({
     required String id,
     required String name,
     required String type,
-    required bool thisDevice,
+    required bool curr,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name),
         type = Value(type),
-        thisDevice = Value(thisDevice);
+        curr = Value(curr);
   static Insertable<DeviceEntry> custom({
     Expression<String>? id,
     Expression<String>? name,
     Expression<String>? type,
-    Expression<bool>? thisDevice,
+    Expression<bool>? curr,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (type != null) 'type': type,
-      if (thisDevice != null) 'this_device': thisDevice,
+      if (curr != null) 'curr': curr,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -873,13 +868,13 @@ class DevicesCompanion extends UpdateCompanion<DeviceEntry> {
       {Value<String>? id,
       Value<String>? name,
       Value<String>? type,
-      Value<bool>? thisDevice,
+      Value<bool>? curr,
       Value<int>? rowid}) {
     return DevicesCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       type: type ?? this.type,
-      thisDevice: thisDevice ?? this.thisDevice,
+      curr: curr ?? this.curr,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -896,8 +891,8 @@ class DevicesCompanion extends UpdateCompanion<DeviceEntry> {
     if (type.present) {
       map['type'] = Variable<String>(type.value);
     }
-    if (thisDevice.present) {
-      map['this_device'] = Variable<bool>(thisDevice.value);
+    if (curr.present) {
+      map['curr'] = Variable<bool>(curr.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -911,7 +906,7 @@ class DevicesCompanion extends UpdateCompanion<DeviceEntry> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('type: $type, ')
-          ..write('thisDevice: $thisDevice, ')
+          ..write('curr: $curr, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1978,14 +1973,14 @@ typedef $$DevicesTableCreateCompanionBuilder = DevicesCompanion Function({
   required String id,
   required String name,
   required String type,
-  required bool thisDevice,
+  required bool curr,
   Value<int> rowid,
 });
 typedef $$DevicesTableUpdateCompanionBuilder = DevicesCompanion Function({
   Value<String> id,
   Value<String> name,
   Value<String> type,
-  Value<bool> thisDevice,
+  Value<bool> curr,
   Value<int> rowid,
 });
 
@@ -2026,8 +2021,8 @@ class $$DevicesTableFilterComposer
   ColumnFilters<String> get type => $composableBuilder(
       column: $table.type, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<bool> get thisDevice => $composableBuilder(
-      column: $table.thisDevice, builder: (column) => ColumnFilters(column));
+  ColumnFilters<bool> get curr => $composableBuilder(
+      column: $table.curr, builder: (column) => ColumnFilters(column));
 
   Expression<bool> groupsRefs(
       Expression<bool> Function($$GroupsTableFilterComposer f) f) {
@@ -2069,8 +2064,8 @@ class $$DevicesTableOrderingComposer
   ColumnOrderings<String> get type => $composableBuilder(
       column: $table.type, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<bool> get thisDevice => $composableBuilder(
-      column: $table.thisDevice, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<bool> get curr => $composableBuilder(
+      column: $table.curr, builder: (column) => ColumnOrderings(column));
 }
 
 class $$DevicesTableAnnotationComposer
@@ -2091,8 +2086,8 @@ class $$DevicesTableAnnotationComposer
   GeneratedColumn<String> get type =>
       $composableBuilder(column: $table.type, builder: (column) => column);
 
-  GeneratedColumn<bool> get thisDevice => $composableBuilder(
-      column: $table.thisDevice, builder: (column) => column);
+  GeneratedColumn<bool> get curr =>
+      $composableBuilder(column: $table.curr, builder: (column) => column);
 
   Expression<T> groupsRefs<T extends Object>(
       Expression<T> Function($$GroupsTableAnnotationComposer a) f) {
@@ -2142,28 +2137,28 @@ class $$DevicesTableTableManager extends RootTableManager<
             Value<String> id = const Value.absent(),
             Value<String> name = const Value.absent(),
             Value<String> type = const Value.absent(),
-            Value<bool> thisDevice = const Value.absent(),
+            Value<bool> curr = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               DevicesCompanion(
             id: id,
             name: name,
             type: type,
-            thisDevice: thisDevice,
+            curr: curr,
             rowid: rowid,
           ),
           createCompanionCallback: ({
             required String id,
             required String name,
             required String type,
-            required bool thisDevice,
+            required bool curr,
             Value<int> rowid = const Value.absent(),
           }) =>
               DevicesCompanion.insert(
             id: id,
             name: name,
             type: type,
-            thisDevice: thisDevice,
+            curr: curr,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

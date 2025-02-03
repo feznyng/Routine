@@ -46,8 +46,7 @@ class Routine {
   }
 
   save() async {
-    Status status = _entry == null ? Status.created : Status.updated;
-
+    final changes = this.changes;
     await getIt<AppDatabase>().upsertRoutine(RoutineEntry(
       id: _id, 
       name: _name,
@@ -61,8 +60,14 @@ class Routine {
       startTime: _startTime, 
       endTime: _endTime,
       changes: changes,
-      status: status
+      status: _entry == null ? Status.created : (changes.isEmpty ? _entry!.status : Status.updated)
     ));
+
+    final currGroup = getGroup();
+
+    if (currGroup != null && currGroup.modified && currGroup.name == null) {
+      currGroup.save();
+    }
   }
 
   Future<void> delete() async {

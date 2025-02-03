@@ -14,7 +14,7 @@ enum DeviceType {
 class Device {
   final String _id;
   late final DeviceType _type;
-  late final bool _currDevice;
+  late final bool _curr;
 
   static Future<Device> getCurrent() async {
     final deviceEntry = await getIt<AppDatabase>().getThisDevice();
@@ -43,20 +43,19 @@ class Device {
       throw Exception('Unsupported platform');
     }
 
-    _currDevice = currDevice;
+    _curr = currDevice;
   }
   
   Future<void> save() async {
-    await getIt<AppDatabase>().insertDevice(DeviceEntry(id: _id, name: '', type: _type.name, thisDevice: true));
+    await getIt<AppDatabase>().insertDevice(DeviceEntry(id: _id, name: '', type: _type.name, curr: _curr));
   }
 
   Device.fromEntry(DeviceEntry entry)
       : _id = entry.id,
         _type = DeviceType.values.byName(entry.type),
-        _currDevice = entry.thisDevice
-        ;
+        _curr = entry.curr;
 
   String get id => _id;
   DeviceType get type => _type;
-  bool get currDevice => _currDevice;
+  bool get curr => _curr;
 }

@@ -42,7 +42,7 @@ class Devices extends Table {
 
   late final name = text()();
   late final type = text()();
-  late final thisDevice = boolean()();
+  late final curr = boolean()();
 }
 
 @DataClassName('GroupEntry')
@@ -55,6 +55,8 @@ class Groups extends Table {
   late final name = text().nullable()();
   late final device = text().references(Devices, #id)();
   late final allow = boolean()();
+
+  // device only
   late final apps = text().map(StringListTypeConverter())();
   late final sites = text().map(StringListTypeConverter())();
 
@@ -119,7 +121,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<DeviceEntry?> getThisDevice() async {
-    return await (select(devices)..where((t) => t.thisDevice.equals(true))).getSingleOrNull();
+    return await (select(devices)..where((t) => t.curr.equals(true))).getSingleOrNull();
   }
 
   Future<void> insertDevice(DeviceEntry entry) {
