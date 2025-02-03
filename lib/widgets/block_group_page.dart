@@ -93,7 +93,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String?>(
-                      value: _selectedBlockGroupId,
+                      value: _blockGroups.any((group) => group.id == _selectedBlockGroupId) ? _selectedBlockGroupId : null,
                       decoration: const InputDecoration(
                         labelText: 'Block Group',
                         border: OutlineInputBorder(),
