@@ -1,17 +1,8 @@
 import 'package:uuid/uuid.dart';
-import 'package:drift/drift.dart';
 import 'setup.dart';
 import 'database.dart';
 import 'group.dart';
 import 'device.dart';
-
-enum FrictionType {
-  none,
-  delay,
-  intention,
-  code,
-  nfc
-}
 
 class Routine {
   final String _id;
@@ -54,38 +45,86 @@ class Routine {
       _entry = entry;
   }
 
-  save() {
-    getIt<AppDatabase>().upsertRoutine(RoutinesCompanion(
-      id: Value(_id), 
-      name: Value(_name),
-      monday: Value(_days[0]), 
-      tuesday: Value(_days[1]), 
-      wednesday: Value(_days[2]), 
-      thursday: Value(_days[3]), 
-      friday: Value(_days[4]), 
-      saturday: Value(_days[5]), 
-      sunday: Value(_days[6]), 
-      startTime: Value(_startTime), 
-      endTime: Value(_endTime)
+  save() async {
+    Status status = _entry == null ? Status.created : Status.updated;
+
+    await getIt<AppDatabase>().upsertRoutine(RoutineEntry(
+      id: _id, 
+      name: _name,
+      monday: _days[0], 
+      tuesday: _days[1], 
+      wednesday: _days[2], 
+      thursday: _days[3], 
+      friday: _days[4], 
+      saturday: _days[5], 
+      sunday: _days[6], 
+      startTime: _startTime, 
+      endTime: _endTime,
+      changes: changes,
+      status: status
     ));
   }
 
-  bool modified() {
-    if (_entry == null) return true;
-
-    return _entry!.name != _name ||
-           _entry!.monday != _days[0] ||
-           _entry!.tuesday != _days[1] ||
-           _entry!.wednesday != _days[2] ||
-           _entry!.thursday != _days[3] ||
-           _entry!.friday != _days[4] ||
-           _entry!.saturday != _days[5] ||
-           _entry!.sunday != _days[6] ||
-           _entry!.startTime != _startTime ||
-           _entry!.endTime != _endTime;
+  Future<void> delete() async {
+    await getIt<AppDatabase>().tempDeleteRoutine(_id);
   }
 
-  bool valid() {
+  List<String> get changes {
+    List<String> changes = [];
+
+    if (_entry == null) {
+      return changes;
+    }
+
+    if (_entry!.name != _name) {
+      changes.add('name');
+    }
+
+    if (_entry!.monday != _days[0]) {
+      changes.add('monday');
+    }
+
+    if (_entry!.tuesday != _days[1]) {
+      changes.add('tuesday');
+    }
+
+    if (_entry!.wednesday != _days[2]) {
+      changes.add('wednesday');
+    }
+
+    if (_entry!.thursday != _days[3]) {
+      changes.add('thursday');
+    }
+
+    if (_entry!.friday != _days[4]) {
+      changes.add('friday');
+    }
+
+    if (_entry!.saturday != _days[5]) {
+      changes.add('saturday');
+    }
+
+    if (_entry!.sunday != _days[6]) {
+      changes.add('sunday');
+    }
+
+    if (_entry!.startTime != _startTime) {
+      changes.add('startTime');
+    } 
+
+    if (_entry!.endTime != _endTime) {
+      changes.add('endTime');
+    }
+
+    return changes;
+  }
+
+  bool get modified {
+    if (_entry == null) return true;
+    return changes.isNotEmpty;
+  }
+
+  bool get valid {
     return _name.isNotEmpty && 
            _days.contains(true);
   }

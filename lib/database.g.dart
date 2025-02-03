@@ -94,9 +94,16 @@ class $RoutinesTable extends Routines
   static const VerificationMeta _changesMeta =
       const VerificationMeta('changes');
   @override
-  late final GeneratedColumn<String> changes = GeneratedColumn<String>(
-      'changes', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+  late final GeneratedColumnWithTypeConverter<List<String>, String> changes =
+      GeneratedColumn<String>('changes', aliasedName, false,
+              type: DriftSqlType.string, requiredDuringInsert: true)
+          .withConverter<List<String>>($RoutinesTable.$converterchanges);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumnWithTypeConverter<Status, String> status =
+      GeneratedColumn<String>('status', aliasedName, false,
+              type: DriftSqlType.string, requiredDuringInsert: true)
+          .withConverter<Status>($RoutinesTable.$converterstatus);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -110,7 +117,8 @@ class $RoutinesTable extends Routines
         sunday,
         startTime,
         endTime,
-        changes
+        changes,
+        status
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -187,12 +195,8 @@ class $RoutinesTable extends Routines
     } else if (isInserting) {
       context.missing(_endTimeMeta);
     }
-    if (data.containsKey('changes')) {
-      context.handle(_changesMeta,
-          changes.isAcceptableOrUnknown(data['changes']!, _changesMeta));
-    } else if (isInserting) {
-      context.missing(_changesMeta);
-    }
+    context.handle(_changesMeta, const VerificationResult.success());
+    context.handle(_statusMeta, const VerificationResult.success());
     return context;
   }
 
@@ -224,8 +228,12 @@ class $RoutinesTable extends Routines
           .read(DriftSqlType.int, data['${effectivePrefix}start_time'])!,
       endTime: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}end_time'])!,
-      changes: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}changes'])!,
+      changes: $RoutinesTable.$converterchanges.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}changes'])!),
+      status: $RoutinesTable.$converterstatus.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!),
     );
   }
 
@@ -233,6 +241,11 @@ class $RoutinesTable extends Routines
   $RoutinesTable createAlias(String alias) {
     return $RoutinesTable(attachedDatabase, alias);
   }
+
+  static TypeConverter<List<String>, String> $converterchanges =
+      StringListTypeConverter();
+  static JsonTypeConverter2<Status, String, String> $converterstatus =
+      const EnumNameConverter<Status>(Status.values);
 }
 
 class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
@@ -247,7 +260,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
   final bool sunday;
   final int startTime;
   final int endTime;
-  final String changes;
+  final List<String> changes;
+  final Status status;
   const RoutineEntry(
       {required this.id,
       required this.name,
@@ -260,7 +274,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       required this.sunday,
       required this.startTime,
       required this.endTime,
-      required this.changes});
+      required this.changes,
+      required this.status});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -275,7 +290,14 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
     map['sunday'] = Variable<bool>(sunday);
     map['start_time'] = Variable<int>(startTime);
     map['end_time'] = Variable<int>(endTime);
-    map['changes'] = Variable<String>(changes);
+    {
+      map['changes'] =
+          Variable<String>($RoutinesTable.$converterchanges.toSql(changes));
+    }
+    {
+      map['status'] =
+          Variable<String>($RoutinesTable.$converterstatus.toSql(status));
+    }
     return map;
   }
 
@@ -293,6 +315,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       startTime: Value(startTime),
       endTime: Value(endTime),
       changes: Value(changes),
+      status: Value(status),
     );
   }
 
@@ -311,7 +334,9 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       sunday: serializer.fromJson<bool>(json['sunday']),
       startTime: serializer.fromJson<int>(json['startTime']),
       endTime: serializer.fromJson<int>(json['endTime']),
-      changes: serializer.fromJson<String>(json['changes']),
+      changes: serializer.fromJson<List<String>>(json['changes']),
+      status: $RoutinesTable.$converterstatus
+          .fromJson(serializer.fromJson<String>(json['status'])),
     );
   }
   @override
@@ -329,7 +354,9 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       'sunday': serializer.toJson<bool>(sunday),
       'startTime': serializer.toJson<int>(startTime),
       'endTime': serializer.toJson<int>(endTime),
-      'changes': serializer.toJson<String>(changes),
+      'changes': serializer.toJson<List<String>>(changes),
+      'status': serializer
+          .toJson<String>($RoutinesTable.$converterstatus.toJson(status)),
     };
   }
 
@@ -345,7 +372,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           bool? sunday,
           int? startTime,
           int? endTime,
-          String? changes}) =>
+          List<String>? changes,
+          Status? status}) =>
       RoutineEntry(
         id: id ?? this.id,
         name: name ?? this.name,
@@ -359,6 +387,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
         startTime: startTime ?? this.startTime,
         endTime: endTime ?? this.endTime,
         changes: changes ?? this.changes,
+        status: status ?? this.status,
       );
   RoutineEntry copyWithCompanion(RoutinesCompanion data) {
     return RoutineEntry(
@@ -374,6 +403,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       startTime: data.startTime.present ? data.startTime.value : this.startTime,
       endTime: data.endTime.present ? data.endTime.value : this.endTime,
       changes: data.changes.present ? data.changes.value : this.changes,
+      status: data.status.present ? data.status.value : this.status,
     );
   }
 
@@ -391,14 +421,15 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           ..write('sunday: $sunday, ')
           ..write('startTime: $startTime, ')
           ..write('endTime: $endTime, ')
-          ..write('changes: $changes')
+          ..write('changes: $changes, ')
+          ..write('status: $status')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, name, monday, tuesday, wednesday,
-      thursday, friday, saturday, sunday, startTime, endTime, changes);
+      thursday, friday, saturday, sunday, startTime, endTime, changes, status);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -414,7 +445,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           other.sunday == this.sunday &&
           other.startTime == this.startTime &&
           other.endTime == this.endTime &&
-          other.changes == this.changes);
+          other.changes == this.changes &&
+          other.status == this.status);
 }
 
 class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
@@ -429,7 +461,8 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
   final Value<bool> sunday;
   final Value<int> startTime;
   final Value<int> endTime;
-  final Value<String> changes;
+  final Value<List<String>> changes;
+  final Value<Status> status;
   final Value<int> rowid;
   const RoutinesCompanion({
     this.id = const Value.absent(),
@@ -444,6 +477,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     this.startTime = const Value.absent(),
     this.endTime = const Value.absent(),
     this.changes = const Value.absent(),
+    this.status = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   RoutinesCompanion.insert({
@@ -458,7 +492,8 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     required bool sunday,
     required int startTime,
     required int endTime,
-    required String changes,
+    required List<String> changes,
+    required Status status,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name),
@@ -471,7 +506,8 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
         sunday = Value(sunday),
         startTime = Value(startTime),
         endTime = Value(endTime),
-        changes = Value(changes);
+        changes = Value(changes),
+        status = Value(status);
   static Insertable<RoutineEntry> custom({
     Expression<String>? id,
     Expression<String>? name,
@@ -485,6 +521,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     Expression<int>? startTime,
     Expression<int>? endTime,
     Expression<String>? changes,
+    Expression<String>? status,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -500,6 +537,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       if (startTime != null) 'start_time': startTime,
       if (endTime != null) 'end_time': endTime,
       if (changes != null) 'changes': changes,
+      if (status != null) 'status': status,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -516,7 +554,8 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       Value<bool>? sunday,
       Value<int>? startTime,
       Value<int>? endTime,
-      Value<String>? changes,
+      Value<List<String>>? changes,
+      Value<Status>? status,
       Value<int>? rowid}) {
     return RoutinesCompanion(
       id: id ?? this.id,
@@ -531,6 +570,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
       changes: changes ?? this.changes,
+      status: status ?? this.status,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -572,7 +612,12 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       map['end_time'] = Variable<int>(endTime.value);
     }
     if (changes.present) {
-      map['changes'] = Variable<String>(changes.value);
+      map['changes'] = Variable<String>(
+          $RoutinesTable.$converterchanges.toSql(changes.value));
+    }
+    if (status.present) {
+      map['status'] =
+          Variable<String>($RoutinesTable.$converterstatus.toSql(status.value));
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -595,6 +640,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
           ..write('startTime: $startTime, ')
           ..write('endTime: $endTime, ')
           ..write('changes: $changes, ')
+          ..write('status: $status, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1639,7 +1685,8 @@ typedef $$RoutinesTableCreateCompanionBuilder = RoutinesCompanion Function({
   required bool sunday,
   required int startTime,
   required int endTime,
-  required String changes,
+  required List<String> changes,
+  required Status status,
   Value<int> rowid,
 });
 typedef $$RoutinesTableUpdateCompanionBuilder = RoutinesCompanion Function({
@@ -1654,7 +1701,8 @@ typedef $$RoutinesTableUpdateCompanionBuilder = RoutinesCompanion Function({
   Value<bool> sunday,
   Value<int> startTime,
   Value<int> endTime,
-  Value<String> changes,
+  Value<List<String>> changes,
+  Value<Status> status,
   Value<int> rowid,
 });
 
@@ -1720,8 +1768,15 @@ class $$RoutinesTableFilterComposer
   ColumnFilters<int> get endTime => $composableBuilder(
       column: $table.endTime, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get changes => $composableBuilder(
-      column: $table.changes, builder: (column) => ColumnFilters(column));
+  ColumnWithTypeConverterFilters<List<String>, List<String>, String>
+      get changes => $composableBuilder(
+          column: $table.changes,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnWithTypeConverterFilters<Status, Status, String> get status =>
+      $composableBuilder(
+          column: $table.status,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
 
   Expression<bool> routineGroupsRefs(
       Expression<bool> Function($$RoutineGroupsTableFilterComposer f) f) {
@@ -1789,6 +1844,9 @@ class $$RoutinesTableOrderingComposer
 
   ColumnOrderings<String> get changes => $composableBuilder(
       column: $table.changes, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
 }
 
 class $$RoutinesTableAnnotationComposer
@@ -1833,8 +1891,11 @@ class $$RoutinesTableAnnotationComposer
   GeneratedColumn<int> get endTime =>
       $composableBuilder(column: $table.endTime, builder: (column) => column);
 
-  GeneratedColumn<String> get changes =>
+  GeneratedColumnWithTypeConverter<List<String>, String> get changes =>
       $composableBuilder(column: $table.changes, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<Status, String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
 
   Expression<T> routineGroupsRefs<T extends Object>(
       Expression<T> Function($$RoutineGroupsTableAnnotationComposer a) f) {
@@ -1892,7 +1953,8 @@ class $$RoutinesTableTableManager extends RootTableManager<
             Value<bool> sunday = const Value.absent(),
             Value<int> startTime = const Value.absent(),
             Value<int> endTime = const Value.absent(),
-            Value<String> changes = const Value.absent(),
+            Value<List<String>> changes = const Value.absent(),
+            Value<Status> status = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               RoutinesCompanion(
@@ -1908,6 +1970,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             startTime: startTime,
             endTime: endTime,
             changes: changes,
+            status: status,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -1922,7 +1985,8 @@ class $$RoutinesTableTableManager extends RootTableManager<
             required bool sunday,
             required int startTime,
             required int endTime,
-            required String changes,
+            required List<String> changes,
+            required Status status,
             Value<int> rowid = const Value.absent(),
           }) =>
               RoutinesCompanion.insert(
@@ -1938,6 +2002,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             startTime: startTime,
             endTime: endTime,
             changes: changes,
+            status: status,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

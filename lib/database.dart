@@ -1,8 +1,14 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart';
-
+import 'converters/string_list_converter.dart';
 part 'database.g.dart';
+
+enum Status {
+  created,
+  updated,
+  deleted
+}
 
 @DataClassName('RoutineEntry')
 class Routines extends Table {
@@ -23,7 +29,8 @@ class Routines extends Table {
   late final startTime = integer()();
   late final endTime = integer()();
 
-  late final changes = text()();
+  late final changes = text().map(StringListTypeConverter())();
+  late final status = textEnum<Status>()();
 }
 
 @DataClassName('DeviceEntry')
@@ -102,8 +109,16 @@ class AppDatabase extends _$AppDatabase {
     return (select(routineGroups)..where((t) => t.routine.equals(routineId))).getSingle();
   }
 
-  Future<int> upsertRoutine(RoutinesCompanion routine) {
+  Future<int> upsertRoutine(RoutineEntry routine) {
     return into(routines).insertOnConflictUpdate(routine);
+  }
+
+  Future<void> tempDeleteRoutine(routineId) async {
+    await (update(routines)..where((t) => t.id.equals(routineId))).write(RoutinesCompanion(status: Value(Status.deleted)));
+  }
+
+  Future<void> deleteRoutine(routineId) async {
+    await (delete(routines)..where((t) => t.id.equals(routineId))).go();
   }
 
   Future<DeviceEntry?> getThisDevice() async {

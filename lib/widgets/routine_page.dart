@@ -37,13 +37,13 @@ class _RoutinePageState extends State<RoutinePage> {
 
   void _checkForChanges() {
     setState(() {
-      _hasChanges = _routine.modified();
+      _hasChanges = _routine.modified;
     });
   }
 
   void _validateRoutine() {
     setState(() {
-      _isValid = _routine.valid();
+      _isValid = _routine.modified;
     });
   }
 
