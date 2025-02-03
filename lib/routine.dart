@@ -186,12 +186,12 @@ class Routine {
     return (currMins >= _startTime && currMins < _endTime);
   }
 
-  Group getGroup() {
+  Group? getGroup() {
     final Device device = getIt<Device>();
-    return _groups[device.id]!;
+    return _groups[device.id];
   }
 
-  List<String> get apps => getGroup().apps;
-  List<String> get sites => getGroup().sites;
-  bool get allow => getGroup().allow;
+  List<String> get apps => getGroup()?.apps ?? const [];
+  List<String> get sites => getGroup()?.sites ?? const [];
+  bool get allow => getGroup()?.allow ?? false;
 }
