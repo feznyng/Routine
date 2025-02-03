@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../group.dart';
 import 'edit_block_group_page.dart';
@@ -11,11 +13,22 @@ class BlockGroupsPage extends StatefulWidget {
 
 class _BlockGroupsPageState extends State<BlockGroupsPage> {
   List<Group> groups = [];
+  late final StreamSubscription _subscription;
 
   @override
   void initState() {
     super.initState();
-    Group.watchAllNamed().listen((value) => setState(() => groups = value));
+    _subscription = Group.watchAllNamed().listen((value) {
+      if (mounted) {
+        setState(() => groups = value);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
   }
 
   @override
