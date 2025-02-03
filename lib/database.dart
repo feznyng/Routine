@@ -26,6 +26,8 @@ class Routines extends Table {
   late final changes = text().map(StringListTypeConverter())();
   late final deleted = boolean().nullable()();
   late final updatedAt = dateTime()();
+
+  late final groups = text().map(StringListTypeConverter())();
 }
 
 @DataClassName('DeviceEntry')
@@ -60,23 +62,7 @@ class Groups extends Table {
   late final updatedAt = dateTime()();
 }
 
-@DataClassName('RoutineGroupEntry')
-class RoutineGroups extends Table {
-  late final id = text()();
-
-  @override
-  Set<Column<Object>> get primaryKey => {id};
-
-  late final routine = text().references(Routines, #id)();
-  late final group = text().references(Groups, #id)();
-  late final deleted = boolean().nullable()();
-  late final updatedAt = dateTime()();
-
-  @override
-  List<Set<Column>> get uniqueKeys => [{routine, group}];
-}
-
-@DriftDatabase(tables: [Routines, Devices, Groups, RoutineGroups])
+@DriftDatabase(tables: [Routines, Devices, Groups])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -104,13 +90,26 @@ class AppDatabase extends _$AppDatabase {
     return (select(groups)..where((t) => t.device.equals(deviceId) & t.name.isNotNull())).watch();
   }
 
-  Future<RoutineGroupEntry> getGroupForCurrentDevice(String routineId) {
-    return (select(routineGroups)..where((t) => t.routine.equals(routineId))).getSingle();
-  }
-
-  Future<void> upsertRoutine(RoutinesCompanion routine, List<GroupsCompanion> groups) {
+  Future<void> upsertRoutine(RoutinesCompanion routine, List<GroupsCompanion> associatedGroups) {
     return transaction(() async {
-      await into(routines).insertOnConflictUpdate(routine);
+      final existingEntry = await (select(routines)..where((t) => t.id.equals(routine.id.value))).getSingleOrNull();
+      if (existingEntry == null) {
+        await into(routines).insert(routine);
+      } else {
+        final existingGroups = await (select(groups)..where((t) => t.id.isIn(existingEntry.groups))).get();
+
+        final deleteIds = existingGroups
+          .where((g) => g.name == null && !associatedGroups.any((ag) => ag.id.value == g.id))
+          .map((g) => g.id).toList();
+        await (update(groups)..where((t) => t.id.isIn(deleteIds))).write(GroupsCompanion(deleted: Value(true)));
+
+        await (update(routines)..where((t) => t.id.equals(routine.id.value))).write(routine);
+      }
+
+      final newAssociatedGroups = associatedGroups.where((ag) => ag.name.value == null).toList();
+      await batch((batch) async {
+        batch.insertAllOnConflictUpdate(groups, newAssociatedGroups);
+      });
     });
   }
 
@@ -118,16 +117,20 @@ class AppDatabase extends _$AppDatabase {
     await into(groups).insertOnConflictUpdate(group);
   }
 
-  Future<void> tempDeleteRoutine(routineId) async {
-    await (update(routines)..where((t) => t.id.equals(routineId))).write(RoutinesCompanion(deleted: Value(true)));
+  Future<void> tempDeleteRoutine(id) async {
+    await (update(routines)..where((t) => t.id.equals(id))).write(RoutinesCompanion(deleted: Value(true)));
   }
 
-  Future<void> deleteRoutine(routineId) async {
-    await (delete(routines)..where((t) => t.id.equals(routineId))).go();
+  Future<void> deleteRoutine(id) async {
+    await (delete(routines)..where((t) => t.id.equals(id))).go();
   }
 
-  Future<void> tempDeleteGroup(routineId) async {
-    await (update(groups)..where((t) => t.id.equals(routineId))).write(GroupsCompanion(deleted: Value(true)));
+  Future<void> tempDeleteGroup(id) async {
+    await (update(groups)..where((t) => t.id.equals(id))).write(GroupsCompanion(deleted: Value(true)));
+  }
+
+  Future<void> deleteGroup(id) async {
+    await (delete(groups)..where((t) => t.id.equals(id))).go();
   }
 
   Future<DeviceEntry?> getThisDevice() async {

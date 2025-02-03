@@ -4,6 +4,7 @@ import 'database.dart';
 import 'group.dart';
 import 'device.dart';
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 
 class Routine {
   final String _id;
@@ -51,16 +52,14 @@ class Routine {
     List<GroupsCompanion> groups = [];
 
     for (final group in _groups.values) {
-      if (!group.named && group.modified) {
-        groups.add(GroupsCompanion(
-          id: Value(group.id),
-          name: Value(group.name),
-          allow: Value(group.allow),
-          apps: Value(group.apps),
-          sites: Value(group.sites),
-          updatedAt: Value(DateTime.now()),
-        ));
-      }
+      groups.add(GroupsCompanion(
+        id: Value(group.id),
+        name: Value(group.name),
+        allow: Value(group.allow),
+        apps: Value(group.apps),
+        sites: Value(group.sites),
+        updatedAt: Value(DateTime.now()),
+      ));
     }
 
     await getIt<AppDatabase>().upsertRoutine(RoutinesCompanion(
@@ -75,6 +74,7 @@ class Routine {
       sunday: Value(_days[6]), 
       startTime: Value(_startTime), 
       endTime: Value(_endTime),
+      groups: Value(groups.map((g) => g.id.value).toList()),
       changes: Value(changes),
       updatedAt: Value(DateTime.now()),
     ), groups);
@@ -129,6 +129,11 @@ class Routine {
 
     if (_entry!.endTime != _endTime) {
       changes.add('endTime');
+    }
+
+  
+    if (!listEquals(_entry!.groups, _groups.values.map((g) => g.id).toList())) {
+      changes.add('groups');
     }
 
     return changes;

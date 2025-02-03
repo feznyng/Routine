@@ -113,6 +113,12 @@ class $RoutinesTable extends Routines
   late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
       'updated_at', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _groupsMeta = const VerificationMeta('groups');
+  @override
+  late final GeneratedColumnWithTypeConverter<List<String>, String> groups =
+      GeneratedColumn<String>('groups', aliasedName, false,
+              type: DriftSqlType.string, requiredDuringInsert: true)
+          .withConverter<List<String>>($RoutinesTable.$convertergroups);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -128,7 +134,8 @@ class $RoutinesTable extends Routines
         endTime,
         changes,
         deleted,
-        updatedAt
+        updatedAt,
+        groups
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -216,6 +223,7 @@ class $RoutinesTable extends Routines
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
+    context.handle(_groupsMeta, const VerificationResult.success());
     return context;
   }
 
@@ -254,6 +262,9 @@ class $RoutinesTable extends Routines
           .read(DriftSqlType.bool, data['${effectivePrefix}deleted']),
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      groups: $RoutinesTable.$convertergroups.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}groups'])!),
     );
   }
 
@@ -263,6 +274,8 @@ class $RoutinesTable extends Routines
   }
 
   static TypeConverter<List<String>, String> $converterchanges =
+      StringListTypeConverter();
+  static TypeConverter<List<String>, String> $convertergroups =
       StringListTypeConverter();
 }
 
@@ -281,6 +294,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
   final List<String> changes;
   final bool? deleted;
   final DateTime updatedAt;
+  final List<String> groups;
   const RoutineEntry(
       {required this.id,
       required this.name,
@@ -295,7 +309,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       required this.endTime,
       required this.changes,
       this.deleted,
-      required this.updatedAt});
+      required this.updatedAt,
+      required this.groups});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -318,6 +333,10 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       map['deleted'] = Variable<bool>(deleted);
     }
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    {
+      map['groups'] =
+          Variable<String>($RoutinesTable.$convertergroups.toSql(groups));
+    }
     return map;
   }
 
@@ -339,6 +358,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           ? const Value.absent()
           : Value(deleted),
       updatedAt: Value(updatedAt),
+      groups: Value(groups),
     );
   }
 
@@ -360,6 +380,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       changes: serializer.fromJson<List<String>>(json['changes']),
       deleted: serializer.fromJson<bool?>(json['deleted']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      groups: serializer.fromJson<List<String>>(json['groups']),
     );
   }
   @override
@@ -380,6 +401,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       'changes': serializer.toJson<List<String>>(changes),
       'deleted': serializer.toJson<bool?>(deleted),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'groups': serializer.toJson<List<String>>(groups),
     };
   }
 
@@ -397,7 +419,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           int? endTime,
           List<String>? changes,
           Value<bool?> deleted = const Value.absent(),
-          DateTime? updatedAt}) =>
+          DateTime? updatedAt,
+          List<String>? groups}) =>
       RoutineEntry(
         id: id ?? this.id,
         name: name ?? this.name,
@@ -413,6 +436,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
         changes: changes ?? this.changes,
         deleted: deleted.present ? deleted.value : this.deleted,
         updatedAt: updatedAt ?? this.updatedAt,
+        groups: groups ?? this.groups,
       );
   RoutineEntry copyWithCompanion(RoutinesCompanion data) {
     return RoutineEntry(
@@ -430,6 +454,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       changes: data.changes.present ? data.changes.value : this.changes,
       deleted: data.deleted.present ? data.deleted.value : this.deleted,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      groups: data.groups.present ? data.groups.value : this.groups,
     );
   }
 
@@ -449,7 +474,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           ..write('endTime: $endTime, ')
           ..write('changes: $changes, ')
           ..write('deleted: $deleted, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('groups: $groups')
           ..write(')'))
         .toString();
   }
@@ -469,7 +495,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       endTime,
       changes,
       deleted,
-      updatedAt);
+      updatedAt,
+      groups);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -487,7 +514,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           other.endTime == this.endTime &&
           other.changes == this.changes &&
           other.deleted == this.deleted &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.groups == this.groups);
 }
 
 class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
@@ -505,6 +533,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
   final Value<List<String>> changes;
   final Value<bool?> deleted;
   final Value<DateTime> updatedAt;
+  final Value<List<String>> groups;
   final Value<int> rowid;
   const RoutinesCompanion({
     this.id = const Value.absent(),
@@ -521,6 +550,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     this.changes = const Value.absent(),
     this.deleted = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.groups = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   RoutinesCompanion.insert({
@@ -538,6 +568,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     required List<String> changes,
     this.deleted = const Value.absent(),
     required DateTime updatedAt,
+    required List<String> groups,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name),
@@ -551,7 +582,8 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
         startTime = Value(startTime),
         endTime = Value(endTime),
         changes = Value(changes),
-        updatedAt = Value(updatedAt);
+        updatedAt = Value(updatedAt),
+        groups = Value(groups);
   static Insertable<RoutineEntry> custom({
     Expression<String>? id,
     Expression<String>? name,
@@ -567,6 +599,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     Expression<String>? changes,
     Expression<bool>? deleted,
     Expression<DateTime>? updatedAt,
+    Expression<String>? groups,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -584,6 +617,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       if (changes != null) 'changes': changes,
       if (deleted != null) 'deleted': deleted,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (groups != null) 'groups': groups,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -603,6 +637,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       Value<List<String>>? changes,
       Value<bool?>? deleted,
       Value<DateTime>? updatedAt,
+      Value<List<String>>? groups,
       Value<int>? rowid}) {
     return RoutinesCompanion(
       id: id ?? this.id,
@@ -619,6 +654,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       changes: changes ?? this.changes,
       deleted: deleted ?? this.deleted,
       updatedAt: updatedAt ?? this.updatedAt,
+      groups: groups ?? this.groups,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -669,6 +705,10 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (groups.present) {
+      map['groups'] =
+          Variable<String>($RoutinesTable.$convertergroups.toSql(groups.value));
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -692,6 +732,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
           ..write('changes: $changes, ')
           ..write('deleted: $deleted, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('groups: $groups, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1432,342 +1473,18 @@ class GroupsCompanion extends UpdateCompanion<GroupEntry> {
   }
 }
 
-class $RoutineGroupsTable extends RoutineGroups
-    with TableInfo<$RoutineGroupsTable, RoutineGroupEntry> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $RoutineGroupsTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
-      'id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _routineMeta =
-      const VerificationMeta('routine');
-  @override
-  late final GeneratedColumn<String> routine = GeneratedColumn<String>(
-      'routine', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: true,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES routines (id)'));
-  static const VerificationMeta _groupMeta = const VerificationMeta('group');
-  @override
-  late final GeneratedColumn<String> group = GeneratedColumn<String>(
-      'group', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: true,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES "groups" (id)'));
-  static const VerificationMeta _deletedMeta =
-      const VerificationMeta('deleted');
-  @override
-  late final GeneratedColumn<bool> deleted = GeneratedColumn<bool>(
-      'deleted', aliasedName, true,
-      type: DriftSqlType.bool,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('CHECK ("deleted" IN (0, 1))'));
-  static const VerificationMeta _updatedAtMeta =
-      const VerificationMeta('updatedAt');
-  @override
-  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
-      'updated_at', aliasedName, false,
-      type: DriftSqlType.dateTime, requiredDuringInsert: true);
-  @override
-  List<GeneratedColumn> get $columns =>
-      [id, routine, group, deleted, updatedAt];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'routine_groups';
-  @override
-  VerificationContext validateIntegrity(Insertable<RoutineGroupEntry> instance,
-      {bool isInserting = false}) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
-    }
-    if (data.containsKey('routine')) {
-      context.handle(_routineMeta,
-          routine.isAcceptableOrUnknown(data['routine']!, _routineMeta));
-    } else if (isInserting) {
-      context.missing(_routineMeta);
-    }
-    if (data.containsKey('group')) {
-      context.handle(
-          _groupMeta, group.isAcceptableOrUnknown(data['group']!, _groupMeta));
-    } else if (isInserting) {
-      context.missing(_groupMeta);
-    }
-    if (data.containsKey('deleted')) {
-      context.handle(_deletedMeta,
-          deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta));
-    }
-    if (data.containsKey('updated_at')) {
-      context.handle(_updatedAtMeta,
-          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
-    } else if (isInserting) {
-      context.missing(_updatedAtMeta);
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  List<Set<GeneratedColumn>> get uniqueKeys => [
-        {routine, group},
-      ];
-  @override
-  RoutineGroupEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return RoutineGroupEntry(
-      id: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      routine: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}routine'])!,
-      group: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}group'])!,
-      deleted: attachedDatabase.typeMapping
-          .read(DriftSqlType.bool, data['${effectivePrefix}deleted']),
-      updatedAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
-    );
-  }
-
-  @override
-  $RoutineGroupsTable createAlias(String alias) {
-    return $RoutineGroupsTable(attachedDatabase, alias);
-  }
-}
-
-class RoutineGroupEntry extends DataClass
-    implements Insertable<RoutineGroupEntry> {
-  final String id;
-  final String routine;
-  final String group;
-  final bool? deleted;
-  final DateTime updatedAt;
-  const RoutineGroupEntry(
-      {required this.id,
-      required this.routine,
-      required this.group,
-      this.deleted,
-      required this.updatedAt});
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<String>(id);
-    map['routine'] = Variable<String>(routine);
-    map['group'] = Variable<String>(group);
-    if (!nullToAbsent || deleted != null) {
-      map['deleted'] = Variable<bool>(deleted);
-    }
-    map['updated_at'] = Variable<DateTime>(updatedAt);
-    return map;
-  }
-
-  RoutineGroupsCompanion toCompanion(bool nullToAbsent) {
-    return RoutineGroupsCompanion(
-      id: Value(id),
-      routine: Value(routine),
-      group: Value(group),
-      deleted: deleted == null && nullToAbsent
-          ? const Value.absent()
-          : Value(deleted),
-      updatedAt: Value(updatedAt),
-    );
-  }
-
-  factory RoutineGroupEntry.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return RoutineGroupEntry(
-      id: serializer.fromJson<String>(json['id']),
-      routine: serializer.fromJson<String>(json['routine']),
-      group: serializer.fromJson<String>(json['group']),
-      deleted: serializer.fromJson<bool?>(json['deleted']),
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<String>(id),
-      'routine': serializer.toJson<String>(routine),
-      'group': serializer.toJson<String>(group),
-      'deleted': serializer.toJson<bool?>(deleted),
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
-    };
-  }
-
-  RoutineGroupEntry copyWith(
-          {String? id,
-          String? routine,
-          String? group,
-          Value<bool?> deleted = const Value.absent(),
-          DateTime? updatedAt}) =>
-      RoutineGroupEntry(
-        id: id ?? this.id,
-        routine: routine ?? this.routine,
-        group: group ?? this.group,
-        deleted: deleted.present ? deleted.value : this.deleted,
-        updatedAt: updatedAt ?? this.updatedAt,
-      );
-  RoutineGroupEntry copyWithCompanion(RoutineGroupsCompanion data) {
-    return RoutineGroupEntry(
-      id: data.id.present ? data.id.value : this.id,
-      routine: data.routine.present ? data.routine.value : this.routine,
-      group: data.group.present ? data.group.value : this.group,
-      deleted: data.deleted.present ? data.deleted.value : this.deleted,
-      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('RoutineGroupEntry(')
-          ..write('id: $id, ')
-          ..write('routine: $routine, ')
-          ..write('group: $group, ')
-          ..write('deleted: $deleted, ')
-          ..write('updatedAt: $updatedAt')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(id, routine, group, deleted, updatedAt);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is RoutineGroupEntry &&
-          other.id == this.id &&
-          other.routine == this.routine &&
-          other.group == this.group &&
-          other.deleted == this.deleted &&
-          other.updatedAt == this.updatedAt);
-}
-
-class RoutineGroupsCompanion extends UpdateCompanion<RoutineGroupEntry> {
-  final Value<String> id;
-  final Value<String> routine;
-  final Value<String> group;
-  final Value<bool?> deleted;
-  final Value<DateTime> updatedAt;
-  final Value<int> rowid;
-  const RoutineGroupsCompanion({
-    this.id = const Value.absent(),
-    this.routine = const Value.absent(),
-    this.group = const Value.absent(),
-    this.deleted = const Value.absent(),
-    this.updatedAt = const Value.absent(),
-    this.rowid = const Value.absent(),
-  });
-  RoutineGroupsCompanion.insert({
-    required String id,
-    required String routine,
-    required String group,
-    this.deleted = const Value.absent(),
-    required DateTime updatedAt,
-    this.rowid = const Value.absent(),
-  })  : id = Value(id),
-        routine = Value(routine),
-        group = Value(group),
-        updatedAt = Value(updatedAt);
-  static Insertable<RoutineGroupEntry> custom({
-    Expression<String>? id,
-    Expression<String>? routine,
-    Expression<String>? group,
-    Expression<bool>? deleted,
-    Expression<DateTime>? updatedAt,
-    Expression<int>? rowid,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (routine != null) 'routine': routine,
-      if (group != null) 'group': group,
-      if (deleted != null) 'deleted': deleted,
-      if (updatedAt != null) 'updated_at': updatedAt,
-      if (rowid != null) 'rowid': rowid,
-    });
-  }
-
-  RoutineGroupsCompanion copyWith(
-      {Value<String>? id,
-      Value<String>? routine,
-      Value<String>? group,
-      Value<bool?>? deleted,
-      Value<DateTime>? updatedAt,
-      Value<int>? rowid}) {
-    return RoutineGroupsCompanion(
-      id: id ?? this.id,
-      routine: routine ?? this.routine,
-      group: group ?? this.group,
-      deleted: deleted ?? this.deleted,
-      updatedAt: updatedAt ?? this.updatedAt,
-      rowid: rowid ?? this.rowid,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<String>(id.value);
-    }
-    if (routine.present) {
-      map['routine'] = Variable<String>(routine.value);
-    }
-    if (group.present) {
-      map['group'] = Variable<String>(group.value);
-    }
-    if (deleted.present) {
-      map['deleted'] = Variable<bool>(deleted.value);
-    }
-    if (updatedAt.present) {
-      map['updated_at'] = Variable<DateTime>(updatedAt.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('RoutineGroupsCompanion(')
-          ..write('id: $id, ')
-          ..write('routine: $routine, ')
-          ..write('group: $group, ')
-          ..write('deleted: $deleted, ')
-          ..write('updatedAt: $updatedAt, ')
-          ..write('rowid: $rowid')
-          ..write(')'))
-        .toString();
-  }
-}
-
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $RoutinesTable routines = $RoutinesTable(this);
   late final $DevicesTable devices = $DevicesTable(this);
   late final $GroupsTable groups = $GroupsTable(this);
-  late final $RoutineGroupsTable routineGroups = $RoutineGroupsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [routines, devices, groups, routineGroups];
+      [routines, devices, groups];
 }
 
 typedef $$RoutinesTableCreateCompanionBuilder = RoutinesCompanion Function({
@@ -1785,6 +1502,7 @@ typedef $$RoutinesTableCreateCompanionBuilder = RoutinesCompanion Function({
   required List<String> changes,
   Value<bool?> deleted,
   required DateTime updatedAt,
+  required List<String> groups,
   Value<int> rowid,
 });
 typedef $$RoutinesTableUpdateCompanionBuilder = RoutinesCompanion Function({
@@ -1802,28 +1520,9 @@ typedef $$RoutinesTableUpdateCompanionBuilder = RoutinesCompanion Function({
   Value<List<String>> changes,
   Value<bool?> deleted,
   Value<DateTime> updatedAt,
+  Value<List<String>> groups,
   Value<int> rowid,
 });
-
-final class $$RoutinesTableReferences
-    extends BaseReferences<_$AppDatabase, $RoutinesTable, RoutineEntry> {
-  $$RoutinesTableReferences(super.$_db, super.$_table, super.$_typedResult);
-
-  static MultiTypedResultKey<$RoutineGroupsTable, List<RoutineGroupEntry>>
-      _routineGroupsRefsTable(_$AppDatabase db) =>
-          MultiTypedResultKey.fromTable(db.routineGroups,
-              aliasName: $_aliasNameGenerator(
-                  db.routines.id, db.routineGroups.routine));
-
-  $$RoutineGroupsTableProcessedTableManager get routineGroupsRefs {
-    final manager = $$RoutineGroupsTableTableManager($_db, $_db.routineGroups)
-        .filter((f) => f.routine.id.sqlEquals($_itemColumn<String>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_routineGroupsRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
-  }
-}
 
 class $$RoutinesTableFilterComposer
     extends Composer<_$AppDatabase, $RoutinesTable> {
@@ -1878,26 +1577,10 @@ class $$RoutinesTableFilterComposer
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
 
-  Expression<bool> routineGroupsRefs(
-      Expression<bool> Function($$RoutineGroupsTableFilterComposer f) f) {
-    final $$RoutineGroupsTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.routineGroups,
-        getReferencedColumn: (t) => t.routine,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RoutineGroupsTableFilterComposer(
-              $db: $db,
-              $table: $db.routineGroups,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
+  ColumnWithTypeConverterFilters<List<String>, List<String>, String>
+      get groups => $composableBuilder(
+          column: $table.groups,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
 }
 
 class $$RoutinesTableOrderingComposer
@@ -1950,6 +1633,9 @@ class $$RoutinesTableOrderingComposer
 
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get groups => $composableBuilder(
+      column: $table.groups, builder: (column) => ColumnOrderings(column));
 }
 
 class $$RoutinesTableAnnotationComposer
@@ -2003,26 +1689,8 @@ class $$RoutinesTableAnnotationComposer
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
-  Expression<T> routineGroupsRefs<T extends Object>(
-      Expression<T> Function($$RoutineGroupsTableAnnotationComposer a) f) {
-    final $$RoutineGroupsTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.routineGroups,
-        getReferencedColumn: (t) => t.routine,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RoutineGroupsTableAnnotationComposer(
-              $db: $db,
-              $table: $db.routineGroups,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
+  GeneratedColumnWithTypeConverter<List<String>, String> get groups =>
+      $composableBuilder(column: $table.groups, builder: (column) => column);
 }
 
 class $$RoutinesTableTableManager extends RootTableManager<
@@ -2034,9 +1702,9 @@ class $$RoutinesTableTableManager extends RootTableManager<
     $$RoutinesTableAnnotationComposer,
     $$RoutinesTableCreateCompanionBuilder,
     $$RoutinesTableUpdateCompanionBuilder,
-    (RoutineEntry, $$RoutinesTableReferences),
+    (RoutineEntry, BaseReferences<_$AppDatabase, $RoutinesTable, RoutineEntry>),
     RoutineEntry,
-    PrefetchHooks Function({bool routineGroupsRefs})> {
+    PrefetchHooks Function()> {
   $$RoutinesTableTableManager(_$AppDatabase db, $RoutinesTable table)
       : super(TableManagerState(
           db: db,
@@ -2062,6 +1730,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             Value<List<String>> changes = const Value.absent(),
             Value<bool?> deleted = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<List<String>> groups = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               RoutinesCompanion(
@@ -2079,6 +1748,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             changes: changes,
             deleted: deleted,
             updatedAt: updatedAt,
+            groups: groups,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -2096,6 +1766,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             required List<String> changes,
             Value<bool?> deleted = const Value.absent(),
             required DateTime updatedAt,
+            required List<String> groups,
             Value<int> rowid = const Value.absent(),
           }) =>
               RoutinesCompanion.insert(
@@ -2113,37 +1784,13 @@ class $$RoutinesTableTableManager extends RootTableManager<
             changes: changes,
             deleted: deleted,
             updatedAt: updatedAt,
+            groups: groups,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
-              .map((e) =>
-                  (e.readTable(table), $$RoutinesTableReferences(db, table, e)))
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
-          prefetchHooksCallback: ({routineGroupsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [
-                if (routineGroupsRefs) db.routineGroups
-              ],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (routineGroupsRefs)
-                    await $_getPrefetchedData(
-                        currentTable: table,
-                        referencedTable: $$RoutinesTableReferences
-                            ._routineGroupsRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$RoutinesTableReferences(db, table, p0)
-                                .routineGroupsRefs,
-                        referencedItemsForCurrentItem: (item,
-                                referencedItems) =>
-                            referencedItems.where((e) => e.routine == item.id),
-                        typedResults: items)
-                ];
-              },
-            );
-          },
+          prefetchHooksCallback: null,
         ));
 }
 
@@ -2156,9 +1803,9 @@ typedef $$RoutinesTableProcessedTableManager = ProcessedTableManager<
     $$RoutinesTableAnnotationComposer,
     $$RoutinesTableCreateCompanionBuilder,
     $$RoutinesTableUpdateCompanionBuilder,
-    (RoutineEntry, $$RoutinesTableReferences),
+    (RoutineEntry, BaseReferences<_$AppDatabase, $RoutinesTable, RoutineEntry>),
     RoutineEntry,
-    PrefetchHooks Function({bool routineGroupsRefs})>;
+    PrefetchHooks Function()>;
 typedef $$DevicesTableCreateCompanionBuilder = DevicesCompanion Function({
   required String id,
   required String name,
@@ -2434,21 +2081,6 @@ final class $$GroupsTableReferences
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: [item]));
   }
-
-  static MultiTypedResultKey<$RoutineGroupsTable, List<RoutineGroupEntry>>
-      _routineGroupsRefsTable(_$AppDatabase db) =>
-          MultiTypedResultKey.fromTable(db.routineGroups,
-              aliasName:
-                  $_aliasNameGenerator(db.groups.id, db.routineGroups.group));
-
-  $$RoutineGroupsTableProcessedTableManager get routineGroupsRefs {
-    final manager = $$RoutineGroupsTableTableManager($_db, $_db.routineGroups)
-        .filter((f) => f.group.id.sqlEquals($_itemColumn<String>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_routineGroupsRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
-  }
 }
 
 class $$GroupsTableFilterComposer
@@ -2508,27 +2140,6 @@ class $$GroupsTableFilterComposer
                   $removeJoinBuilderFromRootComposer,
             ));
     return composer;
-  }
-
-  Expression<bool> routineGroupsRefs(
-      Expression<bool> Function($$RoutineGroupsTableFilterComposer f) f) {
-    final $$RoutineGroupsTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.routineGroups,
-        getReferencedColumn: (t) => t.group,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RoutineGroupsTableFilterComposer(
-              $db: $db,
-              $table: $db.routineGroups,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
   }
 }
 
@@ -2638,27 +2249,6 @@ class $$GroupsTableAnnotationComposer
             ));
     return composer;
   }
-
-  Expression<T> routineGroupsRefs<T extends Object>(
-      Expression<T> Function($$RoutineGroupsTableAnnotationComposer a) f) {
-    final $$RoutineGroupsTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.routineGroups,
-        getReferencedColumn: (t) => t.group,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RoutineGroupsTableAnnotationComposer(
-              $db: $db,
-              $table: $db.routineGroups,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
 }
 
 class $$GroupsTableTableManager extends RootTableManager<
@@ -2672,7 +2262,7 @@ class $$GroupsTableTableManager extends RootTableManager<
     $$GroupsTableUpdateCompanionBuilder,
     (GroupEntry, $$GroupsTableReferences),
     GroupEntry,
-    PrefetchHooks Function({bool device, bool routineGroupsRefs})> {
+    PrefetchHooks Function({bool device})> {
   $$GroupsTableTableManager(_$AppDatabase db, $GroupsTable table)
       : super(TableManagerState(
           db: db,
@@ -2735,12 +2325,10 @@ class $$GroupsTableTableManager extends RootTableManager<
               .map((e) =>
                   (e.readTable(table), $$GroupsTableReferences(db, table, e)))
               .toList(),
-          prefetchHooksCallback: ({device = false, routineGroupsRefs = false}) {
+          prefetchHooksCallback: ({device = false}) {
             return PrefetchHooks(
               db: db,
-              explicitlyWatchedTables: [
-                if (routineGroupsRefs) db.routineGroups
-              ],
+              explicitlyWatchedTables: [],
               addJoins: <
                   T extends TableManagerState<
                       dynamic,
@@ -2767,20 +2355,7 @@ class $$GroupsTableTableManager extends RootTableManager<
                 return state;
               },
               getPrefetchedDataCallback: (items) async {
-                return [
-                  if (routineGroupsRefs)
-                    await $_getPrefetchedData(
-                        currentTable: table,
-                        referencedTable:
-                            $$GroupsTableReferences._routineGroupsRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$GroupsTableReferences(db, table, p0)
-                                .routineGroupsRefs,
-                        referencedItemsForCurrentItem: (item,
-                                referencedItems) =>
-                            referencedItems.where((e) => e.group == item.id),
-                        typedResults: items)
-                ];
+                return [];
               },
             );
           },
@@ -2798,358 +2373,7 @@ typedef $$GroupsTableProcessedTableManager = ProcessedTableManager<
     $$GroupsTableUpdateCompanionBuilder,
     (GroupEntry, $$GroupsTableReferences),
     GroupEntry,
-    PrefetchHooks Function({bool device, bool routineGroupsRefs})>;
-typedef $$RoutineGroupsTableCreateCompanionBuilder = RoutineGroupsCompanion
-    Function({
-  required String id,
-  required String routine,
-  required String group,
-  Value<bool?> deleted,
-  required DateTime updatedAt,
-  Value<int> rowid,
-});
-typedef $$RoutineGroupsTableUpdateCompanionBuilder = RoutineGroupsCompanion
-    Function({
-  Value<String> id,
-  Value<String> routine,
-  Value<String> group,
-  Value<bool?> deleted,
-  Value<DateTime> updatedAt,
-  Value<int> rowid,
-});
-
-final class $$RoutineGroupsTableReferences extends BaseReferences<_$AppDatabase,
-    $RoutineGroupsTable, RoutineGroupEntry> {
-  $$RoutineGroupsTableReferences(
-      super.$_db, super.$_table, super.$_typedResult);
-
-  static $RoutinesTable _routineTable(_$AppDatabase db) =>
-      db.routines.createAlias(
-          $_aliasNameGenerator(db.routineGroups.routine, db.routines.id));
-
-  $$RoutinesTableProcessedTableManager get routine {
-    final $_column = $_itemColumn<String>('routine')!;
-
-    final manager = $$RoutinesTableTableManager($_db, $_db.routines)
-        .filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_routineTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-
-  static $GroupsTable _groupTable(_$AppDatabase db) => db.groups
-      .createAlias($_aliasNameGenerator(db.routineGroups.group, db.groups.id));
-
-  $$GroupsTableProcessedTableManager get group {
-    final $_column = $_itemColumn<String>('group')!;
-
-    final manager = $$GroupsTableTableManager($_db, $_db.groups)
-        .filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_groupTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-}
-
-class $$RoutineGroupsTableFilterComposer
-    extends Composer<_$AppDatabase, $RoutineGroupsTable> {
-  $$RoutineGroupsTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<bool> get deleted => $composableBuilder(
-      column: $table.deleted, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
-      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
-
-  $$RoutinesTableFilterComposer get routine {
-    final $$RoutinesTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.routine,
-        referencedTable: $db.routines,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RoutinesTableFilterComposer(
-              $db: $db,
-              $table: $db.routines,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$GroupsTableFilterComposer get group {
-    final $$GroupsTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.group,
-        referencedTable: $db.groups,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$GroupsTableFilterComposer(
-              $db: $db,
-              $table: $db.groups,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$RoutineGroupsTableOrderingComposer
-    extends Composer<_$AppDatabase, $RoutineGroupsTable> {
-  $$RoutineGroupsTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<bool> get deleted => $composableBuilder(
-      column: $table.deleted, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
-      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
-
-  $$RoutinesTableOrderingComposer get routine {
-    final $$RoutinesTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.routine,
-        referencedTable: $db.routines,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RoutinesTableOrderingComposer(
-              $db: $db,
-              $table: $db.routines,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$GroupsTableOrderingComposer get group {
-    final $$GroupsTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.group,
-        referencedTable: $db.groups,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$GroupsTableOrderingComposer(
-              $db: $db,
-              $table: $db.groups,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$RoutineGroupsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $RoutineGroupsTable> {
-  $$RoutineGroupsTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<bool> get deleted =>
-      $composableBuilder(column: $table.deleted, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get updatedAt =>
-      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
-
-  $$RoutinesTableAnnotationComposer get routine {
-    final $$RoutinesTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.routine,
-        referencedTable: $db.routines,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RoutinesTableAnnotationComposer(
-              $db: $db,
-              $table: $db.routines,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$GroupsTableAnnotationComposer get group {
-    final $$GroupsTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.group,
-        referencedTable: $db.groups,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$GroupsTableAnnotationComposer(
-              $db: $db,
-              $table: $db.groups,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$RoutineGroupsTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $RoutineGroupsTable,
-    RoutineGroupEntry,
-    $$RoutineGroupsTableFilterComposer,
-    $$RoutineGroupsTableOrderingComposer,
-    $$RoutineGroupsTableAnnotationComposer,
-    $$RoutineGroupsTableCreateCompanionBuilder,
-    $$RoutineGroupsTableUpdateCompanionBuilder,
-    (RoutineGroupEntry, $$RoutineGroupsTableReferences),
-    RoutineGroupEntry,
-    PrefetchHooks Function({bool routine, bool group})> {
-  $$RoutineGroupsTableTableManager(_$AppDatabase db, $RoutineGroupsTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$RoutineGroupsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$RoutineGroupsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$RoutineGroupsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<String> id = const Value.absent(),
-            Value<String> routine = const Value.absent(),
-            Value<String> group = const Value.absent(),
-            Value<bool?> deleted = const Value.absent(),
-            Value<DateTime> updatedAt = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              RoutineGroupsCompanion(
-            id: id,
-            routine: routine,
-            group: group,
-            deleted: deleted,
-            updatedAt: updatedAt,
-            rowid: rowid,
-          ),
-          createCompanionCallback: ({
-            required String id,
-            required String routine,
-            required String group,
-            Value<bool?> deleted = const Value.absent(),
-            required DateTime updatedAt,
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              RoutineGroupsCompanion.insert(
-            id: id,
-            routine: routine,
-            group: group,
-            deleted: deleted,
-            updatedAt: updatedAt,
-            rowid: rowid,
-          ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (
-                    e.readTable(table),
-                    $$RoutineGroupsTableReferences(db, table, e)
-                  ))
-              .toList(),
-          prefetchHooksCallback: ({routine = false, group = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins: <
-                  T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic>>(state) {
-                if (routine) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.routine,
-                    referencedTable:
-                        $$RoutineGroupsTableReferences._routineTable(db),
-                    referencedColumn:
-                        $$RoutineGroupsTableReferences._routineTable(db).id,
-                  ) as T;
-                }
-                if (group) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.group,
-                    referencedTable:
-                        $$RoutineGroupsTableReferences._groupTable(db),
-                    referencedColumn:
-                        $$RoutineGroupsTableReferences._groupTable(db).id,
-                  ) as T;
-                }
-
-                return state;
-              },
-              getPrefetchedDataCallback: (items) async {
-                return [];
-              },
-            );
-          },
-        ));
-}
-
-typedef $$RoutineGroupsTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $RoutineGroupsTable,
-    RoutineGroupEntry,
-    $$RoutineGroupsTableFilterComposer,
-    $$RoutineGroupsTableOrderingComposer,
-    $$RoutineGroupsTableAnnotationComposer,
-    $$RoutineGroupsTableCreateCompanionBuilder,
-    $$RoutineGroupsTableUpdateCompanionBuilder,
-    (RoutineGroupEntry, $$RoutineGroupsTableReferences),
-    RoutineGroupEntry,
-    PrefetchHooks Function({bool routine, bool group})>;
+    PrefetchHooks Function({bool device})>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3160,6 +2384,4 @@ class $AppDatabaseManager {
       $$DevicesTableTableManager(_db, _db.devices);
   $$GroupsTableTableManager get groups =>
       $$GroupsTableTableManager(_db, _db.groups);
-  $$RoutineGroupsTableTableManager get routineGroups =>
-      $$RoutineGroupsTableTableManager(_db, _db.routineGroups);
 }
