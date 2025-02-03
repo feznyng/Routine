@@ -15,7 +15,7 @@ class _BlockGroupsPageState extends State<BlockGroupsPage> {
   @override
   void initState() {
     super.initState();
-    Group.watchAllNamed().then((value) => setState(() => groups = value));
+    Group.watchAllNamed().listen((value) => setState(() => groups = value));
   }
 
   @override
@@ -44,13 +44,13 @@ class _BlockGroupsPageState extends State<BlockGroupsPage> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showEditPage(context, null),
+        onPressed: () => _showEditPage(context, Group()),
         child: const Icon(Icons.add),
       ),
     );
   }
 
-  void _showEditPage(BuildContext context, Group? group) async {
+  void _showEditPage(BuildContext context, Group group) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => EditBlockGroupPage(
@@ -60,7 +60,7 @@ class _BlockGroupsPageState extends State<BlockGroupsPage> {
             Navigator.of(context).pop();
             setState(() {});
           },
-          onDelete: group != null ? () {
+          onDelete: group.saved ? () {
             group.delete();
             Navigator.of(context).pop();
             setState(() {});
