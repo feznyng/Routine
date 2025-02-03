@@ -941,14 +941,42 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupEntry> {
       requiredDuringInsert: true,
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('REFERENCES devices (id)'));
+  static const VerificationMeta _allowMeta = const VerificationMeta('allow');
+  @override
+  late final GeneratedColumn<bool> allow = GeneratedColumn<bool>(
+      'allow', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("allow" IN (0, 1))'));
+  static const VerificationMeta _appsMeta = const VerificationMeta('apps');
+  @override
+  late final GeneratedColumnWithTypeConverter<List<String>, String> apps =
+      GeneratedColumn<String>('apps', aliasedName, false,
+              type: DriftSqlType.string, requiredDuringInsert: true)
+          .withConverter<List<String>>($GroupsTable.$converterapps);
+  static const VerificationMeta _sitesMeta = const VerificationMeta('sites');
+  @override
+  late final GeneratedColumnWithTypeConverter<List<String>, String> sites =
+      GeneratedColumn<String>('sites', aliasedName, false,
+              type: DriftSqlType.string, requiredDuringInsert: true)
+          .withConverter<List<String>>($GroupsTable.$convertersites);
   static const VerificationMeta _changesMeta =
       const VerificationMeta('changes');
   @override
-  late final GeneratedColumn<String> changes = GeneratedColumn<String>(
-      'changes', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+  late final GeneratedColumnWithTypeConverter<List<String>, String> changes =
+      GeneratedColumn<String>('changes', aliasedName, false,
+              type: DriftSqlType.string, requiredDuringInsert: true)
+          .withConverter<List<String>>($GroupsTable.$converterchanges);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
-  List<GeneratedColumn> get $columns => [id, name, device, changes];
+  late final GeneratedColumnWithTypeConverter<Status, String> status =
+      GeneratedColumn<String>('status', aliasedName, false,
+              type: DriftSqlType.string, requiredDuringInsert: true)
+          .withConverter<Status>($GroupsTable.$converterstatus);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, name, device, allow, apps, sites, changes, status];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -974,12 +1002,16 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupEntry> {
     } else if (isInserting) {
       context.missing(_deviceMeta);
     }
-    if (data.containsKey('changes')) {
-      context.handle(_changesMeta,
-          changes.isAcceptableOrUnknown(data['changes']!, _changesMeta));
+    if (data.containsKey('allow')) {
+      context.handle(
+          _allowMeta, allow.isAcceptableOrUnknown(data['allow']!, _allowMeta));
     } else if (isInserting) {
-      context.missing(_changesMeta);
+      context.missing(_allowMeta);
     }
+    context.handle(_appsMeta, const VerificationResult.success());
+    context.handle(_sitesMeta, const VerificationResult.success());
+    context.handle(_changesMeta, const VerificationResult.success());
+    context.handle(_statusMeta, const VerificationResult.success());
     return context;
   }
 
@@ -995,8 +1027,17 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupEntry> {
           .read(DriftSqlType.string, data['${effectivePrefix}name']),
       device: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}device'])!,
-      changes: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}changes'])!,
+      allow: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}allow'])!,
+      apps: $GroupsTable.$converterapps.fromSql(attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}apps'])!),
+      sites: $GroupsTable.$convertersites.fromSql(attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sites'])!),
+      changes: $GroupsTable.$converterchanges.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}changes'])!),
+      status: $GroupsTable.$converterstatus.fromSql(attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!),
     );
   }
 
@@ -1004,18 +1045,35 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupEntry> {
   $GroupsTable createAlias(String alias) {
     return $GroupsTable(attachedDatabase, alias);
   }
+
+  static TypeConverter<List<String>, String> $converterapps =
+      StringListTypeConverter();
+  static TypeConverter<List<String>, String> $convertersites =
+      StringListTypeConverter();
+  static TypeConverter<List<String>, String> $converterchanges =
+      StringListTypeConverter();
+  static JsonTypeConverter2<Status, String, String> $converterstatus =
+      const EnumNameConverter<Status>(Status.values);
 }
 
 class GroupEntry extends DataClass implements Insertable<GroupEntry> {
   final String id;
   final String? name;
   final String device;
-  final String changes;
+  final bool allow;
+  final List<String> apps;
+  final List<String> sites;
+  final List<String> changes;
+  final Status status;
   const GroupEntry(
       {required this.id,
       this.name,
       required this.device,
-      required this.changes});
+      required this.allow,
+      required this.apps,
+      required this.sites,
+      required this.changes,
+      required this.status});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1024,7 +1082,22 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
       map['name'] = Variable<String>(name);
     }
     map['device'] = Variable<String>(device);
-    map['changes'] = Variable<String>(changes);
+    map['allow'] = Variable<bool>(allow);
+    {
+      map['apps'] = Variable<String>($GroupsTable.$converterapps.toSql(apps));
+    }
+    {
+      map['sites'] =
+          Variable<String>($GroupsTable.$convertersites.toSql(sites));
+    }
+    {
+      map['changes'] =
+          Variable<String>($GroupsTable.$converterchanges.toSql(changes));
+    }
+    {
+      map['status'] =
+          Variable<String>($GroupsTable.$converterstatus.toSql(status));
+    }
     return map;
   }
 
@@ -1033,7 +1106,11 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
       id: Value(id),
       name: name == null && nullToAbsent ? const Value.absent() : Value(name),
       device: Value(device),
+      allow: Value(allow),
+      apps: Value(apps),
+      sites: Value(sites),
       changes: Value(changes),
+      status: Value(status),
     );
   }
 
@@ -1044,7 +1121,12 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String?>(json['name']),
       device: serializer.fromJson<String>(json['device']),
-      changes: serializer.fromJson<String>(json['changes']),
+      allow: serializer.fromJson<bool>(json['allow']),
+      apps: serializer.fromJson<List<String>>(json['apps']),
+      sites: serializer.fromJson<List<String>>(json['sites']),
+      changes: serializer.fromJson<List<String>>(json['changes']),
+      status: $GroupsTable.$converterstatus
+          .fromJson(serializer.fromJson<String>(json['status'])),
     );
   }
   @override
@@ -1054,7 +1136,12 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String?>(name),
       'device': serializer.toJson<String>(device),
-      'changes': serializer.toJson<String>(changes),
+      'allow': serializer.toJson<bool>(allow),
+      'apps': serializer.toJson<List<String>>(apps),
+      'sites': serializer.toJson<List<String>>(sites),
+      'changes': serializer.toJson<List<String>>(changes),
+      'status': serializer
+          .toJson<String>($GroupsTable.$converterstatus.toJson(status)),
     };
   }
 
@@ -1062,19 +1149,31 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
           {String? id,
           Value<String?> name = const Value.absent(),
           String? device,
-          String? changes}) =>
+          bool? allow,
+          List<String>? apps,
+          List<String>? sites,
+          List<String>? changes,
+          Status? status}) =>
       GroupEntry(
         id: id ?? this.id,
         name: name.present ? name.value : this.name,
         device: device ?? this.device,
+        allow: allow ?? this.allow,
+        apps: apps ?? this.apps,
+        sites: sites ?? this.sites,
         changes: changes ?? this.changes,
+        status: status ?? this.status,
       );
   GroupEntry copyWithCompanion(GroupsCompanion data) {
     return GroupEntry(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       device: data.device.present ? data.device.value : this.device,
+      allow: data.allow.present ? data.allow.value : this.allow,
+      apps: data.apps.present ? data.apps.value : this.apps,
+      sites: data.sites.present ? data.sites.value : this.sites,
       changes: data.changes.present ? data.changes.value : this.changes,
+      status: data.status.present ? data.status.value : this.status,
     );
   }
 
@@ -1084,13 +1183,18 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('device: $device, ')
-          ..write('changes: $changes')
+          ..write('allow: $allow, ')
+          ..write('apps: $apps, ')
+          ..write('sites: $sites, ')
+          ..write('changes: $changes, ')
+          ..write('status: $status')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, device, changes);
+  int get hashCode =>
+      Object.hash(id, name, device, allow, apps, sites, changes, status);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1098,43 +1202,71 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
           other.id == this.id &&
           other.name == this.name &&
           other.device == this.device &&
-          other.changes == this.changes);
+          other.allow == this.allow &&
+          other.apps == this.apps &&
+          other.sites == this.sites &&
+          other.changes == this.changes &&
+          other.status == this.status);
 }
 
 class GroupsCompanion extends UpdateCompanion<GroupEntry> {
   final Value<String> id;
   final Value<String?> name;
   final Value<String> device;
-  final Value<String> changes;
+  final Value<bool> allow;
+  final Value<List<String>> apps;
+  final Value<List<String>> sites;
+  final Value<List<String>> changes;
+  final Value<Status> status;
   final Value<int> rowid;
   const GroupsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.device = const Value.absent(),
+    this.allow = const Value.absent(),
+    this.apps = const Value.absent(),
+    this.sites = const Value.absent(),
     this.changes = const Value.absent(),
+    this.status = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   GroupsCompanion.insert({
     required String id,
     this.name = const Value.absent(),
     required String device,
-    required String changes,
+    required bool allow,
+    required List<String> apps,
+    required List<String> sites,
+    required List<String> changes,
+    required Status status,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         device = Value(device),
-        changes = Value(changes);
+        allow = Value(allow),
+        apps = Value(apps),
+        sites = Value(sites),
+        changes = Value(changes),
+        status = Value(status);
   static Insertable<GroupEntry> custom({
     Expression<String>? id,
     Expression<String>? name,
     Expression<String>? device,
+    Expression<bool>? allow,
+    Expression<String>? apps,
+    Expression<String>? sites,
     Expression<String>? changes,
+    Expression<String>? status,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (device != null) 'device': device,
+      if (allow != null) 'allow': allow,
+      if (apps != null) 'apps': apps,
+      if (sites != null) 'sites': sites,
       if (changes != null) 'changes': changes,
+      if (status != null) 'status': status,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1143,13 +1275,21 @@ class GroupsCompanion extends UpdateCompanion<GroupEntry> {
       {Value<String>? id,
       Value<String?>? name,
       Value<String>? device,
-      Value<String>? changes,
+      Value<bool>? allow,
+      Value<List<String>>? apps,
+      Value<List<String>>? sites,
+      Value<List<String>>? changes,
+      Value<Status>? status,
       Value<int>? rowid}) {
     return GroupsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       device: device ?? this.device,
+      allow: allow ?? this.allow,
+      apps: apps ?? this.apps,
+      sites: sites ?? this.sites,
       changes: changes ?? this.changes,
+      status: status ?? this.status,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1166,8 +1306,24 @@ class GroupsCompanion extends UpdateCompanion<GroupEntry> {
     if (device.present) {
       map['device'] = Variable<String>(device.value);
     }
+    if (allow.present) {
+      map['allow'] = Variable<bool>(allow.value);
+    }
+    if (apps.present) {
+      map['apps'] =
+          Variable<String>($GroupsTable.$converterapps.toSql(apps.value));
+    }
+    if (sites.present) {
+      map['sites'] =
+          Variable<String>($GroupsTable.$convertersites.toSql(sites.value));
+    }
     if (changes.present) {
-      map['changes'] = Variable<String>(changes.value);
+      map['changes'] =
+          Variable<String>($GroupsTable.$converterchanges.toSql(changes.value));
+    }
+    if (status.present) {
+      map['status'] =
+          Variable<String>($GroupsTable.$converterstatus.toSql(status.value));
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -1181,241 +1337,11 @@ class GroupsCompanion extends UpdateCompanion<GroupEntry> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('device: $device, ')
+          ..write('allow: $allow, ')
+          ..write('apps: $apps, ')
+          ..write('sites: $sites, ')
           ..write('changes: $changes, ')
-          ..write('rowid: $rowid')
-          ..write(')'))
-        .toString();
-  }
-}
-
-class $GroupItemsTable extends GroupItems
-    with TableInfo<$GroupItemsTable, GroupItemEntry> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $GroupItemsTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _valueMeta = const VerificationMeta('value');
-  @override
-  late final GeneratedColumn<String> value = GeneratedColumn<String>(
-      'value', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _siteMeta = const VerificationMeta('site');
-  @override
-  late final GeneratedColumn<bool> site = GeneratedColumn<bool>(
-      'site', aliasedName, false,
-      type: DriftSqlType.bool,
-      requiredDuringInsert: true,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('CHECK ("site" IN (0, 1))'));
-  static const VerificationMeta _groupMeta = const VerificationMeta('group');
-  @override
-  late final GeneratedColumn<String> group = GeneratedColumn<String>(
-      'group', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: true,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES "groups" (id)'));
-  @override
-  List<GeneratedColumn> get $columns => [value, site, group];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'group_items';
-  @override
-  VerificationContext validateIntegrity(Insertable<GroupItemEntry> instance,
-      {bool isInserting = false}) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('value')) {
-      context.handle(
-          _valueMeta, value.isAcceptableOrUnknown(data['value']!, _valueMeta));
-    } else if (isInserting) {
-      context.missing(_valueMeta);
-    }
-    if (data.containsKey('site')) {
-      context.handle(
-          _siteMeta, site.isAcceptableOrUnknown(data['site']!, _siteMeta));
-    } else if (isInserting) {
-      context.missing(_siteMeta);
-    }
-    if (data.containsKey('group')) {
-      context.handle(
-          _groupMeta, group.isAcceptableOrUnknown(data['group']!, _groupMeta));
-    } else if (isInserting) {
-      context.missing(_groupMeta);
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {group, value};
-  @override
-  GroupItemEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return GroupItemEntry(
-      value: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}value'])!,
-      site: attachedDatabase.typeMapping
-          .read(DriftSqlType.bool, data['${effectivePrefix}site'])!,
-      group: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}group'])!,
-    );
-  }
-
-  @override
-  $GroupItemsTable createAlias(String alias) {
-    return $GroupItemsTable(attachedDatabase, alias);
-  }
-}
-
-class GroupItemEntry extends DataClass implements Insertable<GroupItemEntry> {
-  final String value;
-  final bool site;
-  final String group;
-  const GroupItemEntry(
-      {required this.value, required this.site, required this.group});
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['value'] = Variable<String>(value);
-    map['site'] = Variable<bool>(site);
-    map['group'] = Variable<String>(group);
-    return map;
-  }
-
-  GroupItemsCompanion toCompanion(bool nullToAbsent) {
-    return GroupItemsCompanion(
-      value: Value(value),
-      site: Value(site),
-      group: Value(group),
-    );
-  }
-
-  factory GroupItemEntry.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return GroupItemEntry(
-      value: serializer.fromJson<String>(json['value']),
-      site: serializer.fromJson<bool>(json['site']),
-      group: serializer.fromJson<String>(json['group']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'value': serializer.toJson<String>(value),
-      'site': serializer.toJson<bool>(site),
-      'group': serializer.toJson<String>(group),
-    };
-  }
-
-  GroupItemEntry copyWith({String? value, bool? site, String? group}) =>
-      GroupItemEntry(
-        value: value ?? this.value,
-        site: site ?? this.site,
-        group: group ?? this.group,
-      );
-  GroupItemEntry copyWithCompanion(GroupItemsCompanion data) {
-    return GroupItemEntry(
-      value: data.value.present ? data.value.value : this.value,
-      site: data.site.present ? data.site.value : this.site,
-      group: data.group.present ? data.group.value : this.group,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('GroupItemEntry(')
-          ..write('value: $value, ')
-          ..write('site: $site, ')
-          ..write('group: $group')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(value, site, group);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is GroupItemEntry &&
-          other.value == this.value &&
-          other.site == this.site &&
-          other.group == this.group);
-}
-
-class GroupItemsCompanion extends UpdateCompanion<GroupItemEntry> {
-  final Value<String> value;
-  final Value<bool> site;
-  final Value<String> group;
-  final Value<int> rowid;
-  const GroupItemsCompanion({
-    this.value = const Value.absent(),
-    this.site = const Value.absent(),
-    this.group = const Value.absent(),
-    this.rowid = const Value.absent(),
-  });
-  GroupItemsCompanion.insert({
-    required String value,
-    required bool site,
-    required String group,
-    this.rowid = const Value.absent(),
-  })  : value = Value(value),
-        site = Value(site),
-        group = Value(group);
-  static Insertable<GroupItemEntry> custom({
-    Expression<String>? value,
-    Expression<bool>? site,
-    Expression<String>? group,
-    Expression<int>? rowid,
-  }) {
-    return RawValuesInsertable({
-      if (value != null) 'value': value,
-      if (site != null) 'site': site,
-      if (group != null) 'group': group,
-      if (rowid != null) 'rowid': rowid,
-    });
-  }
-
-  GroupItemsCompanion copyWith(
-      {Value<String>? value,
-      Value<bool>? site,
-      Value<String>? group,
-      Value<int>? rowid}) {
-    return GroupItemsCompanion(
-      value: value ?? this.value,
-      site: site ?? this.site,
-      group: group ?? this.group,
-      rowid: rowid ?? this.rowid,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (value.present) {
-      map['value'] = Variable<String>(value.value);
-    }
-    if (site.present) {
-      map['site'] = Variable<bool>(site.value);
-    }
-    if (group.present) {
-      map['group'] = Variable<String>(group.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('GroupItemsCompanion(')
-          ..write('value: $value, ')
-          ..write('site: $site, ')
-          ..write('group: $group, ')
+          ..write('status: $status, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1663,14 +1589,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $RoutinesTable routines = $RoutinesTable(this);
   late final $DevicesTable devices = $DevicesTable(this);
   late final $GroupsTable groups = $GroupsTable(this);
-  late final $GroupItemsTable groupItems = $GroupItemsTable(this);
   late final $RoutineGroupsTable routineGroups = $RoutineGroupsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [routines, devices, groups, groupItems, routineGroups];
+      [routines, devices, groups, routineGroups];
 }
 
 typedef $$RoutinesTableCreateCompanionBuilder = RoutinesCompanion Function({
@@ -2286,14 +2211,22 @@ typedef $$GroupsTableCreateCompanionBuilder = GroupsCompanion Function({
   required String id,
   Value<String?> name,
   required String device,
-  required String changes,
+  required bool allow,
+  required List<String> apps,
+  required List<String> sites,
+  required List<String> changes,
+  required Status status,
   Value<int> rowid,
 });
 typedef $$GroupsTableUpdateCompanionBuilder = GroupsCompanion Function({
   Value<String> id,
   Value<String?> name,
   Value<String> device,
-  Value<String> changes,
+  Value<bool> allow,
+  Value<List<String>> apps,
+  Value<List<String>> sites,
+  Value<List<String>> changes,
+  Value<Status> status,
   Value<int> rowid,
 });
 
@@ -2313,20 +2246,6 @@ final class $$GroupsTableReferences
     if (item == null) return manager;
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: [item]));
-  }
-
-  static MultiTypedResultKey<$GroupItemsTable, List<GroupItemEntry>>
-      _groupItemsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-          db.groupItems,
-          aliasName: $_aliasNameGenerator(db.groups.id, db.groupItems.group));
-
-  $$GroupItemsTableProcessedTableManager get groupItemsRefs {
-    final manager = $$GroupItemsTableTableManager($_db, $_db.groupItems)
-        .filter((f) => f.group.id.sqlEquals($_itemColumn<String>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_groupItemsRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
   }
 
   static MultiTypedResultKey<$RoutineGroupsTable, List<RoutineGroupEntry>>
@@ -2360,8 +2279,28 @@ class $$GroupsTableFilterComposer
   ColumnFilters<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get changes => $composableBuilder(
-      column: $table.changes, builder: (column) => ColumnFilters(column));
+  ColumnFilters<bool> get allow => $composableBuilder(
+      column: $table.allow, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<List<String>, List<String>, String> get apps =>
+      $composableBuilder(
+          column: $table.apps,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnWithTypeConverterFilters<List<String>, List<String>, String>
+      get sites => $composableBuilder(
+          column: $table.sites,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnWithTypeConverterFilters<List<String>, List<String>, String>
+      get changes => $composableBuilder(
+          column: $table.changes,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnWithTypeConverterFilters<Status, Status, String> get status =>
+      $composableBuilder(
+          column: $table.status,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
 
   $$DevicesTableFilterComposer get device {
     final $$DevicesTableFilterComposer composer = $composerBuilder(
@@ -2381,27 +2320,6 @@ class $$GroupsTableFilterComposer
                   $removeJoinBuilderFromRootComposer,
             ));
     return composer;
-  }
-
-  Expression<bool> groupItemsRefs(
-      Expression<bool> Function($$GroupItemsTableFilterComposer f) f) {
-    final $$GroupItemsTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.groupItems,
-        getReferencedColumn: (t) => t.group,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$GroupItemsTableFilterComposer(
-              $db: $db,
-              $table: $db.groupItems,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
   }
 
   Expression<bool> routineGroupsRefs(
@@ -2441,8 +2359,20 @@ class $$GroupsTableOrderingComposer
   ColumnOrderings<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<bool> get allow => $composableBuilder(
+      column: $table.allow, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get apps => $composableBuilder(
+      column: $table.apps, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sites => $composableBuilder(
+      column: $table.sites, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get changes => $composableBuilder(
       column: $table.changes, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
 
   $$DevicesTableOrderingComposer get device {
     final $$DevicesTableOrderingComposer composer = $composerBuilder(
@@ -2480,8 +2410,20 @@ class $$GroupsTableAnnotationComposer
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
 
-  GeneratedColumn<String> get changes =>
+  GeneratedColumn<bool> get allow =>
+      $composableBuilder(column: $table.allow, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<String>, String> get apps =>
+      $composableBuilder(column: $table.apps, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<String>, String> get sites =>
+      $composableBuilder(column: $table.sites, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<String>, String> get changes =>
       $composableBuilder(column: $table.changes, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<Status, String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
 
   $$DevicesTableAnnotationComposer get device {
     final $$DevicesTableAnnotationComposer composer = $composerBuilder(
@@ -2501,27 +2443,6 @@ class $$GroupsTableAnnotationComposer
                   $removeJoinBuilderFromRootComposer,
             ));
     return composer;
-  }
-
-  Expression<T> groupItemsRefs<T extends Object>(
-      Expression<T> Function($$GroupItemsTableAnnotationComposer a) f) {
-    final $$GroupItemsTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.groupItems,
-        getReferencedColumn: (t) => t.group,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$GroupItemsTableAnnotationComposer(
-              $db: $db,
-              $table: $db.groupItems,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
   }
 
   Expression<T> routineGroupsRefs<T extends Object>(
@@ -2557,8 +2478,7 @@ class $$GroupsTableTableManager extends RootTableManager<
     $$GroupsTableUpdateCompanionBuilder,
     (GroupEntry, $$GroupsTableReferences),
     GroupEntry,
-    PrefetchHooks Function(
-        {bool device, bool groupItemsRefs, bool routineGroupsRefs})> {
+    PrefetchHooks Function({bool device, bool routineGroupsRefs})> {
   $$GroupsTableTableManager(_$AppDatabase db, $GroupsTable table)
       : super(TableManagerState(
           db: db,
@@ -2573,42 +2493,54 @@ class $$GroupsTableTableManager extends RootTableManager<
             Value<String> id = const Value.absent(),
             Value<String?> name = const Value.absent(),
             Value<String> device = const Value.absent(),
-            Value<String> changes = const Value.absent(),
+            Value<bool> allow = const Value.absent(),
+            Value<List<String>> apps = const Value.absent(),
+            Value<List<String>> sites = const Value.absent(),
+            Value<List<String>> changes = const Value.absent(),
+            Value<Status> status = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               GroupsCompanion(
             id: id,
             name: name,
             device: device,
+            allow: allow,
+            apps: apps,
+            sites: sites,
             changes: changes,
+            status: status,
             rowid: rowid,
           ),
           createCompanionCallback: ({
             required String id,
             Value<String?> name = const Value.absent(),
             required String device,
-            required String changes,
+            required bool allow,
+            required List<String> apps,
+            required List<String> sites,
+            required List<String> changes,
+            required Status status,
             Value<int> rowid = const Value.absent(),
           }) =>
               GroupsCompanion.insert(
             id: id,
             name: name,
             device: device,
+            allow: allow,
+            apps: apps,
+            sites: sites,
             changes: changes,
+            status: status,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) =>
                   (e.readTable(table), $$GroupsTableReferences(db, table, e)))
               .toList(),
-          prefetchHooksCallback: (
-              {device = false,
-              groupItemsRefs = false,
-              routineGroupsRefs = false}) {
+          prefetchHooksCallback: ({device = false, routineGroupsRefs = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
-                if (groupItemsRefs) db.groupItems,
                 if (routineGroupsRefs) db.routineGroups
               ],
               addJoins: <
@@ -2638,18 +2570,6 @@ class $$GroupsTableTableManager extends RootTableManager<
               },
               getPrefetchedDataCallback: (items) async {
                 return [
-                  if (groupItemsRefs)
-                    await $_getPrefetchedData(
-                        currentTable: table,
-                        referencedTable:
-                            $$GroupsTableReferences._groupItemsRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$GroupsTableReferences(db, table, p0)
-                                .groupItemsRefs,
-                        referencedItemsForCurrentItem: (item,
-                                referencedItems) =>
-                            referencedItems.where((e) => e.group == item.id),
-                        typedResults: items),
                   if (routineGroupsRefs)
                     await $_getPrefetchedData(
                         currentTable: table,
@@ -2680,250 +2600,7 @@ typedef $$GroupsTableProcessedTableManager = ProcessedTableManager<
     $$GroupsTableUpdateCompanionBuilder,
     (GroupEntry, $$GroupsTableReferences),
     GroupEntry,
-    PrefetchHooks Function(
-        {bool device, bool groupItemsRefs, bool routineGroupsRefs})>;
-typedef $$GroupItemsTableCreateCompanionBuilder = GroupItemsCompanion Function({
-  required String value,
-  required bool site,
-  required String group,
-  Value<int> rowid,
-});
-typedef $$GroupItemsTableUpdateCompanionBuilder = GroupItemsCompanion Function({
-  Value<String> value,
-  Value<bool> site,
-  Value<String> group,
-  Value<int> rowid,
-});
-
-final class $$GroupItemsTableReferences
-    extends BaseReferences<_$AppDatabase, $GroupItemsTable, GroupItemEntry> {
-  $$GroupItemsTableReferences(super.$_db, super.$_table, super.$_typedResult);
-
-  static $GroupsTable _groupTable(_$AppDatabase db) => db.groups
-      .createAlias($_aliasNameGenerator(db.groupItems.group, db.groups.id));
-
-  $$GroupsTableProcessedTableManager get group {
-    final $_column = $_itemColumn<String>('group')!;
-
-    final manager = $$GroupsTableTableManager($_db, $_db.groups)
-        .filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_groupTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-}
-
-class $$GroupItemsTableFilterComposer
-    extends Composer<_$AppDatabase, $GroupItemsTable> {
-  $$GroupItemsTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get value => $composableBuilder(
-      column: $table.value, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<bool> get site => $composableBuilder(
-      column: $table.site, builder: (column) => ColumnFilters(column));
-
-  $$GroupsTableFilterComposer get group {
-    final $$GroupsTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.group,
-        referencedTable: $db.groups,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$GroupsTableFilterComposer(
-              $db: $db,
-              $table: $db.groups,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$GroupItemsTableOrderingComposer
-    extends Composer<_$AppDatabase, $GroupItemsTable> {
-  $$GroupItemsTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get value => $composableBuilder(
-      column: $table.value, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<bool> get site => $composableBuilder(
-      column: $table.site, builder: (column) => ColumnOrderings(column));
-
-  $$GroupsTableOrderingComposer get group {
-    final $$GroupsTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.group,
-        referencedTable: $db.groups,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$GroupsTableOrderingComposer(
-              $db: $db,
-              $table: $db.groups,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$GroupItemsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $GroupItemsTable> {
-  $$GroupItemsTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get value =>
-      $composableBuilder(column: $table.value, builder: (column) => column);
-
-  GeneratedColumn<bool> get site =>
-      $composableBuilder(column: $table.site, builder: (column) => column);
-
-  $$GroupsTableAnnotationComposer get group {
-    final $$GroupsTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.group,
-        referencedTable: $db.groups,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$GroupsTableAnnotationComposer(
-              $db: $db,
-              $table: $db.groups,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$GroupItemsTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $GroupItemsTable,
-    GroupItemEntry,
-    $$GroupItemsTableFilterComposer,
-    $$GroupItemsTableOrderingComposer,
-    $$GroupItemsTableAnnotationComposer,
-    $$GroupItemsTableCreateCompanionBuilder,
-    $$GroupItemsTableUpdateCompanionBuilder,
-    (GroupItemEntry, $$GroupItemsTableReferences),
-    GroupItemEntry,
-    PrefetchHooks Function({bool group})> {
-  $$GroupItemsTableTableManager(_$AppDatabase db, $GroupItemsTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$GroupItemsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$GroupItemsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$GroupItemsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<String> value = const Value.absent(),
-            Value<bool> site = const Value.absent(),
-            Value<String> group = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              GroupItemsCompanion(
-            value: value,
-            site: site,
-            group: group,
-            rowid: rowid,
-          ),
-          createCompanionCallback: ({
-            required String value,
-            required bool site,
-            required String group,
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              GroupItemsCompanion.insert(
-            value: value,
-            site: site,
-            group: group,
-            rowid: rowid,
-          ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (
-                    e.readTable(table),
-                    $$GroupItemsTableReferences(db, table, e)
-                  ))
-              .toList(),
-          prefetchHooksCallback: ({group = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins: <
-                  T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic>>(state) {
-                if (group) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.group,
-                    referencedTable:
-                        $$GroupItemsTableReferences._groupTable(db),
-                    referencedColumn:
-                        $$GroupItemsTableReferences._groupTable(db).id,
-                  ) as T;
-                }
-
-                return state;
-              },
-              getPrefetchedDataCallback: (items) async {
-                return [];
-              },
-            );
-          },
-        ));
-}
-
-typedef $$GroupItemsTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $GroupItemsTable,
-    GroupItemEntry,
-    $$GroupItemsTableFilterComposer,
-    $$GroupItemsTableOrderingComposer,
-    $$GroupItemsTableAnnotationComposer,
-    $$GroupItemsTableCreateCompanionBuilder,
-    $$GroupItemsTableUpdateCompanionBuilder,
-    (GroupItemEntry, $$GroupItemsTableReferences),
-    GroupItemEntry,
-    PrefetchHooks Function({bool group})>;
+    PrefetchHooks Function({bool device, bool routineGroupsRefs})>;
 typedef $$RoutineGroupsTableCreateCompanionBuilder = RoutineGroupsCompanion
     Function({
   required String id,
@@ -3255,8 +2932,6 @@ class $AppDatabaseManager {
       $$DevicesTableTableManager(_db, _db.devices);
   $$GroupsTableTableManager get groups =>
       $$GroupsTableTableManager(_db, _db.groups);
-  $$GroupItemsTableTableManager get groupItems =>
-      $$GroupItemsTableTableManager(_db, _db.groupItems);
   $$RoutineGroupsTableTableManager get routineGroups =>
       $$RoutineGroupsTableTableManager(_db, _db.routineGroups);
 }

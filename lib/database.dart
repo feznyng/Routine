@@ -54,8 +54,12 @@ class Groups extends Table {
 
   late final name = text().nullable()();
   late final device = text().references(Devices, #id)();
+  late final allow = boolean()();
+  late final apps = text().map(StringListTypeConverter())();
+  late final sites = text().map(StringListTypeConverter())();
 
-  late final changes = text()();
+  late final changes = text().map(StringListTypeConverter())();
+  late final status = textEnum<Status>()();
 }
 
 @DataClassName('RoutineGroupEntry')
@@ -69,18 +73,7 @@ class RoutineGroups extends Table {
   late final group = text().references(Groups, #id)();
 }
 
-// device only (no-sync)
-@DataClassName('GroupItemEntry')
-class GroupItems extends Table {
-  late final value = text()();
-  late final site = boolean()();
-  late final group = text().references(Groups, #id)();
-
-  @override
-  Set<Column<Object>> get primaryKey => {group, value};
-}
-
-@DriftDatabase(tables: [Routines, Devices, Groups, GroupItems, RoutineGroups])
+@DriftDatabase(tables: [Routines, Devices, Groups, RoutineGroups])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -111,6 +104,10 @@ class AppDatabase extends _$AppDatabase {
 
   Future<int> upsertRoutine(RoutineEntry routine) {
     return into(routines).insertOnConflictUpdate(routine);
+  }
+
+  Future<void> upsertGroup(GroupEntry group) async {
+    await into(groups).insertOnConflictUpdate(group);
   }
 
   Future<void> tempDeleteRoutine(routineId) async {
