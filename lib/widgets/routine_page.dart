@@ -228,7 +228,7 @@ class _RoutinePageState extends State<RoutinePage> {
         title: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+            color: Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha((0.3 * 255).round()),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -281,8 +281,9 @@ class _RoutinePageState extends State<RoutinePage> {
                     icon: const Icon(Icons.delete_outline, color: Colors.red),
                     label: const Text('Delete Routine', style: TextStyle(color: Colors.red)),
                     onPressed: () async {
+                      final BuildContext dialogContext = context;
                       final bool? confirm = await showDialog<bool>(
-                        context: context,
+                        context: dialogContext,
                         builder: (BuildContext context) {
                           return AlertDialog(
                             title: const Text('Delete Routine'),
@@ -303,7 +304,7 @@ class _RoutinePageState extends State<RoutinePage> {
                       
                       if (confirm == true) {
                         await _routine.delete();
-                        if (mounted) {
+                        if (mounted && context.mounted) {
                           Navigator.of(context).pop();
                         }
                       }
