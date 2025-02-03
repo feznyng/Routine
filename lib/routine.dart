@@ -22,7 +22,12 @@ class Routine {
   static Stream<List<Routine>> watchAll() {
     return getIt<AppDatabase>()
       .watchRoutines()
-      .map((entries) => entries.map((e) => Routine.fromEntry(e)).toList());
+      .map((entries) => entries
+        .map((e) {
+          print('Groups: ${e.groups}');
+          return Routine.fromEntry(e);
+        })
+        .toList());
   }
 
   Routine() :
@@ -49,7 +54,6 @@ class Routine {
 
   save() async {
     final changes = this.changes;
-    List<GroupsCompanion> groups = [];
 
     for (final group in _groups.values) {
       group.save();
@@ -67,7 +71,7 @@ class Routine {
       sunday: Value(_days[6]), 
       startTime: Value(_startTime), 
       endTime: Value(_endTime),
-      groups: Value(groups.map((g) => g.id.value).toList()),
+      groups: Value(_groups.values.map<String>((g) => g.id).toList()),
       changes: Value(changes),
       updatedAt: Value(DateTime.now()),
     ));
