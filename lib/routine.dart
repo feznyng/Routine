@@ -192,7 +192,7 @@ class Routine {
       _endTime = -1;
     } else {
       _startTime = 540;
-      _endTime = 1010;
+      _endTime = 1020;
     }
   }
   Map<String, String> get groupIds => {};

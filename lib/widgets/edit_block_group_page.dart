@@ -19,16 +19,15 @@ class EditBlockGroupPage extends StatefulWidget {
 }
 
 class _EditBlockGroupPageState extends State<EditBlockGroupPage> {
-  late TextEditingController _nameController;
   late Group _group;
+  late final TextEditingController _nameController;
   bool _hasChanges = false;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.group.name ?? '');
     _group = widget.group;
-    _nameController.addListener(_checkChanges);
+    _nameController = TextEditingController(text: _group.name ?? '');
   }
 
   @override
@@ -68,17 +67,23 @@ class _EditBlockGroupPageState extends State<EditBlockGroupPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TextField(
-                controller: _nameController,
                 decoration: const InputDecoration(
                   labelText: 'Group Name',
                   border: OutlineInputBorder(),
                 ),
+                controller: _nameController,
+                onChanged: (value) {
+                  setState(() {
+                    _group.name = value;
+                  });
+                  _checkChanges();
+                },
               ),
               const SizedBox(height: 24),
               BlockGroupEditor(
                 selectedApps: _group.apps,
                 selectedSites: _group.sites,
-                blockSelected: _group.allow,
+                blockSelected: !_group.allow,
                 onBlockModeChanged: (value) {
                   setState(() {
                     _group.allow = value;
@@ -115,6 +120,7 @@ class _EditBlockGroupPageState extends State<EditBlockGroupPage> {
   }
 
   void _save() {
+    print('Saving group: ${_group.name}');
     widget.onSave(_group);
     Navigator.of(context).pop();
   }

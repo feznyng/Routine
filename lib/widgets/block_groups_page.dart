@@ -56,6 +56,7 @@ class _BlockGroupsPageState extends State<BlockGroupsPage> {
         builder: (context) => EditBlockGroupPage(
           group: group,
           onSave: (updatedGroup) {
+            print('Saving group: ${updatedGroup.name}');
             updatedGroup.save();
             Navigator.of(context).pop();
             setState(() {});

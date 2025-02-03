@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart';
 
 class Group {
   final String _id;
-  final String? name;
+  String? name;
   late List<String> apps;
   late List<String> sites;
   late bool allow;

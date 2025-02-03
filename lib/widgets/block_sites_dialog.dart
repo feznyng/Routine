@@ -15,11 +15,19 @@ class BlockSitesDialog extends StatefulWidget {
 class _BlockSitesDialogState extends State<BlockSitesDialog> {
   late List<String> _selectedSites;
   final TextEditingController _siteController = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
     _selectedSites = List.from(widget.selectedSites);
+  }
+
+  @override
+  void dispose() {
+    _siteController.dispose();
+    _focusNode.dispose();
+    super.dispose();
   }
 
   void _addSite(String site) {
@@ -37,6 +45,7 @@ class _BlockSitesDialogState extends State<BlockSitesDialog> {
       }
     });
     _siteController.clear();
+    _focusNode.requestFocus();
   }
 
   @override
@@ -63,6 +72,7 @@ class _BlockSitesDialogState extends State<BlockSitesDialog> {
             ),
             const SizedBox(height: 16),
             TextField(
+              focusNode: _focusNode,
               controller: _siteController,
               decoration: InputDecoration(
                 hintText: 'Enter a website (e.g., facebook.com)',
