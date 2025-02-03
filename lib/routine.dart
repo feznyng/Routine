@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 
 class Routine {
   final String _id;
-  final String _name;
+  String name;
   
   // scheduling
   final List<bool> _days;
@@ -32,7 +32,7 @@ class Routine {
 
   Routine() :
     _id = Uuid().v4(),
-    _name = 'Routine',
+    name = 'Routine',
     _days = [true, true, true, true, true, true, true],
     _startTime = -1,
     _endTime = -1,
@@ -44,7 +44,7 @@ class Routine {
 
   Routine.fromEntry(RoutineEntry entry, List<GroupEntry> groups) : 
     _id = entry.id,
-    _name = entry.name,
+    name = entry.name,
     _days = [entry.monday, entry.tuesday, entry.wednesday, entry.thursday, entry.friday, entry.saturday, entry.sunday],
     _startTime = entry.startTime,
     _endTime = entry.endTime {
@@ -67,7 +67,7 @@ class Routine {
 
     await getIt<AppDatabase>().upsertRoutine(RoutinesCompanion(
       id: Value(_id), 
-      name: Value(_name),
+      name: Value(name),
       monday: Value(_days[0]), 
       tuesday: Value(_days[1]), 
       wednesday: Value(_days[2]), 
@@ -96,7 +96,7 @@ class Routine {
       return changes;
     }
 
-    if (_entry!.name != _name) {
+    if (_entry!.name != name) {
       changes.add('name');
     }
 
@@ -136,8 +136,7 @@ class Routine {
       changes.add('endTime');
     }
 
-  
-    if (!listEquals(_entry!.groups, _groups.values.map((g) => g.id).toList())) {
+    if (!listEquals(_entry!.groups, _groups.values.map((g) => g.id).toList()) || _groups.values.any((g) => g.modified)) {
       changes.add('groups');
     }
 
@@ -150,12 +149,11 @@ class Routine {
   }
 
   bool get valid {
-    return _name.isNotEmpty && 
+    return name.isNotEmpty && 
            _days.contains(true);
   }
 
   String get id => _id;
-  String get name => _name;
   List<bool> get days => List.unmodifiable(_days);
   int get startTime => _startTime;
   int get endTime => _endTime;

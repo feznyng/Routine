@@ -32,19 +32,17 @@ class _RoutinePageState extends State<RoutinePage> {
     _nameController = TextEditingController(text: _routine.name);
     _nameController.addListener(_validateRoutine);
 
-    _checkForChanges();
     _validateRoutine();
   }
 
-  void _checkForChanges() {
-    setState(() {
-      _hasChanges = _routine.modified;
-    });
-  }
-
   void _validateRoutine() {
+    // TODO: verify at least something is being blocked and the name is not empty
+    print("has changes: ${_routine.modified} ${_routine.name}");
+    print("has changes: ${_routine.valid}");
+    
     setState(() {
-      _isValid = _routine.modified;
+      _isValid = _routine.valid;
+      _hasChanges = _routine.modified;
     });
   }
 

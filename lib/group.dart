@@ -3,6 +3,7 @@ import 'database.dart';
 import 'setup.dart';
 import 'device.dart';
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 
 class Group {
   final String _id;
@@ -67,6 +68,8 @@ class Group {
 
     if (_entry.name != name) changes.add('name');
     if (_entry.allow != allow) changes.add('allow');
+    if (!listEquals(_entry.apps, apps)) changes.add('apps');
+    if (!listEquals(_entry.sites, sites)) changes.add('sites');
 
     return changes;
   }
