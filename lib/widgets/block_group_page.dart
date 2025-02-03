@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'block_group_editor.dart';
 import 'block_groups_page.dart';
@@ -22,6 +24,7 @@ class BlockGroupPage extends StatefulWidget {
 class _BlockGroupPageState extends State<BlockGroupPage> {
   late List<Group> _blockGroups;
   late Group _selectedGroup;
+  late StreamSubscription<List<Group>> _subscription;
 
   @override
   void initState() {
@@ -29,11 +32,19 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
     _selectedGroup = widget.selectedGroup;
     _blockGroups = [];
 
-    Group.watchAllNamed().listen((event) {
-      setState(() {
-        _blockGroups = event;
-      });
+    _subscription = Group.watchAllNamed().listen((event) {
+      if (mounted) {  // Check if widget is still mounted
+        setState(() {
+          _blockGroups = event;
+        });
+      }
     });
+  }
+
+  @override
+  void dispose() {
+    _subscription.cancel();  // Cancel the subscription when disposing
+    super.dispose();
   }
 
   Future<void> _navigateToManageGroups() async {
