@@ -58,6 +58,20 @@ class Routine {
       debugPrint("groups: ${_groups.keys}");
   }
 
+  Routine.from(Routine other) :
+    _id = other._id,
+    _name = other._name,
+    _days = List<bool>.from(other._days),
+    _startTime = other._startTime,
+    _endTime = other._endTime,
+    _entry = other._entry {
+      _groups = Map.fromEntries(
+        other._groups.entries.map(
+          (entry) => MapEntry(entry.key, Group.from(entry.value))
+        )
+      );
+    }
+
   save() async {
     final changes = this.changes;
 

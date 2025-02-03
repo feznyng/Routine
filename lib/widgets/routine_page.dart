@@ -27,19 +27,32 @@ class _RoutinePageState extends State<RoutinePage> {
   @override
   void initState() {
     super.initState();
-    _routine = widget.routine;
-   
+    _initializeRoutine();
+  }
+
+  void _initializeRoutine() {
+    _routine = Routine.from(widget.routine);
     _nameController = TextEditingController(text: _routine.name);
     _nameController.addListener(_validateRoutine);
-
     _validateRoutine();
   }
 
+  @override
+  void didUpdateWidget(RoutinePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.routine != widget.routine) {
+      _nameController.dispose();
+      _initializeRoutine();
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
   void _validateRoutine() {
-    // TODO: verify at least something is being blocked and the name is not empty
-    print("has changes: ${_routine.modified} ${_routine.name}");
-    print("has changes: ${_routine.valid}");
-    
     setState(() {
       _isValid = _routine.valid;
       _hasChanges = _routine.modified;

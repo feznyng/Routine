@@ -36,6 +36,15 @@ class Group {
         _deviceId = entry.device,
         _entry = entry;
 
+  Group.from(Group other)
+      : _id = other._id,
+        name = other.name,
+        allow = other.allow,
+        apps = List<String>.from(other.apps),
+        sites = List<String>.from(other.sites),
+        _deviceId = other._deviceId,
+        _entry = other._entry;
+
   save() async {
     await getIt<AppDatabase>().upsertGroup(GroupsCompanion(
       id: Value(_id), 
