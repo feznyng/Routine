@@ -60,7 +60,7 @@ class Routine {
       startTime: _startTime, 
       endTime: _endTime,
       changes: changes,
-      status: _entry == null ? Status.created : (changes.isEmpty ? _entry!.status : Status.updated)
+      status: _entry == null ? Status.created : Status.updated
     ));
 
     final currGroup = getGroup();
