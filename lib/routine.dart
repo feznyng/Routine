@@ -18,9 +18,9 @@ class Routine {
 
   late RoutineEntry? _entry;
 
-  static Stream<List<Routine>> getAll() {
+  static Stream<List<Routine>> watchAll() {
     return getIt<AppDatabase>()
-      .getRoutines()
+      .watchRoutines()
       .map((entries) => entries.map((e) => Routine.fromEntry(e)).toList());
   }
 

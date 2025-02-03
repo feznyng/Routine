@@ -96,7 +96,7 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
-  Stream<List<RoutineEntry>> getRoutines() {
+  Stream<List<RoutineEntry>> watchRoutines() {
     return select(routines).watch();
   }
 

@@ -68,7 +68,7 @@ class DesktopService {
       debugPrint('Failed to signal engine ready: $e');
     }
 
-    Routine.getAll().listen((routines) {
+    Routine.watchAll().listen((routines) {
       onRoutinesUpdated(routines);
     });
   }

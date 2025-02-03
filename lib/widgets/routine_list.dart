@@ -17,7 +17,7 @@ class _RoutineListState extends State<RoutineList> {
     super.initState();
     _routines = [];
    
-    Routine.getAll().listen((routines) {
+    Routine.watchAll().listen((routines) {
       setState(() {
         _routines = routines;
       });
