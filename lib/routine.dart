@@ -25,7 +25,7 @@ class Routine {
       .map((entries) => entries
         .map((e) {
           print('Groups: ${e.groups}');
-          return Routine.fromEntry(e);
+          return Routine.fromEntry(e.routine, e.groups);
         })
         .toList());
   }
@@ -42,14 +42,20 @@ class Routine {
       };
     }
 
-  Routine.fromEntry(RoutineEntry entry) : 
+  Routine.fromEntry(RoutineEntry entry, List<GroupEntry> groups) : 
     _id = entry.id,
     _name = entry.name,
     _days = [entry.monday, entry.tuesday, entry.wednesday, entry.thursday, entry.friday, entry.saturday, entry.sunday],
     _startTime = entry.startTime,
     _endTime = entry.endTime {
-      _groups = {};
       _entry = entry;
+
+      _groups = {};
+      for (final group in groups) {
+        _groups[group.device] = Group.fromEntry(group);
+      }
+
+      debugPrint("groups: ${_groups.keys}");
   }
 
   save() async {

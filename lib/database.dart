@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:drift/extensions/json1.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'converters/string_list_converter.dart';
@@ -62,6 +63,11 @@ class Groups extends Table {
   late final updatedAt = dateTime()();
 }
 
+typedef RoutineWithGroups = ({
+  RoutineEntry routine,
+  List<GroupEntry> groups,
+});
+
 @DriftDatabase(tables: [Routines, Devices, Groups])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
@@ -82,8 +88,34 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
-  Stream<List<RoutineEntry>> watchRoutines() {
-    return select(routines).watch();
+  Stream<List<RoutineWithGroups>> watchRoutines() {
+    final referencedItems = routines.groups.jsonEach(this);
+
+    final routineWithGroups = select(routines).join(
+      [
+        innerJoin(referencedItems, const Constant(true), useColumns: false),
+        innerJoin(
+          groups,
+          groups.id.equalsExp(referencedItems.value.cast()),
+        ),
+      ],
+    );
+
+    return routineWithGroups.watch().map((rows) {
+      final groupsByRoutine = <RoutineEntry, List<GroupEntry>>{};
+
+      for (final row in rows) {
+        final routine = row.readTable(routines);
+        final group = row.readTable(groups);
+
+        groupsByRoutine.putIfAbsent(routine, () => []).add(group);
+      }
+
+      return [
+        for (final entry in groupsByRoutine.entries)
+          (routine: entry.key, groups: entry.value)
+      ];
+    });
   }
 
   Stream<List<GroupEntry>> getNamedGroups(String deviceId) {
@@ -94,6 +126,7 @@ class AppDatabase extends _$AppDatabase {
     return transaction(() async {
       final existingEntry = await (select(routines)..where((t) => t.id.equals(routine.id.value))).getSingleOrNull();
       if (existingEntry == null) {
+        // don't need to worry about cleaning up removed groups
         await into(routines).insert(routine);
       } else {
         final existingGroups = await (select(groups)..where((t) => t.id.isIn(existingEntry.groups))).get();
