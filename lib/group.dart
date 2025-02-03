@@ -7,9 +7,9 @@ import 'package:drift/drift.dart';
 class Group {
   final String _id;
   final String? name;
-  late final List<String> apps;
-  late final List<String> sites;
-  late final bool allow;
+  late List<String> apps;
+  late List<String> sites;
+  late bool allow;
   late final String _deviceId;
   final GroupEntry? _entry;
 

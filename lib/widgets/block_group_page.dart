@@ -27,6 +27,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
   void initState() {
     super.initState();
     _selectedGroup = widget.selectedGroup;
+    _blockGroups = [];
 
     Group.watchAllNamed().listen((event) {
       setState(() {
@@ -126,7 +127,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                 BlockGroupEditor(
                   selectedApps: _selectedGroup.apps,
                   selectedSites: _selectedGroup.sites,
-                  blockSelected: _selectedGroup.allow,
+                  blockSelected: !_selectedGroup.allow,
                   onBlockModeChanged: (value) {
                     setState(() {
                       _selectedGroup.allow = value;

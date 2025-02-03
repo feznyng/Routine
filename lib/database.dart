@@ -110,7 +110,7 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> upsertRoutine(RoutinesCompanion routine, List<GroupsCompanion> groups) {
     return transaction(() async {
-      into(routines).insertOnConflictUpdate(routine);
+      await into(routines).insertOnConflictUpdate(routine);
     });
   }
 
