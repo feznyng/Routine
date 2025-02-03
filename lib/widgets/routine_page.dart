@@ -223,6 +223,12 @@ class _RoutinePageState extends State<RoutinePage> {
               Expanded(
                 child: TextField(
                   controller: _nameController,
+                  onChanged: (value) {
+                    setState(() {
+                      _routine.name = value;
+                      _validateRoutine();
+                    });
+                  },
                   decoration: InputDecoration(
                     hintText: _routine.name.isEmpty ? 'New Routine' : 'Routine Name',
                     border: InputBorder.none,

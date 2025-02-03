@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 
 class Routine {
   final String _id;
-  String name;
+  String _name;
   
   // scheduling
   final List<bool> _days;
@@ -32,7 +32,7 @@ class Routine {
 
   Routine() :
     _id = Uuid().v4(),
-    name = 'Routine',
+    _name = 'Routine',
     _days = [true, true, true, true, true, true, true],
     _startTime = -1,
     _endTime = -1,
@@ -44,7 +44,7 @@ class Routine {
 
   Routine.fromEntry(RoutineEntry entry, List<GroupEntry> groups) : 
     _id = entry.id,
-    name = entry.name,
+    _name = entry.name,
     _days = [entry.monday, entry.tuesday, entry.wednesday, entry.thursday, entry.friday, entry.saturday, entry.sunday],
     _startTime = entry.startTime,
     _endTime = entry.endTime {
@@ -67,7 +67,7 @@ class Routine {
 
     await getIt<AppDatabase>().upsertRoutine(RoutinesCompanion(
       id: Value(_id), 
-      name: Value(name),
+      name: Value(_name),
       monday: Value(_days[0]), 
       tuesday: Value(_days[1]), 
       wednesday: Value(_days[2]), 
@@ -96,7 +96,7 @@ class Routine {
       return changes;
     }
 
-    if (_entry!.name != name) {
+    if (_entry!.name != _name) {
       changes.add('name');
     }
 
@@ -149,7 +149,7 @@ class Routine {
   }
 
   bool get valid {
-    return name.isNotEmpty && 
+    return _name.isNotEmpty && 
            _days.contains(true);
   }
 
@@ -187,6 +187,12 @@ class Routine {
   int get startMinute => _startTime % 60;
   int get endHour => _endTime ~/ 60;
   int get endMinute => _endTime % 60;
+
+  String get name => _name;
+  
+  set name(String value) {
+    _name = value.trim();
+  }
 
   bool isActive() { 
     final DateTime now = DateTime.now();
