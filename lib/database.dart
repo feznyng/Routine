@@ -25,7 +25,7 @@ class Routines extends Table {
   late final endTime = integer()();
 
   late final changes = text().map(StringListTypeConverter())();
-  late final deleted = boolean().nullable()();
+  late final deleted = boolean().clientDefault(() => false)();
   late final updatedAt = dateTime()();
 
   late final groups = text().map(StringListTypeConverter())();
@@ -59,7 +59,7 @@ class Groups extends Table {
   late final sites = text().map(StringListTypeConverter())();
 
   late final changes = text().map(StringListTypeConverter())();
-  late final deleted = boolean().nullable()();
+  late final deleted = boolean().clientDefault(() => false)();
   late final updatedAt = dateTime()();
 }
 
@@ -96,10 +96,10 @@ class AppDatabase extends _$AppDatabase {
         innerJoin(referencedItems, const Constant(true), useColumns: false),
         innerJoin(
           groups,
-          groups.id.equalsExp(referencedItems.value.cast()),
+          groups.id.equalsExp(referencedItems.value.cast()) & groups.deleted.equals(false),
         ),
       ],
-    );
+    )..where(routines.deleted.equals(false));
 
     return routineWithGroups.watch().map((rows) {
       final groupsByRoutine = <RoutineEntry, List<GroupEntry>>{};

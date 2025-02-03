@@ -83,6 +83,8 @@ class Routine {
     ));
   }
 
+  bool get saved => _entry != null;
+
   Future<void> delete() async {
     await getIt<AppDatabase>().tempDeleteRoutine(_id);
   }

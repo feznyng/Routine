@@ -252,7 +252,49 @@ class _RoutinePageState extends State<RoutinePage> {
             children: [
               _buildBlockGroupSection(),
               const SizedBox(height: 16),
-              _buildTimeSection()
+              _buildTimeSection(),
+              const SizedBox(height: 32),
+              if (_routine.saved) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton.icon(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    ),
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    label: const Text('Delete Routine', style: TextStyle(color: Colors.red)),
+                    onPressed: () async {
+                      final bool? confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: const Text('Delete Routine'),
+                            content: const Text('Are you sure you want to delete this routine?'),
+                            actions: <Widget>[
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(true),
+                                child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                      
+                      if (confirm == true) {
+                        await _routine.delete();
+                        if (mounted) {
+                          Navigator.of(context).pop();
+                        }
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(height: 32),
+              ],
             ],
           ),
         ),
