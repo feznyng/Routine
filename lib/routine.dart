@@ -52,14 +52,7 @@ class Routine {
     List<GroupsCompanion> groups = [];
 
     for (final group in _groups.values) {
-      groups.add(GroupsCompanion(
-        id: Value(group.id),
-        name: Value(group.name),
-        allow: Value(group.allow),
-        apps: Value(group.apps),
-        sites: Value(group.sites),
-        updatedAt: Value(DateTime.now()),
-      ));
+      group.save();
     }
 
     await getIt<AppDatabase>().upsertRoutine(RoutinesCompanion(
@@ -77,7 +70,7 @@ class Routine {
       groups: Value(groups.map((g) => g.id.value).toList()),
       changes: Value(changes),
       updatedAt: Value(DateTime.now()),
-    ), groups);
+    ));
   }
 
   Future<void> delete() async {

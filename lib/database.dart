@@ -90,7 +90,7 @@ class AppDatabase extends _$AppDatabase {
     return (select(groups)..where((t) => t.device.equals(deviceId) & t.name.isNotNull())).watch();
   }
 
-  Future<void> upsertRoutine(RoutinesCompanion routine, List<GroupsCompanion> associatedGroups) {
+  Future<void> upsertRoutine(RoutinesCompanion routine) {
     return transaction(() async {
       final existingEntry = await (select(routines)..where((t) => t.id.equals(routine.id.value))).getSingleOrNull();
       if (existingEntry == null) {
@@ -99,17 +99,12 @@ class AppDatabase extends _$AppDatabase {
         final existingGroups = await (select(groups)..where((t) => t.id.isIn(existingEntry.groups))).get();
 
         final deleteIds = existingGroups
-          .where((g) => g.name == null && !associatedGroups.any((ag) => ag.id.value == g.id))
+          .where((g) => g.name == null && !routine.groups.value.any((id) => id == g.id))
           .map((g) => g.id).toList();
         await (update(groups)..where((t) => t.id.isIn(deleteIds))).write(GroupsCompanion(deleted: Value(true)));
 
         await (update(routines)..where((t) => t.id.equals(routine.id.value))).write(routine);
       }
-
-      final newAssociatedGroups = associatedGroups.where((ag) => ag.name.value == null).toList();
-      await batch((batch) async {
-        batch.insertAllOnConflictUpdate(groups, newAssociatedGroups);
-      });
     });
   }
 
