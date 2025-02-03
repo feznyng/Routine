@@ -96,8 +96,11 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Stream<List<RoutineEntry>> getRoutines() {
-    // merge in groups
     return select(routines).watch();
+  }
+
+  Stream<List<GroupEntry>> getNamedGroups(String deviceId) {
+    return (select(groups)..where((t) => t.device.equals(deviceId) & t.name.isNotNull())).watch();
   }
 
   Future<RoutineGroupEntry> getGroupForCurrentDevice(String routineId) {
@@ -118,6 +121,10 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> deleteRoutine(routineId) async {
     await (delete(routines)..where((t) => t.id.equals(routineId))).go();
+  }
+
+  Future<void> tempDeleteGroup(routineId) async {
+    await (update(groups)..where((t) => t.id.equals(routineId))).write(GroupsCompanion(status: Value(Status.deleted)));
   }
 
   Future<DeviceEntry?> getThisDevice() async {

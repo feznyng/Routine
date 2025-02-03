@@ -15,6 +15,11 @@ class Group {
   get id => _id;
   get deviceId => _deviceId;
 
+  static Stream<List<Group>> watchAllNamed({String? deviceId}) {
+    deviceId = deviceId ?? getIt<Device>().id;
+    return getIt<AppDatabase>().getNamedGroups(deviceId).map((groups) => groups.map((e) => Group.fromEntry(e)).toList());
+  }
+
   Group({this.name, this.apps = const [], this.sites = const [], this.allow = false})
       : _id = Uuid().v4(), _entry = null {
         _deviceId = getIt<Device>().id;
@@ -40,6 +45,10 @@ class Group {
       changes: changes,
       status: _entry == null ? Status.created : Status.updated,
     ));
+  }
+
+  delete() async {
+    await getIt<AppDatabase>().tempDeleteGroup(_id);
   }
 
   List<String> get changes {
