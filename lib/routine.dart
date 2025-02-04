@@ -50,8 +50,6 @@ class Routine {
       for (final group in groups) {
         _groups[group.device] = Group.fromEntry(group);
       }
-
-      debugPrint("groups: ${_groups.keys}");
   }
 
   Routine.from(Routine other) :
@@ -204,7 +202,7 @@ class Routine {
     _name = value.trim();
   }
 
-  bool isActive() { 
+  bool get isActive { 
     final DateTime now = DateTime.now();
     final int dayOfWeek = now.weekday - 1;
 
