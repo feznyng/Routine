@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/extensions/json1.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 import 'converters/string_list_converter.dart';
 part 'database.g.dart';
 
@@ -146,15 +147,53 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> tempDeleteRoutine(id) async {
-    await (update(routines)..where((t) => t.id.equals(id))).write(RoutinesCompanion(deleted: Value(true)));
+    await transaction(() async {
+      final routine = await (select(routines)..where((t) => t.id.equals(id))).getSingle();
+      final routineGroups = await (select(groups)..where((t) => t.id.isIn(routine.groups) & t.name.isNull())).get();
+
+      for (final group in routineGroups) {
+        if (group.name == null) {
+          await (update(groups)..where((t) => t.id.equals(group.id))).write(GroupsCompanion(deleted: Value(true)));
+        }
+      }
+
+      await (update(routines)..where((t) => t.id.equals(id))).write(RoutinesCompanion(deleted: Value(true)));
+    });
   }
 
   Future<void> deleteRoutine(id) async {
     await (delete(routines)..where((t) => t.id.equals(id))).go();
   }
 
-  Future<void> tempDeleteGroup(id) async {
-    await (update(groups)..where((t) => t.id.equals(id))).write(GroupsCompanion(deleted: Value(true)));
+  Future<void> tempDeleteGroup(String id) async {
+    await transaction(() async {
+      await (update(groups)..where((t) => t.id.equals(id))).write(GroupsCompanion(deleted: Value(true)));
+
+      final group = await (select(groups)..where((t) => t.id.equals(id))).getSingleOrNull();
+
+      if (group == null) {
+        return;
+      }
+
+      final groupRoutines = await (select(routines)..where((t) => t.groups.contains(id))).get();
+
+      for (final routine in groupRoutines) {
+        upsertGroup(GroupsCompanion(
+          id: Value(Uuid().v4()), 
+          name: Value(null), 
+          allow: Value(group.allow), 
+          device: Value(group.device),
+          apps: Value(group.apps),
+          sites: Value(group.sites),
+          changes: Value(group.changes),
+          updatedAt: Value(DateTime.now()),
+        ));
+
+        await (update(routines)..where((t) => t.id.equals(routine.id))).write(RoutinesCompanion(
+          groups: Value([...routine.groups.where((id) => id != group.id), group.id]),
+        ));
+      }
+    });
   }
 
   Future<void> deleteGroup(id) async {
