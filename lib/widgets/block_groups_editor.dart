@@ -174,6 +174,7 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
                   ],
                   selected: {_blockSelected},
                   onSelectionChanged: (Set<bool> newSelection) {
+                    print('Block mode changed: $newSelection');
                     setState(() {
                       _blockSelected = newSelection.first;
                     });

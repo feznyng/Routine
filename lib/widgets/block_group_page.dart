@@ -140,6 +140,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                   selectedSites: _selectedGroup.sites,
                   blockSelected: !_selectedGroup.allow,
                   onBlockModeChanged: (value) {
+                    print('Block mode changed: $value');
                     setState(() {
                       _selectedGroup.allow = value;
                     });

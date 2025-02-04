@@ -36,6 +36,7 @@ class _RoutineListState extends State<RoutineList> {
             child: ListTile(
               title: Text(routine.name),
               subtitle: _buildRoutineSubtitle(context, routine),
+              isThreeLine: true,
               onTap: () {
                 _showRoutinePage(context, routine);
               },
@@ -51,18 +52,70 @@ class _RoutineListState extends State<RoutineList> {
   }
 
   Widget _buildRoutineSubtitle(BuildContext context, Routine routine) {
-    final List<String> details = [];
+    String timeText;
     
     // Add time information
     if (routine.startTime == -1 && routine.endTime == -1) {
-      details.add('All day');
+      timeText = 'All day';
     } else {
       final startTimeOfDay = TimeOfDay(hour: routine.startHour, minute: routine.startMinute);
       final endTimeOfDay = TimeOfDay(hour: routine.endHour, minute: routine.endMinute);
-      details.add('${startTimeOfDay.format(context)} - ${endTimeOfDay.format(context)}');
+      timeText = '${startTimeOfDay.format(context)} - ${endTimeOfDay.format(context)}';
     }
 
-    return Text(details.join(' • '));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(timeText),
+        const SizedBox(height: 4),
+        _buildBlockedChips(routine),
+      ],
+    );
+  }
+
+  Widget _buildBlockedChips(Routine routine) {
+    final group = routine.getGroup();
+    if (group == null) return const SizedBox.shrink();
+
+    final apps = group.apps;
+    final sites = group.sites;
+    final isAllowlist = group.allow;
+    
+    return Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      children: [
+        Chip(
+          label: Text(
+            isAllowlist ? 'Allow' : 'Block',
+            style: const TextStyle(fontSize: 12),
+          ),
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+        ),
+        if (apps.isNotEmpty || !isAllowlist)
+          Chip(
+            label: Text(
+              '${apps.isNotEmpty ? apps.length : 0} ${apps.length == 1 ? 'app' : 'apps'}',
+              style: const TextStyle(fontSize: 12),
+            ),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+          ),
+        if (sites.isNotEmpty || !isAllowlist)
+          Chip(
+            label: Text(
+              '${sites.isNotEmpty ? sites.length : 0} ${sites.length == 1 ? 'site' : 'sites'}',
+              style: const TextStyle(fontSize: 12),
+            ),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+          ),
+      ],
+    );
   }
 
   void _showRoutinePage(BuildContext context, Routine? routine) {
