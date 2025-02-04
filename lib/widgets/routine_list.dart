@@ -94,26 +94,28 @@ class _RoutineListState extends State<RoutineList> {
           visualDensity: VisualDensity.compact,
           padding: const EdgeInsets.symmetric(horizontal: 4),
         ),
-        if (apps.isNotEmpty || !isAllowlist)
-          Chip(
-            label: Text(
-              '${apps.isNotEmpty ? apps.length : 0} ${apps.length == 1 ? 'app' : 'apps'}',
-              style: const TextStyle(fontSize: 12),
-            ),
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+        Chip(
+          label: Text(
+            apps.isEmpty && isAllowlist
+                ? 'No apps'
+                : '${apps.length} ${apps.length == 1 ? 'app' : 'apps'}',
+            style: const TextStyle(fontSize: 12),
           ),
-        if (sites.isNotEmpty || !isAllowlist)
-          Chip(
-            label: Text(
-              '${sites.isNotEmpty ? sites.length : 0} ${sites.length == 1 ? 'site' : 'sites'}',
-              style: const TextStyle(fontSize: 12),
-            ),
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+        ),
+        Chip(
+          label: Text(
+            sites.isEmpty && isAllowlist
+                ? 'No sites'
+                : '${sites.length} ${sites.length == 1 ? 'site' : 'sites'}',
+            style: const TextStyle(fontSize: 12),
           ),
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+        ),
       ],
     );
   }

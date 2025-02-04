@@ -22,12 +22,8 @@ class Routine {
   static Stream<List<Routine>> watchAll() {
     return getIt<AppDatabase>()
       .watchRoutines()
-      .map((entries) => entries
-        .map((e) {
-          print('Groups: ${e.groups}');
-          return Routine.fromEntry(e.routine, e.groups);
-        })
-        .toList());
+      .map((entries) => entries.map((e) => Routine.fromEntry(e.routine, e.groups))
+      .toList());
   }
 
   Routine() :

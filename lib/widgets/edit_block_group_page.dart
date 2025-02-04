@@ -84,9 +84,9 @@ class _EditBlockGroupPageState extends State<EditBlockGroupPage> {
                 selectedApps: _group.apps,
                 selectedSites: _group.sites,
                 blockSelected: !_group.allow,
-                onBlockModeChanged: (value) {
+                onBlockModeChanged: (blockMode) {
                   setState(() {
-                    _group.allow = value;
+                    _group.allow = !blockMode;
                   });
                   _checkChanges();
                 },
