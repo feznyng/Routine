@@ -119,7 +119,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Stream<List<GroupEntry>> getNamedGroups(String deviceId) {
-    return (select(groups)..where((t) => t.device.equals(deviceId) & t.name.isNotNull())).watch();
+    return (select(groups)..where((t) => t.device.equals(deviceId) & t.name.isNotNull() & t.deleted.equals(false))).watch();
   }
 
   Future<void> upsertRoutine(RoutinesCompanion routine) {

@@ -120,8 +120,6 @@ class _EditBlockGroupPageState extends State<EditBlockGroupPage> {
   }
 
   void _save() {
-    print('Saving group: ${_group.name}');
     widget.onSave(_group);
-    Navigator.of(context).pop();
   }
 }
