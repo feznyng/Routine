@@ -25,6 +25,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
   late List<Group> _blockGroups;
   late Group _selectedGroup;
   late StreamSubscription<List<Group>> _subscription;
+  String? _lastCreatedGroupId;
 
   @override
   void initState() {
@@ -33,9 +34,20 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
     _blockGroups = [];
 
     _subscription = Group.watchAllNamed().listen((event) {
-      if (mounted) {  // Check if widget is still mounted
+      if (mounted) {
         setState(() {
+          // Find any new groups that weren't in the previous list
+          final newGroups = event.where((group) => 
+            !_blockGroups.any((oldGroup) => oldGroup.id == group.id));
+          
           _blockGroups = event;
+          
+          // If we found new groups, select the last one created
+          if (newGroups.isNotEmpty) {
+            final lastNewGroup = newGroups.last;
+            _lastCreatedGroupId = lastNewGroup.id;
+            _selectedGroup = lastNewGroup;
+          }
         });
       }
     });
@@ -48,11 +60,17 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
   }
 
   Future<void> _navigateToManageGroups() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
+    final Group? result = await Navigator.of(context).push<Group>(
+      MaterialPageRoute<Group>(
         builder: (context) => const BlockGroupsPage(),
       ),
     );
+    
+    if (result != null && mounted) {
+      setState(() {
+        _selectedGroup = result;
+      });
+    }
   }
 
   @override
@@ -91,6 +109,8 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                   Expanded(
                     child: DropdownButtonFormField<String?>(
                       value: _blockGroups.any((group) => group.id == _selectedGroup.id) ? _selectedGroup.id : null,
+                      // Select the last created group when the dropdown is built
+                      key: ValueKey(_lastCreatedGroupId), // Force rebuild when new group is created
                       decoration: const InputDecoration(
                         labelText: 'Block Group',
                         border: OutlineInputBorder(),

@@ -38,7 +38,7 @@ class _BlockGroupsPageState extends State<BlockGroupsPage> {
         title: const Text('Block Groups'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => Navigator.of(context).pop(null),
         ),
       ),
       body: ListView.builder(
@@ -73,11 +73,13 @@ class _BlockGroupsPageState extends State<BlockGroupsPage> {
             updatedGroup.save();
             Navigator.of(context).pop();
             setState(() {});
+            // Pop back to BlockGroupPage with the updated group
+            Navigator.of(context).pop(updatedGroup);
           },
           onDelete: group.saved ? () {
             group.delete();
-            Navigator.of(context).pop();
             setState(() {});
+            Navigator.of(context).pop();
           } : null,
         ),
       ),
