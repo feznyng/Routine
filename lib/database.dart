@@ -6,6 +6,15 @@ import 'package:uuid/uuid.dart';
 import 'string_list_converter.dart';
 part 'database.g.dart';
 
+enum FrictionType {
+  none,
+  delay,
+  intention,
+  code,
+  nfc,
+  qr
+}
+
 @DataClassName('RoutineEntry')
 class Routines extends Table {
   late final id = text()();
@@ -24,12 +33,25 @@ class Routines extends Table {
   late final sunday = boolean()();
   late final startTime = integer()();
   late final endTime = integer()();
+  late final recurring = boolean()();
 
   late final changes = text().map(StringListTypeConverter())();
   late final deleted = boolean().clientDefault(() => false)();
   late final updatedAt = dateTime()();
 
   late final groups = text().map(StringListTypeConverter())();
+
+  // breaks
+  late final numBreaksTaken = integer().nullable()();
+  late final lastBreakAt = dateTime().nullable()();
+  late final breakUntil = dateTime().nullable()();
+  late final maxBreaks = integer().nullable()();
+  late final maxBreakDuration = integer().nullable()();
+  late final friction = textEnum<FrictionType>()();
+  late final frictionLen = integer().nullable()();
+  late final frictionCode = text().nullable()();
+  late final snoozedAt = dateTime().nullable()();
+
 }
 
 @DataClassName('DeviceEntry')

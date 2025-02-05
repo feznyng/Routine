@@ -223,6 +223,18 @@ class Routine {
     return (currMins >= _startTime && currMins < _endTime);
   }
 
+  bool get isPaused {
+    return false;
+  }
+
+  bool get canPause {
+    return false;
+  }
+
+  Future<void> pauseFor(int minutes) async {
+    // TODO: implement
+  }
+
   Group? getGroup([String? deviceId]) {
     deviceId = deviceId ?? getIt<Device>().id;
     return _groups[deviceId];
