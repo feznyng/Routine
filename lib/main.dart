@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:tray_manager/tray_manager.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'desktop_service.dart';
 import 'widgets/routine_list.dart';
 import 'widgets/settings_page.dart';
+import 'services/auth_service.dart';
 import 'setup.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables
+  await dotenv.load(fileName: '.env');
+  
+  // Initialize auth service
+  await AuthService().initialize();
   
   // Initialize window manager
   await windowManager.ensureInitialized();

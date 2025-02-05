@@ -73,6 +73,7 @@ class _AuthDialogState extends State<AuthDialog> {
   final _authService = AuthService();
   bool _isSignUp = false;
   bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -118,7 +119,10 @@ class _AuthDialogState extends State<AuthDialog> {
   Future<void> _submit() async {
     if (_formKey.currentState?.validate() != true) return;
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
     try {
       final success = _isSignUp
@@ -127,6 +131,12 @@ class _AuthDialogState extends State<AuthDialog> {
 
       if (success && mounted) {
         Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString().replaceAll('AuthException: ', '');
+        });
       }
     } finally {
       if (mounted) {
@@ -179,6 +189,22 @@ class _AuthDialogState extends State<AuthDialog> {
                       validator: _validateConfirmPassword,
                       obscureText: true,
                       enabled: !_isLoading,
+                    ),
+                  ],
+                  if (_errorMessage != null) ...[                    
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        _errorMessage!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                        ),
+                      ),
                     ),
                   ],
                   const SizedBox(height: 24),
