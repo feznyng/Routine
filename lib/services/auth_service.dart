@@ -1,4 +1,5 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthService {
@@ -7,6 +8,10 @@ class AuthService {
   
   late final SupabaseClient _client;
   bool _initialized = false;
+  final _storage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+  );
   
   AuthService._internal();
 
@@ -21,16 +26,42 @@ class AuthService {
       throw Exception('Missing Supabase credentials. Please check your .env file.');
     }
 
+    // Try to restore the refresh token
+    final refreshToken = await _storage.read(key: 'supabase_refresh_token');
+    
     await Supabase.initialize(
       url: url,
       anonKey: anonKey,
+      authOptions: FlutterAuthClientOptions(
+        authFlowType: AuthFlowType.implicit,
+      ),
     );
+    
     _client = Supabase.instance.client;
     
+    // If we have a stored refresh token, try to recover the session
+    if (refreshToken != null) {
+      try {
+        final response = await _client.auth.refreshSession();
+        if (response.session != null) {
+          print('Restored session for user: ${response.user?.email}');
+        }
+      } catch (e) {
+        print('Failed to restore session: $e');
+        await _storage.delete(key: 'supabase_refresh_token');
+      }
+    }
     // Listen for auth state changes
-    _client.auth.onAuthStateChange.listen((data) {
+    _client.auth.onAuthStateChange.listen((data) async {
       final AuthChangeEvent event = data.event;
       final Session? session = data.session;
+      
+      // Store or remove refresh token based on auth state
+      if (session != null) {
+        await _storage.write(key: 'supabase_refresh_token', value: session.refreshToken);
+      } else {
+        await _storage.delete(key: 'supabase_refresh_token');
+      }
       
       switch (event) {
         case AuthChangeEvent.signedIn:
@@ -53,6 +84,7 @@ class AuthService {
 
   bool get isSignedIn => _initialized ? _client.auth.currentUser != null : false;
   String? get currentUser => _initialized ? _client.auth.currentUser?.email : null;
+  SupabaseClient get client => _client;
 
   Future<bool> signIn(String email, String password) async {
     if (!_initialized) throw Exception('AuthService not initialized');

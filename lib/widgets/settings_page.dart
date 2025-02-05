@@ -11,6 +11,16 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final _authService = AuthService();
 
+  @override
+  void initState() {
+    super.initState();
+    _authService.client.auth.onAuthStateChange.listen((data) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
   void _showAuthDialog({bool isSignUp = false}) {
     showDialog(
       context: context,
@@ -45,7 +55,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     await _authService.signOut();
                     setState(() {});
                   },
-                  child: const Text('SIGN OUT'),
+                  child: const Text('Sign Out'),
                 ),
               ),
             ),
