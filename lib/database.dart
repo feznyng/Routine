@@ -3,7 +3,7 @@ import 'package:drift/extensions/json1.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
-import 'converters/string_list_converter.dart';
+import 'string_list_converter.dart';
 part 'database.g.dart';
 
 @DataClassName('RoutineEntry')
