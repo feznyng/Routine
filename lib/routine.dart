@@ -15,6 +15,17 @@ class Routine {
   int _startTime;
   int _endTime;
 
+  // break tracking
+  int? _numBreaksTaken;
+  DateTime? _lastBreakAt;
+  DateTime? _breakUntil;
+  int? _maxBreaks;
+  int? _maxBreakDuration;
+  FrictionType _friction;
+  int? _frictionLen;
+  String? _frictionCode;
+  DateTime? _snoozedUntil;
+
   late final Map<String, Group> _groups;
 
   late RoutineEntry? _entry;
@@ -32,6 +43,15 @@ class Routine {
     _days = [true, true, true, true, true, true, true],
     _startTime = -1,
     _endTime = -1,
+    _numBreaksTaken = null,
+    _lastBreakAt = null,
+    _breakUntil = null,
+    _maxBreaks = null,
+    _maxBreakDuration = null,
+    _friction = FrictionType.delay,
+    _frictionLen = null,
+    _frictionCode = null,
+    _snoozedUntil = null,
     _entry = null {
       _groups = {
         getIt<Device>().id: Group()
@@ -43,7 +63,16 @@ class Routine {
     _name = entry.name,
     _days = [entry.monday, entry.tuesday, entry.wednesday, entry.thursday, entry.friday, entry.saturday, entry.sunday],
     _startTime = entry.startTime,
-    _endTime = entry.endTime {
+    _endTime = entry.endTime,
+    _numBreaksTaken = entry.numBreaksTaken,
+    _lastBreakAt = entry.lastBreakAt,
+    _breakUntil = entry.breakUntil,
+    _maxBreaks = entry.maxBreaks,
+    _maxBreakDuration = entry.maxBreakDuration,
+    _friction = entry.friction,
+    _frictionLen = entry.frictionLen,
+    _frictionCode = entry.frictionCode,
+    _snoozedUntil = entry.snoozedUntil {
       _entry = entry;
 
       _groups = {};
@@ -58,6 +87,15 @@ class Routine {
     _days = List<bool>.from(other._days),
     _startTime = other._startTime,
     _endTime = other._endTime,
+    _numBreaksTaken = other._numBreaksTaken,
+    _lastBreakAt = other._lastBreakAt,
+    _breakUntil = other._breakUntil,
+    _maxBreaks = other._maxBreaks,
+    _maxBreakDuration = other._maxBreakDuration,
+    _friction = other._friction,
+    _frictionLen = other._frictionLen,
+    _frictionCode = other._frictionCode,
+    _snoozedUntil = other._snoozedUntil,
     _entry = other._entry {
       _groups = Map.fromEntries(
         other._groups.entries.map(
@@ -87,7 +125,17 @@ class Routine {
       endTime: Value(_endTime),
       groups: Value(_groups.values.map<String>((g) => g.id).toList()),
       changes: Value(changes),
+      numBreaksTaken: Value(_numBreaksTaken),
+      lastBreakAt: Value(_lastBreakAt),
+      breakUntil: Value(_breakUntil),
+      maxBreaks: Value(_maxBreaks),
+      maxBreakDuration: Value(_maxBreakDuration),
+      friction: Value(_friction),
+      frictionLen: Value(_frictionLen),
+      frictionCode: Value(_frictionCode),
+      snoozedUntil: Value(_snoozedUntil),
       updatedAt: Value(DateTime.now()),
+      createdAt: Value(_entry?.createdAt ?? DateTime.now()),
     ));
   }
 
@@ -146,6 +194,42 @@ class Routine {
 
     if (!listEquals(_entry!.groups, _groups.values.map((g) => g.id).toList()) || _groups.values.any((g) => g.modified)) {
       changes.add('groups');
+    }
+
+    if (_entry!.numBreaksTaken != _numBreaksTaken) {
+      changes.add('numBreaksTaken');
+    }
+
+    if (_entry!.lastBreakAt != _lastBreakAt) {
+      changes.add('lastBreakAt');
+    }
+
+    if (_entry!.breakUntil != _breakUntil) {
+      changes.add('breakUntil');
+    }
+
+    if (_entry!.maxBreaks != _maxBreaks) {
+      changes.add('maxBreaks');
+    }
+
+    if (_entry!.maxBreakDuration != _maxBreakDuration) {
+      changes.add('maxBreakDuration');
+    }
+
+    if (_entry!.friction != _friction) {
+      changes.add('friction');
+    }
+
+    if (_entry!.frictionLen != _frictionLen) {
+      changes.add('frictionLen');
+    }
+
+    if (_entry!.frictionCode != _frictionCode) {
+      changes.add('frictionCode');
+    }
+
+    if (_entry!.snoozedUntil != _snoozedUntil) {
+      changes.add('snoozedUntil');
     }
 
     return changes;
@@ -224,15 +308,38 @@ class Routine {
   }
 
   bool get isPaused {
-    return false;
+    if (_breakUntil == null) return false;
+    return DateTime.now().isBefore(_breakUntil!);
   }
 
   bool get canPause {
+    if (_maxBreaks == null || _numBreaksTaken == null || _numBreaksTaken! < _maxBreaks!) {
+      return true;
+    }
+
+    if (_lastBreakAt != null) {
+      final lastBreakTimeOfDay = _lastBreakAt!.hour * 60 + _lastBreakAt!.minute;
+      if (lastBreakTimeOfDay < _startTime) {
+        // Last break was before start time today, reset counter
+        _numBreaksTaken = null;
+        return true;
+      }
+    }
+
     return false;
   }
 
-  Future<void> pauseFor(int minutes) async {
-    // TODO: implement
+  Future<void> pause({int? minutes}) async {
+    if (!canPause) return;
+
+    final duration = minutes ?? _maxBreakDuration ?? 15;
+    final now = DateTime.now();
+    
+    _lastBreakAt = now;
+    _breakUntil = now.add(Duration(minutes: duration));
+    _numBreaksTaken = (_numBreaksTaken ?? 0) + 1;
+    
+    await save();
   }
 
   Group? getGroup([String? deviceId]) {

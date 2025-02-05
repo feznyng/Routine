@@ -37,6 +37,7 @@ class Routines extends Table {
 
   late final changes = text().map(StringListTypeConverter())();
   late final deleted = boolean().clientDefault(() => false)();
+  late final createdAt = dateTime()();
   late final updatedAt = dateTime()();
 
   late final groups = text().map(StringListTypeConverter())();
@@ -50,7 +51,7 @@ class Routines extends Table {
   late final friction = textEnum<FrictionType>()();
   late final frictionLen = integer().nullable()();
   late final frictionCode = text().nullable()();
-  late final snoozedAt = dateTime().nullable()();
+  late final snoozedUntil = dateTime().nullable()();
 
 }
 

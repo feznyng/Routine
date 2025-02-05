@@ -117,6 +117,12 @@ class $RoutinesTable extends Routines
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('CHECK ("deleted" IN (0, 1))'),
       clientDefault: () => false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
   static const VerificationMeta _updatedAtMeta =
       const VerificationMeta('updatedAt');
   @override
@@ -178,11 +184,11 @@ class $RoutinesTable extends Routines
   late final GeneratedColumn<String> frictionCode = GeneratedColumn<String>(
       'friction_code', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _snoozedAtMeta =
-      const VerificationMeta('snoozedAt');
+  static const VerificationMeta _snoozedUntilMeta =
+      const VerificationMeta('snoozedUntil');
   @override
-  late final GeneratedColumn<DateTime> snoozedAt = GeneratedColumn<DateTime>(
-      'snoozed_at', aliasedName, true,
+  late final GeneratedColumn<DateTime> snoozedUntil = GeneratedColumn<DateTime>(
+      'snoozed_until', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
@@ -200,6 +206,7 @@ class $RoutinesTable extends Routines
         recurring,
         changes,
         deleted,
+        createdAt,
         updatedAt,
         groups,
         numBreaksTaken,
@@ -210,7 +217,7 @@ class $RoutinesTable extends Routines
         friction,
         frictionLen,
         frictionCode,
-        snoozedAt
+        snoozedUntil
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -298,6 +305,12 @@ class $RoutinesTable extends Routines
       context.handle(_deletedMeta,
           deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta));
     }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
     if (data.containsKey('updated_at')) {
       context.handle(_updatedAtMeta,
           updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
@@ -346,9 +359,11 @@ class $RoutinesTable extends Routines
           frictionCode.isAcceptableOrUnknown(
               data['friction_code']!, _frictionCodeMeta));
     }
-    if (data.containsKey('snoozed_at')) {
-      context.handle(_snoozedAtMeta,
-          snoozedAt.isAcceptableOrUnknown(data['snoozed_at']!, _snoozedAtMeta));
+    if (data.containsKey('snoozed_until')) {
+      context.handle(
+          _snoozedUntilMeta,
+          snoozedUntil.isAcceptableOrUnknown(
+              data['snoozed_until']!, _snoozedUntilMeta));
     }
     return context;
   }
@@ -388,6 +403,8 @@ class $RoutinesTable extends Routines
           .read(DriftSqlType.string, data['${effectivePrefix}changes'])!),
       deleted: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}deleted'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
       groups: $RoutinesTable.$convertergroups.fromSql(attachedDatabase
@@ -410,8 +427,8 @@ class $RoutinesTable extends Routines
           .read(DriftSqlType.int, data['${effectivePrefix}friction_len']),
       frictionCode: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}friction_code']),
-      snoozedAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}snoozed_at']),
+      snoozedUntil: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}snoozed_until']),
     );
   }
 
@@ -443,6 +460,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
   final bool recurring;
   final List<String> changes;
   final bool deleted;
+  final DateTime createdAt;
   final DateTime updatedAt;
   final List<String> groups;
   final int? numBreaksTaken;
@@ -453,7 +471,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
   final FrictionType friction;
   final int? frictionLen;
   final String? frictionCode;
-  final DateTime? snoozedAt;
+  final DateTime? snoozedUntil;
   const RoutineEntry(
       {required this.id,
       required this.name,
@@ -469,6 +487,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       required this.recurring,
       required this.changes,
       required this.deleted,
+      required this.createdAt,
       required this.updatedAt,
       required this.groups,
       this.numBreaksTaken,
@@ -479,7 +498,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       required this.friction,
       this.frictionLen,
       this.frictionCode,
-      this.snoozedAt});
+      this.snoozedUntil});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -500,6 +519,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           Variable<String>($RoutinesTable.$converterchanges.toSql(changes));
     }
     map['deleted'] = Variable<bool>(deleted);
+    map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     {
       map['groups'] =
@@ -530,8 +550,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
     if (!nullToAbsent || frictionCode != null) {
       map['friction_code'] = Variable<String>(frictionCode);
     }
-    if (!nullToAbsent || snoozedAt != null) {
-      map['snoozed_at'] = Variable<DateTime>(snoozedAt);
+    if (!nullToAbsent || snoozedUntil != null) {
+      map['snoozed_until'] = Variable<DateTime>(snoozedUntil);
     }
     return map;
   }
@@ -552,6 +572,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       recurring: Value(recurring),
       changes: Value(changes),
       deleted: Value(deleted),
+      createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       groups: Value(groups),
       numBreaksTaken: numBreaksTaken == null && nullToAbsent
@@ -576,9 +597,9 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       frictionCode: frictionCode == null && nullToAbsent
           ? const Value.absent()
           : Value(frictionCode),
-      snoozedAt: snoozedAt == null && nullToAbsent
+      snoozedUntil: snoozedUntil == null && nullToAbsent
           ? const Value.absent()
-          : Value(snoozedAt),
+          : Value(snoozedUntil),
     );
   }
 
@@ -600,6 +621,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       recurring: serializer.fromJson<bool>(json['recurring']),
       changes: serializer.fromJson<List<String>>(json['changes']),
       deleted: serializer.fromJson<bool>(json['deleted']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       groups: serializer.fromJson<List<String>>(json['groups']),
       numBreaksTaken: serializer.fromJson<int?>(json['numBreaksTaken']),
@@ -611,7 +633,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           .fromJson(serializer.fromJson<String>(json['friction'])),
       frictionLen: serializer.fromJson<int?>(json['frictionLen']),
       frictionCode: serializer.fromJson<String?>(json['frictionCode']),
-      snoozedAt: serializer.fromJson<DateTime?>(json['snoozedAt']),
+      snoozedUntil: serializer.fromJson<DateTime?>(json['snoozedUntil']),
     );
   }
   @override
@@ -632,6 +654,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       'recurring': serializer.toJson<bool>(recurring),
       'changes': serializer.toJson<List<String>>(changes),
       'deleted': serializer.toJson<bool>(deleted),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'groups': serializer.toJson<List<String>>(groups),
       'numBreaksTaken': serializer.toJson<int?>(numBreaksTaken),
@@ -643,7 +666,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           .toJson<String>($RoutinesTable.$converterfriction.toJson(friction)),
       'frictionLen': serializer.toJson<int?>(frictionLen),
       'frictionCode': serializer.toJson<String?>(frictionCode),
-      'snoozedAt': serializer.toJson<DateTime?>(snoozedAt),
+      'snoozedUntil': serializer.toJson<DateTime?>(snoozedUntil),
     };
   }
 
@@ -662,6 +685,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           bool? recurring,
           List<String>? changes,
           bool? deleted,
+          DateTime? createdAt,
           DateTime? updatedAt,
           List<String>? groups,
           Value<int?> numBreaksTaken = const Value.absent(),
@@ -672,7 +696,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           FrictionType? friction,
           Value<int?> frictionLen = const Value.absent(),
           Value<String?> frictionCode = const Value.absent(),
-          Value<DateTime?> snoozedAt = const Value.absent()}) =>
+          Value<DateTime?> snoozedUntil = const Value.absent()}) =>
       RoutineEntry(
         id: id ?? this.id,
         name: name ?? this.name,
@@ -688,6 +712,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
         recurring: recurring ?? this.recurring,
         changes: changes ?? this.changes,
         deleted: deleted ?? this.deleted,
+        createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
         groups: groups ?? this.groups,
         numBreaksTaken:
@@ -702,7 +727,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
         frictionLen: frictionLen.present ? frictionLen.value : this.frictionLen,
         frictionCode:
             frictionCode.present ? frictionCode.value : this.frictionCode,
-        snoozedAt: snoozedAt.present ? snoozedAt.value : this.snoozedAt,
+        snoozedUntil:
+            snoozedUntil.present ? snoozedUntil.value : this.snoozedUntil,
       );
   RoutineEntry copyWithCompanion(RoutinesCompanion data) {
     return RoutineEntry(
@@ -720,6 +746,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       recurring: data.recurring.present ? data.recurring.value : this.recurring,
       changes: data.changes.present ? data.changes.value : this.changes,
       deleted: data.deleted.present ? data.deleted.value : this.deleted,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       groups: data.groups.present ? data.groups.value : this.groups,
       numBreaksTaken: data.numBreaksTaken.present
@@ -739,7 +766,9 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       frictionCode: data.frictionCode.present
           ? data.frictionCode.value
           : this.frictionCode,
-      snoozedAt: data.snoozedAt.present ? data.snoozedAt.value : this.snoozedAt,
+      snoozedUntil: data.snoozedUntil.present
+          ? data.snoozedUntil.value
+          : this.snoozedUntil,
     );
   }
 
@@ -760,6 +789,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           ..write('recurring: $recurring, ')
           ..write('changes: $changes, ')
           ..write('deleted: $deleted, ')
+          ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('groups: $groups, ')
           ..write('numBreaksTaken: $numBreaksTaken, ')
@@ -770,7 +800,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           ..write('friction: $friction, ')
           ..write('frictionLen: $frictionLen, ')
           ..write('frictionCode: $frictionCode, ')
-          ..write('snoozedAt: $snoozedAt')
+          ..write('snoozedUntil: $snoozedUntil')
           ..write(')'))
         .toString();
   }
@@ -791,6 +821,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
         recurring,
         changes,
         deleted,
+        createdAt,
         updatedAt,
         groups,
         numBreaksTaken,
@@ -801,7 +832,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
         friction,
         frictionLen,
         frictionCode,
-        snoozedAt
+        snoozedUntil
       ]);
   @override
   bool operator ==(Object other) =>
@@ -821,6 +852,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           other.recurring == this.recurring &&
           other.changes == this.changes &&
           other.deleted == this.deleted &&
+          other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.groups == this.groups &&
           other.numBreaksTaken == this.numBreaksTaken &&
@@ -831,7 +863,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           other.friction == this.friction &&
           other.frictionLen == this.frictionLen &&
           other.frictionCode == this.frictionCode &&
-          other.snoozedAt == this.snoozedAt);
+          other.snoozedUntil == this.snoozedUntil);
 }
 
 class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
@@ -849,6 +881,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
   final Value<bool> recurring;
   final Value<List<String>> changes;
   final Value<bool> deleted;
+  final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<List<String>> groups;
   final Value<int?> numBreaksTaken;
@@ -859,7 +892,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
   final Value<FrictionType> friction;
   final Value<int?> frictionLen;
   final Value<String?> frictionCode;
-  final Value<DateTime?> snoozedAt;
+  final Value<DateTime?> snoozedUntil;
   final Value<int> rowid;
   const RoutinesCompanion({
     this.id = const Value.absent(),
@@ -876,6 +909,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     this.recurring = const Value.absent(),
     this.changes = const Value.absent(),
     this.deleted = const Value.absent(),
+    this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.groups = const Value.absent(),
     this.numBreaksTaken = const Value.absent(),
@@ -886,7 +920,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     this.friction = const Value.absent(),
     this.frictionLen = const Value.absent(),
     this.frictionCode = const Value.absent(),
-    this.snoozedAt = const Value.absent(),
+    this.snoozedUntil = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   RoutinesCompanion.insert({
@@ -904,6 +938,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     required bool recurring,
     required List<String> changes,
     this.deleted = const Value.absent(),
+    required DateTime createdAt,
     required DateTime updatedAt,
     required List<String> groups,
     this.numBreaksTaken = const Value.absent(),
@@ -914,7 +949,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     required FrictionType friction,
     this.frictionLen = const Value.absent(),
     this.frictionCode = const Value.absent(),
-    this.snoozedAt = const Value.absent(),
+    this.snoozedUntil = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name),
@@ -929,6 +964,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
         endTime = Value(endTime),
         recurring = Value(recurring),
         changes = Value(changes),
+        createdAt = Value(createdAt),
         updatedAt = Value(updatedAt),
         groups = Value(groups),
         friction = Value(friction);
@@ -947,6 +983,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     Expression<bool>? recurring,
     Expression<String>? changes,
     Expression<bool>? deleted,
+    Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<String>? groups,
     Expression<int>? numBreaksTaken,
@@ -957,7 +994,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     Expression<String>? friction,
     Expression<int>? frictionLen,
     Expression<String>? frictionCode,
-    Expression<DateTime>? snoozedAt,
+    Expression<DateTime>? snoozedUntil,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -975,6 +1012,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       if (recurring != null) 'recurring': recurring,
       if (changes != null) 'changes': changes,
       if (deleted != null) 'deleted': deleted,
+      if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (groups != null) 'groups': groups,
       if (numBreaksTaken != null) 'num_breaks_taken': numBreaksTaken,
@@ -985,7 +1023,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       if (friction != null) 'friction': friction,
       if (frictionLen != null) 'friction_len': frictionLen,
       if (frictionCode != null) 'friction_code': frictionCode,
-      if (snoozedAt != null) 'snoozed_at': snoozedAt,
+      if (snoozedUntil != null) 'snoozed_until': snoozedUntil,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1005,6 +1043,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       Value<bool>? recurring,
       Value<List<String>>? changes,
       Value<bool>? deleted,
+      Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
       Value<List<String>>? groups,
       Value<int?>? numBreaksTaken,
@@ -1015,7 +1054,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       Value<FrictionType>? friction,
       Value<int?>? frictionLen,
       Value<String?>? frictionCode,
-      Value<DateTime?>? snoozedAt,
+      Value<DateTime?>? snoozedUntil,
       Value<int>? rowid}) {
     return RoutinesCompanion(
       id: id ?? this.id,
@@ -1032,6 +1071,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       recurring: recurring ?? this.recurring,
       changes: changes ?? this.changes,
       deleted: deleted ?? this.deleted,
+      createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       groups: groups ?? this.groups,
       numBreaksTaken: numBreaksTaken ?? this.numBreaksTaken,
@@ -1042,7 +1082,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       friction: friction ?? this.friction,
       frictionLen: frictionLen ?? this.frictionLen,
       frictionCode: frictionCode ?? this.frictionCode,
-      snoozedAt: snoozedAt ?? this.snoozedAt,
+      snoozedUntil: snoozedUntil ?? this.snoozedUntil,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1093,6 +1133,9 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     if (deleted.present) {
       map['deleted'] = Variable<bool>(deleted.value);
     }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -1125,8 +1168,8 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     if (frictionCode.present) {
       map['friction_code'] = Variable<String>(frictionCode.value);
     }
-    if (snoozedAt.present) {
-      map['snoozed_at'] = Variable<DateTime>(snoozedAt.value);
+    if (snoozedUntil.present) {
+      map['snoozed_until'] = Variable<DateTime>(snoozedUntil.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -1151,6 +1194,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
           ..write('recurring: $recurring, ')
           ..write('changes: $changes, ')
           ..write('deleted: $deleted, ')
+          ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('groups: $groups, ')
           ..write('numBreaksTaken: $numBreaksTaken, ')
@@ -1161,7 +1205,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
           ..write('friction: $friction, ')
           ..write('frictionLen: $frictionLen, ')
           ..write('frictionCode: $frictionCode, ')
-          ..write('snoozedAt: $snoozedAt, ')
+          ..write('snoozedUntil: $snoozedUntil, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1928,6 +1972,7 @@ typedef $$RoutinesTableCreateCompanionBuilder = RoutinesCompanion Function({
   required bool recurring,
   required List<String> changes,
   Value<bool> deleted,
+  required DateTime createdAt,
   required DateTime updatedAt,
   required List<String> groups,
   Value<int?> numBreaksTaken,
@@ -1938,7 +1983,7 @@ typedef $$RoutinesTableCreateCompanionBuilder = RoutinesCompanion Function({
   required FrictionType friction,
   Value<int?> frictionLen,
   Value<String?> frictionCode,
-  Value<DateTime?> snoozedAt,
+  Value<DateTime?> snoozedUntil,
   Value<int> rowid,
 });
 typedef $$RoutinesTableUpdateCompanionBuilder = RoutinesCompanion Function({
@@ -1956,6 +2001,7 @@ typedef $$RoutinesTableUpdateCompanionBuilder = RoutinesCompanion Function({
   Value<bool> recurring,
   Value<List<String>> changes,
   Value<bool> deleted,
+  Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<List<String>> groups,
   Value<int?> numBreaksTaken,
@@ -1966,7 +2012,7 @@ typedef $$RoutinesTableUpdateCompanionBuilder = RoutinesCompanion Function({
   Value<FrictionType> friction,
   Value<int?> frictionLen,
   Value<String?> frictionCode,
-  Value<DateTime?> snoozedAt,
+  Value<DateTime?> snoozedUntil,
   Value<int> rowid,
 });
 
@@ -2023,6 +2069,9 @@ class $$RoutinesTableFilterComposer
   ColumnFilters<bool> get deleted => $composableBuilder(
       column: $table.deleted, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
 
@@ -2059,8 +2108,8 @@ class $$RoutinesTableFilterComposer
   ColumnFilters<String> get frictionCode => $composableBuilder(
       column: $table.frictionCode, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<DateTime> get snoozedAt => $composableBuilder(
-      column: $table.snoozedAt, builder: (column) => ColumnFilters(column));
+  ColumnFilters<DateTime> get snoozedUntil => $composableBuilder(
+      column: $table.snoozedUntil, builder: (column) => ColumnFilters(column));
 }
 
 class $$RoutinesTableOrderingComposer
@@ -2114,6 +2163,9 @@ class $$RoutinesTableOrderingComposer
   ColumnOrderings<bool> get deleted => $composableBuilder(
       column: $table.deleted, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 
@@ -2147,8 +2199,9 @@ class $$RoutinesTableOrderingComposer
       column: $table.frictionCode,
       builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<DateTime> get snoozedAt => $composableBuilder(
-      column: $table.snoozedAt, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<DateTime> get snoozedUntil => $composableBuilder(
+      column: $table.snoozedUntil,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$RoutinesTableAnnotationComposer
@@ -2202,6 +2255,9 @@ class $$RoutinesTableAnnotationComposer
   GeneratedColumn<bool> get deleted =>
       $composableBuilder(column: $table.deleted, builder: (column) => column);
 
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
@@ -2232,8 +2288,8 @@ class $$RoutinesTableAnnotationComposer
   GeneratedColumn<String> get frictionCode => $composableBuilder(
       column: $table.frictionCode, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get snoozedAt =>
-      $composableBuilder(column: $table.snoozedAt, builder: (column) => column);
+  GeneratedColumn<DateTime> get snoozedUntil => $composableBuilder(
+      column: $table.snoozedUntil, builder: (column) => column);
 }
 
 class $$RoutinesTableTableManager extends RootTableManager<
@@ -2273,6 +2329,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             Value<bool> recurring = const Value.absent(),
             Value<List<String>> changes = const Value.absent(),
             Value<bool> deleted = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<List<String>> groups = const Value.absent(),
             Value<int?> numBreaksTaken = const Value.absent(),
@@ -2283,7 +2340,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             Value<FrictionType> friction = const Value.absent(),
             Value<int?> frictionLen = const Value.absent(),
             Value<String?> frictionCode = const Value.absent(),
-            Value<DateTime?> snoozedAt = const Value.absent(),
+            Value<DateTime?> snoozedUntil = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               RoutinesCompanion(
@@ -2301,6 +2358,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             recurring: recurring,
             changes: changes,
             deleted: deleted,
+            createdAt: createdAt,
             updatedAt: updatedAt,
             groups: groups,
             numBreaksTaken: numBreaksTaken,
@@ -2311,7 +2369,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             friction: friction,
             frictionLen: frictionLen,
             frictionCode: frictionCode,
-            snoozedAt: snoozedAt,
+            snoozedUntil: snoozedUntil,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -2329,6 +2387,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             required bool recurring,
             required List<String> changes,
             Value<bool> deleted = const Value.absent(),
+            required DateTime createdAt,
             required DateTime updatedAt,
             required List<String> groups,
             Value<int?> numBreaksTaken = const Value.absent(),
@@ -2339,7 +2398,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             required FrictionType friction,
             Value<int?> frictionLen = const Value.absent(),
             Value<String?> frictionCode = const Value.absent(),
-            Value<DateTime?> snoozedAt = const Value.absent(),
+            Value<DateTime?> snoozedUntil = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               RoutinesCompanion.insert(
@@ -2357,6 +2416,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             recurring: recurring,
             changes: changes,
             deleted: deleted,
+            createdAt: createdAt,
             updatedAt: updatedAt,
             groups: groups,
             numBreaksTaken: numBreaksTaken,
@@ -2367,7 +2427,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             friction: friction,
             frictionLen: frictionLen,
             frictionCode: frictionCode,
-            snoozedAt: snoozedAt,
+            snoozedUntil: snoozedUntil,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
