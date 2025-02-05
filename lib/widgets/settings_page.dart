@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
+import '../auth_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});

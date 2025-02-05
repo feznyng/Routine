@@ -5,7 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'desktop_service.dart';
 import 'widgets/routine_list.dart';
 import 'widgets/settings_page.dart';
-import 'services/auth_service.dart';
+import 'auth_service.dart';
 import 'setup.dart';
 
 void main() async {
