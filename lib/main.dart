@@ -3,6 +3,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'desktop_service.dart';
 import 'widgets/routine_list.dart';
+import 'widgets/settings_page.dart';
 import 'setup.dart';
 
 void main() async {
@@ -55,6 +56,11 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListener {
+  int _selectedIndex = 0;
+  final List<Widget> _pages = const [
+    RoutineList(),
+    SettingsPage(),
+  ];
   final DesktopService _desktopService = DesktopService();  
 
   @override
@@ -109,14 +115,44 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          "Routines",
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        centerTitle: false,
+      body: Row(
+        children: [
+          NavigationRail(
+            selectedIndex: _selectedIndex,
+            onDestinationSelected: (int index) {
+              setState(() {
+                _selectedIndex = index;
+              });
+            },
+            labelType: NavigationRailLabelType.all,
+            destinations: const [
+              NavigationRailDestination(
+                icon: Icon(Icons.schedule),
+                label: Text('Routines'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.settings),
+                label: Text('Settings'),
+              ),
+            ],
+          ),
+          const VerticalDivider(thickness: 1, width: 1),
+          Expanded(
+            child: Column(
+              children: [
+                AppBar(
+                  title: Text(
+                    _selectedIndex == 0 ? "Routines" : "Settings",
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  centerTitle: false,
+                ),
+                Expanded(child: _pages[_selectedIndex]),
+              ],
+            ),
+          ),
+        ],
       ),
-      body: const RoutineList(),
     );
   }
 }
