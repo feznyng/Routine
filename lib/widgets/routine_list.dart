@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
-import 'dart:math';
 import '../routine.dart';
 import 'routine_page.dart';
-import 'package:flutter/services.dart';
-import '../database.dart';
+import 'break_dialog.dart';
 
 class RoutineList extends StatefulWidget {
   const RoutineList({super.key});
@@ -14,15 +11,6 @@ class RoutineList extends StatefulWidget {
 }
 
 class _RoutineListState extends State<RoutineList> {
-  final _codeController = TextEditingController();
-  Timer? _delayTimer;
-
-  @override
-  void dispose() {
-    _codeController.dispose();
-    _delayTimer?.cancel();
-    super.dispose();
-  }
   late List<Routine> _routines;
 
   @override
@@ -50,7 +38,7 @@ class _RoutineListState extends State<RoutineList> {
               title: Text(routine.name),
               subtitle: _buildRoutineSubtitle(context, routine),
               isThreeLine: true,
-              trailing: _buildBreakButton(context, routine),
+              trailing: routine.isActive ? _buildBreakButton(context, routine) : null,
               onTap: () {
                 _showRoutinePage(context, routine);
               },
@@ -175,137 +163,11 @@ class _RoutineListState extends State<RoutineList> {
   }
 
   void _showBreakDialog(BuildContext context, Routine routine) {
-    int breakDuration = 15;
-    bool canConfirm = routine.friction == FrictionType.none;
-    int? remainingDelay;
-    String? generatedCode;
-
-    if (routine.friction == FrictionType.code) {
-      // Generate random 6-character code
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-      final random = Random();
-      generatedCode = List.generate(6, (index) => chars[random.nextInt(chars.length)]).join();
-    }
-
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Take a Break'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Break Duration'),
-              const SizedBox(height: 8),
-              SegmentedButton<String>(
-                segments: [
-                  ButtonSegment(
-                    value: 'minus',
-                    icon: const Icon(Icons.remove),
-                    enabled: breakDuration > 5,
-                  ),
-                  ButtonSegment(
-                    value: 'text',
-                    label: Text('$breakDuration min'),
-                  ),
-                  ButtonSegment(
-                    value: 'plus',
-                    icon: const Icon(Icons.add),
-                    enabled: breakDuration < routine.maxBreakDuration,
-                  ),
-                ],
-                emptySelectionAllowed: true,
-                selected: const {},
-                onSelectionChanged: (Set<String> selected) {
-                  setState(() {
-                    if (selected.first == 'minus' && breakDuration > 5) {
-                      breakDuration = breakDuration - 5;
-                    } else if (selected.first == 'plus' && breakDuration < routine.maxBreakDuration) {
-                      breakDuration = breakDuration + 5;
-                    }
-                  });
-                },
-              ),
-              if (routine.friction != FrictionType.none) ...[              
-                const SizedBox(height: 16),
-                const Divider(),
-                const SizedBox(height: 16),
-                if (routine.friction == FrictionType.delay) ...[                
-                  Text(remainingDelay == null 
-                    ? 'Wait ${routine.frictionLen ?? 30} seconds'
-                    : 'Wait $remainingDelay seconds'),
-                ] else if (routine.friction == FrictionType.intention) ...[                
-                  const Text('What will you do during this break?'),
-                  const SizedBox(height: 8),
-                  TextField(
-                    onChanged: (value) => setState(() {
-                      canConfirm = value.trim().length >= 10;
-                    }),
-                    decoration: const InputDecoration(
-                      hintText: 'Write at least 10 characters',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ] else if (routine.friction == FrictionType.code) ...[                
-                  Text('Type this code: $generatedCode'),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _codeController,
-                    onChanged: (value) => setState(() {
-                      canConfirm = value == generatedCode;
-                    }),
-                    decoration: const InputDecoration(
-                      hintText: 'Type the code above',
-                      border: OutlineInputBorder(),
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9]')),
-                      LengthLimitingTextInputFormatter(6),
-                    ],
-                  ),
-                ],
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                _delayTimer?.cancel();
-                _codeController.clear();
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: canConfirm ? () {
-                routine.breakFor(minutes: breakDuration);
-                _delayTimer?.cancel();
-                _codeController.clear();
-                Navigator.of(context).pop();
-              } : null,
-              child: const Text('Start Break'),
-            ),
-          ],
-        ),
-      ),
-    ).then((_) {
-      _delayTimer?.cancel();
-      _codeController.clear();
-    });
-
-    // Start delay timer if needed
-    if (routine.friction == FrictionType.delay) {
-      remainingDelay = routine.frictionLen ?? 30;
-      _delayTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        if (remainingDelay! > 0) {
-          setState(() => remainingDelay = remainingDelay! - 1);
-        } else {
-          setState(() => canConfirm = true);
-          timer.cancel();
-        }
-      });
-    }
+      builder: (context) => BreakDialog(routine: routine),
+      barrierDismissible: false,
+    );
   }
 
   void _showRoutinePage(BuildContext context, Routine? routine) {
