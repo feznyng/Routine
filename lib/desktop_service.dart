@@ -106,7 +106,7 @@ class DesktopService {
 
 
   void _evaluate(List<Routine> routines) {
-    routines = routines.where((r) => r.isActive).toList();
+    routines = routines.where((r) => r.isActive && !r.isPaused).toList();
 
     Set<String> apps = {}; 
     Set<String> sites = {};

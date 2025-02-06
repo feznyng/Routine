@@ -303,7 +303,7 @@ class Routine {
     return DateTime.now().isBefore(_breakUntil!);
   }
 
-  bool get canPause {
+  bool get canBreak {
     if (_maxBreaks == null || _numBreaksTaken == null || _numBreaksTaken! < _maxBreaks!) {
       return true;
     }
@@ -320,8 +320,10 @@ class Routine {
     return false;
   }
 
-  Future<void> pause({int? minutes}) async {
-    if (!canPause) return;
+  DateTime? get breakUntil => _breakUntil;
+
+  Future<void> breakFor({int? minutes}) async {
+    if (!canBreak) return;
 
     final duration = minutes ?? _maxBreakDuration;
     final now = DateTime.now();
@@ -331,6 +333,11 @@ class Routine {
     _numBreaksTaken = (_numBreaksTaken ?? 0) + 1;
     
     await save();
+  }
+
+  void endBreak() {
+    _breakUntil = null;
+    save();
   }
 
   Group? getGroup([String? deviceId]) {
