@@ -163,8 +163,10 @@ class $RoutinesTable extends Routines
       const VerificationMeta('maxBreakDuration');
   @override
   late final GeneratedColumn<int> maxBreakDuration = GeneratedColumn<int>(
-      'max_break_duration', aliasedName, true,
-      type: DriftSqlType.int, requiredDuringInsert: false);
+      'max_break_duration', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      clientDefault: () => 15);
   static const VerificationMeta _frictionMeta =
       const VerificationMeta('friction');
   @override
@@ -178,12 +180,6 @@ class $RoutinesTable extends Routines
   late final GeneratedColumn<int> frictionLen = GeneratedColumn<int>(
       'friction_len', aliasedName, true,
       type: DriftSqlType.int, requiredDuringInsert: false);
-  static const VerificationMeta _frictionCodeMeta =
-      const VerificationMeta('frictionCode');
-  @override
-  late final GeneratedColumn<String> frictionCode = GeneratedColumn<String>(
-      'friction_code', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _snoozedUntilMeta =
       const VerificationMeta('snoozedUntil');
   @override
@@ -216,7 +212,6 @@ class $RoutinesTable extends Routines
         maxBreakDuration,
         friction,
         frictionLen,
-        frictionCode,
         snoozedUntil
       ];
   @override
@@ -353,12 +348,6 @@ class $RoutinesTable extends Routines
           frictionLen.isAcceptableOrUnknown(
               data['friction_len']!, _frictionLenMeta));
     }
-    if (data.containsKey('friction_code')) {
-      context.handle(
-          _frictionCodeMeta,
-          frictionCode.isAcceptableOrUnknown(
-              data['friction_code']!, _frictionCodeMeta));
-    }
     if (data.containsKey('snoozed_until')) {
       context.handle(
           _snoozedUntilMeta,
@@ -418,15 +407,13 @@ class $RoutinesTable extends Routines
           .read(DriftSqlType.dateTime, data['${effectivePrefix}break_until']),
       maxBreaks: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}max_breaks']),
-      maxBreakDuration: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}max_break_duration']),
+      maxBreakDuration: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}max_break_duration'])!,
       friction: $RoutinesTable.$converterfriction.fromSql(attachedDatabase
           .typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}friction'])!),
       frictionLen: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}friction_len']),
-      frictionCode: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}friction_code']),
       snoozedUntil: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}snoozed_until']),
     );
@@ -467,10 +454,9 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
   final DateTime? lastBreakAt;
   final DateTime? breakUntil;
   final int? maxBreaks;
-  final int? maxBreakDuration;
+  final int maxBreakDuration;
   final FrictionType friction;
   final int? frictionLen;
-  final String? frictionCode;
   final DateTime? snoozedUntil;
   const RoutineEntry(
       {required this.id,
@@ -494,10 +480,9 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       this.lastBreakAt,
       this.breakUntil,
       this.maxBreaks,
-      this.maxBreakDuration,
+      required this.maxBreakDuration,
       required this.friction,
       this.frictionLen,
-      this.frictionCode,
       this.snoozedUntil});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -537,18 +522,13 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
     if (!nullToAbsent || maxBreaks != null) {
       map['max_breaks'] = Variable<int>(maxBreaks);
     }
-    if (!nullToAbsent || maxBreakDuration != null) {
-      map['max_break_duration'] = Variable<int>(maxBreakDuration);
-    }
+    map['max_break_duration'] = Variable<int>(maxBreakDuration);
     {
       map['friction'] =
           Variable<String>($RoutinesTable.$converterfriction.toSql(friction));
     }
     if (!nullToAbsent || frictionLen != null) {
       map['friction_len'] = Variable<int>(frictionLen);
-    }
-    if (!nullToAbsent || frictionCode != null) {
-      map['friction_code'] = Variable<String>(frictionCode);
     }
     if (!nullToAbsent || snoozedUntil != null) {
       map['snoozed_until'] = Variable<DateTime>(snoozedUntil);
@@ -587,16 +567,11 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       maxBreaks: maxBreaks == null && nullToAbsent
           ? const Value.absent()
           : Value(maxBreaks),
-      maxBreakDuration: maxBreakDuration == null && nullToAbsent
-          ? const Value.absent()
-          : Value(maxBreakDuration),
+      maxBreakDuration: Value(maxBreakDuration),
       friction: Value(friction),
       frictionLen: frictionLen == null && nullToAbsent
           ? const Value.absent()
           : Value(frictionLen),
-      frictionCode: frictionCode == null && nullToAbsent
-          ? const Value.absent()
-          : Value(frictionCode),
       snoozedUntil: snoozedUntil == null && nullToAbsent
           ? const Value.absent()
           : Value(snoozedUntil),
@@ -628,11 +603,10 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       lastBreakAt: serializer.fromJson<DateTime?>(json['lastBreakAt']),
       breakUntil: serializer.fromJson<DateTime?>(json['breakUntil']),
       maxBreaks: serializer.fromJson<int?>(json['maxBreaks']),
-      maxBreakDuration: serializer.fromJson<int?>(json['maxBreakDuration']),
+      maxBreakDuration: serializer.fromJson<int>(json['maxBreakDuration']),
       friction: $RoutinesTable.$converterfriction
           .fromJson(serializer.fromJson<String>(json['friction'])),
       frictionLen: serializer.fromJson<int?>(json['frictionLen']),
-      frictionCode: serializer.fromJson<String?>(json['frictionCode']),
       snoozedUntil: serializer.fromJson<DateTime?>(json['snoozedUntil']),
     );
   }
@@ -661,11 +635,10 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       'lastBreakAt': serializer.toJson<DateTime?>(lastBreakAt),
       'breakUntil': serializer.toJson<DateTime?>(breakUntil),
       'maxBreaks': serializer.toJson<int?>(maxBreaks),
-      'maxBreakDuration': serializer.toJson<int?>(maxBreakDuration),
+      'maxBreakDuration': serializer.toJson<int>(maxBreakDuration),
       'friction': serializer
           .toJson<String>($RoutinesTable.$converterfriction.toJson(friction)),
       'frictionLen': serializer.toJson<int?>(frictionLen),
-      'frictionCode': serializer.toJson<String?>(frictionCode),
       'snoozedUntil': serializer.toJson<DateTime?>(snoozedUntil),
     };
   }
@@ -692,10 +665,9 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           Value<DateTime?> lastBreakAt = const Value.absent(),
           Value<DateTime?> breakUntil = const Value.absent(),
           Value<int?> maxBreaks = const Value.absent(),
-          Value<int?> maxBreakDuration = const Value.absent(),
+          int? maxBreakDuration,
           FrictionType? friction,
           Value<int?> frictionLen = const Value.absent(),
-          Value<String?> frictionCode = const Value.absent(),
           Value<DateTime?> snoozedUntil = const Value.absent()}) =>
       RoutineEntry(
         id: id ?? this.id,
@@ -720,13 +692,9 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
         lastBreakAt: lastBreakAt.present ? lastBreakAt.value : this.lastBreakAt,
         breakUntil: breakUntil.present ? breakUntil.value : this.breakUntil,
         maxBreaks: maxBreaks.present ? maxBreaks.value : this.maxBreaks,
-        maxBreakDuration: maxBreakDuration.present
-            ? maxBreakDuration.value
-            : this.maxBreakDuration,
+        maxBreakDuration: maxBreakDuration ?? this.maxBreakDuration,
         friction: friction ?? this.friction,
         frictionLen: frictionLen.present ? frictionLen.value : this.frictionLen,
-        frictionCode:
-            frictionCode.present ? frictionCode.value : this.frictionCode,
         snoozedUntil:
             snoozedUntil.present ? snoozedUntil.value : this.snoozedUntil,
       );
@@ -763,9 +731,6 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       friction: data.friction.present ? data.friction.value : this.friction,
       frictionLen:
           data.frictionLen.present ? data.frictionLen.value : this.frictionLen,
-      frictionCode: data.frictionCode.present
-          ? data.frictionCode.value
-          : this.frictionCode,
       snoozedUntil: data.snoozedUntil.present
           ? data.snoozedUntil.value
           : this.snoozedUntil,
@@ -799,7 +764,6 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           ..write('maxBreakDuration: $maxBreakDuration, ')
           ..write('friction: $friction, ')
           ..write('frictionLen: $frictionLen, ')
-          ..write('frictionCode: $frictionCode, ')
           ..write('snoozedUntil: $snoozedUntil')
           ..write(')'))
         .toString();
@@ -831,7 +795,6 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
         maxBreakDuration,
         friction,
         frictionLen,
-        frictionCode,
         snoozedUntil
       ]);
   @override
@@ -862,7 +825,6 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           other.maxBreakDuration == this.maxBreakDuration &&
           other.friction == this.friction &&
           other.frictionLen == this.frictionLen &&
-          other.frictionCode == this.frictionCode &&
           other.snoozedUntil == this.snoozedUntil);
 }
 
@@ -888,10 +850,9 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
   final Value<DateTime?> lastBreakAt;
   final Value<DateTime?> breakUntil;
   final Value<int?> maxBreaks;
-  final Value<int?> maxBreakDuration;
+  final Value<int> maxBreakDuration;
   final Value<FrictionType> friction;
   final Value<int?> frictionLen;
-  final Value<String?> frictionCode;
   final Value<DateTime?> snoozedUntil;
   final Value<int> rowid;
   const RoutinesCompanion({
@@ -919,7 +880,6 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     this.maxBreakDuration = const Value.absent(),
     this.friction = const Value.absent(),
     this.frictionLen = const Value.absent(),
-    this.frictionCode = const Value.absent(),
     this.snoozedUntil = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -948,7 +908,6 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     this.maxBreakDuration = const Value.absent(),
     required FrictionType friction,
     this.frictionLen = const Value.absent(),
-    this.frictionCode = const Value.absent(),
     this.snoozedUntil = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
@@ -993,7 +952,6 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     Expression<int>? maxBreakDuration,
     Expression<String>? friction,
     Expression<int>? frictionLen,
-    Expression<String>? frictionCode,
     Expression<DateTime>? snoozedUntil,
     Expression<int>? rowid,
   }) {
@@ -1022,7 +980,6 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       if (maxBreakDuration != null) 'max_break_duration': maxBreakDuration,
       if (friction != null) 'friction': friction,
       if (frictionLen != null) 'friction_len': frictionLen,
-      if (frictionCode != null) 'friction_code': frictionCode,
       if (snoozedUntil != null) 'snoozed_until': snoozedUntil,
       if (rowid != null) 'rowid': rowid,
     });
@@ -1050,10 +1007,9 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       Value<DateTime?>? lastBreakAt,
       Value<DateTime?>? breakUntil,
       Value<int?>? maxBreaks,
-      Value<int?>? maxBreakDuration,
+      Value<int>? maxBreakDuration,
       Value<FrictionType>? friction,
       Value<int?>? frictionLen,
-      Value<String?>? frictionCode,
       Value<DateTime?>? snoozedUntil,
       Value<int>? rowid}) {
     return RoutinesCompanion(
@@ -1081,7 +1037,6 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       maxBreakDuration: maxBreakDuration ?? this.maxBreakDuration,
       friction: friction ?? this.friction,
       frictionLen: frictionLen ?? this.frictionLen,
-      frictionCode: frictionCode ?? this.frictionCode,
       snoozedUntil: snoozedUntil ?? this.snoozedUntil,
       rowid: rowid ?? this.rowid,
     );
@@ -1165,9 +1120,6 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     if (frictionLen.present) {
       map['friction_len'] = Variable<int>(frictionLen.value);
     }
-    if (frictionCode.present) {
-      map['friction_code'] = Variable<String>(frictionCode.value);
-    }
     if (snoozedUntil.present) {
       map['snoozed_until'] = Variable<DateTime>(snoozedUntil.value);
     }
@@ -1204,7 +1156,6 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
           ..write('maxBreakDuration: $maxBreakDuration, ')
           ..write('friction: $friction, ')
           ..write('frictionLen: $frictionLen, ')
-          ..write('frictionCode: $frictionCode, ')
           ..write('snoozedUntil: $snoozedUntil, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -1979,10 +1930,9 @@ typedef $$RoutinesTableCreateCompanionBuilder = RoutinesCompanion Function({
   Value<DateTime?> lastBreakAt,
   Value<DateTime?> breakUntil,
   Value<int?> maxBreaks,
-  Value<int?> maxBreakDuration,
+  Value<int> maxBreakDuration,
   required FrictionType friction,
   Value<int?> frictionLen,
-  Value<String?> frictionCode,
   Value<DateTime?> snoozedUntil,
   Value<int> rowid,
 });
@@ -2008,10 +1958,9 @@ typedef $$RoutinesTableUpdateCompanionBuilder = RoutinesCompanion Function({
   Value<DateTime?> lastBreakAt,
   Value<DateTime?> breakUntil,
   Value<int?> maxBreaks,
-  Value<int?> maxBreakDuration,
+  Value<int> maxBreakDuration,
   Value<FrictionType> friction,
   Value<int?> frictionLen,
-  Value<String?> frictionCode,
   Value<DateTime?> snoozedUntil,
   Value<int> rowid,
 });
@@ -2105,9 +2054,6 @@ class $$RoutinesTableFilterComposer
   ColumnFilters<int> get frictionLen => $composableBuilder(
       column: $table.frictionLen, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get frictionCode => $composableBuilder(
-      column: $table.frictionCode, builder: (column) => ColumnFilters(column));
-
   ColumnFilters<DateTime> get snoozedUntil => $composableBuilder(
       column: $table.snoozedUntil, builder: (column) => ColumnFilters(column));
 }
@@ -2195,10 +2141,6 @@ class $$RoutinesTableOrderingComposer
   ColumnOrderings<int> get frictionLen => $composableBuilder(
       column: $table.frictionLen, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get frictionCode => $composableBuilder(
-      column: $table.frictionCode,
-      builder: (column) => ColumnOrderings(column));
-
   ColumnOrderings<DateTime> get snoozedUntil => $composableBuilder(
       column: $table.snoozedUntil,
       builder: (column) => ColumnOrderings(column));
@@ -2285,9 +2227,6 @@ class $$RoutinesTableAnnotationComposer
   GeneratedColumn<int> get frictionLen => $composableBuilder(
       column: $table.frictionLen, builder: (column) => column);
 
-  GeneratedColumn<String> get frictionCode => $composableBuilder(
-      column: $table.frictionCode, builder: (column) => column);
-
   GeneratedColumn<DateTime> get snoozedUntil => $composableBuilder(
       column: $table.snoozedUntil, builder: (column) => column);
 }
@@ -2336,10 +2275,9 @@ class $$RoutinesTableTableManager extends RootTableManager<
             Value<DateTime?> lastBreakAt = const Value.absent(),
             Value<DateTime?> breakUntil = const Value.absent(),
             Value<int?> maxBreaks = const Value.absent(),
-            Value<int?> maxBreakDuration = const Value.absent(),
+            Value<int> maxBreakDuration = const Value.absent(),
             Value<FrictionType> friction = const Value.absent(),
             Value<int?> frictionLen = const Value.absent(),
-            Value<String?> frictionCode = const Value.absent(),
             Value<DateTime?> snoozedUntil = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -2368,7 +2306,6 @@ class $$RoutinesTableTableManager extends RootTableManager<
             maxBreakDuration: maxBreakDuration,
             friction: friction,
             frictionLen: frictionLen,
-            frictionCode: frictionCode,
             snoozedUntil: snoozedUntil,
             rowid: rowid,
           ),
@@ -2394,10 +2331,9 @@ class $$RoutinesTableTableManager extends RootTableManager<
             Value<DateTime?> lastBreakAt = const Value.absent(),
             Value<DateTime?> breakUntil = const Value.absent(),
             Value<int?> maxBreaks = const Value.absent(),
-            Value<int?> maxBreakDuration = const Value.absent(),
+            Value<int> maxBreakDuration = const Value.absent(),
             required FrictionType friction,
             Value<int?> frictionLen = const Value.absent(),
-            Value<String?> frictionCode = const Value.absent(),
             Value<DateTime?> snoozedUntil = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -2426,7 +2362,6 @@ class $$RoutinesTableTableManager extends RootTableManager<
             maxBreakDuration: maxBreakDuration,
             friction: friction,
             frictionLen: frictionLen,
-            frictionCode: frictionCode,
             snoozedUntil: snoozedUntil,
             rowid: rowid,
           ),

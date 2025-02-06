@@ -20,10 +20,9 @@ class Routine {
   DateTime? _lastBreakAt;
   DateTime? _breakUntil;
   int? _maxBreaks;
-  int? _maxBreakDuration;
+  int _maxBreakDuration;
   FrictionType _friction;
   int? _frictionLen;
-  String? _frictionCode;
   DateTime? _snoozedUntil;
 
   late final Map<String, Group> _groups;
@@ -47,10 +46,9 @@ class Routine {
     _lastBreakAt = null,
     _breakUntil = null,
     _maxBreaks = null,
-    _maxBreakDuration = null,
+    _maxBreakDuration = 15,
     _friction = FrictionType.delay,
     _frictionLen = null,
-    _frictionCode = null,
     _snoozedUntil = null,
     _entry = null {
       _groups = {
@@ -71,7 +69,6 @@ class Routine {
     _maxBreakDuration = entry.maxBreakDuration,
     _friction = entry.friction,
     _frictionLen = entry.frictionLen,
-    _frictionCode = entry.frictionCode,
     _snoozedUntil = entry.snoozedUntil {
       _entry = entry;
 
@@ -94,7 +91,6 @@ class Routine {
     _maxBreakDuration = other._maxBreakDuration,
     _friction = other._friction,
     _frictionLen = other._frictionLen,
-    _frictionCode = other._frictionCode,
     _snoozedUntil = other._snoozedUntil,
     _entry = other._entry {
       _groups = Map.fromEntries(
@@ -132,7 +128,6 @@ class Routine {
       maxBreakDuration: Value(_maxBreakDuration),
       friction: Value(_friction),
       frictionLen: Value(_frictionLen),
-      frictionCode: Value(_frictionCode),
       snoozedUntil: Value(_snoozedUntil),
       updatedAt: Value(DateTime.now()),
       createdAt: Value(_entry?.createdAt ?? DateTime.now()),
@@ -222,10 +217,6 @@ class Routine {
 
     if (_entry!.frictionLen != _frictionLen) {
       changes.add('frictionLen');
-    }
-
-    if (_entry!.frictionCode != _frictionCode) {
-      changes.add('frictionCode');
     }
 
     if (_entry!.snoozedUntil != _snoozedUntil) {
@@ -332,7 +323,7 @@ class Routine {
   Future<void> pause({int? minutes}) async {
     if (!canPause) return;
 
-    final duration = minutes ?? _maxBreakDuration ?? 15;
+    final duration = minutes ?? _maxBreakDuration;
     final now = DateTime.now();
     
     _lastBreakAt = now;

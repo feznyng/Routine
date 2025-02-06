@@ -10,9 +10,7 @@ enum FrictionType {
   none,
   delay,
   intention,
-  code,
-  nfc,
-  qr
+  code
 }
 
 @DataClassName('RoutineEntry')
@@ -47,12 +45,10 @@ class Routines extends Table {
   late final lastBreakAt = dateTime().nullable()();
   late final breakUntil = dateTime().nullable()();
   late final maxBreaks = integer().nullable()();
-  late final maxBreakDuration = integer().nullable()();
+  late final maxBreakDuration = integer().clientDefault(() => 15)();
   late final friction = textEnum<FrictionType>()();
   late final frictionLen = integer().nullable()();
-  late final frictionCode = text().nullable()();
   late final snoozedUntil = dateTime().nullable()();
-
 }
 
 @DataClassName('DeviceEntry')
