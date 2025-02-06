@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../routine.dart';
 import 'block_group_page.dart';
+import '../database.dart';
 
 class RoutinePage extends StatefulWidget {
   final Routine routine;
@@ -183,6 +184,226 @@ class _RoutinePageState extends State<RoutinePage> {
     );
   }
 
+  Widget _buildBreakConfigSection() {
+    return Card(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: double.infinity,
+        constraints: const BoxConstraints(minHeight: 300),
+        child: SingleChildScrollView(
+          child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              'Breaks',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Max Breaks'),
+                const SizedBox(height: 8),
+                SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment(
+                      value: false,
+                      label: Text('Unlimited'),
+                    ),
+                    ButtonSegment(
+                      value: true,
+                      label: Text('Limited'),
+                    ),
+                  ],
+                  selected: {_routine.maxBreaks != null},
+                  onSelectionChanged: (Set<bool> selection) {
+                    setState(() {
+                      _routine.maxBreaks = selection.first ? 3 : null;
+                      _validateRoutine();
+                    });
+                  },
+                ),
+                if (_routine.maxBreaks != null) ...[                
+                  const SizedBox(height: 16),
+                  SegmentedButton<String>(
+                    segments: [
+                      ButtonSegment(
+                        value: 'minus',
+                        icon: const Icon(Icons.remove),
+                        enabled: _routine.maxBreaks! > 1,
+                      ),
+                      ButtonSegment(
+                        value: 'text',
+                        label: Text('${_routine.maxBreaks} breaks'),
+                      ),
+                      ButtonSegment(
+                        value: 'plus',
+                        icon: const Icon(Icons.add),
+                        enabled: _routine.maxBreaks! < 10,
+                      ),
+                    ],
+                    emptySelectionAllowed: true,
+                    selected: const {},
+                    onSelectionChanged: (Set<String> selected) {
+                      setState(() {
+                        if (selected.first == 'minus' && _routine.maxBreaks! > 1) {
+                          _routine.maxBreaks = _routine.maxBreaks! - 1;
+                        } else if (selected.first == 'plus' && _routine.maxBreaks! < 10) {
+                          _routine.maxBreaks = _routine.maxBreaks! + 1;
+                        }
+                        _validateRoutine();
+                      });
+                    },
+                  ),
+                ],
+                const SizedBox(height: 16),
+                const Text('Break Duration'),
+                const SizedBox(height: 8),
+                SegmentedButton<String>(
+                  segments: [
+                    ButtonSegment(
+                      value: 'minus',
+                      icon: const Icon(Icons.remove),
+                      enabled: _routine.maxBreakDuration > 5,
+                    ),
+                    ButtonSegment(
+                      value: 'text',
+                      label: Text('${_routine.maxBreakDuration} min'),
+                    ),
+                    ButtonSegment(
+                      value: 'plus',
+                      icon: const Icon(Icons.add),
+                      enabled: _routine.maxBreakDuration < 60,
+                    ),
+                  ],
+                  emptySelectionAllowed: true,
+                  selected: const {},
+                  onSelectionChanged: (Set<String> selected) {
+                    setState(() {
+                      if (selected.first == 'minus' && _routine.maxBreakDuration > 5) {
+                        _routine.maxBreakDuration = _routine.maxBreakDuration - 5;
+                      } else if (selected.first == 'plus' && _routine.maxBreakDuration < 60) {
+                        _routine.maxBreakDuration = _routine.maxBreakDuration + 5;
+                      }
+                      _validateRoutine();
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                const Text('Friction'),
+                const SizedBox(height: 8),
+                SegmentedButton<FrictionType>(
+                  segments: const [
+                    ButtonSegment(
+                      value: FrictionType.none,
+                      label: Text('None'),
+                    ),
+                    ButtonSegment(
+                      value: FrictionType.delay,
+                      label: Text('Delay'),
+                    ),
+                    ButtonSegment(
+                      value: FrictionType.intention,
+                      label: Text('Intention'),
+                    ),
+                    ButtonSegment(
+                      value: FrictionType.code,
+                      label: Text('Code'),
+                    ),
+                  ],
+                  selected: {_routine.friction},
+                  onSelectionChanged: (Set<FrictionType> selection) {
+                    setState(() {
+                      _routine.friction = selection.first;
+                      if (_routine.friction == FrictionType.none || 
+                          _routine.friction == FrictionType.intention) {
+                        _routine.frictionLen = null;
+                      }
+                      _validateRoutine();
+                    });
+                  },
+                ),
+                if (_routine.friction == FrictionType.delay || _routine.friction == FrictionType.code) ...[                
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Text(_routine.friction == FrictionType.delay ? 'Delay Length' : 'Code Length'),
+                      const SizedBox(width: 8)
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(
+                        value: false,
+                        label: Text('Automatic'),
+                      ),
+                      ButtonSegment(
+                        value: true,
+                        label: Text('Fixed'),
+                      ),
+                    ],
+                    selected: {_routine.frictionLen != null},
+                    onSelectionChanged: (Set<bool> selection) {
+                      setState(() {
+                        _routine.frictionLen = selection.first 
+                          ? (_routine.friction == FrictionType.delay ? 30 : 6)
+                          : null;
+                        _validateRoutine();
+                      });
+                    },
+                  ),
+                  if (_routine.frictionLen != null) ...[                
+                    const SizedBox(height: 16),
+                    SegmentedButton<String>(
+                      segments: [
+                        ButtonSegment(
+                          value: 'minus',
+                          icon: const Icon(Icons.remove),
+                          enabled: _routine.frictionLen! > (_routine.friction == FrictionType.delay ? 5 : 4),
+                        ),
+                        ButtonSegment(
+                          value: 'text',
+                          label: Text(_routine.friction == FrictionType.delay 
+                            ? '${_routine.frictionLen} sec'
+                            : '${_routine.frictionLen} chars'),
+                        ),
+                        ButtonSegment(
+                          value: 'plus',
+                          icon: const Icon(Icons.add),
+                          enabled: _routine.frictionLen! < (_routine.friction == FrictionType.delay ? 60 : 12),
+                        ),
+                      ],
+                      emptySelectionAllowed: true,
+                      selected: const {},
+                      onSelectionChanged: (Set<String> selected) {
+                        setState(() {
+                          if (selected.first == 'minus' && 
+                              _routine.frictionLen! > (_routine.friction == FrictionType.delay ? 5 : 4)) {
+                            _routine.frictionLen = _routine.frictionLen! - (_routine.friction == FrictionType.delay ? 5 : 1);
+                          } else if (selected.first == 'plus' && 
+                              _routine.frictionLen! < (_routine.friction == FrictionType.delay ? 60 : 12)) {
+                            _routine.frictionLen = _routine.frictionLen! + (_routine.friction == FrictionType.delay ? 5 : 1);
+                          }
+                          _validateRoutine();
+                        });
+                      },
+                    ),
+                  ],
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    )));
+  }
+
   Widget _buildBlockGroupSection() {
     String summary = '';
     final group = _routine.getGroup();
@@ -270,6 +491,8 @@ class _RoutinePageState extends State<RoutinePage> {
               _buildBlockGroupSection(),
               const SizedBox(height: 16),
               _buildTimeSection(),
+              const SizedBox(height: 16),
+              _buildBreakConfigSection(),
               const SizedBox(height: 32),
               if (_routine.saved) ...[
                 SizedBox(

@@ -346,4 +346,36 @@ class Routine {
   List<String> get apps => getGroup()?.apps ?? const [];
   List<String> get sites => getGroup()?.sites ?? const [];
   bool get allow => getGroup()?.allow ?? false;
+
+  // Break configuration getters
+  int? get maxBreaks => _maxBreaks;
+  set maxBreaks(int? value) {
+    _maxBreaks = value;
+  }
+
+  int get maxBreakDuration => _maxBreakDuration;
+  set maxBreakDuration(int value) {
+    if (value < 1) throw Exception('Break duration must be at least 1 minute');
+    _maxBreakDuration = value;
+  }
+
+  FrictionType get friction => _friction;
+  set friction(FrictionType value) {
+    _friction = value;
+  }
+
+  int? get frictionLen => _frictionLen;
+  set frictionLen(int? value) {
+    _frictionLen = value;
+  }
+
+  int calculateDelay() {
+    if (_frictionLen != null) return _frictionLen!;
+    return (_numBreaksTaken ?? 0) * 30; // 30 seconds per break taken
+  }
+
+  int calculateCodeLength() {
+    if (_frictionLen != null) return _frictionLen!;
+    return (_numBreaksTaken ?? 0) * 2 + 4; // Base 4 chars + 2 per break taken
+  }
 }

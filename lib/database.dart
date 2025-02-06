@@ -31,7 +31,6 @@ class Routines extends Table {
   late final sunday = boolean()();
   late final startTime = integer()();
   late final endTime = integer()();
-  late final recurring = boolean()();
 
   late final changes = text().map(StringListTypeConverter())();
   late final deleted = boolean().clientDefault(() => false)();

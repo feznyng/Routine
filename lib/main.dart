@@ -148,13 +148,6 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
           Expanded(
             child: Column(
               children: [
-                AppBar(
-                  title: Text(
-                    _selectedIndex == 0 ? "Routines" : "Settings",
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  centerTitle: false,
-                ),
                 Expanded(child: _pages[_selectedIndex]),
               ],
             ),
