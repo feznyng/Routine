@@ -26,6 +26,7 @@ typedef Changes = ({
 
 class SyncService {
   static final SyncService _instance = SyncService._internal();
+  RealtimeChannel? _syncChannel;
   
   SyncService._internal() {
     _startConsumer();
@@ -33,6 +34,37 @@ class SyncService {
   
   factory SyncService() {
     return _instance;
+  }
+
+  void _setupRealtimeSync() {
+    final userId = _userId;
+    if (userId.isEmpty) return;
+
+    // Clean up existing subscription if any
+    _syncChannel?.unsubscribe();
+
+    // Subscribe to sync channel for this user
+    _syncChannel = _client.channel('sync-$userId');
+
+    _syncChannel!
+      .onBroadcast( 
+        event: 'sync', 
+        callback: (payload, [_]) {
+          // When we receive a sync message from another client, queue a sync job
+          addJob(SyncJob(remote: true));
+        }
+      )
+      .subscribe();
+  }
+
+  Future<void> _notifyPeers() async {
+    final channel = _syncChannel;
+    if (channel == null) return;
+
+    await channel.sendBroadcastMessage(
+      event: 'sync',
+      payload: { 'timestamp': DateTime.now().toIso8601String() },
+    );
   }
   
   final _jobController = StreamController<SyncJob>();
@@ -84,17 +116,51 @@ class SyncService {
     }
   }
   
-  void dispose() {
+  Future<void> dispose() async {
     _batchTimer?.cancel();
+    await _syncChannel?.unsubscribe();
     _jobController.close();
   }
 
+  String get _userId => _client.auth.currentUser?.id ?? '';
+
   Future<Changes> fetchRemoteChanges([DateTime? lastPulledAt]) async {
-    // TODO: implement pullChanges using supabase
+    final userId = _userId;
+    if (userId.isEmpty) return (routines: TableChanges(upserts: [], deletes: []), groups: TableChanges(upserts: [], deletes: []), devices: TableChanges(upserts: [], deletes: []));
+
+    final routineQuery = _client.from('routines').select().eq('user_id', userId);
+    final groupQuery = _client.from('groups').select().eq('user_id', userId);
+    final deviceQuery = _client.from('devices').select().eq('user_id', userId);
+
+    if (lastPulledAt != null) {
+      routineQuery.gte('updated_at', lastPulledAt.toIso8601String());
+      groupQuery.gte('updated_at', lastPulledAt.toIso8601String());
+      deviceQuery.gte('updated_at', lastPulledAt.toIso8601String());
+    }
+
+    final results = await Future.wait([
+      routineQuery,
+      groupQuery,
+      deviceQuery,
+    ]);
+
+    final routineData = results[0];
+    final groupData = results[1];
+    final deviceData = results[2];
+
     return (
-      routines: TableChanges(upserts: [], deletes: []),
-      groups: TableChanges(upserts: [], deletes: []),
-      devices: TableChanges(upserts: [], deletes: [])
+      routines: TableChanges(
+        upserts: routineData.where((r) => r['deleted'] != true).toList(),
+        deletes: routineData.where((r) => r['deleted'] == true).map((r) => r['id'].toString()).toList(),
+      ),
+      groups: TableChanges(
+        upserts: groupData.where((g) => g['deleted'] != true).toList(),
+        deletes: groupData.where((g) => g['deleted'] == true).map((g) => g['id'].toString()).toList(),
+      ),
+      devices: TableChanges(
+        upserts: deviceData.where((d) => d['deleted'] != true).toList(),
+        deletes: deviceData.where((d) => d['deleted'] == true).map((d) => d['id'].toString()).toList(),
+      )
     );
   }
 
@@ -155,7 +221,7 @@ class SyncService {
     }
   }
 
-  Future<void> pullChanges() async {
+  Future<DateTime> pullChanges() async {
     final db = getIt<AppDatabase>();
     
     final lastPulledAt = await db.getLastPulledAt();
@@ -193,29 +259,151 @@ class SyncService {
     );
 
     getIt<Device>().setLastPulledAt(pulledAt);
+
+    return pulledAt;
   }
 
-  Future<void> pushChanges() async {
+  Future<bool> pushChanges(DateTime pulledAt) async {
     final db = getIt<AppDatabase>();
-    
-    final now = DateTime.now();
     final changes = await fetchLocalChanges();
+    
+    // Check for conflicts in each table
+    final routineConflicts = await _checkConflicts('routines', changes.routines, pulledAt);
+    final groupConflicts = await _checkConflicts('groups', changes.groups, pulledAt);
+    final deviceConflicts = await _checkConflicts('devices', changes.devices, pulledAt);
+    
+    if (routineConflicts || groupConflicts || deviceConflicts) {
+      return false;
+    }
 
-    // TODO: implement pushChanges using supabase
+    // Push changes for each table
+    await _pushTableChanges('routines', changes.routines, pulledAt);
+    await _pushTableChanges('groups', changes.groups, pulledAt);
+    await _pushTableChanges('devices', changes.devices, pulledAt);
 
-    await db.clearChangesSince(now);
+    // Clear local change tracking
+    await db.clearChangesSince(pulledAt);
+
+    // Notify other clients about the changes
+    await _notifyPeers();
+
+    return true;
+  }
+
+  Future<bool> _checkConflicts(String table, TableChanges changes, DateTime pulledAt) async {
+    if (changes.upserts.isEmpty && changes.deletes.isEmpty) return false;
+
+    final ids = [
+      ...changes.upserts.map((e) => e['id'].toString()),
+      ...changes.deletes,
+    ];
+
+    if (ids.isEmpty) return false;
+
+    final results = await _client
+      .from(table)
+      .select('updated_at')
+      .inFilter('id', ids)
+      .gte('updated_at', pulledAt.toIso8601String());
+
+    return results.isNotEmpty;
+  }
+
+  Future<void> _pushTableChanges(String table, TableChanges changes, DateTime pulledAt) async {
+    final userId = _userId;
+    if (userId.isEmpty) return;
+
+    // Handle upserts
+    for (final item in changes.upserts) {
+      final changedFields = (item['changes'] as List<dynamic>).cast<String>();
+      if (changedFields.isEmpty) continue;
+
+      // Convert all fields to snake_case for Supabase
+      final updates = Map.fromEntries(
+        item.entries.map((e) {
+          if (e.key == 'changes') return null; // Skip changes field
+          final snakeKey = e.key.replaceAllMapped(
+            RegExp(r'[A-Z]'),
+            (match) => '_${match.group(0)?.toLowerCase()}'
+          );
+          return MapEntry(snakeKey, e.value);
+        }).whereType<MapEntry<String, dynamic>>()
+      );
+
+      // Ensure updated_at is set to pulledAt and include user_id
+      updates['updated_at'] = pulledAt.toIso8601String();
+      updates['user_id'] = userId;
+
+      await _client
+        .from(table)
+        .update(updates)
+        .eq('id', item['id'])
+        .eq('user_id', userId);
+    }
+
+    // Handle deletes
+    if (changes.deletes.isNotEmpty) {
+      await _client
+        .from(table)
+        .update({
+          'deleted': true,
+          'updated_at': pulledAt.toIso8601String(),
+        })
+        .inFilter('id', changes.deletes);
+    }
+  }
+
+  Future<void> deleteStaleRemoteEntries(DateTime pulledAt) async {
+    final userId = _userId;
+    if (userId.isEmpty) return;
+
+    // Get all devices and their last_pulled_at timestamps
+    final devices = await _client
+      .from('devices')
+      .select('last_pulled_at')
+      .eq('deleted', false)
+      .eq('user_id', userId);
+
+    if (devices.isEmpty) return; // No devices to check
+
+    // Find the oldest last_pulled_at timestamp
+    final oldestPull = devices
+      .map((d) => DateTime.parse(d['last_pulled_at'] as String))
+      .reduce((a, b) => a.isBefore(b) ? a : b);
+
+    // Delete entries marked as deleted that are older than the oldest last_pulled_at
+    // This ensures all devices have synced these deletions
+    final tables = ['routines', 'groups', 'devices'];
+    
+    await Future.wait(
+      tables.map((table) => _client
+        .from(table)
+        .delete()
+        .eq('deleted', true)
+        .eq('user_id', userId)
+        .lte('updated_at', oldestPull.toIso8601String())
+      )
+    );
   }
 
   // order matters: devices, groups, routines
   Future<void> sync(bool notifyRemote) async {
+    if (_userId.isEmpty) return;
+
+    // Ensure we're subscribed to the sync channel
+    _setupRealtimeSync();
 
     // pull changes
     // TODO: skip this if not connected/not subscribed
-    await pullChanges();
+    final pulledAt = await pullChanges();
 
     // push changes
-    await pushChanges();
+    final success = await pushChanges(pulledAt);
 
-    // TODO: actually delete remote stale flagged entries using min([...devices.lastPulledAt])
+    if (success) {
+      await deleteStaleRemoteEntries(pulledAt);
+    } else {
+      addJob(SyncJob(remote: true));
+    }
   }
 }
