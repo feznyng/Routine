@@ -1,7 +1,9 @@
+import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:io';
 import 'database.dart';
 import 'setup.dart';
+import 'sync_service.dart';
 
 enum DeviceType {
   windows,
@@ -15,6 +17,7 @@ class Device {
   final String _id;
   late final DeviceType _type;
   late final bool _curr;
+  late final DateTime? _lastPulledAt;
 
   static Future<Device> getCurrent() async {
     final deviceEntry = await getIt<AppDatabase>().getThisDevice();
@@ -47,15 +50,30 @@ class Device {
   }
   
   Future<void> save() async {
-    await getIt<AppDatabase>().insertDevice(DeviceEntry(id: _id, name: '', type: _type.name, curr: _curr));
+    await getIt<AppDatabase>().upsertDevice(DevicesCompanion(
+      id: Value(_id),
+      name: Value(''),
+      type: Value(_type.name),
+      curr: Value(_curr),
+      updatedAt: Value(DateTime.now()),
+      lastPulledAt: Value(_lastPulledAt),
+      deleted: Value(false)
+    ));
+    SyncService().addJob(SyncJob(remote: false));
   }
-
   Device.fromEntry(DeviceEntry entry)
       : _id = entry.id,
         _type = DeviceType.values.byName(entry.type),
-        _curr = entry.curr;
+        _curr = entry.curr,
+        _lastPulledAt = entry.lastPulledAt;
 
   String get id => _id;
   DeviceType get type => _type;
   bool get curr => _curr;
+  DateTime? get lastPulledAt => _lastPulledAt;
+
+  Future<void> setLastPulledAt(DateTime lastPulledAt) async {
+    _lastPulledAt = lastPulledAt;
+    await save();
+  }
 }

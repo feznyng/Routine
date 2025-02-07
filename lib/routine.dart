@@ -5,6 +5,7 @@ import 'group.dart';
 import 'device.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
+import 'sync_service.dart';
 
 class Routine {
   final String _id;
@@ -131,13 +132,16 @@ class Routine {
       snoozedUntil: Value(_snoozedUntil),
       updatedAt: Value(DateTime.now()),
       createdAt: Value(_entry?.createdAt ?? DateTime.now()),
+      recurring: Value(true)
     ));
+    SyncService().addJob(SyncJob(remote: false));
   }
 
   bool get saved => _entry != null;
 
   Future<void> delete() async {
     await getIt<AppDatabase>().tempDeleteRoutine(_id);
+    SyncService().addJob(SyncJob(remote: false));
   }
 
   List<String> get changes {

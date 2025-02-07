@@ -4,6 +4,7 @@ import 'setup.dart';
 import 'device.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
+import 'sync_service.dart';
 
 class Group {
   final String _id;
@@ -56,10 +57,12 @@ class Group {
       changes: Value(changes),
       updatedAt: Value(DateTime.now()),
     ));
+    SyncService().addJob(SyncJob(remote: false));
   }
 
   delete() async {
     await getIt<AppDatabase>().tempDeleteGroup(_id);
+    SyncService().addJob(SyncJob(remote: false));
   }
 
   bool get saved {

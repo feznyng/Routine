@@ -31,6 +31,7 @@ class Routines extends Table {
   late final sunday = boolean()();
   late final startTime = integer()();
   late final endTime = integer()();
+  late final recurring = boolean()();
 
   late final changes = text().map(StringListTypeConverter())();
   late final deleted = boolean().clientDefault(() => false)();
@@ -60,6 +61,10 @@ class Devices extends Table {
   late final name = text()();
   late final type = text()();
   late final curr = boolean()();
+  late final deleted = boolean().clientDefault(() => false)();
+
+  late final updatedAt = dateTime()();
+  late final lastPulledAt = dateTime().nullable()();
 }
 
 @DataClassName('GroupEntry')
@@ -105,6 +110,15 @@ class AppDatabase extends _$AppDatabase {
     if (!kDebugMode) {
       return;
     }
+  }
+
+  Future<List<RoutineEntry>> getRoutinesById(List<String> ids) {
+    return (select(routines)..where((t) => t.id.isIn(ids))).get();
+  }
+
+  Future<DateTime?> getLastPulledAt() async {
+    final entry = await (select(devices)..where((t) => t.curr.equals(true))).getSingle();
+    return entry.updatedAt;
   }
 
   Stream<List<RoutineWithGroups>> watchRoutines() {
@@ -183,6 +197,18 @@ class AppDatabase extends _$AppDatabase {
     await (delete(routines)..where((t) => t.id.equals(id))).go();
   }
 
+  Future<List<DeviceEntry>> getDevicesById(List<String> ids) {
+    return (select(devices)..where((t) => t.id.isIn(ids))).get();
+  }
+
+  Future<void> deleteDevice(String id) async {
+    await (delete(devices)..where((t) => t.id.equals(id))).go();
+  }
+
+  Future<List<GroupEntry>> getGroupsById(List<String> ids) {
+    return (select(groups)..where((t) => t.id.isIn(ids))).get();
+  }
+
   Future<void> tempDeleteGroup(String id) async {
     await transaction(() async {
       await (update(groups)..where((t) => t.id.equals(id))).write(GroupsCompanion(deleted: Value(true)));
@@ -222,7 +248,16 @@ class AppDatabase extends _$AppDatabase {
     return await (select(devices)..where((t) => t.curr.equals(true))).getSingleOrNull();
   }
 
-  Future<void> insertDevice(DeviceEntry entry) {
-    return into(devices).insert(entry);
+  Future<void> upsertDevice(DevicesCompanion entry) {
+    return into(devices).insertOnConflictUpdate(entry);
+  }
+
+  Future<void> clearChangesSince(DateTime time) async {
+    return await transaction(() async {
+      await (update(groups)..where((t) => t.updatedAt.isSmallerThanValue(time) & t.deleted.equals(false))).write(GroupsCompanion(changes: Value([])));
+      await (delete(groups)..where((t) => t.deleted.equals(true))).go();
+      await (update(routines)..where((t) => t.updatedAt.isSmallerThanValue(time) & t.deleted.equals(false))).write(RoutinesCompanion(changes: Value([])));
+      await (delete(routines)..where((t) => t.deleted.equals(true))).go();
+    });
   }
 }

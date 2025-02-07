@@ -1,6 +1,7 @@
 import 'database.dart';
 import 'package:get_it/get_it.dart';
 import 'device.dart';
+import 'sync_service.dart';
 
 final getIt = GetIt.instance;
 
@@ -12,5 +13,7 @@ void setup() async {
 
   getIt.registerSingleton<Device>(currDevice); 
 
-  db.initialize();
+  await db.initialize();
+
+  SyncService().sync(false);
 }
