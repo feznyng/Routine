@@ -252,6 +252,30 @@ class AppDatabase extends _$AppDatabase {
     return into(devices).insertOnConflictUpdate(entry);
   }
 
+  Future<List<RoutineEntry>> getRoutineChanges([DateTime? since]) {
+    var query = select(routines);
+    if (since != null) {
+      query.where((t) => t.updatedAt.isBiggerThanValue(since));
+    }
+    return query.get();
+  }
+
+  Future<List<GroupEntry>> getGroupChanges([DateTime? since]) {
+    var query = select(groups);
+    if (since != null) {
+      query.where((t) => t.updatedAt.isBiggerThanValue(since));
+    }
+    return query.get();
+  }
+
+  Future<List<DeviceEntry>> getDeviceChanges([DateTime? since]) {
+    var query = select(devices);
+    if (since != null) {
+      query.where((t) => t.updatedAt.isBiggerThanValue(since));
+    }
+    return query.get();
+  }
+
   Future<void> clearChangesSince(DateTime time) async {
     return await transaction(() async {
       await (update(groups)..where((t) => t.updatedAt.isSmallerThanValue(time) & t.deleted.equals(false))).write(GroupsCompanion(changes: Value([])));

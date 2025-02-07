@@ -99,11 +99,26 @@ class SyncService {
   }
 
   Future<Changes> fetchLocalChanges([DateTime? lastPulledAt]) async {
-    // TODO: implement pullChanges using drift
+    final db = getIt<AppDatabase>();
+
+    // Get changes since lastPulledAt for each table
+    final routineChanges = await db.getRoutineChanges(lastPulledAt);
+    final groupChanges = await db.getGroupChanges(lastPulledAt);
+    final deviceChanges = await db.getDeviceChanges(lastPulledAt);
+
     return (
-      routines: TableChanges(upserts: [], deletes: []),
-      groups: TableChanges(upserts: [], deletes: []),
-      devices: TableChanges(upserts: [], deletes: [])
+      routines: TableChanges(
+        upserts: routineChanges.where((r) => !r.deleted).map((r) => r.toJson()).toList(),
+        deletes: routineChanges.where((r) => r.deleted).map((r) => r.id).toList(),
+      ),
+      groups: TableChanges(
+        upserts: groupChanges.where((g) => !g.deleted).map((g) => g.toJson()).toList(),
+        deletes: groupChanges.where((g) => g.deleted).map((g) => g.id).toList(),
+      ),
+      devices: TableChanges(
+        upserts: deviceChanges.where((d) => !d.deleted).map((d) => d.toJson()).toList(),
+        deletes: deviceChanges.where((d) => d.deleted).map((d) => d.id).toList(),
+      )
     );
   }
 
