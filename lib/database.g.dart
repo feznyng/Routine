@@ -1304,8 +1304,8 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
   final bool curr;
   final bool deleted;
   final DateTime updatedAt;
-  final DateTime? lastPulledAt;
-  const DeviceEntry(
+  DateTime? lastPulledAt;
+  DeviceEntry(
       {required this.id,
       required this.name,
       required this.type,

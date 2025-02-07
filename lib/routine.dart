@@ -134,6 +134,7 @@ class Routine {
       createdAt: Value(_entry?.createdAt ?? DateTime.now()),
       recurring: Value(true)
     ));
+    print('routine save sync');
     SyncService().addJob(SyncJob(remote: false));
   }
 
@@ -141,6 +142,7 @@ class Routine {
 
   Future<void> delete() async {
     await getIt<AppDatabase>().tempDeleteRoutine(_id);
+    print('routine delete sync');
     SyncService().addJob(SyncJob(remote: false));
   }
 

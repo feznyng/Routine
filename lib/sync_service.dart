@@ -51,6 +51,7 @@ class SyncService {
         event: 'sync', 
         callback: (payload, [_]) {
           // When we receive a sync message from another client, queue a sync job
+          print('event sync');
           addJob(SyncJob(remote: true));
         }
       )
@@ -105,7 +106,7 @@ class SyncService {
       _pendingJobs.clear();
       
       if (batchJobs.isNotEmpty) {
-        await sync(batchJobs.any((job) => !job.remote));
+        await _sync(batchJobs.any((job) => !job.remote));
       }
     } finally {
       _isProcessing = false;
@@ -258,7 +259,8 @@ class SyncService {
       db.deleteDevice,
     );
 
-    getIt<Device>().setLastPulledAt(pulledAt);
+    final device = await db.getThisDevice();
+    await db.upsertDevice(device!.toCompanion(true).copyWith(lastPulledAt: Value(pulledAt)));
 
     return pulledAt;
   }
@@ -387,8 +389,10 @@ class SyncService {
   }
 
   // order matters: devices, groups, routines
-  Future<void> sync(bool notifyRemote) async {
+  Future<void> _sync(bool notifyRemote) async {
     if (_userId.isEmpty) return;
+    
+    print('Syncing...');
 
     // Ensure we're subscribed to the sync channel
     _setupRealtimeSync();
@@ -403,7 +407,7 @@ class SyncService {
     if (success) {
       await deleteStaleRemoteEntries(pulledAt);
     } else {
-      addJob(SyncJob(remote: true));
+      // TODO: try again up to x times
     }
   }
 }

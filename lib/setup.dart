@@ -15,5 +15,6 @@ void setup() async {
 
   await db.initialize();
 
-  SyncService().sync(false);
+  print('startup sync');
+  SyncService().addJob(SyncJob(remote: false));
 }

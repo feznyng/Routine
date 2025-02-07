@@ -17,7 +17,7 @@ class Device {
   final String _id;
   late final DeviceType _type;
   late final bool _curr;
-  late final DateTime? _lastPulledAt;
+  late DateTime? _lastPulledAt;
 
   static Future<Device> getCurrent() async {
     final deviceEntry = await getIt<AppDatabase>().getThisDevice();
@@ -26,7 +26,7 @@ class Device {
       return Device.fromEntry(deviceEntry);
     } else {
       final device =  Device(currDevice: true);
-      await device.save();
+      //await device.save();
       return device;
     }
   }
@@ -45,7 +45,7 @@ class Device {
     } else {
       throw Exception('Unsupported platform');
     }
-
+    _lastPulledAt = null;
     _curr = currDevice;
   }
   
@@ -59,6 +59,8 @@ class Device {
       lastPulledAt: Value(_lastPulledAt),
       deleted: Value(false)
     ));
+
+    print('device save sync');
     SyncService().addJob(SyncJob(remote: false));
   }
   Device.fromEntry(DeviceEntry entry)
@@ -71,9 +73,4 @@ class Device {
   DeviceType get type => _type;
   bool get curr => _curr;
   DateTime? get lastPulledAt => _lastPulledAt;
-
-  Future<void> setLastPulledAt(DateTime lastPulledAt) async {
-    _lastPulledAt = lastPulledAt;
-    await save();
-  }
 }
