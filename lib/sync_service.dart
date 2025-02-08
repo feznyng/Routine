@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'setup.dart';
 import 'database.dart';
-import 'package:drift/drift.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SyncJob {
@@ -133,9 +132,9 @@ class SyncService {
     final deviceQuery = _client.from('devices').select().eq('user_id', userId);
 
     if (lastPulledAt != null) {
-      routineQuery.gte('updated_at', lastPulledAt.toIso8601String());
-      groupQuery.gte('updated_at', lastPulledAt.toIso8601String());
-      deviceQuery.gte('updated_at', lastPulledAt.toIso8601String());
+      routineQuery.gte('updated_at', lastPulledAt.toUtc().toIso8601String());
+      groupQuery.gte('updated_at', lastPulledAt.toUtc().toIso8601String());
+      deviceQuery.gte('updated_at', lastPulledAt.toUtc().toIso8601String());
     }
 
     final results = await Future.wait([
@@ -199,7 +198,22 @@ class SyncService {
     final localItems = await getLocalById(changes.upserts.map((e) => e['id'].toString()).toList());
     final localItemMap = { for (final item in localItems) (toJson(item)['id'] as String): item };
 
-    for (final remoteItem in changes.upserts) {
+    for (var remoteItem in changes.upserts) {
+      // Convert snake_case to camelCase for all keys
+      remoteItem = Map<String, dynamic>.fromEntries(
+        remoteItem.entries.map((e) {
+          if (e.key == 'user_id') return null;
+          
+          // Convert snake_case to camelCase
+          final camelKey = e.key.split('_').indexed.map((i) {
+            final word = i.$2;
+            return i.$1 == 0 ? word : word[0].toUpperCase() + word.substring(1);
+          }).join('');
+          
+          return MapEntry(camelKey, e.value);
+        }).whereType<MapEntry<String, dynamic>>()
+      );
+
       final id = remoteItem['id'];
 
       if (localItemMap.containsKey(id)) {
@@ -211,6 +225,8 @@ class SyncService {
           remoteItem[column] = localItemData[column];
         }
       }
+
+      print('saving remote: $remoteItem');
 
       final item = fromJson(remoteItem);
       await upsert(item);
@@ -225,7 +241,7 @@ class SyncService {
     final db = getIt<AppDatabase>();
     
     final lastPulledAt = await db.getLastPulledAt();
-    final pulledAt = DateTime.now();
+    final pulledAt = DateTime.now().toUtc();
     final changes = await fetchRemoteChanges(lastPulledAt);
 
     // Handle routines
@@ -234,7 +250,7 @@ class SyncService {
       db.getRoutinesById,
       (r) => r.toJson(),
       RoutineEntry.fromJson,
-      (r) => db.upsertRoutine(r.toCompanion(false).copyWith(updatedAt: Value.absent())),
+      (r) => db.upsertRoutine(r.toCompanion(false)),
       db.deleteRoutine,
     );
 
@@ -244,7 +260,7 @@ class SyncService {
       db.getGroupsById,
       (g) => g.toJson(),
       GroupEntry.fromJson,
-      (g) => db.upsertGroup(g.toCompanion(false).copyWith(updatedAt: Value.absent())),
+      (g) => db.upsertGroup(g.toCompanion(false)),
       db.deleteGroup,
     );
 
@@ -254,12 +270,9 @@ class SyncService {
       db.getDevicesById,
       (d) => d.toJson(),
       DeviceEntry.fromJson,
-      (d) => db.upsertDevice(d.toCompanion(false).copyWith(updatedAt: Value.absent())),
+      (d) => db.upsertDevice(d.toCompanion(true)),
       db.deleteDevice,
     );
-
-    final device = await db.getThisDevice();
-    await db.upsertDevice(device!.toCompanion(true).copyWith(lastPulledAt: Value(pulledAt)));
 
     return pulledAt;
   }
@@ -305,7 +318,9 @@ class SyncService {
       .from(table)
       .select('updated_at')
       .inFilter('id', ids)
-      .gte('updated_at', pulledAt.toIso8601String());
+      .gt('updated_at', pulledAt.toUtc().toIso8601String());
+
+    print('conflicts $pulledAt ($table): $results');
 
     return results.isNotEmpty;
   }
@@ -342,6 +357,7 @@ class SyncService {
       updates['last_pulled_at'] = pulledAt.toUtc().toIso8601String();
       updates['user_id'] = userId;
 
+      print('saving local: $updates');
       await _client
         .from(table)
         .upsert(updates)
@@ -376,10 +392,8 @@ class SyncService {
 
     // Find the oldest last_pulled_at timestamp
     final oldestPull = devices
-      .map((d) => DateTime.parse(d['last_pulled_at'] as String))
+      .map((d) => DateTime.parse(d['last_pulled_at'] as String).toUtc())
       .reduce((a, b) => a.isBefore(b) ? a : b);
-
-    print('oldestPull: ${oldestPull.toIso8601String()}');
 
     // Delete entries marked as deleted that are older than the oldest last_pulled_at
     // This ensures all devices have synced these deletions
