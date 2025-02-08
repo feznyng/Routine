@@ -117,8 +117,8 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<DateTime?> getLastPulledAt() async {
-    final entry = await (select(devices)..where((t) => t.curr.equals(true))).getSingle();
-    return entry.updatedAt;
+    final entry = await (select(devices)..where((t) => t.curr.equals(true))).getSingleOrNull();
+    return entry?.updatedAt;
   }
 
   Stream<List<RoutineWithGroups>> watchRoutines() {
