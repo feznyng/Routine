@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'device.dart';
 import 'setup.dart';
 import 'database.dart';
 import 'package:drift/drift.dart';
@@ -317,8 +316,9 @@ class SyncService {
 
     // Handle upserts
     for (final item in changes.upserts) {
-      final changedFields = (item['changes'] as List<dynamic>).cast<String>();
-      if (changedFields.isEmpty) continue;
+      final changes = item['changes'];
+      final changedFields = ((changes ?? []) as List<dynamic>).cast<String>();
+      if (changes != null && changedFields.isEmpty) continue;
 
       // Convert all fields to snake_case for Supabase
       final updates = Map.fromEntries(
@@ -328,17 +328,23 @@ class SyncService {
             RegExp(r'[A-Z]'),
             (match) => '_${match.group(0)?.toLowerCase()}'
           );
-          return MapEntry(snakeKey, e.value);
+          var value = e.value;
+          // Convert DateTime values to UTC ISO string
+          if (value is DateTime) {
+            value = value.toUtc().toIso8601String();
+          }
+          return MapEntry(snakeKey, value);
         }).whereType<MapEntry<String, dynamic>>()
       );
 
       // Ensure updated_at is set to pulledAt and include user_id
-      updates['updated_at'] = pulledAt.toIso8601String();
+      updates['updated_at'] = pulledAt.toUtc().toIso8601String();
+      updates['last_pulled_at'] = pulledAt.toUtc().toIso8601String();
       updates['user_id'] = userId;
 
       await _client
         .from(table)
-        .update(updates)
+        .upsert(updates)
         .eq('id', item['id'])
         .eq('user_id', userId);
     }
@@ -349,7 +355,7 @@ class SyncService {
         .from(table)
         .update({
           'deleted': true,
-          'updated_at': pulledAt.toIso8601String(),
+          'updated_at': pulledAt.toUtc().toIso8601String(),
         })
         .inFilter('id', changes.deletes);
     }
@@ -372,6 +378,8 @@ class SyncService {
     final oldestPull = devices
       .map((d) => DateTime.parse(d['last_pulled_at'] as String))
       .reduce((a, b) => a.isBefore(b) ? a : b);
+
+    print('oldestPull: ${oldestPull.toIso8601String()}');
 
     // Delete entries marked as deleted that are older than the oldest last_pulled_at
     // This ensures all devices have synced these deletions
@@ -406,8 +414,10 @@ class SyncService {
 
     if (success) {
       await deleteStaleRemoteEntries(pulledAt);
+      print('Sync successful');
     } else {
       // TODO: try again up to x times
+      print('Sync failed');
     }
   }
 }
