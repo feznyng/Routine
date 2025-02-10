@@ -134,6 +134,7 @@ class SyncService {
     final lastPulledAt = currDevice.lastPulledAt;
     final pulledAt = DateTime.now();
 
+    // Pull and apply remote device changes
     {
       final remoteDevices = await _client.from('devices').select().eq('user_id', _userId).gt('updated_at', pulledAt);
       print('remote device changes: $remoteDevices');
@@ -146,7 +147,6 @@ class SyncService {
 
         if (localDevice != null) {
           final localDeviceData = localDevice.toJson();
-
           for (final change in localDevice.changes) {
             overwriteMap[change] = localDeviceData[change];
           }
@@ -169,6 +169,98 @@ class SyncService {
       }
     }
 
+    // Pull and apply remote group changes
+    {
+      final remoteGroups = await _client.from('groups').select().eq('user_id', _userId).gt('updated_at', pulledAt);
+      print('remote group changes: $remoteGroups');
+     
+      final localGroups = await db.getGroupsById(remoteGroups.map((group) => group['id'] as String).toList());
+      final localGroupMap = {for (final group in localGroups) group.id: group};
+      
+      for (final group in remoteGroups) {
+        final overwriteMap = {};
+        final localGroup = localGroupMap[group['id']];
+
+        if (localGroup != null) {
+          final localGroupData = localGroup.toJson();
+          for (final change in localGroup.changes) {
+            overwriteMap[change] = localGroupData[change];
+          }
+        }
+
+        final updatedAt = localGroup != null && localGroup.updatedAt.toIso8601String().compareTo(group['updated_at']) > 0 ? localGroup.updatedAt : group['updated_at'];
+
+        if (group['deleted'] as bool) {
+          db.deleteGroup(group['id']);
+        } else {
+          db.upsertGroup(GroupsCompanion(
+            id: Value(group['id']),
+            name: Value(overwriteMap['name'] ?? group['name']),
+            device: Value(group['device']),
+            allow: Value(group['allow']),
+            apps: Value(group['apps']),
+            sites: Value(group['sites']),
+            updatedAt: Value(updatedAt),
+            deleted: Value(group['deleted']),
+          ));
+        }
+      }
+    }
+
+    // Pull and apply remote routine changes
+    {
+      final remoteRoutines = await _client.from('routines').select().eq('user_id', _userId).gt('updated_at', pulledAt);
+      print('remote routine changes: $remoteRoutines');
+     
+      final localRoutines = await db.getRoutinesById(remoteRoutines.map((routine) => routine['id'] as String).toList());
+      final localRoutineMap = {for (final routine in localRoutines) routine.id: routine};
+      
+      for (final routine in remoteRoutines) {
+        final overwriteMap = {};
+        final localRoutine = localRoutineMap[routine['id']];
+
+        if (localRoutine != null) {
+          final localRoutineData = localRoutine.toJson();
+          for (final change in localRoutine.changes) {
+            overwriteMap[change] = localRoutineData[change];
+          }
+        }
+
+        final updatedAt = localRoutine != null && localRoutine.updatedAt.toIso8601String().compareTo(routine['updated_at']) > 0 ? localRoutine.updatedAt : routine['updated_at'];
+
+        if (routine['deleted'] as bool) {
+          db.deleteRoutine(routine['id']);
+        } else {
+          db.upsertRoutine(RoutinesCompanion(
+            id: Value(routine['id']),
+            name: Value(overwriteMap['name'] ?? routine['name']),
+            monday: Value(routine['monday']),
+            tuesday: Value(routine['tuesday']),
+            wednesday: Value(routine['wednesday']),
+            thursday: Value(routine['thursday']),
+            friday: Value(routine['friday']),
+            saturday: Value(routine['saturday']),
+            sunday: Value(routine['sunday']),
+            startTime: Value(routine['start_time']),
+            endTime: Value(routine['end_time']),
+            recurring: Value(routine['recurring']),
+            groups: Value(routine['groups']),
+            numBreaksTaken: Value(routine['num_breaks_taken']),
+            lastBreakAt: Value(routine['last_break_at']),
+            breakUntil: Value(routine['break_until']),
+            maxBreaks: Value(routine['max_breaks']),
+            maxBreakDuration: Value(routine['max_break_duration']),
+            friction: Value(FrictionType.values.byName(routine['friction'])),
+            frictionLen: Value(routine['friction_len']),
+            snoozedUntil: Value(routine['snoozed_until']),
+            updatedAt: Value(updatedAt),
+            deleted: Value(routine['deleted']),
+          ));
+        }
+      }
+    }
+
+    // Push local device changes if no conflicts
     {
       final localDevices = await db.getDeviceChanges(lastPulledAt);
       print('local device changes: $localDevices');
@@ -197,6 +289,93 @@ class SyncService {
           'deleted': device.deleted,
         })
         .eq('id', device.id);
+      }
+    }
+
+    // Push local group changes if no conflicts
+    {
+      final localGroups = await db.getGroupChanges(lastPulledAt);
+      print('local group changes: $localGroups');
+      final remoteGroups = await _client
+        .from('groups')
+        .select()
+        .eq('user_id', _userId)
+        .inFilter('id', localGroups.map((group) => group.id).toList());
+      final remoteGroupMap = {for (final group in remoteGroups) group['id']: group};
+      
+      for (final group in localGroups) {
+        final remoteGroup = remoteGroupMap[group.id];
+        if (remoteGroup != null && remoteGroup['updated_at'].compareTo(pulledAt.toIso8601String()) > 0) {
+          return false;
+        }
+      }
+
+      for (final group in localGroups) {
+        await _client
+        .from('groups')
+        .upsert({
+          'id': group.id,
+          'user_id': _userId,
+          'name': group.name,
+          'device': group.device,
+          'allow': group.allow,
+          'apps': group.apps,
+          'sites': group.sites,
+          'updated_at': group.updatedAt.toIso8601String(),
+          'deleted': group.deleted,
+        })
+        .eq('id', group.id);
+      }
+    }
+
+    // Push local routine changes if no conflicts
+    {
+      final localRoutines = await db.getRoutineChanges(lastPulledAt);
+      print('local routine changes: $localRoutines');
+      final remoteRoutines = await _client
+        .from('routines')
+        .select()
+        .eq('user_id', _userId)
+        .inFilter('id', localRoutines.map((routine) => routine.id).toList());
+      final remoteRoutineMap = {for (final routine in remoteRoutines) routine['id']: routine};
+      
+      for (final routine in localRoutines) {
+        final remoteRoutine = remoteRoutineMap[routine.id];
+        if (remoteRoutine != null && remoteRoutine['updated_at'].compareTo(pulledAt.toIso8601String()) > 0) {
+          return false;
+        }
+      }
+
+      for (final routine in localRoutines) {
+        await _client
+        .from('routines')
+        .upsert({
+          'id': routine.id,
+          'user_id': _userId,
+          'name': routine.name,
+          'monday': routine.monday,
+          'tuesday': routine.tuesday,
+          'wednesday': routine.wednesday,
+          'thursday': routine.thursday,
+          'friday': routine.friday,
+          'saturday': routine.saturday,
+          'sunday': routine.sunday,
+          'start_time': routine.startTime,
+          'end_time': routine.endTime,
+          'recurring': routine.recurring,
+          'groups': routine.groups,
+          'num_breaks_taken': routine.numBreaksTaken,
+          'last_break_at': routine.lastBreakAt?.toIso8601String(),
+          'break_until': routine.breakUntil?.toIso8601String(),
+          'max_breaks': routine.maxBreaks,
+          'max_break_duration': routine.maxBreakDuration,
+          'friction': routine.friction.name,
+          'friction_len': routine.frictionLen,
+          'snoozed_until': routine.snoozedUntil?.toIso8601String(),
+          'updated_at': routine.updatedAt.toIso8601String(),
+          'deleted': routine.deleted,
+        })
+        .eq('id', routine.id);
       }
     }
 
