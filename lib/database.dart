@@ -35,7 +35,6 @@ class Routines extends Table {
 
   late final changes = text().map(StringListTypeConverter())();
   late final deleted = boolean().clientDefault(() => false)();
-  late final createdAt = dateTime()();
   late final updatedAt = dateTime()();
 
   late final groups = text().map(StringListTypeConverter())();
@@ -63,7 +62,9 @@ class Devices extends Table {
   late final curr = boolean()();
   late final deleted = boolean().clientDefault(() => false)();
 
+  late final changes = text().map(StringListTypeConverter())();
   late final updatedAt = dateTime()();
+
   late final lastPulledAt = dateTime().nullable()();
 }
 
@@ -118,7 +119,7 @@ class AppDatabase extends _$AppDatabase {
 
   Future<DateTime?> getLastPulledAt() async {
     final entry = await (select(devices)..where((t) => t.curr.equals(true))).getSingleOrNull();
-    return entry?.updatedAt;
+    return entry?.lastPulledAt;
   }
 
   Stream<List<RoutineWithGroups>> watchRoutines() {
@@ -252,7 +253,11 @@ class AppDatabase extends _$AppDatabase {
     return into(devices).insertOnConflictUpdate(entry);
   }
 
-  Future<List<RoutineEntry>> getRoutineChanges([DateTime? since]) {
+  Future<void> updateDevice(DevicesCompanion entry) async {
+    await (update(devices)..where((t) => t.id.equals(entry.id.value))).write(entry);
+  }
+
+  Future<List<RoutineEntry>> getRoutineChanges(DateTime? since) {
     var query = select(routines);
     if (since != null) {
       query.where((t) => t.updatedAt.isBiggerThanValue(since));
@@ -260,7 +265,7 @@ class AppDatabase extends _$AppDatabase {
     return query.get();
   }
 
-  Future<List<GroupEntry>> getGroupChanges([DateTime? since]) {
+  Future<List<GroupEntry>> getGroupChanges(DateTime? since) {
     var query = select(groups);
     if (since != null) {
       query.where((t) => t.updatedAt.isBiggerThanValue(since));
@@ -268,7 +273,7 @@ class AppDatabase extends _$AppDatabase {
     return query.get();
   }
 
-  Future<List<DeviceEntry>> getDeviceChanges([DateTime? since]) {
+  Future<List<DeviceEntry>> getDeviceChanges(DateTime? since) {
     var query = select(devices);
     if (since != null) {
       query.where((t) => t.updatedAt.isBiggerThanValue(since));

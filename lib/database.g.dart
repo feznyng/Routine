@@ -117,12 +117,6 @@ class $RoutinesTable extends Routines
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('CHECK ("deleted" IN (0, 1))'),
       clientDefault: () => false);
-  static const VerificationMeta _createdAtMeta =
-      const VerificationMeta('createdAt');
-  @override
-  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
-      'created_at', aliasedName, false,
-      type: DriftSqlType.dateTime, requiredDuringInsert: true);
   static const VerificationMeta _updatedAtMeta =
       const VerificationMeta('updatedAt');
   @override
@@ -202,7 +196,6 @@ class $RoutinesTable extends Routines
         recurring,
         changes,
         deleted,
-        createdAt,
         updatedAt,
         groups,
         numBreaksTaken,
@@ -300,12 +293,6 @@ class $RoutinesTable extends Routines
       context.handle(_deletedMeta,
           deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta));
     }
-    if (data.containsKey('created_at')) {
-      context.handle(_createdAtMeta,
-          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
-    } else if (isInserting) {
-      context.missing(_createdAtMeta);
-    }
     if (data.containsKey('updated_at')) {
       context.handle(_updatedAtMeta,
           updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
@@ -392,8 +379,6 @@ class $RoutinesTable extends Routines
           .read(DriftSqlType.string, data['${effectivePrefix}changes'])!),
       deleted: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}deleted'])!,
-      createdAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
       groups: $RoutinesTable.$convertergroups.fromSql(attachedDatabase
@@ -447,7 +432,6 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
   final bool recurring;
   final List<String> changes;
   final bool deleted;
-  final DateTime createdAt;
   final DateTime updatedAt;
   final List<String> groups;
   final int? numBreaksTaken;
@@ -473,7 +457,6 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       required this.recurring,
       required this.changes,
       required this.deleted,
-      required this.createdAt,
       required this.updatedAt,
       required this.groups,
       this.numBreaksTaken,
@@ -504,7 +487,6 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           Variable<String>($RoutinesTable.$converterchanges.toSql(changes));
     }
     map['deleted'] = Variable<bool>(deleted);
-    map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     {
       map['groups'] =
@@ -552,7 +534,6 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       recurring: Value(recurring),
       changes: Value(changes),
       deleted: Value(deleted),
-      createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       groups: Value(groups),
       numBreaksTaken: numBreaksTaken == null && nullToAbsent
@@ -596,7 +577,6 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       recurring: serializer.fromJson<bool>(json['recurring']),
       changes: serializer.fromJson<List<String>>(json['changes']),
       deleted: serializer.fromJson<bool>(json['deleted']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       groups: serializer.fromJson<List<String>>(json['groups']),
       numBreaksTaken: serializer.fromJson<int?>(json['numBreaksTaken']),
@@ -628,7 +608,6 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       'recurring': serializer.toJson<bool>(recurring),
       'changes': serializer.toJson<List<String>>(changes),
       'deleted': serializer.toJson<bool>(deleted),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'groups': serializer.toJson<List<String>>(groups),
       'numBreaksTaken': serializer.toJson<int?>(numBreaksTaken),
@@ -658,7 +637,6 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           bool? recurring,
           List<String>? changes,
           bool? deleted,
-          DateTime? createdAt,
           DateTime? updatedAt,
           List<String>? groups,
           Value<int?> numBreaksTaken = const Value.absent(),
@@ -684,7 +662,6 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
         recurring: recurring ?? this.recurring,
         changes: changes ?? this.changes,
         deleted: deleted ?? this.deleted,
-        createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
         groups: groups ?? this.groups,
         numBreaksTaken:
@@ -714,7 +691,6 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       recurring: data.recurring.present ? data.recurring.value : this.recurring,
       changes: data.changes.present ? data.changes.value : this.changes,
       deleted: data.deleted.present ? data.deleted.value : this.deleted,
-      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       groups: data.groups.present ? data.groups.value : this.groups,
       numBreaksTaken: data.numBreaksTaken.present
@@ -754,7 +730,6 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           ..write('recurring: $recurring, ')
           ..write('changes: $changes, ')
           ..write('deleted: $deleted, ')
-          ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('groups: $groups, ')
           ..write('numBreaksTaken: $numBreaksTaken, ')
@@ -785,7 +760,6 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
         recurring,
         changes,
         deleted,
-        createdAt,
         updatedAt,
         groups,
         numBreaksTaken,
@@ -815,7 +789,6 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           other.recurring == this.recurring &&
           other.changes == this.changes &&
           other.deleted == this.deleted &&
-          other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.groups == this.groups &&
           other.numBreaksTaken == this.numBreaksTaken &&
@@ -843,7 +816,6 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
   final Value<bool> recurring;
   final Value<List<String>> changes;
   final Value<bool> deleted;
-  final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<List<String>> groups;
   final Value<int?> numBreaksTaken;
@@ -870,7 +842,6 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     this.recurring = const Value.absent(),
     this.changes = const Value.absent(),
     this.deleted = const Value.absent(),
-    this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.groups = const Value.absent(),
     this.numBreaksTaken = const Value.absent(),
@@ -898,7 +869,6 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     required bool recurring,
     required List<String> changes,
     this.deleted = const Value.absent(),
-    required DateTime createdAt,
     required DateTime updatedAt,
     required List<String> groups,
     this.numBreaksTaken = const Value.absent(),
@@ -923,7 +893,6 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
         endTime = Value(endTime),
         recurring = Value(recurring),
         changes = Value(changes),
-        createdAt = Value(createdAt),
         updatedAt = Value(updatedAt),
         groups = Value(groups),
         friction = Value(friction);
@@ -942,7 +911,6 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     Expression<bool>? recurring,
     Expression<String>? changes,
     Expression<bool>? deleted,
-    Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<String>? groups,
     Expression<int>? numBreaksTaken,
@@ -970,7 +938,6 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       if (recurring != null) 'recurring': recurring,
       if (changes != null) 'changes': changes,
       if (deleted != null) 'deleted': deleted,
-      if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (groups != null) 'groups': groups,
       if (numBreaksTaken != null) 'num_breaks_taken': numBreaksTaken,
@@ -1000,7 +967,6 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       Value<bool>? recurring,
       Value<List<String>>? changes,
       Value<bool>? deleted,
-      Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
       Value<List<String>>? groups,
       Value<int?>? numBreaksTaken,
@@ -1027,7 +993,6 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       recurring: recurring ?? this.recurring,
       changes: changes ?? this.changes,
       deleted: deleted ?? this.deleted,
-      createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       groups: groups ?? this.groups,
       numBreaksTaken: numBreaksTaken ?? this.numBreaksTaken,
@@ -1088,9 +1053,6 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     if (deleted.present) {
       map['deleted'] = Variable<bool>(deleted.value);
     }
-    if (createdAt.present) {
-      map['created_at'] = Variable<DateTime>(createdAt.value);
-    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -1146,7 +1108,6 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
           ..write('recurring: $recurring, ')
           ..write('changes: $changes, ')
           ..write('deleted: $deleted, ')
-          ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('groups: $groups, ')
           ..write('numBreaksTaken: $numBreaksTaken, ')
@@ -1201,6 +1162,13 @@ class $DevicesTable extends Devices with TableInfo<$DevicesTable, DeviceEntry> {
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('CHECK ("deleted" IN (0, 1))'),
       clientDefault: () => false);
+  static const VerificationMeta _changesMeta =
+      const VerificationMeta('changes');
+  @override
+  late final GeneratedColumnWithTypeConverter<List<String>, String> changes =
+      GeneratedColumn<String>('changes', aliasedName, false,
+              type: DriftSqlType.string, requiredDuringInsert: true)
+          .withConverter<List<String>>($DevicesTable.$converterchanges);
   static const VerificationMeta _updatedAtMeta =
       const VerificationMeta('updatedAt');
   @override
@@ -1215,7 +1183,7 @@ class $DevicesTable extends Devices with TableInfo<$DevicesTable, DeviceEntry> {
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns =>
-      [id, name, type, curr, deleted, updatedAt, lastPulledAt];
+      [id, name, type, curr, deleted, changes, updatedAt, lastPulledAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1253,6 +1221,7 @@ class $DevicesTable extends Devices with TableInfo<$DevicesTable, DeviceEntry> {
       context.handle(_deletedMeta,
           deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta));
     }
+    context.handle(_changesMeta, const VerificationResult.success());
     if (data.containsKey('updated_at')) {
       context.handle(_updatedAtMeta,
           updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
@@ -1284,6 +1253,9 @@ class $DevicesTable extends Devices with TableInfo<$DevicesTable, DeviceEntry> {
           .read(DriftSqlType.bool, data['${effectivePrefix}curr'])!,
       deleted: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}deleted'])!,
+      changes: $DevicesTable.$converterchanges.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}changes'])!),
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
       lastPulledAt: attachedDatabase.typeMapping.read(
@@ -1295,6 +1267,9 @@ class $DevicesTable extends Devices with TableInfo<$DevicesTable, DeviceEntry> {
   $DevicesTable createAlias(String alias) {
     return $DevicesTable(attachedDatabase, alias);
   }
+
+  static TypeConverter<List<String>, String> $converterchanges =
+      StringListTypeConverter();
 }
 
 class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
@@ -1303,14 +1278,16 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
   final String type;
   final bool curr;
   final bool deleted;
+  final List<String> changes;
   final DateTime updatedAt;
-  DateTime? lastPulledAt;
-  DeviceEntry(
+  final DateTime? lastPulledAt;
+  const DeviceEntry(
       {required this.id,
       required this.name,
       required this.type,
       required this.curr,
       required this.deleted,
+      required this.changes,
       required this.updatedAt,
       this.lastPulledAt});
   @override
@@ -1321,6 +1298,10 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
     map['type'] = Variable<String>(type);
     map['curr'] = Variable<bool>(curr);
     map['deleted'] = Variable<bool>(deleted);
+    {
+      map['changes'] =
+          Variable<String>($DevicesTable.$converterchanges.toSql(changes));
+    }
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || lastPulledAt != null) {
       map['last_pulled_at'] = Variable<DateTime>(lastPulledAt);
@@ -1335,6 +1316,7 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
       type: Value(type),
       curr: Value(curr),
       deleted: Value(deleted),
+      changes: Value(changes),
       updatedAt: Value(updatedAt),
       lastPulledAt: lastPulledAt == null && nullToAbsent
           ? const Value.absent()
@@ -1351,6 +1333,7 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
       type: serializer.fromJson<String>(json['type']),
       curr: serializer.fromJson<bool>(json['curr']),
       deleted: serializer.fromJson<bool>(json['deleted']),
+      changes: serializer.fromJson<List<String>>(json['changes']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       lastPulledAt: serializer.fromJson<DateTime?>(json['lastPulledAt']),
     );
@@ -1364,6 +1347,7 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
       'type': serializer.toJson<String>(type),
       'curr': serializer.toJson<bool>(curr),
       'deleted': serializer.toJson<bool>(deleted),
+      'changes': serializer.toJson<List<String>>(changes),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'lastPulledAt': serializer.toJson<DateTime?>(lastPulledAt),
     };
@@ -1375,6 +1359,7 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
           String? type,
           bool? curr,
           bool? deleted,
+          List<String>? changes,
           DateTime? updatedAt,
           Value<DateTime?> lastPulledAt = const Value.absent()}) =>
       DeviceEntry(
@@ -1383,6 +1368,7 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
         type: type ?? this.type,
         curr: curr ?? this.curr,
         deleted: deleted ?? this.deleted,
+        changes: changes ?? this.changes,
         updatedAt: updatedAt ?? this.updatedAt,
         lastPulledAt:
             lastPulledAt.present ? lastPulledAt.value : this.lastPulledAt,
@@ -1394,6 +1380,7 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
       type: data.type.present ? data.type.value : this.type,
       curr: data.curr.present ? data.curr.value : this.curr,
       deleted: data.deleted.present ? data.deleted.value : this.deleted,
+      changes: data.changes.present ? data.changes.value : this.changes,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       lastPulledAt: data.lastPulledAt.present
           ? data.lastPulledAt.value
@@ -1409,6 +1396,7 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
           ..write('type: $type, ')
           ..write('curr: $curr, ')
           ..write('deleted: $deleted, ')
+          ..write('changes: $changes, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('lastPulledAt: $lastPulledAt')
           ..write(')'))
@@ -1416,8 +1404,8 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, type, curr, deleted, updatedAt, lastPulledAt);
+  int get hashCode => Object.hash(
+      id, name, type, curr, deleted, changes, updatedAt, lastPulledAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1427,6 +1415,7 @@ class DeviceEntry extends DataClass implements Insertable<DeviceEntry> {
           other.type == this.type &&
           other.curr == this.curr &&
           other.deleted == this.deleted &&
+          other.changes == this.changes &&
           other.updatedAt == this.updatedAt &&
           other.lastPulledAt == this.lastPulledAt);
 }
@@ -1437,6 +1426,7 @@ class DevicesCompanion extends UpdateCompanion<DeviceEntry> {
   final Value<String> type;
   final Value<bool> curr;
   final Value<bool> deleted;
+  final Value<List<String>> changes;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> lastPulledAt;
   final Value<int> rowid;
@@ -1446,6 +1436,7 @@ class DevicesCompanion extends UpdateCompanion<DeviceEntry> {
     this.type = const Value.absent(),
     this.curr = const Value.absent(),
     this.deleted = const Value.absent(),
+    this.changes = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.lastPulledAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1456,6 +1447,7 @@ class DevicesCompanion extends UpdateCompanion<DeviceEntry> {
     required String type,
     required bool curr,
     this.deleted = const Value.absent(),
+    required List<String> changes,
     required DateTime updatedAt,
     this.lastPulledAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1463,6 +1455,7 @@ class DevicesCompanion extends UpdateCompanion<DeviceEntry> {
         name = Value(name),
         type = Value(type),
         curr = Value(curr),
+        changes = Value(changes),
         updatedAt = Value(updatedAt);
   static Insertable<DeviceEntry> custom({
     Expression<String>? id,
@@ -1470,6 +1463,7 @@ class DevicesCompanion extends UpdateCompanion<DeviceEntry> {
     Expression<String>? type,
     Expression<bool>? curr,
     Expression<bool>? deleted,
+    Expression<String>? changes,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? lastPulledAt,
     Expression<int>? rowid,
@@ -1480,6 +1474,7 @@ class DevicesCompanion extends UpdateCompanion<DeviceEntry> {
       if (type != null) 'type': type,
       if (curr != null) 'curr': curr,
       if (deleted != null) 'deleted': deleted,
+      if (changes != null) 'changes': changes,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (lastPulledAt != null) 'last_pulled_at': lastPulledAt,
       if (rowid != null) 'rowid': rowid,
@@ -1492,6 +1487,7 @@ class DevicesCompanion extends UpdateCompanion<DeviceEntry> {
       Value<String>? type,
       Value<bool>? curr,
       Value<bool>? deleted,
+      Value<List<String>>? changes,
       Value<DateTime>? updatedAt,
       Value<DateTime?>? lastPulledAt,
       Value<int>? rowid}) {
@@ -1501,6 +1497,7 @@ class DevicesCompanion extends UpdateCompanion<DeviceEntry> {
       type: type ?? this.type,
       curr: curr ?? this.curr,
       deleted: deleted ?? this.deleted,
+      changes: changes ?? this.changes,
       updatedAt: updatedAt ?? this.updatedAt,
       lastPulledAt: lastPulledAt ?? this.lastPulledAt,
       rowid: rowid ?? this.rowid,
@@ -1525,6 +1522,10 @@ class DevicesCompanion extends UpdateCompanion<DeviceEntry> {
     if (deleted.present) {
       map['deleted'] = Variable<bool>(deleted.value);
     }
+    if (changes.present) {
+      map['changes'] = Variable<String>(
+          $DevicesTable.$converterchanges.toSql(changes.value));
+    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -1545,6 +1546,7 @@ class DevicesCompanion extends UpdateCompanion<DeviceEntry> {
           ..write('type: $type, ')
           ..write('curr: $curr, ')
           ..write('deleted: $deleted, ')
+          ..write('changes: $changes, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('lastPulledAt: $lastPulledAt, ')
           ..write('rowid: $rowid')
@@ -2047,7 +2049,6 @@ typedef $$RoutinesTableCreateCompanionBuilder = RoutinesCompanion Function({
   required bool recurring,
   required List<String> changes,
   Value<bool> deleted,
-  required DateTime createdAt,
   required DateTime updatedAt,
   required List<String> groups,
   Value<int?> numBreaksTaken,
@@ -2075,7 +2076,6 @@ typedef $$RoutinesTableUpdateCompanionBuilder = RoutinesCompanion Function({
   Value<bool> recurring,
   Value<List<String>> changes,
   Value<bool> deleted,
-  Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<List<String>> groups,
   Value<int?> numBreaksTaken,
@@ -2141,9 +2141,6 @@ class $$RoutinesTableFilterComposer
 
   ColumnFilters<bool> get deleted => $composableBuilder(
       column: $table.deleted, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
@@ -2233,9 +2230,6 @@ class $$RoutinesTableOrderingComposer
   ColumnOrderings<bool> get deleted => $composableBuilder(
       column: $table.deleted, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
-
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 
@@ -2321,9 +2315,6 @@ class $$RoutinesTableAnnotationComposer
   GeneratedColumn<bool> get deleted =>
       $composableBuilder(column: $table.deleted, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
-
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
@@ -2392,7 +2383,6 @@ class $$RoutinesTableTableManager extends RootTableManager<
             Value<bool> recurring = const Value.absent(),
             Value<List<String>> changes = const Value.absent(),
             Value<bool> deleted = const Value.absent(),
-            Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<List<String>> groups = const Value.absent(),
             Value<int?> numBreaksTaken = const Value.absent(),
@@ -2420,7 +2410,6 @@ class $$RoutinesTableTableManager extends RootTableManager<
             recurring: recurring,
             changes: changes,
             deleted: deleted,
-            createdAt: createdAt,
             updatedAt: updatedAt,
             groups: groups,
             numBreaksTaken: numBreaksTaken,
@@ -2448,7 +2437,6 @@ class $$RoutinesTableTableManager extends RootTableManager<
             required bool recurring,
             required List<String> changes,
             Value<bool> deleted = const Value.absent(),
-            required DateTime createdAt,
             required DateTime updatedAt,
             required List<String> groups,
             Value<int?> numBreaksTaken = const Value.absent(),
@@ -2476,7 +2464,6 @@ class $$RoutinesTableTableManager extends RootTableManager<
             recurring: recurring,
             changes: changes,
             deleted: deleted,
-            createdAt: createdAt,
             updatedAt: updatedAt,
             groups: groups,
             numBreaksTaken: numBreaksTaken,
@@ -2514,6 +2501,7 @@ typedef $$DevicesTableCreateCompanionBuilder = DevicesCompanion Function({
   required String type,
   required bool curr,
   Value<bool> deleted,
+  required List<String> changes,
   required DateTime updatedAt,
   Value<DateTime?> lastPulledAt,
   Value<int> rowid,
@@ -2524,6 +2512,7 @@ typedef $$DevicesTableUpdateCompanionBuilder = DevicesCompanion Function({
   Value<String> type,
   Value<bool> curr,
   Value<bool> deleted,
+  Value<List<String>> changes,
   Value<DateTime> updatedAt,
   Value<DateTime?> lastPulledAt,
   Value<int> rowid,
@@ -2571,6 +2560,11 @@ class $$DevicesTableFilterComposer
 
   ColumnFilters<bool> get deleted => $composableBuilder(
       column: $table.deleted, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<List<String>, List<String>, String>
+      get changes => $composableBuilder(
+          column: $table.changes,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
@@ -2624,6 +2618,9 @@ class $$DevicesTableOrderingComposer
   ColumnOrderings<bool> get deleted => $composableBuilder(
       column: $table.deleted, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get changes => $composableBuilder(
+      column: $table.changes, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 
@@ -2655,6 +2652,9 @@ class $$DevicesTableAnnotationComposer
 
   GeneratedColumn<bool> get deleted =>
       $composableBuilder(column: $table.deleted, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<String>, String> get changes =>
+      $composableBuilder(column: $table.changes, builder: (column) => column);
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
@@ -2712,6 +2712,7 @@ class $$DevicesTableTableManager extends RootTableManager<
             Value<String> type = const Value.absent(),
             Value<bool> curr = const Value.absent(),
             Value<bool> deleted = const Value.absent(),
+            Value<List<String>> changes = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<DateTime?> lastPulledAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -2722,6 +2723,7 @@ class $$DevicesTableTableManager extends RootTableManager<
             type: type,
             curr: curr,
             deleted: deleted,
+            changes: changes,
             updatedAt: updatedAt,
             lastPulledAt: lastPulledAt,
             rowid: rowid,
@@ -2732,6 +2734,7 @@ class $$DevicesTableTableManager extends RootTableManager<
             required String type,
             required bool curr,
             Value<bool> deleted = const Value.absent(),
+            required List<String> changes,
             required DateTime updatedAt,
             Value<DateTime?> lastPulledAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -2742,6 +2745,7 @@ class $$DevicesTableTableManager extends RootTableManager<
             type: type,
             curr: curr,
             deleted: deleted,
+            changes: changes,
             updatedAt: updatedAt,
             lastPulledAt: lastPulledAt,
             rowid: rowid,

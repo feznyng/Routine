@@ -131,7 +131,6 @@ class Routine {
       frictionLen: Value(_frictionLen),
       snoozedUntil: Value(_snoozedUntil),
       updatedAt: Value(DateTime.now()),
-      createdAt: Value(_entry?.createdAt ?? DateTime.now()),
       recurring: Value(true)
     ));
     print('routine save sync');

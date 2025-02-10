@@ -14,6 +14,7 @@ enum DeviceType {
 }
 
 class Device {
+  late String _name;
   final String _id;
   late final DeviceType _type;
   late final bool _curr;
@@ -21,26 +22,33 @@ class Device {
 
   static Future<Device> getCurrent() async {
     final deviceEntry = await getIt<AppDatabase>().getThisDevice();
+    print('currDevice $deviceEntry');
 
     if (deviceEntry != null) {
       return Device.fromEntry(deviceEntry);
     } else {
       final device =  Device(currDevice: true);
-      //await device.save();
+      await device._save();
       return device;
     }
   }
 
   Device({bool currDevice = false}) : _id = const Uuid().v4() {
+    _name = "";
     if (Platform.isMacOS) {
+      _name = "Macbook";
       _type = DeviceType.macos;
     } else if (Platform.isLinux) {
+      _name = "Linux";
       _type = DeviceType.linux;
     } else if (Platform.isWindows) {
+      _name = "Windows";
       _type = DeviceType.windows;
     } else if (Platform.isIOS) {
+      _name = "iPhone";
       _type = DeviceType.ios;
     } else if (Platform.isAndroid) {
+      _name = "Android";
       _type = DeviceType.android;
     } else {
       throw Exception('Unsupported platform');
@@ -49,15 +57,15 @@ class Device {
     _curr = currDevice;
   }
   
-  Future<void> save() async {
+  Future<void> _save() async {
     await getIt<AppDatabase>().upsertDevice(DevicesCompanion(
       id: Value(_id),
-      name: Value(''),
+      name: Value(_name),
       type: Value(_type.name),
       curr: Value(_curr),
       updatedAt: Value(DateTime.now()),
-      lastPulledAt: Value(_lastPulledAt),
-      deleted: Value(false)
+      deleted: Value(false),
+      changes: Value(const []),
     ));
 
     print('device save sync');
@@ -66,8 +74,7 @@ class Device {
   Device.fromEntry(DeviceEntry entry)
       : _id = entry.id,
         _type = DeviceType.values.byName(entry.type),
-        _curr = entry.curr,
-        _lastPulledAt = entry.lastPulledAt;
+        _curr = entry.curr;
 
   String get id => _id;
   DeviceType get type => _type;
