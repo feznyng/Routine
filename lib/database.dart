@@ -168,7 +168,7 @@ class AppDatabase extends _$AppDatabase {
         final deleteIds = existingGroups
           .where((g) => g.name == null && !routine.groups.value.any((id) => id == g.id))
           .map((g) => g.id).toList();
-        await (update(groups)..where((t) => t.id.isIn(deleteIds))).write(GroupsCompanion(deleted: Value(true)));
+        await (update(groups)..where((t) => t.id.isIn(deleteIds))).write(GroupsCompanion(deleted: Value(true), updatedAt: Value(DateTime.now())));
 
         await (update(routines)..where((t) => t.id.equals(routine.id.value))).write(routine);
       }
@@ -186,11 +186,11 @@ class AppDatabase extends _$AppDatabase {
 
       for (final group in routineGroups) {
         if (group.name == null) {
-          await (update(groups)..where((t) => t.id.equals(group.id))).write(GroupsCompanion(deleted: Value(true)));
+          await (update(groups)..where((t) => t.id.equals(group.id))).write(GroupsCompanion(deleted: Value(true), updatedAt: Value(DateTime.now())));
         }
       }
 
-      await (update(routines)..where((t) => t.id.equals(id))).write(RoutinesCompanion(deleted: Value(true)));
+      await (update(routines)..where((t) => t.id.equals(id))).write(RoutinesCompanion(deleted: Value(true), updatedAt: Value(DateTime.now())));
     });
   }
 
@@ -212,7 +212,7 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> tempDeleteGroup(String id) async {
     await transaction(() async {
-      await (update(groups)..where((t) => t.id.equals(id))).write(GroupsCompanion(deleted: Value(true)));
+      await (update(groups)..where((t) => t.id.equals(id))).write(GroupsCompanion(deleted: Value(true), updatedAt: Value(DateTime.now())));
 
       final group = await (select(groups)..where((t) => t.id.equals(id))).getSingleOrNull();
 

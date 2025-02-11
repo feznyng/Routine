@@ -260,6 +260,12 @@ class SyncService {
       }
     }
 
+    db.updateDevice(DevicesCompanion(
+      id: Value(currDevice.id),
+      lastPulledAt: Value(pulledAt),
+      updatedAt: Value(pulledAt),
+    ));
+
     // Push local device changes if no conflicts
     {
       final localDevices = await db.getDeviceChanges(lastPulledAt);
@@ -286,6 +292,7 @@ class SyncService {
           'name': device.name,
           'type': device.type,
           'updated_at': device.updatedAt.toIso8601String(),
+          'last_pulled_at': pulledAt.toIso8601String(),
           'deleted': device.deleted,
         })
         .eq('id', device.id);
@@ -381,10 +388,25 @@ class SyncService {
 
     db.clearChangesSince(pulledAt);
 
-    db.updateDevice(DevicesCompanion(
-      id: Value(currDevice.id),
-      lastPulledAt: Value(pulledAt),
-    ));
+    final remoteDevices = (await _client
+        .from('devices')
+        .select('last_pulled_at')
+        .eq('user_id', _userId));
+
+    print('remoteDevices $remoteDevices');
+
+    final deviceList = remoteDevices
+        .map<String>((d) => d['last_pulled_at'])
+        .toList();
+
+    deviceList.sort((a, b) => a.compareTo(b));
+
+    if (deviceList.length > 1) {
+      final pulledAt = deviceList[0];
+      await _client.from('routines').delete().lt('updated_at', pulledAt).eq('deleted', true);
+      await _client.from('groups').delete().lt('updated_at', pulledAt).eq('deleted', true);
+      await _client.from('devices').delete().lt('updated_at', pulledAt).eq('deleted', true);
+    }
 
     if (notifyRemote) {
       _notifyPeers();
