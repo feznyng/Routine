@@ -8,6 +8,18 @@ import 'package:cron/cron.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+class InstalledApplication {
+  final String name;
+  final String filePath;
+
+  InstalledApplication({
+    required this.name,
+    required this.filePath,
+  });
+
+  @override
+  String toString() => 'InstalledApplication(name: $name, filePath: $filePath)';
+}
 
 class DesktopService {
   // Singleton instance
@@ -103,7 +115,6 @@ class DesktopService {
     
     _evaluate(routines);
   }
-
 
   void _evaluate(List<Routine> routines) {
     routines = routines.where((r) => r.isActive && !r.isPaused).toList();
@@ -296,5 +307,61 @@ class DesktopService {
         return false;
       }
     }
+  }
+
+  static Future<List<InstalledApplication>> getInstalledApplications() async {
+    List<InstalledApplication> installedApps = [];
+
+    if (Platform.isWindows) {
+      // PowerShell command to get installed applications on Windows with their paths
+      var result = await Process.run('powershell.exe', [
+        '-Command',
+      "Get-ItemProperty HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*, HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | Where-Object DisplayName | Select-Object DisplayName, InstallLocation"      ]);
+
+      if (result.exitCode == 0) {
+        String output = result.stdout.toString();
+        List<String> lines = output.split('\n');
+        String? currentName;
+        String? currentPath;
+
+        for (var line in lines) {
+          line = line.trim();
+          if (line.startsWith('DisplayName')) {
+            currentName = line.substring(line.indexOf(':') + 1).trim();
+          } else if (line.startsWith('InstallLocation')) {
+            currentPath = line.substring(line.indexOf(':') + 1).trim();
+            
+            if (currentName != null && currentPath.isNotEmpty) {
+              installedApps.add(InstalledApplication(
+                name: currentName,
+                filePath: currentPath,
+              ));
+            }
+            currentName = null;
+            currentPath = null;
+          }
+        }
+      }
+    } else if (Platform.isMacOS) {  
+      // Also check the Applications directory
+      Directory appDir = Directory('/Applications');
+      if (await appDir.exists()) {
+        await for (var entity in appDir.list(recursive: false)) {
+          if (entity is Directory && entity.path.endsWith('.app')) {
+            String appName = entity.path.split('/').last.replaceAll('.app', '');
+            if (!installedApps.any((app) => app.name == appName)) {
+              installedApps.add(InstalledApplication(
+                name: appName,
+                filePath: entity.path,
+              ));
+            }
+          }
+        }
+      }
+    }
+
+    // Sort the list alphabetically by name
+    installedApps.sort((a, b) => a.name.compareTo(b.name));
+    return installedApps;
   }
 }

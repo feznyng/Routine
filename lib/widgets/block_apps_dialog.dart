@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
-import 'package:path/path.dart' as path;
+import '../desktop_service.dart';
 
 class BlockAppsDialog extends StatefulWidget {
   final List<String> selectedApps;
@@ -16,7 +15,7 @@ class BlockAppsDialog extends StatefulWidget {
 
 class _BlockAppsDialogState extends State<BlockAppsDialog> {
   late List<String> _selectedApps;
-  List<String> _availableApps = [];
+  List<InstalledApplication> _availableApps = [];
   bool _isLoadingApps = true;
   String _appSearchQuery = '';
   final TextEditingController _appSearchController = TextEditingController();
@@ -34,31 +33,11 @@ class _BlockAppsDialogState extends State<BlockAppsDialog> {
       _isLoadingApps = true;
     });
 
-    final List<String> apps = [];
-    final Directory applicationsDir = Directory('/Applications');
-    
-    try {
-      await for (final FileSystemEntity entity in applicationsDir.list()) {
-        if (entity.path.endsWith('.app')) {
-          apps.add(entity.path);
-        }
-      }
-
-      // Sort apps alphabetically
-      apps.sort();
-
-      if (!mounted) return;
-      setState(() {
-        _availableApps = apps;
-        _isLoadingApps = false;
-      });
-    } catch (e) {
-      debugPrint('Error loading applications: $e');
-      if (!mounted) return;
-      setState(() {
-        _isLoadingApps = false;
-      });
-    }
+    final List<InstalledApplication> apps = await DesktopService.getInstalledApplications();
+    setState(() {
+      _availableApps = apps;
+      _isLoadingApps = false;
+    });
   }
 
   @override
@@ -119,20 +98,20 @@ class _BlockAppsDialogState extends State<BlockAppsDialog> {
                       itemCount: _availableApps.length,
                       itemBuilder: (context, index) {
                         final app = _availableApps[index];
-                        final appName = path.basenameWithoutExtension(app);
+                        final appName = app.name;
                         if (_appSearchQuery.isNotEmpty && 
                             !appName.toLowerCase().contains(_appSearchQuery.toLowerCase())) {
                           return const SizedBox.shrink();
                         }
                         return CheckboxListTile(
                           title: Text(appName),
-                          value: _selectedApps.contains(app),
+                          value: _selectedApps.contains(app.filePath),
                           onChanged: (bool? value) {
                             setState(() {
                               if (value == true) {
-                                _selectedApps.add(app);
+                                _selectedApps.add(app.filePath);
                               } else {
-                                _selectedApps.remove(app);
+                                _selectedApps.remove(app.filePath);
                               }
                             });
                           },
