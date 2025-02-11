@@ -160,10 +160,10 @@ class SyncService {
            db.upsertDevice(DevicesCompanion(
             id: Value(device['id']),
             name: Value(overwriteMap['name'] ?? device['name']),
-            type: Value(device['type']),
-            curr: Value(false),
+            type: Value(overwriteMap['type'] ?? device['type']),
+            curr: Value(localDevice?.curr ?? false),
             updatedAt: Value(updatedAt),
-            deleted: Value(device['deleted']),
+            deleted: Value(overwriteMap['deleted'] ?? device['deleted']),
           ));
         }
       }
@@ -201,7 +201,7 @@ class SyncService {
             apps: Value(overwriteMap['apps'] ?? group['apps']),
             sites: Value(overwriteMap['sites'] ?? group['sites']),
             updatedAt: Value(updatedAt),
-            deleted: Value(group['deleted']),
+            deleted: Value(overwriteMap['deleted'] ?? group['deleted']),
           ));
         }
       }
@@ -254,7 +254,7 @@ class SyncService {
             frictionLen: Value(overwriteMap['friction_len'] ?? routine['friction_len']),
             snoozedUntil: Value(overwriteMap['snoozed_until'] ?? routine['snoozed_until']),
             updatedAt: Value(updatedAt),
-            deleted: Value(routine['deleted']),
+            deleted: Value(overwriteMap['deleted'] ?? routine['deleted']),
           ));
         }
       }
@@ -392,8 +392,6 @@ class SyncService {
         .from('devices')
         .select('last_pulled_at')
         .eq('user_id', _userId));
-
-    print('remoteDevices $remoteDevices');
 
     final deviceList = remoteDevices
         .map<String>((d) => d['last_pulled_at'])
