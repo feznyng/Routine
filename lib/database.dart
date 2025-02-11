@@ -283,9 +283,9 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> clearChangesSince(DateTime time) async {
     return await transaction(() async {
-      await (update(groups)..where((t) => t.updatedAt.isSmallerThanValue(time) & t.deleted.equals(false))).write(GroupsCompanion(changes: Value([])));
+      await (update(groups)..where((t) => t.updatedAt.isSmallerOrEqualValue(time) & t.deleted.equals(false))).write(GroupsCompanion(changes: Value([])));
       await (delete(groups)..where((t) => t.deleted.equals(true))).go();
-      await (update(routines)..where((t) => t.updatedAt.isSmallerThanValue(time) & t.deleted.equals(false))).write(RoutinesCompanion(changes: Value([])));
+      await (update(routines)..where((t) => t.updatedAt.isSmallerOrEqualValue(time) & t.deleted.equals(false))).write(RoutinesCompanion(changes: Value([])));
       await (delete(routines)..where((t) => t.deleted.equals(true))).go();
     });
   }

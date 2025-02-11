@@ -196,10 +196,10 @@ class SyncService {
           db.upsertGroup(GroupsCompanion(
             id: Value(group['id']),
             name: Value(overwriteMap['name'] ?? group['name']),
-            device: Value(group['device']),
-            allow: Value(group['allow']),
-            apps: Value(group['apps']),
-            sites: Value(group['sites']),
+            device: Value(overwriteMap['device'] ?? group['device']),
+            allow: Value(overwriteMap['allow'] ?? group['allow']),
+            apps: Value(overwriteMap['apps'] ?? group['apps']),
+            sites: Value(overwriteMap['sites'] ?? group['sites']),
             updatedAt: Value(updatedAt),
             deleted: Value(group['deleted']),
           ));
@@ -234,25 +234,25 @@ class SyncService {
           db.upsertRoutine(RoutinesCompanion(
             id: Value(routine['id']),
             name: Value(overwriteMap['name'] ?? routine['name']),
-            monday: Value(routine['monday']),
-            tuesday: Value(routine['tuesday']),
-            wednesday: Value(routine['wednesday']),
-            thursday: Value(routine['thursday']),
-            friday: Value(routine['friday']),
-            saturday: Value(routine['saturday']),
-            sunday: Value(routine['sunday']),
-            startTime: Value(routine['start_time']),
-            endTime: Value(routine['end_time']),
-            recurring: Value(routine['recurring']),
-            groups: Value(routine['groups']),
-            numBreaksTaken: Value(routine['num_breaks_taken']),
-            lastBreakAt: Value(routine['last_break_at']),
-            breakUntil: Value(routine['break_until']),
-            maxBreaks: Value(routine['max_breaks']),
-            maxBreakDuration: Value(routine['max_break_duration']),
-            friction: Value(FrictionType.values.byName(routine['friction'])),
-            frictionLen: Value(routine['friction_len']),
-            snoozedUntil: Value(routine['snoozed_until']),
+            monday: Value(overwriteMap['monday'] ?? routine['monday']),
+            tuesday: Value(overwriteMap['tuesday'] ?? routine['tuesday']),
+            wednesday: Value(overwriteMap['wednesday'] ?? routine['wednesday']),
+            thursday: Value(overwriteMap['thursday'] ?? routine['thursday']),
+            friday: Value(overwriteMap['friday'] ?? routine['friday']),
+            saturday: Value(overwriteMap['saturday'] ?? routine['saturday']),
+            sunday: Value(overwriteMap['sunday'] ?? routine['sunday']),
+            startTime: Value(overwriteMap['start_time'] ?? routine['start_time']),
+            endTime: Value(overwriteMap['end_time'] ?? routine['end_time']),
+            recurring: Value(overwriteMap['recurring'] ?? routine['recurring']),
+            groups: Value(overwriteMap['groups'] ?? routine['groups']),
+            numBreaksTaken: Value(overwriteMap['num_breaks_taken'] ?? routine['num_breaks_taken']),
+            lastBreakAt: Value(overwriteMap['last_break_at'] ?? routine['last_break_at']),
+            breakUntil: Value(overwriteMap['break_until'] ?? routine['break_until']),
+            maxBreaks: Value(overwriteMap['max_breaks'] ?? routine['max_breaks']),
+            maxBreakDuration: Value(overwriteMap['max_break_duration'] ?? routine['max_break_duration']),
+            friction: Value(FrictionType.values.byName(overwriteMap['friction'] ?? routine['friction'])),
+            frictionLen: Value(overwriteMap['friction_len'] ?? routine['friction_len']),
+            snoozedUntil: Value(overwriteMap['snoozed_until'] ?? routine['snoozed_until']),
             updatedAt: Value(updatedAt),
             deleted: Value(routine['deleted']),
           ));
@@ -378,6 +378,8 @@ class SyncService {
         .eq('id', routine.id);
       }
     }
+
+    db.clearChangesSince(pulledAt);
 
     db.updateDevice(DevicesCompanion(
       id: Value(currDevice.id),
