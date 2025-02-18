@@ -132,10 +132,11 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _isDesktop
-          ? Row(
-              children: [
-                NavigationRail(
+      body: SafeArea(
+        child: _isDesktop
+            ? Row(
+                children: [
+                  NavigationRail(
                   selectedIndex: _selectedIndex,
                   onDestinationSelected: (int index) {
                     setState(() {
@@ -157,10 +158,11 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
                 const VerticalDivider(thickness: 1, width: 1),
                 Expanded(
                   child: _pages[_selectedIndex],
-                ),
-              ],
-            )
-          : _pages[_selectedIndex],
+                  ),
+                ],
+              )
+            : _pages[_selectedIndex],
+      ),
       bottomNavigationBar: !_isDesktop
           ? BottomNavigationBar(
               currentIndex: _selectedIndex,
