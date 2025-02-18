@@ -127,6 +127,8 @@ class SyncService {
 
   // order matters: devices, groups, routines
   Future<bool> _sync(bool notifyRemote) async {
+    print('syncing...');
+    
     if (_userId.isEmpty) return true;
     
     final db = getIt<AppDatabase>();

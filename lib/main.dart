@@ -5,6 +5,7 @@ import 'widgets/routine_list.dart';
 import 'widgets/settings_page.dart';
 import 'auth_service.dart';
 import 'setup.dart';
+import 'sync_service.dart';
 
 // Desktop-specific imports
 import 'package:window_manager/window_manager.dart' if (dart.library.html) '';
@@ -67,7 +68,7 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListener {
+class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListener, WidgetsBindingObserver {
   late final bool _isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
   int _selectedIndex = 0;
   final List<Widget> _pages = const [
@@ -79,6 +80,7 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (_isDesktop) {
       _initializeTray();
       windowManager.addListener(this);
@@ -89,11 +91,19 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     if (_isDesktop) {
       windowManager.removeListener(this);
       trayManager.removeListener(this);
     }
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_isDesktop && state == AppLifecycleState.resumed) {
+      SyncService().addJob(SyncJob(remote: false));
+    }
   }
 
   Future<void> _initializeTray() async {

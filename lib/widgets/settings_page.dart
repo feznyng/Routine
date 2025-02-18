@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../auth_service.dart';
+import 'auth_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -21,10 +22,11 @@ class _SettingsPageState extends State<SettingsPage> {
     });
   }
 
-  void _showAuthDialog({bool isSignUp = false}) {
-    showDialog(
-      context: context,
-      builder: (context) => AuthDialog(isSignUp: isSignUp),
+  void _showAuthPage() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const AuthPage(),
+      ),
     );
   }
 
@@ -37,7 +39,7 @@ class _SettingsPageState extends State<SettingsPage> {
           if (!_authService.isSignedIn) ...[            
             Card(
               child: InkWell(
-                onTap: () => _showAuthDialog(),
+                onTap: _showAuthPage,
                 child: const ListTile(
                   leading: Icon(Icons.account_circle),
                   title: Text('Sign In or Create Account'),
