@@ -29,14 +29,14 @@ class SyncService {
   
   SyncService._internal() {
     _startConsumer();
-    _setupRealtimeSync();
+    setupRealtimeSync();
   }
   
   factory SyncService() {
     return _instance;
   }
 
-  void _setupRealtimeSync() {
+  void setupRealtimeSync() {
     final userId = _userId;
     if (userId.isEmpty) return;
 
@@ -50,8 +50,6 @@ class SyncService {
       .onBroadcast( 
         event: 'sync', 
         callback: (payload, [_]) {
-          // When we receive a sync message from another client, queue a sync job
-          print('event sync');
           addJob(SyncJob(remote: true));
         }
       )

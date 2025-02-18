@@ -97,6 +97,7 @@ class AuthService {
 
       if (response.user != null) {
         SyncService().addJob(SyncJob(remote: false));
+        SyncService().setupRealtimeSync();
       }
 
       return response.user != null;
