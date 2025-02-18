@@ -408,23 +408,23 @@ class _RoutinePageState extends State<RoutinePage> {
     String summary = '';
     final group = _routine.getGroup();
 
-    if (group?.name != null) {
-      summary = group!.name!;
+    if (group == null) {
+      summary = 'No block group configured';
+    } else if (group.name != null) {
+      summary = group.name!;
+    } else if (group.apps.isEmpty && group.sites.isEmpty) {
+      summary = group.allow ? 'Everything blocked' : 'Nothing blocked';
     } else {
-      if (group!.apps.isEmpty && group.sites.isEmpty) {
-        summary = group.allow ? 'Everything blocked' : 'Nothing blocked';
-      } else {
-        List<String> parts = [];
-        if (group.apps.isNotEmpty) {
-          parts.add('${group.apps.length} app${group.apps.length > 1 ? "s" : ""}');
-        }
-        if (group.sites.isNotEmpty) {
-          parts.add('${group.sites.length} site${group.sites.length > 1 ? "s" : ""}');
-        }
-        summary = group.allow 
-            ? 'Allowing ${parts.join(", ")}'
-            : 'Blocking ${parts.join(", ")}';
+      List<String> parts = [];
+      if (group.apps.isNotEmpty) {
+        parts.add('${group.apps.length} app${group.apps.length > 1 ? "s" : ""}');
       }
+      if (group.sites.isNotEmpty) {
+        parts.add('${group.sites.length} site${group.sites.length > 1 ? "s" : ""}');
+      }
+      summary = group.allow 
+          ? 'Allowing ${parts.join(", ")}'
+          : 'Blocking ${parts.join(", ")}';
     }
 
     return Card(
