@@ -61,12 +61,10 @@ class DesktopService {
       switch (call.method) {
         case 'activeApplication':
           final appName = call.arguments as String;
-          //debugPrint('Currently active application: $appName');
-          
+                    
           // Check if the active application is a browser using O(1) lookup
           final lowerAppName = appName.toLowerCase();
           if (_browserNames.any((browser) => lowerAppName.contains(browser))) {
-            debugPrint('Browser detected, refreshing blocked sites');
             updateBlockedSites();
           }
           break;

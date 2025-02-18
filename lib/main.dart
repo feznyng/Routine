@@ -132,37 +132,55 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Row(
-        children: [
-          NavigationRail(
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: (int index) {
-              setState(() {
-                _selectedIndex = index;
-              });
-            },
-            labelType: NavigationRailLabelType.all,
-            destinations: const [
-              NavigationRailDestination(
-                icon: Icon(Icons.schedule),
-                label: Text('Routines'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.settings),
-                label: Text('Settings'),
-              ),
-            ],
-          ),
-          const VerticalDivider(thickness: 1, width: 1),
-          Expanded(
-            child: Column(
+      body: _isDesktop
+          ? Row(
               children: [
-                Expanded(child: _pages[_selectedIndex]),
+                NavigationRail(
+                  selectedIndex: _selectedIndex,
+                  onDestinationSelected: (int index) {
+                    setState(() {
+                      _selectedIndex = index;
+                    });
+                  },
+                  labelType: NavigationRailLabelType.all,
+                  destinations: const [
+                    NavigationRailDestination(
+                      icon: Icon(Icons.schedule),
+                      label: Text('Routines'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.settings),
+                      label: Text('Settings'),
+                    ),
+                  ],
+                ),
+                const VerticalDivider(thickness: 1, width: 1),
+                Expanded(
+                  child: _pages[_selectedIndex],
+                ),
               ],
-            ),
-          ),
-        ],
-      ),
+            )
+          : _pages[_selectedIndex],
+      bottomNavigationBar: !_isDesktop
+          ? BottomNavigationBar(
+              currentIndex: _selectedIndex,
+              onTap: (int index) {
+                setState(() {
+                  _selectedIndex = index;
+                });
+              },
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.schedule),
+                  label: 'Routines',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.settings),
+                  label: 'Settings',
+                ),
+              ],
+            )
+          : null,
     );
   }
 }
