@@ -61,7 +61,7 @@ class DesktopService {
       switch (call.method) {
         case 'activeApplication':
           final appName = call.arguments as String;
-                    
+
           // Check if the active application is a browser using O(1) lookup
           final lowerAppName = appName.toLowerCase();
           if (_browserNames.any((browser) => lowerAppName.contains(browser))) {
@@ -116,6 +116,8 @@ class DesktopService {
 
   void _evaluate(List<Routine> routines) {
     routines = routines.where((r) => r.isActive && !r.isPaused).toList();
+
+    print("Routines: $routines");
 
     Set<String> apps = {}; 
     Set<String> sites = {};

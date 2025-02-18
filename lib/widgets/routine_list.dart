@@ -123,7 +123,7 @@ class _RoutineListState extends State<RoutineList> {
   }
 
   Widget _buildBreakButton(BuildContext context, Routine routine) {
-    if (routine.breakUntil != null) {
+    if (routine.isPaused) {
       return TextButton.icon(
         onPressed: () => _showEndBreakDialog(context, routine),
         icon: const Icon(Icons.timer),

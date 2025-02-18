@@ -305,6 +305,8 @@ class Routine {
 
   bool get isPaused {
     if (_breakUntil == null) return false;
+
+    print("isPaused: ${DateTime.now()}, $_breakUntil");
     return DateTime.now().isBefore(_breakUntil!);
   }
 
@@ -313,13 +315,17 @@ class Routine {
       return true;
     }
 
-    if (_lastBreakAt != null) {
-      final lastBreakTimeOfDay = _lastBreakAt!.hour * 60 + _lastBreakAt!.minute;
-      if (lastBreakTimeOfDay < _startTime) {
-        // Last break was before start time today, reset counter
-        _numBreaksTaken = null;
-        return true;
-      }
+    if (_lastBreakAt == null && (_maxBreaks == null || _maxBreaks! > 0)) {
+      return true;
+    }
+
+    print("canBreak: ${DateTime.now()}, $_lastBreakAt, $_startTime");
+
+    final lastBreakTimeOfDay = _lastBreakAt!.hour * 60 + _lastBreakAt!.minute;
+    if (lastBreakTimeOfDay < _startTime) {
+      // Last break was before start time today, reset counter
+      _numBreaksTaken = null;
+      return true;
     }
 
     return false;
