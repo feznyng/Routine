@@ -133,12 +133,12 @@ class SyncService {
     
     final db = getIt<AppDatabase>();
     final currDevice = (await db.getThisDevice())!;
-    final lastPulledAt = currDevice.lastPulledAt;
+    final lastPulledAt = currDevice.lastPulledAt ?? DateTime.fromMicrosecondsSinceEpoch(0);
     final pulledAt = DateTime.now();
 
     // Pull and apply remote device changes
     {
-      final remoteDevices = await _client.from('devices').select().eq('user_id', _userId).gt('updated_at', pulledAt);
+      final remoteDevices = await _client.from('devices').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toIso8601String());
       print('remote device changes: $remoteDevices');
      
       final localDevices = await db.getDevicesById(remoteDevices.map((device) => device['id'] as String).toList());
@@ -154,7 +154,7 @@ class SyncService {
           }
         }
 
-        final updatedAt = localDevice != null && localDevice.updatedAt.toIso8601String().compareTo(device['updated_at']) > 0 ? localDevice.updatedAt : device['updated_at'];
+        final DateTime updatedAt = localDevice != null && localDevice.updatedAt.toIso8601String().compareTo(device['updated_at']) > 0 ? localDevice.updatedAt : DateTime.parse(device['updated_at']);
 
         if (device['deleted'] as bool) {
           db.deleteDevice(device['id']);
@@ -190,7 +190,7 @@ class SyncService {
           }
         }
 
-        final updatedAt = localGroup != null && localGroup.updatedAt.toIso8601String().compareTo(group['updated_at']) > 0 ? localGroup.updatedAt : group['updated_at'];
+        final DateTime updatedAt = localGroup != null && localGroup.updatedAt.toIso8601String().compareTo(group['updated_at']) > 0 ? localGroup.updatedAt : DateTime.parse(group['updated_at']);
 
         if (group['deleted'] as bool) {
           db.deleteGroup(group['id']);
@@ -228,7 +228,7 @@ class SyncService {
           }
         }
 
-        final updatedAt = localRoutine != null && localRoutine.updatedAt.toIso8601String().compareTo(routine['updated_at']) > 0 ? localRoutine.updatedAt : routine['updated_at'];
+        final DateTime updatedAt = localRoutine != null && localRoutine.updatedAt.toIso8601String().compareTo(routine['updated_at']) > 0 ? localRoutine.updatedAt : DateTime.parse(routine['updated_at']);
 
         if (routine['deleted'] as bool) {
           db.deleteRoutine(routine['id']);
