@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:window_manager/window_manager.dart';
-import 'package:tray_manager/tray_manager.dart';
+import 'dart:io' show Platform;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'desktop_service.dart';
 import 'widgets/routine_list.dart';
 import 'widgets/settings_page.dart';
 import 'auth_service.dart';
 import 'setup.dart';
+
+// Desktop-specific imports
+import 'package:window_manager/window_manager.dart' if (dart.library.html) '';
+import 'package:tray_manager/tray_manager.dart' if (dart.library.html) '';
+import 'desktop_service.dart' if (dart.library.html) '';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,22 +20,23 @@ void main() async {
   // Initialize auth service
   await AuthService().initialize();
   
-  // Initialize window manager
-  await windowManager.ensureInitialized();
-  
-  // Configure window manager
-  const windowOptions = WindowOptions(
-    size: Size(800, 600),
-    center: true,
-    backgroundColor: Colors.transparent,
-    skipTaskbar: true,
-    titleBarStyle: TitleBarStyle.normal,
-  );
-  
-  await windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.show();
-    await windowManager.focus();
-  });
+  // Initialize desktop-specific features
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    await windowManager.ensureInitialized();
+    
+    const windowOptions = WindowOptions(
+      size: Size(800, 600),
+      center: true,
+      backgroundColor: Colors.transparent,
+      skipTaskbar: true,
+      titleBarStyle: TitleBarStyle.normal,
+    );
+    
+    await windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+  }
 
   setup();
 
@@ -64,26 +68,31 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListener {
+  late final bool _isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
   int _selectedIndex = 0;
   final List<Widget> _pages = const [
     RoutineList(),
     SettingsPage(),
   ];
-  final DesktopService _desktopService = DesktopService();  
+  late final DesktopService? _desktopService = _isDesktop ? DesktopService() : null;
 
   @override
   void initState() {
     super.initState();
-    _initializeTray();
-    windowManager.addListener(this);
-    trayManager.addListener(this);
-    _desktopService.init();
+    if (_isDesktop) {
+      _initializeTray();
+      windowManager.addListener(this);
+      trayManager.addListener(this);
+      _desktopService?.init();
+    }
   }
 
   @override
   void dispose() {
-    windowManager.removeListener(this);
-    trayManager.removeListener(this);
+    if (_isDesktop) {
+      windowManager.removeListener(this);
+      trayManager.removeListener(this);
+    }
     super.dispose();
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'sync_service.dart';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
@@ -93,6 +94,11 @@ class AuthService {
         email: email,
         password: password,
       );
+
+      if (response.user != null) {
+        SyncService().addJob(SyncJob(remote: false));
+      }
+
       return response.user != null;
     } on AuthException catch (e) {
       print('Sign in error: ${e.message}');

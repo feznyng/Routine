@@ -140,6 +140,7 @@ class _AuthDialogState extends State<AuthDialog> {
           : await _authService.signIn(_emailController.text, _passwordController.text);
 
       if (success && mounted) {
+
         Navigator.of(context).pop();
       }
     } catch (e) {
