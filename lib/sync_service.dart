@@ -166,6 +166,7 @@ class SyncService {
             curr: Value(localDevice?.curr ?? false),
             updatedAt: Value(updatedAt),
             deleted: Value(overwriteMap['deleted'] ?? device['deleted']),
+            changes: Value(overwriteMap['changes'] ?? const []),
           ));
         }
       }
@@ -173,7 +174,7 @@ class SyncService {
 
     // Pull and apply remote group changes
     {
-      final remoteGroups = await _client.from('groups').select().eq('user_id', _userId).gt('updated_at', pulledAt);
+      final remoteGroups = await _client.from('groups').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toIso8601String());
       print('remote group changes: $remoteGroups');
      
       final localGroups = await db.getGroupsById(remoteGroups.map((group) => group['id'] as String).toList());
@@ -197,13 +198,14 @@ class SyncService {
         } else {
           db.upsertGroup(GroupsCompanion(
             id: Value(group['id']),
-            name: Value(overwriteMap['name'] ?? group['name']),
-            device: Value(overwriteMap['device'] ?? group['device']),
-            allow: Value(overwriteMap['allow'] ?? group['allow']),
-            apps: Value(overwriteMap['apps'] ?? group['apps']),
-            sites: Value(overwriteMap['sites'] ?? group['sites']),
+            name: Value(overwriteMap['name'] ?? group['name'] as String),
+            device: Value(overwriteMap['device'] ?? group['device'] as String),
+            allow: Value(overwriteMap['allow'] ?? group['allow'] as bool),
+            apps: Value((overwriteMap['apps'] ?? (group['apps'] as List<dynamic>).cast<String>())),
+            sites: Value(overwriteMap['sites']?.cast<String>() ?? (group['sites'] as List<dynamic>).cast<String>()),
             updatedAt: Value(updatedAt),
             deleted: Value(overwriteMap['deleted'] ?? group['deleted']),
+            changes: Value(overwriteMap['changes'] ?? const []),
           ));
         }
       }
@@ -211,7 +213,7 @@ class SyncService {
 
     // Pull and apply remote routine changes
     {
-      final remoteRoutines = await _client.from('routines').select().eq('user_id', _userId).gt('updated_at', pulledAt);
+      final remoteRoutines = await _client.from('routines').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toIso8601String());
       print('remote routine changes: $remoteRoutines');
      
       final localRoutines = await db.getRoutinesById(remoteRoutines.map((routine) => routine['id'] as String).toList());
@@ -246,7 +248,7 @@ class SyncService {
             startTime: Value(overwriteMap['start_time'] ?? routine['start_time']),
             endTime: Value(overwriteMap['end_time'] ?? routine['end_time']),
             recurring: Value(overwriteMap['recurring'] ?? routine['recurring']),
-            groups: Value(overwriteMap['groups'] ?? routine['groups']),
+            groups: Value(overwriteMap['groups']?.cast<String>() ?? (routine['groups'] as List<dynamic>).cast<String>()),
             numBreaksTaken: Value(overwriteMap['num_breaks_taken'] ?? routine['num_breaks_taken']),
             lastBreakAt: Value(overwriteMap['last_break_at'] ?? routine['last_break_at']),
             breakUntil: Value(overwriteMap['break_until'] ?? routine['break_until']),
@@ -257,6 +259,7 @@ class SyncService {
             snoozedUntil: Value(overwriteMap['snoozed_until'] ?? routine['snoozed_until']),
             updatedAt: Value(updatedAt),
             deleted: Value(overwriteMap['deleted'] ?? routine['deleted']),
+            changes: Value(overwriteMap['changes'] ?? []),
           ));
         }
       }
