@@ -399,8 +399,9 @@ class SyncService {
 
     deviceList.sort((a, b) => a.compareTo(b));
 
-    if (deviceList.length > 1) {
+    if (deviceList.isNotEmpty) {
       final pulledAt = deviceList[0];
+      print('Deleting routines older than $pulledAt');
       await _client.from('routines').delete().lt('updated_at', pulledAt).eq('deleted', true);
       await _client.from('groups').delete().lt('updated_at', pulledAt).eq('deleted', true);
       await _client.from('devices').delete().lt('updated_at', pulledAt).eq('deleted', true);
