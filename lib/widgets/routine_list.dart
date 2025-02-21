@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../routine.dart';
 import 'routine_page.dart';
@@ -12,17 +13,26 @@ class RoutineList extends StatefulWidget {
 
 class _RoutineListState extends State<RoutineList> {
   late List<Routine> _routines;
+  late StreamSubscription<List<Routine>> _routineSubscription;
 
   @override
   void initState() {
     super.initState();
     _routines = [];
    
-    Routine.watchAll().listen((routines) {
-      setState(() {
-        _routines = routines;
-      });
+    _routineSubscription = Routine.watchAll().listen((routines) {
+      if (mounted) {
+        setState(() {
+          _routines = routines;
+        });
+      }
     });
+  }
+
+  @override
+  void dispose() {
+    _routineSubscription.cancel();
+    super.dispose();
   }
 
   @override

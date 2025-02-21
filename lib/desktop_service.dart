@@ -117,7 +117,7 @@ class DesktopService {
   void _evaluate(List<Routine> routines) {
     routines = routines.where((r) => r.isActive && !r.isPaused).toList();
 
-    print("Routines: $routines");
+    print("Active Routines: $routines");
 
     Set<String> apps = {}; 
     Set<String> sites = {};

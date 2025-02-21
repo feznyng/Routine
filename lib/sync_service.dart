@@ -136,7 +136,7 @@ class SyncService {
 
     // Pull and apply remote device changes
     {
-      final remoteDevices = await _client.from('devices').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toIso8601String());
+      final remoteDevices = await _client.from('devices').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
       print('remote device changes: $remoteDevices');
      
       final localDevices = await db.getDevicesById(remoteDevices.map((device) => device['id'] as String).toList());
@@ -172,7 +172,7 @@ class SyncService {
 
     // Pull and apply remote group changes
     {
-      final remoteGroups = await _client.from('groups').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toIso8601String());
+      final remoteGroups = await _client.from('groups').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
       print('remote group changes: $remoteGroups');
      
       final localGroups = await db.getGroupsById(remoteGroups.map((group) => group['id'] as String).toList());
@@ -196,9 +196,9 @@ class SyncService {
         } else {
           db.upsertGroup(GroupsCompanion(
             id: Value(group['id']),
-            name: Value(overwriteMap['name'] ?? group['name'] as String),
-            device: Value(overwriteMap['device'] ?? group['device'] as String),
-            allow: Value(overwriteMap['allow'] ?? group['allow'] as bool),
+            name: Value(overwriteMap['name'] ?? group['name'] as String?),
+            device: Value(overwriteMap['device'] ?? group['device'] as String?),
+            allow: Value(overwriteMap['allow'] ?? group['allow'] as bool?),
             apps: Value((overwriteMap['apps'] ?? (group['apps'] as List<dynamic>).cast<String>())),
             sites: Value(overwriteMap['sites']?.cast<String>() ?? (group['sites'] as List<dynamic>).cast<String>()),
             updatedAt: Value(updatedAt),
@@ -211,7 +211,7 @@ class SyncService {
 
     // Pull and apply remote routine changes
     {
-      final remoteRoutines = await _client.from('routines').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toIso8601String());
+      final remoteRoutines = await _client.from('routines').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
       print('remote routine changes: $remoteRoutines');
      
       final localRoutines = await db.getRoutinesById(remoteRoutines.map((routine) => routine['id'] as String).toList());
@@ -254,7 +254,7 @@ class SyncService {
             maxBreakDuration: Value(overwriteMap['max_break_duration'] ?? routine['max_break_duration']),
             friction: Value(FrictionType.values.byName(overwriteMap['friction'] ?? routine['friction'])),
             frictionLen: Value(overwriteMap['friction_len'] ?? routine['friction_len']),
-            snoozedUntil: Value(overwriteMap['snoozed_until'] ?? routine['snoozed_until']),
+            snoozedUntil: Value(overwriteMap['snoozed_until'] != null ? DateTime.parse(overwriteMap['snoozed_until']) : routine['snoozed_until'] != null ? DateTime.parse(routine['snoozed_until']) : null),
             updatedAt: Value(updatedAt),
             deleted: Value(overwriteMap['deleted'] ?? routine['deleted']),
             changes: Value(overwriteMap['changes'] ?? []),
@@ -281,7 +281,8 @@ class SyncService {
       final remoteDeviceMap = {for (final device in remoteDevices) device['id']: device};
       for (final device in localDevices) {
         final remoteDevice = remoteDeviceMap[device.id];
-        if (remoteDevice != null && remoteDevice['updated_at'].compareTo(pulledAt.toIso8601String()) > 0) {
+        if (remoteDevice != null && remoteDevice['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
+          print("detected remote device change, exiting");
           return false;
         }
       }
@@ -294,8 +295,8 @@ class SyncService {
           'user_id': _userId,
           'name': device.name,
           'type': device.type,
-          'updated_at': device.updatedAt.toIso8601String(),
-          'last_pulled_at': pulledAt.toIso8601String(),
+          'updated_at': device.updatedAt.toUtc().toIso8601String(),
+          'last_pulled_at': pulledAt.toUtc().toIso8601String(),
           'deleted': device.deleted,
         })
         .eq('id', device.id);
@@ -315,7 +316,8 @@ class SyncService {
       
       for (final group in localGroups) {
         final remoteGroup = remoteGroupMap[group.id];
-        if (remoteGroup != null && remoteGroup['updated_at'].compareTo(pulledAt.toIso8601String()) > 0) {
+        if (remoteGroup != null && remoteGroup['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
+          print("detected remote group change, exiting");
           return false;
         }
       }
@@ -331,7 +333,7 @@ class SyncService {
           'allow': group.allow,
           'apps': group.apps,
           'sites': group.sites,
-          'updated_at': group.updatedAt.toIso8601String(),
+          'updated_at': group.updatedAt.toUtc().toIso8601String(),
           'deleted': group.deleted,
         })
         .eq('id', group.id);
@@ -351,12 +353,15 @@ class SyncService {
       
       for (final routine in localRoutines) {
         final remoteRoutine = remoteRoutineMap[routine.id];
-        if (remoteRoutine != null && remoteRoutine['updated_at'].compareTo(pulledAt.toIso8601String()) > 0) {
+        if (remoteRoutine != null && remoteRoutine['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
+          print("detected remote routine change, exiting");
           return false;
         }
       }
 
       for (final routine in localRoutines) {
+
+        print('upserting routine ${routine.id} ${routine.lastBreakAt?.toIso8601String()} ${routine.lastBreakAt?.toUtc().toIso8601String()}');
         await _client
         .from('routines')
         .upsert({
@@ -375,14 +380,14 @@ class SyncService {
           'recurring': routine.recurring,
           'groups': routine.groups,
           'num_breaks_taken': routine.numBreaksTaken,
-          'last_break_at': routine.lastBreakAt?.toIso8601String(),
-          'break_until': routine.breakUntil?.toIso8601String(),
+          'last_break_at': routine.lastBreakAt?.toUtc().toIso8601String(),
+          'break_until': routine.breakUntil?.toUtc().toIso8601String(),
           'max_breaks': routine.maxBreaks,
           'max_break_duration': routine.maxBreakDuration,
           'friction': routine.friction.name,
           'friction_len': routine.frictionLen,
-          'snoozed_until': routine.snoozedUntil?.toIso8601String(),
-          'updated_at': routine.updatedAt.toIso8601String(),
+          'snoozed_until': routine.snoozedUntil?.toUtc().toIso8601String(),
+          'updated_at': routine.updatedAt.toUtc().toIso8601String(),
           'deleted': routine.deleted,
         })
         .eq('id', routine.id);

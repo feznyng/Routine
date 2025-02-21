@@ -306,8 +306,12 @@ class Routine {
   bool get isPaused {
     if (_breakUntil == null) return false;
 
-    print("isPaused: ${DateTime.now()}, $_breakUntil");
-    return DateTime.now().isBefore(_breakUntil!);
+    final now = DateTime.now().toUtc();
+    print("isPaused debug:");
+    print("  now: $now (${now.millisecondsSinceEpoch})");
+    print("  _breakUntil: $_breakUntil (${_breakUntil!.millisecondsSinceEpoch})");
+    print("  comparison: $now < $_breakUntil = ${now.isBefore(_breakUntil!)}");
+    return now.isBefore(_breakUntil!);
   }
 
   bool get canBreak {
