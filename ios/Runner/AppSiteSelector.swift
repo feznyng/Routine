@@ -2,6 +2,7 @@ import Flutter
 import UIKit
 import FamilyControls
 import SwiftUI
+import ManagedSettings
 
 class AppSiteSelectorView: NSObject, FlutterPlatformView {
     private var _view: UIView
@@ -67,15 +68,14 @@ class AppSiteSelectorView: NSObject, FlutterPlatformView {
     }
     
     private func handleSelectionChange(_ newSelection: FamilyActivitySelection) {
-        let appCount = newSelection.applicationTokens.count
-        let siteCount = newSelection.webDomainTokens.count
+        let encoder = JSONEncoder()
+        let apps = newSelection.applicationTokens.compactMap { try? encoder.encode($0) }
+        let sites = newSelection.webDomainTokens.compactMap { try? encoder.encode($0) }
 
-        print("App count: \(appCount), Site count: \(siteCount)")
-        
         DispatchQueue.main.async { [weak self] in
             self?.channel.invokeMethod("onSelectionChanged", arguments: [
-                "appCount": appCount,
-                "siteCount": siteCount
+                "apps": apps,
+                "sites": sites
             ])
         }
     }

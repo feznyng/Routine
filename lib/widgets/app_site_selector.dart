@@ -46,14 +46,6 @@ class _AppSiteSelectorState extends State<AppSiteSelector> {
     switch (call.method) {
       case 'onSelectionChanged':
         print("onSelectionChanged: ${call.arguments}");
-        final int appCount = call.arguments['appCount'] ?? 0;
-        final int siteCount = call.arguments['siteCount'] ?? 0;
-        print('Number of selected apps: $appCount');
-        print('Number of selected sites: $siteCount');
-        // Create empty lists with the correct count
-        final apps = List<String>.filled(appCount, '');
-        final sites = List<String>.filled(siteCount, '');
-        widget.onSave(apps, sites);
         break;
       default:
         print('Unhandled method ${call.method}');
