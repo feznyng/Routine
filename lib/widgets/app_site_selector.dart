@@ -45,7 +45,10 @@ class _AppSiteSelectorState extends State<AppSiteSelector> {
     print("handleMethodCall: ${call.method}");
     switch (call.method) {
       case 'onSelectionChanged':
-        print("onSelectionChanged: ${call.arguments}");
+        final List<String> selectedApps = List<String>.from(call.arguments['apps'] ?? []);
+        final List<String> selectedSites = List<String>.from(call.arguments['sites'] ?? []);
+
+        widget.onSave(selectedApps, selectedSites);
         break;
       default:
         print('Unhandled method ${call.method}');

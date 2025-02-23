@@ -192,6 +192,7 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
             selectedApps: _selectedApps,
             selectedSites: _selectedSites,
             onSave: (apps, sites) {
+              print("app site selector: $apps, $sites");
               setState(() {
                 _selectedApps = apps;
                 _selectedSites = sites;
