@@ -6,6 +6,7 @@ import 'device.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'sync_service.dart';
+import 'util.dart';
 
 class Routine {
   final String _id;
@@ -323,10 +324,11 @@ class Routine {
       return true;
     }
 
-    print("canBreak: ${DateTime.now()}, $_lastBreakAt, $_startTime");
+    print("canBreak: $_lastBreakAt = ${Util.isBeforeToday(_lastBreakAt!)}");
 
     final lastBreakTimeOfDay = _lastBreakAt!.hour * 60 + _lastBreakAt!.minute;
-    if (lastBreakTimeOfDay < _startTime) {
+
+    if (Util.isBeforeToday(_lastBreakAt!) || lastBreakTimeOfDay < _startTime) {
       // Last break was before start time today, reset counter
       _numBreaksTaken = null;
       return true;
@@ -350,10 +352,12 @@ class Routine {
     await save();
   }
 
-  void endBreak() {
+  Future<void> endBreak() async {
     _breakUntil = null;
-    save();
+    await save();
   }
+
+  Map<String, Group> get groups => _groups;
 
   Group? getGroup([String? deviceId]) {
     deviceId = deviceId ?? getIt<Device>().id;

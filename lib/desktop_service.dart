@@ -88,6 +88,10 @@ class DesktopService {
     for (final Routine routine in routines) {
       evaluationTimes.add(Schedule(hours: routine.startHour, minutes: routine.startMinute));
       evaluationTimes.add(Schedule(hours: routine.endHour, minutes: routine.endMinute));
+
+      if (routine.breakUntil != null && routine.breakUntil!.isAfter(DateTime.now())) {
+        evaluationTimes.add(Schedule(hours: routine.breakUntil!.hour, minutes: routine.breakUntil!.minute));
+      }
     }
 
     for (final ScheduledTask task in _scheduledTasks) {

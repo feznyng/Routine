@@ -6,15 +6,17 @@ import 'block_groups_page.dart';
 import '../group.dart';
 
 class BlockGroupPage extends StatefulWidget {
-  final Group selectedGroup;
+  final Group? selectedGroup;
   final Function(Group) onSave;
   final VoidCallback onBack;
+  final String deviceId;
 
   const BlockGroupPage({
     super.key,
-    required this.selectedGroup,
+    this.selectedGroup,
     required this.onSave,
     required this.onBack,
+    required this.deviceId,
   });
 
   @override
@@ -30,10 +32,10 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
   @override
   void initState() {
     super.initState();
-    _selectedGroup = widget.selectedGroup;
+    _selectedGroup = widget.selectedGroup ?? Group();
     _blockGroups = [];
 
-    _subscription = Group.watchAllNamed().listen((event) {
+    _subscription = Group.watchAllNamed(deviceId: widget.deviceId).listen((event) {
       if (mounted) {
         setState(() {
           // Find any new groups that weren't in the previous list

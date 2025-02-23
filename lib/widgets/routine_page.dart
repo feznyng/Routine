@@ -1,7 +1,10 @@
+import 'package:Routine/device.dart';
+import 'package:Routine/group.dart';
 import 'package:flutter/material.dart';
 import '../routine.dart';
 import 'block_group_page.dart';
 import '../database.dart';
+import '../setup.dart';
 
 class RoutinePage extends StatefulWidget {
   final Routine routine;
@@ -165,16 +168,17 @@ class _RoutinePageState extends State<RoutinePage> {
     );
   }
 
-  void _toggleBlockGroup() {
-    final group = _routine.getGroup()!;
+  void _toggleBlockGroup(String deviceId) {
+    final group = _routine.getGroup(deviceId);
 
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => BlockGroupPage(
           selectedGroup: group,
+          deviceId: deviceId,
           onSave: (group) {
             setState(() {
-              _routine.setGroup(group);
+              _routine.setGroup(group, deviceId);
               _validateRoutine();
             });
           },
@@ -405,35 +409,75 @@ class _RoutinePageState extends State<RoutinePage> {
   }
 
   Widget _buildBlockGroupSection() {
-    String summary = '';
-    final group = _routine.getGroup();
+    final currentDeviceId = getIt<Device>().id;
+    final hasCurrentDeviceGroup = _routine.getGroup() != null;
 
-    if (group == null) {
-      summary = 'No block group configured';
-    } else if (group.name != null) {
-      summary = group.name!;
-    } else if (group.apps.isEmpty && group.sites.isEmpty) {
-      summary = group.allow ? 'Everything blocked' : 'Nothing blocked';
-    } else {
-      List<String> parts = [];
-      if (group.apps.isNotEmpty) {
-        parts.add('${group.apps.length} app${group.apps.length > 1 ? "s" : ""}');
+    String _buildGroupSummary(Group? group) {
+      if (group == null) {
+        return 'No block group configured';
+      } else if (group.name != null) {
+        return group.name!;
+      } else if (group.apps.isEmpty && group.sites.isEmpty) {
+        return group.allow ? 'Everything blocked' : 'Nothing blocked';
+      } else {
+        List<String> parts = [];
+        if (group.apps.isNotEmpty) {
+          parts.add('${group.apps.length} app${group.apps.length > 1 ? "s" : ""}');
+        }
+        if (group.sites.isNotEmpty) {
+          parts.add('${group.sites.length} site${group.sites.length > 1 ? "s" : ""}');
+        }
+        return group.allow 
+            ? 'Allowing ${parts.join(", ")}'
+            : 'Blocking ${parts.join(", ")}';
       }
-      if (group.sites.isNotEmpty) {
-        parts.add('${group.sites.length} site${group.sites.length > 1 ? "s" : ""}');
-      }
-      summary = group.allow 
-          ? 'Allowing ${parts.join(", ")}'
-          : 'Blocking ${parts.join(", ")}';
     }
 
-    return Card(
-      child: ListTile(
-        title: const Text('Block Group'),
-        subtitle: Text(summary),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: _toggleBlockGroup,
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ..._routine.groups.entries.map((entry) {
+          final deviceId = entry.key;
+          final group = entry.value;
+          return Card(
+            child: ListTile(
+              title: Text('Block Group${deviceId == currentDeviceId ? ' (This Device)' : ''}'),
+              subtitle: Text(_buildGroupSummary(group)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                if (deviceId == currentDeviceId) {
+                  _toggleBlockGroup(deviceId);
+                } else {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: const Text('Device Group Access'),
+                        content: const Text('Block groups for other devices can only be edited from those devices.'),
+                        actions: <Widget>[
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                }
+              },
+            ),
+          );
+        }).toList(),
+        if (!hasCurrentDeviceGroup)
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: ElevatedButton.icon(
+              onPressed: () => _toggleBlockGroup(currentDeviceId),
+              icon: const Icon(Icons.add),
+              label: const Text('Add Device Group'),
+            ),
+          ),
+      ],
     );
   }
 

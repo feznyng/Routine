@@ -40,4 +40,10 @@ class Util {
     
     return result;
   }
+
+  static bool isBeforeToday(DateTime dateTime) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return dateTime.isBefore(today);
+  }
 }
