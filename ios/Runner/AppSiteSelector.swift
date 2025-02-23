@@ -67,16 +67,38 @@ class AppSiteSelectorView: NSObject, FlutterPlatformView {
         }
     }
     
+    private func processToken<T>(_ token: Token<T>, encoder: JSONEncoder) -> String? {
+        // Try encoding with JSONEncoder
+        do {
+            let encoded = try encoder.encode(token)
+            if let jsonString = String(data: encoded, encoding: .utf8), !jsonString.isEmpty, jsonString != "null" {
+                // Attempt to extract the "data" field from the JSON object
+                if let jsonObject = try? JSONSerialization.jsonObject(with: encoded, options: []) as? [String: Any],
+                   let dataString = jsonObject["data"] as? String,
+                   !dataString.isEmpty {
+                    return dataString
+                }
+                return jsonString
+            }
+        } catch {
+            print("JSONEncoder failed for token of type \(type(of: token)): \(error)")
+        }
+        
+        print("Unable to process token of type \(type(of: token))")
+        return nil
+    }
+    
     private func handleSelectionChange(_ newSelection: FamilyActivitySelection) {
         let encoder = JSONEncoder()
-        let apps = newSelection.applicationTokens.compactMap { try? encoder.encode($0) }
-        let sites = newSelection.webDomainTokens.compactMap { try? encoder.encode($0) }
+        let apps = newSelection.applicationTokens.compactMap { token -> String? in
+            return processToken(token, encoder: encoder)
+        }
+        let sites = newSelection.webDomainTokens.compactMap { token -> String? in
+            return processToken(token, encoder: encoder)
+        }
 
         DispatchQueue.main.async { [weak self] in
-            self?.channel.invokeMethod("onSelectionChanged", arguments: [
-                "apps": apps,
-                "sites": sites
-            ])
+            self?.channel.invokeMethod("onSelectionChanged", arguments: ["apps": apps, "sites": sites])
         }
     }
 }
