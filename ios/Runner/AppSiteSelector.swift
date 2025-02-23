@@ -18,7 +18,7 @@ class AppSiteSelectorView: NSObject, FlutterPlatformView {
         binaryMessenger messenger: FlutterBinaryMessenger
     ) {
         _view = UIView()
-        channel = FlutterMethodChannel(name: "app_site_selector", binaryMessenger: messenger)
+        channel = FlutterMethodChannel(name: "app_site_selector_\(viewId)", binaryMessenger: messenger)
         super.init()
         
         // Find the parent view controller
