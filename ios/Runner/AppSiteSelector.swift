@@ -1,8 +1,14 @@
 import Flutter
 import UIKit
+import FamilyControls
+import SwiftUI
 
 class AppSiteSelectorView: NSObject, FlutterPlatformView {
     private var _view: UIView
+    private var selection = FamilyActivitySelection()
+    private var channel: FlutterMethodChannel
+    private var hostingController: UIHostingController<FamilyActivityPickerWrapper>?
+    private var parentViewController: UIViewController?
     
     init(
         frame: CGRect,
@@ -11,8 +17,25 @@ class AppSiteSelectorView: NSObject, FlutterPlatformView {
         binaryMessenger messenger: FlutterBinaryMessenger
     ) {
         _view = UIView()
+        channel = FlutterMethodChannel(name: "app_site_selector", binaryMessenger: messenger)
         super.init()
+        
+        // Find the parent view controller
+        if let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }),
+           let rootViewController = window.rootViewController {
+            parentViewController = rootViewController
+        }
+        
         createNativeView(frame: frame)
+        
+        // Request authorization when initializing
+        Task {
+            do {
+                try await AuthorizationCenter.shared.requestAuthorization(for: .individual)
+            } catch {
+                print("Failed to request authorization: \(error)")
+            }
+        }
     }
     
     func view() -> UIView {
@@ -23,18 +46,51 @@ class AppSiteSelectorView: NSObject, FlutterPlatformView {
         _view.frame = frame
         _view.backgroundColor = .systemBackground
         
-        let label = UILabel()
-        label.text = "App Site Selector View"
-        label.textAlignment = .center
-        label.font = .systemFont(ofSize: 17, weight: .medium)
-        label.translatesAutoresizingMaskIntoConstraints = false
+        let wrapper = FamilyActivityPickerWrapper(selection: selection) { [weak self] newSelection in
+            self?.handleSelectionChange(newSelection)
+        }
         
-        _view.addSubview(label)
+        hostingController = UIHostingController(rootView: wrapper)
+        if let hostingController = hostingController {
+            hostingController.view.translatesAutoresizingMaskIntoConstraints = false
+            parentViewController?.addChild(hostingController)
+            _view.addSubview(hostingController.view)
+            hostingController.didMove(toParent: parentViewController)
+            
+            NSLayoutConstraint.activate([
+                hostingController.view.topAnchor.constraint(equalTo: _view.topAnchor),
+                hostingController.view.leadingAnchor.constraint(equalTo: _view.leadingAnchor),
+                hostingController.view.trailingAnchor.constraint(equalTo: _view.trailingAnchor),
+                hostingController.view.bottomAnchor.constraint(equalTo: _view.bottomAnchor)
+            ])
+        }
+    }
+    
+    private func handleSelectionChange(_ newSelection: FamilyActivitySelection) {
+        let appCount = newSelection.applicationTokens.count
+        let siteCount = newSelection.webDomainTokens.count
+
+        print("App count: \(appCount), Site count: \(siteCount)")
         
-        NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: _view.centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: _view.centerYAnchor)
-        ])
+        DispatchQueue.main.async { [weak self] in
+            self?.channel.invokeMethod("onSelectionChanged", arguments: [
+                "appCount": appCount,
+                "siteCount": siteCount
+            ])
+        }
+    }
+}
+
+// Wrapper view to handle selection changes
+struct FamilyActivityPickerWrapper: View {
+    @State var selection: FamilyActivitySelection
+    var onSelectionChanged: (FamilyActivitySelection) -> Void
+    
+    var body: some View {
+        FamilyActivityPicker(selection: $selection)
+            .onChange(of: selection) { newValue in
+                onSelectionChanged(newValue)
+            }
     }
 }
 
