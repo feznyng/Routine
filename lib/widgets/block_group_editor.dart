@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:io' show Platform;
 import 'block_apps_dialog.dart';
 import 'block_sites_dialog.dart';
+import 'app_site_selector.dart';
 
 class BlockGroupEditor extends StatefulWidget {
   final List<String> selectedApps;
@@ -151,10 +153,59 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (widget.showBlockMode) ...[
+    if (Platform.isIOS) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (widget.showBlockMode) ...[            
+            Padding(
+              padding: const EdgeInsets.all(0.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 8),
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment<bool>(
+                        value: true,
+                        label: Text('Block'),
+                      ),
+                      ButtonSegment<bool>(
+                        value: false,
+                        label: Text('Allow'),
+                      ),
+                    ],
+                    selected: {_blockSelected},
+                    onSelectionChanged: (Set<bool> newSelection) {
+                      setState(() {
+                        _blockSelected = newSelection.first;
+                      });
+                      widget.onBlockModeChanged(_blockSelected);
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+          AppSiteSelector(
+            selectedApps: _selectedApps,
+            selectedSites: _selectedSites,
+            onSave: (apps, sites) {
+              setState(() {
+                _selectedApps = apps;
+                _selectedSites = sites;
+              });
+              widget.onSave(apps, sites);
+            },
+          ),
+        ],
+      );
+    } else {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (widget.showBlockMode) ...[
           Padding(
             padding: const EdgeInsets.all(0.0),
             child: Column(
@@ -200,5 +251,6 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
         ),
       ],
     );
+  }
   }
 }
