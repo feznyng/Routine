@@ -136,18 +136,22 @@ class AppDatabase extends _$AppDatabase {
     )..where(routines.deleted.equals(false));
 
     return routineWithGroups.watch().map((rows) {
-      final groupsByRoutine = <RoutineEntry, List<GroupEntry>>{};
+      final groupsByRoutine = <String, List<GroupEntry>>{};
+      final routinesById = <String, RoutineEntry>{};
 
       for (final row in rows) {
         final routine = row.readTable(routines);
         final group = row.readTable(groups);
 
-        groupsByRoutine.putIfAbsent(routine, () => []).add(group);
+        print('routine: ${routine.id}, group: $group');
+
+        groupsByRoutine.putIfAbsent(routine.id, () => []).add(group);
+        routinesById[routine.id] = routine;
       }
 
       return [
         for (final entry in groupsByRoutine.entries)
-          (routine: entry.key, groups: entry.value)
+          (routine: routinesById[entry.key]!, groups: entry.value)
       ];
     });
   }

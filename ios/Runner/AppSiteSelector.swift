@@ -6,7 +6,7 @@ import ManagedSettings
 
 class AppSiteSelectorView: NSObject, FlutterPlatformView {
     private var _view: UIView
-    private var selection = FamilyActivitySelection()
+    private var selection: FamilyActivitySelection
     private var channel: FlutterMethodChannel
     private var hostingController: UIHostingController<FamilyActivityPickerWrapper>?
     private var parentViewController: UIViewController?
@@ -14,11 +14,44 @@ class AppSiteSelectorView: NSObject, FlutterPlatformView {
     init(
         frame: CGRect,
         viewIdentifier viewId: Int64,
-        arguments args: Any?,
+        arguments args: Optional<Any>?,
         binaryMessenger messenger: FlutterBinaryMessenger
     ) {
         _view = UIView()
         channel = FlutterMethodChannel(name: "app_site_selector_\(viewId)", binaryMessenger: messenger)
+        
+        // Initialize selection with creation params
+        selection = FamilyActivitySelection()
+        
+        if let params = args as? [String: Any] {
+            print("params: \(params)")
+            if let apps = params["apps"] as? [String] {
+                print("apps: \(apps)")
+                selection.applicationTokens = Set(apps.compactMap { appId in
+                    if let data = appId.data(using: .utf8) {
+                        print("raw data \(data)")
+                        if let token = try? JSONDecoder().decode(ApplicationToken.self, from: data) {
+                            print("successfully created token \(data)")
+                            return token
+                        }
+                        print("failed to create token from \(appId)")
+                        return nil
+                    }
+                    print("failed to create token from \(appId)")
+                    return nil
+                })
+            }
+            
+            if let sites = params["sites"] as? [String] {
+                selection.webDomainTokens = Set(sites.compactMap { siteId in
+                    if let data = siteId.data(using: .utf8) {
+                        return try? JSONDecoder().decode(WebDomainToken.self, from: data)
+                    }
+                    return nil
+                })
+            }
+        }
+        
         super.init()
         
         // Find the parent view controller
@@ -71,13 +104,9 @@ class AppSiteSelectorView: NSObject, FlutterPlatformView {
         // Try encoding with JSONEncoder
         do {
             let encoded = try encoder.encode(token)
+            print("encoded \(encoded)")
             if let jsonString = String(data: encoded, encoding: .utf8), !jsonString.isEmpty, jsonString != "null" {
-                // Attempt to extract the "data" field from the JSON object
-                if let jsonObject = try? JSONSerialization.jsonObject(with: encoded, options: []) as? [String: Any],
-                   let dataString = jsonObject["data"] as? String,
-                   !dataString.isEmpty {
-                    return dataString
-                }
+                print("jsonString \(jsonString)")
                 return jsonString
             }
         } catch {

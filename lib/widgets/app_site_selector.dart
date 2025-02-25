@@ -33,14 +33,14 @@ class _AppSiteSelectorState extends State<AppSiteSelector> {
     if (_isDisposed) {
       return const SizedBox.shrink();
     }
-    
+        
     return SizedBox(
       height: 550, // Fixed height for the native view
       child: UiKitView(
         viewType: 'app_site_selector',
         creationParams: {
-          'selectedApps': widget.selectedApps,
-          'selectedSites': widget.selectedSites,
+          'apps': widget.selectedApps,
+          'sites': widget.selectedSites,
         },
         creationParamsCodec: const StandardMessageCodec(),
         onPlatformViewCreated: _onPlatformViewCreated,
