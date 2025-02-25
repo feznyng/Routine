@@ -28,10 +28,13 @@ class _RoutinePageState extends State<RoutinePage> {
   bool _isValid = false;
   bool _hasChanges = false;
 
+  late Map<String, DeviceEntry> _devices = {};
+
   @override
   void initState() {
     super.initState();
     _initializeRoutine();
+    _loadDevices();
   }
 
   void _initializeRoutine() {
@@ -39,6 +42,19 @@ class _RoutinePageState extends State<RoutinePage> {
     _nameController = TextEditingController(text: _routine.name);
     _nameController.addListener(_validateRoutine);
     _validateRoutine();
+  }
+
+  Future<void> _loadDevices() async {
+    final devices = Map.fromEntries(
+      (await getIt<AppDatabase>().getDevicesById(
+        _routine.groups.entries.map((e) => e.key).toList(),
+      ))
+          .map((e) => MapEntry(e.id, e)),
+    );
+
+    setState(() {
+      _devices = devices;
+    });
   }
 
   @override
@@ -441,7 +457,7 @@ class _RoutinePageState extends State<RoutinePage> {
           final group = entry.value;
           return Card(
             child: ListTile(
-              title: Text('Block Group${deviceId == currentDeviceId ? ' (This Device)' : ''}'),
+              title: Text('${_devices[deviceId]?.name}${deviceId == currentDeviceId ? ' (This Device)' : ''}'),
               subtitle: Text(_buildGroupSummary(group)),
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
