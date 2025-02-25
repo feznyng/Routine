@@ -82,6 +82,7 @@ class Groups extends Table {
   // device only
   late final apps = text().map(StringListTypeConverter())();
   late final sites = text().map(StringListTypeConverter())();
+  late final categories = text().map(StringListTypeConverter())();
 
   late final changes = text().map(StringListTypeConverter())();
   late final deleted = boolean().clientDefault(() => false)();

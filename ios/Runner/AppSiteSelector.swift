@@ -125,6 +125,7 @@ class AppSiteSelectorView: NSObject, FlutterPlatformView {
         let sites = newSelection.webDomainTokens.compactMap { token -> String? in
             return processToken(token, encoder: encoder)
         }
+        newSelection.includeEntireCategory
 
         DispatchQueue.main.async { [weak self] in
             self?.channel.invokeMethod("onSelectionChanged", arguments: ["apps": apps, "sites": sites])

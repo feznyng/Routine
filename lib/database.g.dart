@@ -1598,6 +1598,13 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupEntry> {
       GeneratedColumn<String>('sites', aliasedName, false,
               type: DriftSqlType.string, requiredDuringInsert: true)
           .withConverter<List<String>>($GroupsTable.$convertersites);
+  static const VerificationMeta _categoriesMeta =
+      const VerificationMeta('categories');
+  @override
+  late final GeneratedColumnWithTypeConverter<List<String>, String> categories =
+      GeneratedColumn<String>('categories', aliasedName, false,
+              type: DriftSqlType.string, requiredDuringInsert: true)
+          .withConverter<List<String>>($GroupsTable.$convertercategories);
   static const VerificationMeta _changesMeta =
       const VerificationMeta('changes');
   @override
@@ -1622,8 +1629,18 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupEntry> {
       'updated_at', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, name, device, allow, apps, sites, changes, deleted, updatedAt];
+  List<GeneratedColumn> get $columns => [
+        id,
+        name,
+        device,
+        allow,
+        apps,
+        sites,
+        categories,
+        changes,
+        deleted,
+        updatedAt
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1657,6 +1674,7 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupEntry> {
     }
     context.handle(_appsMeta, const VerificationResult.success());
     context.handle(_sitesMeta, const VerificationResult.success());
+    context.handle(_categoriesMeta, const VerificationResult.success());
     context.handle(_changesMeta, const VerificationResult.success());
     if (data.containsKey('deleted')) {
       context.handle(_deletedMeta,
@@ -1689,6 +1707,9 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupEntry> {
           .read(DriftSqlType.string, data['${effectivePrefix}apps'])!),
       sites: $GroupsTable.$convertersites.fromSql(attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}sites'])!),
+      categories: $GroupsTable.$convertercategories.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}categories'])!),
       changes: $GroupsTable.$converterchanges.fromSql(attachedDatabase
           .typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}changes'])!),
@@ -1708,6 +1729,8 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupEntry> {
       StringListTypeConverter();
   static TypeConverter<List<String>, String> $convertersites =
       StringListTypeConverter();
+  static TypeConverter<List<String>, String> $convertercategories =
+      StringListTypeConverter();
   static TypeConverter<List<String>, String> $converterchanges =
       StringListTypeConverter();
 }
@@ -1719,6 +1742,7 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
   final bool allow;
   final List<String> apps;
   final List<String> sites;
+  final List<String> categories;
   final List<String> changes;
   final bool deleted;
   final DateTime updatedAt;
@@ -1729,6 +1753,7 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
       required this.allow,
       required this.apps,
       required this.sites,
+      required this.categories,
       required this.changes,
       required this.deleted,
       required this.updatedAt});
@@ -1749,6 +1774,10 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
           Variable<String>($GroupsTable.$convertersites.toSql(sites));
     }
     {
+      map['categories'] =
+          Variable<String>($GroupsTable.$convertercategories.toSql(categories));
+    }
+    {
       map['changes'] =
           Variable<String>($GroupsTable.$converterchanges.toSql(changes));
     }
@@ -1765,6 +1794,7 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
       allow: Value(allow),
       apps: Value(apps),
       sites: Value(sites),
+      categories: Value(categories),
       changes: Value(changes),
       deleted: Value(deleted),
       updatedAt: Value(updatedAt),
@@ -1781,6 +1811,7 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
       allow: serializer.fromJson<bool>(json['allow']),
       apps: serializer.fromJson<List<String>>(json['apps']),
       sites: serializer.fromJson<List<String>>(json['sites']),
+      categories: serializer.fromJson<List<String>>(json['categories']),
       changes: serializer.fromJson<List<String>>(json['changes']),
       deleted: serializer.fromJson<bool>(json['deleted']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -1796,6 +1827,7 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
       'allow': serializer.toJson<bool>(allow),
       'apps': serializer.toJson<List<String>>(apps),
       'sites': serializer.toJson<List<String>>(sites),
+      'categories': serializer.toJson<List<String>>(categories),
       'changes': serializer.toJson<List<String>>(changes),
       'deleted': serializer.toJson<bool>(deleted),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -1809,6 +1841,7 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
           bool? allow,
           List<String>? apps,
           List<String>? sites,
+          List<String>? categories,
           List<String>? changes,
           bool? deleted,
           DateTime? updatedAt}) =>
@@ -1819,6 +1852,7 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
         allow: allow ?? this.allow,
         apps: apps ?? this.apps,
         sites: sites ?? this.sites,
+        categories: categories ?? this.categories,
         changes: changes ?? this.changes,
         deleted: deleted ?? this.deleted,
         updatedAt: updatedAt ?? this.updatedAt,
@@ -1831,6 +1865,8 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
       allow: data.allow.present ? data.allow.value : this.allow,
       apps: data.apps.present ? data.apps.value : this.apps,
       sites: data.sites.present ? data.sites.value : this.sites,
+      categories:
+          data.categories.present ? data.categories.value : this.categories,
       changes: data.changes.present ? data.changes.value : this.changes,
       deleted: data.deleted.present ? data.deleted.value : this.deleted,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -1846,6 +1882,7 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
           ..write('allow: $allow, ')
           ..write('apps: $apps, ')
           ..write('sites: $sites, ')
+          ..write('categories: $categories, ')
           ..write('changes: $changes, ')
           ..write('deleted: $deleted, ')
           ..write('updatedAt: $updatedAt')
@@ -1854,8 +1891,8 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
   }
 
   @override
-  int get hashCode => Object.hash(
-      id, name, device, allow, apps, sites, changes, deleted, updatedAt);
+  int get hashCode => Object.hash(id, name, device, allow, apps, sites,
+      categories, changes, deleted, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1866,6 +1903,7 @@ class GroupEntry extends DataClass implements Insertable<GroupEntry> {
           other.allow == this.allow &&
           other.apps == this.apps &&
           other.sites == this.sites &&
+          other.categories == this.categories &&
           other.changes == this.changes &&
           other.deleted == this.deleted &&
           other.updatedAt == this.updatedAt);
@@ -1878,6 +1916,7 @@ class GroupsCompanion extends UpdateCompanion<GroupEntry> {
   final Value<bool> allow;
   final Value<List<String>> apps;
   final Value<List<String>> sites;
+  final Value<List<String>> categories;
   final Value<List<String>> changes;
   final Value<bool> deleted;
   final Value<DateTime> updatedAt;
@@ -1889,6 +1928,7 @@ class GroupsCompanion extends UpdateCompanion<GroupEntry> {
     this.allow = const Value.absent(),
     this.apps = const Value.absent(),
     this.sites = const Value.absent(),
+    this.categories = const Value.absent(),
     this.changes = const Value.absent(),
     this.deleted = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -1901,6 +1941,7 @@ class GroupsCompanion extends UpdateCompanion<GroupEntry> {
     required bool allow,
     required List<String> apps,
     required List<String> sites,
+    required List<String> categories,
     required List<String> changes,
     this.deleted = const Value.absent(),
     required DateTime updatedAt,
@@ -1910,6 +1951,7 @@ class GroupsCompanion extends UpdateCompanion<GroupEntry> {
         allow = Value(allow),
         apps = Value(apps),
         sites = Value(sites),
+        categories = Value(categories),
         changes = Value(changes),
         updatedAt = Value(updatedAt);
   static Insertable<GroupEntry> custom({
@@ -1919,6 +1961,7 @@ class GroupsCompanion extends UpdateCompanion<GroupEntry> {
     Expression<bool>? allow,
     Expression<String>? apps,
     Expression<String>? sites,
+    Expression<String>? categories,
     Expression<String>? changes,
     Expression<bool>? deleted,
     Expression<DateTime>? updatedAt,
@@ -1931,6 +1974,7 @@ class GroupsCompanion extends UpdateCompanion<GroupEntry> {
       if (allow != null) 'allow': allow,
       if (apps != null) 'apps': apps,
       if (sites != null) 'sites': sites,
+      if (categories != null) 'categories': categories,
       if (changes != null) 'changes': changes,
       if (deleted != null) 'deleted': deleted,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -1945,6 +1989,7 @@ class GroupsCompanion extends UpdateCompanion<GroupEntry> {
       Value<bool>? allow,
       Value<List<String>>? apps,
       Value<List<String>>? sites,
+      Value<List<String>>? categories,
       Value<List<String>>? changes,
       Value<bool>? deleted,
       Value<DateTime>? updatedAt,
@@ -1956,6 +2001,7 @@ class GroupsCompanion extends UpdateCompanion<GroupEntry> {
       allow: allow ?? this.allow,
       apps: apps ?? this.apps,
       sites: sites ?? this.sites,
+      categories: categories ?? this.categories,
       changes: changes ?? this.changes,
       deleted: deleted ?? this.deleted,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -1986,6 +2032,10 @@ class GroupsCompanion extends UpdateCompanion<GroupEntry> {
       map['sites'] =
           Variable<String>($GroupsTable.$convertersites.toSql(sites.value));
     }
+    if (categories.present) {
+      map['categories'] = Variable<String>(
+          $GroupsTable.$convertercategories.toSql(categories.value));
+    }
     if (changes.present) {
       map['changes'] =
           Variable<String>($GroupsTable.$converterchanges.toSql(changes.value));
@@ -2011,6 +2061,7 @@ class GroupsCompanion extends UpdateCompanion<GroupEntry> {
           ..write('allow: $allow, ')
           ..write('apps: $apps, ')
           ..write('sites: $sites, ')
+          ..write('categories: $categories, ')
           ..write('changes: $changes, ')
           ..write('deleted: $deleted, ')
           ..write('updatedAt: $updatedAt, ')
@@ -2801,6 +2852,7 @@ typedef $$GroupsTableCreateCompanionBuilder = GroupsCompanion Function({
   required bool allow,
   required List<String> apps,
   required List<String> sites,
+  required List<String> categories,
   required List<String> changes,
   Value<bool> deleted,
   required DateTime updatedAt,
@@ -2813,6 +2865,7 @@ typedef $$GroupsTableUpdateCompanionBuilder = GroupsCompanion Function({
   Value<bool> allow,
   Value<List<String>> apps,
   Value<List<String>> sites,
+  Value<List<String>> categories,
   Value<List<String>> changes,
   Value<bool> deleted,
   Value<DateTime> updatedAt,
@@ -2864,6 +2917,11 @@ class $$GroupsTableFilterComposer
   ColumnWithTypeConverterFilters<List<String>, List<String>, String>
       get sites => $composableBuilder(
           column: $table.sites,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnWithTypeConverterFilters<List<String>, List<String>, String>
+      get categories => $composableBuilder(
+          column: $table.categories,
           builder: (column) => ColumnWithTypeConverterFilters(column));
 
   ColumnWithTypeConverterFilters<List<String>, List<String>, String>
@@ -2922,6 +2980,9 @@ class $$GroupsTableOrderingComposer
   ColumnOrderings<String> get sites => $composableBuilder(
       column: $table.sites, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get categories => $composableBuilder(
+      column: $table.categories, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get changes => $composableBuilder(
       column: $table.changes, builder: (column) => ColumnOrderings(column));
 
@@ -2975,6 +3036,10 @@ class $$GroupsTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<List<String>, String> get sites =>
       $composableBuilder(column: $table.sites, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<String>, String> get categories =>
+      $composableBuilder(
+          column: $table.categories, builder: (column) => column);
 
   GeneratedColumnWithTypeConverter<List<String>, String> get changes =>
       $composableBuilder(column: $table.changes, builder: (column) => column);
@@ -3035,6 +3100,7 @@ class $$GroupsTableTableManager extends RootTableManager<
             Value<bool> allow = const Value.absent(),
             Value<List<String>> apps = const Value.absent(),
             Value<List<String>> sites = const Value.absent(),
+            Value<List<String>> categories = const Value.absent(),
             Value<List<String>> changes = const Value.absent(),
             Value<bool> deleted = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
@@ -3047,6 +3113,7 @@ class $$GroupsTableTableManager extends RootTableManager<
             allow: allow,
             apps: apps,
             sites: sites,
+            categories: categories,
             changes: changes,
             deleted: deleted,
             updatedAt: updatedAt,
@@ -3059,6 +3126,7 @@ class $$GroupsTableTableManager extends RootTableManager<
             required bool allow,
             required List<String> apps,
             required List<String> sites,
+            required List<String> categories,
             required List<String> changes,
             Value<bool> deleted = const Value.absent(),
             required DateTime updatedAt,
@@ -3071,6 +3139,7 @@ class $$GroupsTableTableManager extends RootTableManager<
             allow: allow,
             apps: apps,
             sites: sites,
+            categories: categories,
             changes: changes,
             deleted: deleted,
             updatedAt: updatedAt,
