@@ -23,10 +23,16 @@ class AppSiteSelectorPage extends StatelessWidget {
         ),
         backgroundColor: Colors.transparent,
       ),
-      body: AppSiteSelector(
-        selectedApps: selectedApps,
-        selectedSites: selectedSites,
-        onSave: onSave,
+      body: Column(
+        children: [
+          Expanded(
+            child: AppSiteSelector(
+              selectedApps: selectedApps,
+              selectedSites: selectedSites,
+              onSave: onSave,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -37,12 +43,12 @@ class AppSiteSelector extends StatefulWidget {
   final List<String> selectedSites;
   final Function(List<String>, List<String>) onSave;
 
-  const AppSiteSelector({
-    super.key,
+  AppSiteSelector({
+    Key? key,
     required this.selectedApps,
     required this.selectedSites,
     required this.onSave,
-  });
+  }) : super(key: key ?? GlobalKey());
 
   @override
   State<AppSiteSelector> createState() => _AppSiteSelectorState();
@@ -50,29 +56,22 @@ class AppSiteSelector extends StatefulWidget {
 
 class _AppSiteSelectorState extends State<AppSiteSelector> {
   MethodChannel? _channel;
-  bool _isDisposed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _isDisposed = false;
-  }
+  int? _viewId;
 
   @override
   void dispose() {
-    _isDisposed = true;
-    _channel?.setMethodCallHandler(null);
+    if (_viewId != null) {
+      _channel?.invokeMethod('dispose');
+      _channel?.setMethodCallHandler(null);
+      _channel = null;
+      _viewId = null;
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isDisposed) {
-      return const SizedBox.shrink();
-    }
-
-    return SizedBox(
-      height: 550, // Fixed height for the native view
+    return SizedBox.expand(
       child: UiKitView(
         viewType: 'app_site_selector',
         creationParams: {
@@ -86,13 +85,13 @@ class _AppSiteSelectorState extends State<AppSiteSelector> {
   }
 
   void _onPlatformViewCreated(int id) {
-    if (_isDisposed) return;
+    _viewId = id;
     _channel = MethodChannel('app_site_selector_$id');
     _channel?.setMethodCallHandler(_handleMethodCall);
   }
 
   Future<void> _handleMethodCall(MethodCall call) async {
-    if (_isDisposed) return;
+    if (_viewId == null) return;
     print("handleMethodCall: ${call.method}");
     switch (call.method) {
       case 'onSelectionChanged':
