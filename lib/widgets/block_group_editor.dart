@@ -188,17 +188,35 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
             ),
             const SizedBox(height: 10),
           ],
-          AppSiteSelector(
-            selectedApps: _selectedApps,
-            selectedSites: _selectedSites,
-            onSave: (apps, sites) {
-              print("app site selector: $apps, $sites");
-              setState(() {
-                _selectedApps = apps;
-                _selectedSites = sites;
-              });
-              widget.onSave(apps, sites);
+          _buildBlockButton(
+            title: 'Applications',
+            subtitle: _getAppSubtitle(),
+            icon: Icons.apps,
+            onPressed: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => AppSiteSelectorPage(
+                    selectedApps: _selectedApps,
+                    selectedSites: _selectedSites,
+                    onSave: (apps, sites) {
+                      setState(() {
+                        _selectedApps = apps;
+                        _selectedSites = sites;
+                      });
+                      widget.onSave(apps, sites);
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ),
+              );
             },
+          ),
+          const SizedBox(height: 8),
+          _buildBlockButton(
+            title: 'Websites',
+            subtitle: _getSiteSubtitle(),
+            icon: Icons.language,
+            onPressed: _openSitesDialog,
           ),
         ],
       );
