@@ -7,7 +7,8 @@ import 'app_site_selector.dart';
 class BlockGroupEditor extends StatefulWidget {
   final List<String> selectedApps;
   final List<String> selectedSites;
-  final Function(List<String>, List<String>) onSave;
+  final List<String>? selectedCategories;
+  final Function(List<String>, List<String>, List<String>?) onSave;
   final bool blockSelected;
   final Function(bool) onBlockModeChanged;
   final bool showBlockMode;
@@ -16,6 +17,7 @@ class BlockGroupEditor extends StatefulWidget {
     super.key,
     required this.selectedApps,
     required this.selectedSites,
+    required this.selectedCategories,
     required this.onSave,
     required this.blockSelected,
     required this.onBlockModeChanged,
@@ -29,13 +31,18 @@ class BlockGroupEditor extends StatefulWidget {
 class _BlockGroupEditorState extends State<BlockGroupEditor> {
   late List<String> _selectedApps;
   late List<String> _selectedSites;
+  late List<String>? _selectedCategories;
   late bool _blockSelected;
 
   @override
   void initState() {
     super.initState();
+
+    print('BlockGroupEditor: ${widget.selectedCategories}');
+
     _selectedApps = List.from(widget.selectedApps);
     _selectedSites = List.from(widget.selectedSites);
+    _selectedCategories = List.from(widget.selectedCategories ?? []);
     _blockSelected = widget.blockSelected;
   }
 
@@ -49,7 +56,7 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
       setState(() {
         _selectedApps = result;
       });
-      widget.onSave(_selectedApps, _selectedSites);
+      widget.onSave(_selectedApps, _selectedSites, _selectedCategories);
     }
   }
 
@@ -63,19 +70,39 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
       setState(() {
         _selectedSites = result;
       });
-      widget.onSave(_selectedApps, _selectedSites);
+      widget.onSave(_selectedApps, _selectedSites, _selectedCategories);
     }
   }
 
   String _getAppSubtitle() {
+    String appText = '';
+    String categoryText = '';
+    
+    // Handle apps text
     if (_selectedApps.isEmpty) {
-      return _blockSelected
+      appText = _blockSelected
           ? 'No applications blocked'
           : 'All applications blocked';
+    } else {
+      appText = _blockSelected
+          ? '${_selectedApps.length} applications blocked'
+          : '${_selectedApps.length} applications allowed';
     }
-    return _blockSelected
-        ? '${_selectedApps.length} applications blocked'
-        : '${_selectedApps.length} applications allowed';
+    
+    // Handle categories text
+    if (_selectedCategories != null && _selectedCategories!.isNotEmpty) {
+      categoryText = _blockSelected
+          ? '${_selectedCategories!.length} categories blocked'
+          : '${_selectedCategories!.length} categories allowed';
+      
+      // Combine both texts if both are present
+      if (_selectedApps.isNotEmpty) {
+        return '$appText, $categoryText';
+      }
+    }
+    
+    // If no categories or no apps, return the appropriate text
+    return categoryText.isNotEmpty ? categoryText : appText;
   }
 
   String _getSiteSubtitle() {
@@ -198,12 +225,14 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
                   builder: (context) => AppSiteSelectorPage(
                     selectedApps: _selectedApps,
                     selectedSites: _selectedSites,
-                    onSave: (apps, sites) {
+                    selectedCategories: _selectedCategories,
+                    onSave: (apps, sites, categories) {
                       setState(() {
                         _selectedApps = apps;
                         _selectedSites = sites;
+                        _selectedCategories = categories;
                       });
-                      widget.onSave(apps, sites);
+                      widget.onSave(apps, sites, categories);
                       Navigator.of(context).pop();
                     },
                   ),

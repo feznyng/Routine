@@ -194,6 +194,7 @@ class _RoutinePageState extends State<RoutinePage> {
           deviceId: deviceId,
           onSave: (group) {
             setState(() {
+              print('modified group ($deviceId): ${group.categories}');
               _routine.setGroup(group, deviceId);
               _validateRoutine();
             });
@@ -433,7 +434,7 @@ class _RoutinePageState extends State<RoutinePage> {
         return 'No block group configured';
       } else if (group.name != null) {
         return group.name!;
-      } else if (group.apps.isEmpty && group.sites.isEmpty) {
+      } else if (group.apps.isEmpty && group.sites.isEmpty && group.categories.isEmpty) {
         return group.allow ? 'Everything blocked' : 'Nothing blocked';
       } else {
         List<String> parts = [];
@@ -443,9 +444,12 @@ class _RoutinePageState extends State<RoutinePage> {
         if (group.sites.isNotEmpty) {
           parts.add('${group.sites.length} site${group.sites.length > 1 ? "s" : ""}');
         }
+        if (group.categories.isNotEmpty) {
+          parts.add('${group.categories.length} categor${group.categories.length > 1 ? "ies" : "y"}');
+        }
         return group.allow 
-            ? 'Custom (Allowing ${parts.join(", ")}\)'
-            : 'Custom (Blocking ${parts.join(", ")}\)';
+            ? 'Custom (Allowing ${parts.join(", ")})'
+            : 'Custom (Blocking ${parts.join(", ")})';
       }
     }
 

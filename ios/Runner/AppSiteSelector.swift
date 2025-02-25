@@ -50,6 +50,15 @@ class AppSiteSelectorView: NSObject, FlutterPlatformView {
                     return nil
                 })
             }
+
+            if let categories: [String] = params["categories"] as? [String] {
+                selection.categoryTokens = Set(categories.compactMap { categoryId in
+                    if let data = categoryId.data(using: .utf8) {
+                        return try? JSONDecoder().decode(ActivityCategoryToken.self, from: data)
+                    }
+                    return nil
+                })
+            }
         }
         
         super.init()
@@ -125,10 +134,16 @@ class AppSiteSelectorView: NSObject, FlutterPlatformView {
         let sites = newSelection.webDomainTokens.compactMap { token -> String? in
             return processToken(token, encoder: encoder)
         }
-        newSelection.includeEntireCategory
+        let categories = newSelection.categoryTokens.compactMap { token -> String? in
+            return processToken(token, encoder: encoder)
+        }
 
         DispatchQueue.main.async { [weak self] in
-            self?.channel.invokeMethod("onSelectionChanged", arguments: ["apps": apps, "sites": sites])
+            self?.channel.invokeMethod("onSelectionChanged", arguments: [
+                "apps": apps, 
+                "sites": sites,
+                "categories": categories
+            ])
         }
     }
 }

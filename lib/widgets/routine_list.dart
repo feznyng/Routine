@@ -91,21 +91,24 @@ class _RoutineListState extends State<RoutineList> {
 
     final apps = group.apps;
     final sites = group.sites;
+    final categories = group.categories;
     final isAllowlist = group.allow;
     
-    return Wrap(
-      spacing: 8,
-      runSpacing: 4,
-      children: [
-        Chip(
-          label: Text(
-            isAllowlist ? 'Allow' : 'Block',
-            style: const TextStyle(fontSize: 12),
-          ),
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          visualDensity: VisualDensity.compact,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+    List<Widget> chips = [
+      Chip(
+        label: Text(
+          isAllowlist ? 'Allow' : 'Block',
+          style: const TextStyle(fontSize: 12),
         ),
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+      ),
+    ];
+    
+    // Only add app chip if there are apps or if it's an allowlist with no apps
+    if (apps.isNotEmpty || (isAllowlist && apps.isEmpty)) {
+      chips.add(
         Chip(
           label: Text(
             apps.isEmpty && isAllowlist
@@ -117,6 +120,12 @@ class _RoutineListState extends State<RoutineList> {
           visualDensity: VisualDensity.compact,
           padding: const EdgeInsets.symmetric(horizontal: 4),
         ),
+      );
+    }
+    
+    // Only add site chip if there are sites or if it's an allowlist with no sites
+    if (sites.isNotEmpty || (isAllowlist && sites.isEmpty)) {
+      chips.add(
         Chip(
           label: Text(
             sites.isEmpty && isAllowlist
@@ -128,7 +137,28 @@ class _RoutineListState extends State<RoutineList> {
           visualDensity: VisualDensity.compact,
           padding: const EdgeInsets.symmetric(horizontal: 4),
         ),
-      ],
+      );
+    }
+    
+    // Only add category chip if there are categories
+    if (categories.isNotEmpty) {
+      chips.add(
+        Chip(
+          label: Text(
+            '${categories.length} ${categories.length == 1 ? 'category' : 'categories'}',
+            style: const TextStyle(fontSize: 12),
+          ),
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+        ),
+      );
+    }
+    
+    return Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      children: chips,
     );
   }
 

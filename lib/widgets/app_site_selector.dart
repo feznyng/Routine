@@ -4,12 +4,14 @@ import 'package:flutter/services.dart';
 class AppSiteSelectorPage extends StatefulWidget {
   final List<String> selectedApps;
   final List<String> selectedSites;
-  final Function(List<String>, List<String>) onSave;
+  final List<String>? selectedCategories;
+  final Function(List<String>, List<String>, List<String>?) onSave;
 
   const AppSiteSelectorPage({
     super.key,
     required this.selectedApps,
     required this.selectedSites,
+    this.selectedCategories,
     required this.onSave,
   });
 
@@ -20,12 +22,16 @@ class AppSiteSelectorPage extends StatefulWidget {
 class _AppSiteSelectorPageState extends State<AppSiteSelectorPage> {
   List<String> _currentApps = [];
   List<String> _currentSites = [];
+  List<String>? _currentCategories = [];
 
   @override
   void initState() {
     super.initState();
     _currentApps = List.from(widget.selectedApps);
     _currentSites = List.from(widget.selectedSites);
+    _currentCategories = widget.selectedCategories != null
+        ? List.from(widget.selectedCategories!)
+        : [];
   }
 
   @override
@@ -39,7 +45,7 @@ class _AppSiteSelectorPageState extends State<AppSiteSelectorPage> {
         actions: [
           TextButton(
             onPressed: () async {
-              widget.onSave(_currentApps, _currentSites);
+              widget.onSave(_currentApps, _currentSites, _currentCategories);
             },
             child: const Text('Done'),
           ),
@@ -52,10 +58,12 @@ class _AppSiteSelectorPageState extends State<AppSiteSelectorPage> {
             child: AppSiteSelector(
               selectedApps: _currentApps,
               selectedSites: _currentSites,
-              onSelectionChanged: (apps, sites) {
+              selectedCategories: _currentCategories,
+              onSelectionChanged: (apps, sites, categoryTokens) {
                 setState(() {
                   _currentApps = apps;
                   _currentSites = sites;
+                  _currentCategories = categoryTokens;
                 });
               },
             ),
@@ -69,12 +77,14 @@ class _AppSiteSelectorPageState extends State<AppSiteSelectorPage> {
 class AppSiteSelector extends StatefulWidget {
   final List<String> selectedApps;
   final List<String> selectedSites;
-  final Function(List<String>, List<String>) onSelectionChanged;
+  final List<String>? selectedCategories;
+  final Function(List<String>, List<String>, List<String>?) onSelectionChanged;
 
   const AppSiteSelector({
     super.key,
     required this.selectedApps,
     required this.selectedSites,
+    this.selectedCategories,
     required this.onSelectionChanged,
   });
 
@@ -106,6 +116,7 @@ class _AppSiteSelectorState extends State<AppSiteSelector> {
         creationParams: {
           'apps': widget.selectedApps,
           'sites': widget.selectedSites,
+          'categories': widget.selectedCategories,
         },
         creationParamsCodec: const StandardMessageCodec(),
         onPlatformViewCreated: _onPlatformViewCreated,
@@ -127,10 +138,14 @@ class _AppSiteSelectorState extends State<AppSiteSelector> {
        print("onSelectionChanged: ${call.arguments}");
         print("apps: ${call.arguments['apps']} = ${call.arguments['apps'].runtimeType}");
         print("sites: ${call.arguments['sites']} = ${call.arguments['sites'].runtimeType}");
+        print("categories: ${call.arguments['categories']} = ${call.arguments['categories']?.runtimeType}");
 
         final selectedApps = List<String>.from(call.arguments['apps'] ?? []);
         final selectedSites = List<String>.from(call.arguments['sites'] ?? []);
-        widget.onSelectionChanged(selectedApps, selectedSites);
+        final selectedCategories = call.arguments['categories'] != null 
+            ? List<String>.from(call.arguments['categories']) 
+            : null;
+        widget.onSelectionChanged(selectedApps, selectedSites, selectedCategories);
         break;
       default:
         print('Unhandled method ${call.method}');

@@ -160,6 +160,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                 BlockGroupEditor(
                   selectedApps: _selectedGroup.apps,
                   selectedSites: _selectedGroup.sites,
+                  selectedCategories: _selectedGroup.categories,
                   blockSelected: !_selectedGroup.allow,
                   onBlockModeChanged: (value) {
                     print('Block mode changed: $value');
@@ -167,10 +168,12 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                       _selectedGroup.allow = value;
                     });
                   },
-                  onSave: (apps, sites) {
+                  onSave: (apps, sites, categories) {
                     setState(() {
+                      print('onSave: $apps, $sites, $categories');
                       _selectedGroup.apps = apps;
                       _selectedGroup.sites = sites;
+                      _selectedGroup.categories = categories ?? [];
                     });
                   },
                 ),

@@ -83,6 +83,7 @@ class _EditBlockGroupPageState extends State<EditBlockGroupPage> {
               BlockGroupEditor(
                 selectedApps: _group.apps,
                 selectedSites: _group.sites,
+                selectedCategories: _group.categories,
                 blockSelected: !_group.allow,
                 onBlockModeChanged: (blockMode) {
                   setState(() {
@@ -90,10 +91,11 @@ class _EditBlockGroupPageState extends State<EditBlockGroupPage> {
                   });
                   _checkChanges();
                 },
-                onSave: (apps, sites) {
+                onSave: (apps, sites, categories) {
                   setState(() {
                     _group.apps = apps;
                     _group.sites = sites;
+                    _group.categories = categories ?? [];
                   });
                   _checkChanges();
                 },

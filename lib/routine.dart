@@ -193,6 +193,7 @@ class Routine {
       changes.add('endTime');
     }
 
+    print('changes: ${_groups.values.any((g) => g.modified)}');
     if (!listEquals(_entry!.groups, _groups.values.map((g) => g.id).toList()) || _groups.values.any((g) => g.modified)) {
       changes.add('groups');
     }

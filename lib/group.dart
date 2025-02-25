@@ -11,6 +11,7 @@ class Group {
   String? name;
   late List<String> apps;
   late List<String> sites;
+  late List<String> categories;
   late bool allow;
   late final String _deviceId;
   final GroupEntry? _entry;
@@ -23,7 +24,7 @@ class Group {
     return getIt<AppDatabase>().getNamedGroups(deviceId).map((groups) => groups.map((e) => Group.fromEntry(e)).toList());
   }
 
-  Group({this.name, this.apps = const [], this.sites = const [], this.allow = false})
+  Group({this.name, this.apps = const [], this.sites = const [], this.categories = const [], this.allow = false})
       : _id = Uuid().v4(), _entry = null {
         _deviceId = getIt<Device>().id;
   }
@@ -34,6 +35,7 @@ class Group {
         allow = entry.allow,
         apps = entry.apps,
         sites = entry.sites,
+        categories = entry.categories,
         _deviceId = entry.device,
         _entry = entry;
 
@@ -43,6 +45,7 @@ class Group {
         allow = other.allow,
         apps = List<String>.from(other.apps),
         sites = List<String>.from(other.sites),
+        categories = List<String>.from(other.categories),
         _deviceId = other._deviceId,
         _entry = other._entry;
 
@@ -54,6 +57,7 @@ class Group {
       device: Value(deviceId),
       apps: Value(apps),
       sites: Value(sites),
+      categories: Value(categories),
       changes: Value(changes),
       updatedAt: Value(DateTime.now()),
     ));
@@ -84,6 +88,9 @@ class Group {
     if (_entry.allow != allow) changes.add('allow');
     if (!listEquals(_entry.apps, apps)) changes.add('apps');
     if (!listEquals(_entry.sites, sites)) changes.add('sites');
+    if (!listEquals(_entry.categories, categories)) changes.add('categories');
+
+    print('group changes: ${_entry.categories} -> $categories');
 
     return changes;
   }
