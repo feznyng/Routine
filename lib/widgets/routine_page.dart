@@ -444,8 +444,8 @@ class _RoutinePageState extends State<RoutinePage> {
           parts.add('${group.sites.length} site${group.sites.length > 1 ? "s" : ""}');
         }
         return group.allow 
-            ? 'Allowing ${parts.join(", ")}'
-            : 'Blocking ${parts.join(", ")}';
+            ? 'Custom (Allowing ${parts.join(", ")}\)'
+            : 'Custom (Blocking ${parts.join(", ")}\)';
       }
     }
 

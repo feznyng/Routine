@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-class AppSiteSelectorPage extends StatelessWidget {
+class AppSiteSelectorPage extends StatefulWidget {
   final List<String> selectedApps;
   final List<String> selectedSites;
   final Function(List<String>, List<String>) onSave;
@@ -14,6 +14,21 @@ class AppSiteSelectorPage extends StatelessWidget {
   });
 
   @override
+  State<AppSiteSelectorPage> createState() => _AppSiteSelectorPageState();
+}
+
+class _AppSiteSelectorPageState extends State<AppSiteSelectorPage> {
+  List<String> _currentApps = [];
+  List<String> _currentSites = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _currentApps = List.from(widget.selectedApps);
+    _currentSites = List.from(widget.selectedSites);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -21,15 +36,28 @@ class AppSiteSelectorPage extends StatelessWidget {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              widget.onSave(_currentApps, _currentSites);
+            },
+            child: const Text('Done'),
+          ),
+        ],
         backgroundColor: Colors.transparent,
       ),
       body: Column(
         children: [
           Expanded(
             child: AppSiteSelector(
-              selectedApps: selectedApps,
-              selectedSites: selectedSites,
-              onSave: onSave,
+              selectedApps: _currentApps,
+              selectedSites: _currentSites,
+              onSelectionChanged: (apps, sites) {
+                setState(() {
+                  _currentApps = apps;
+                  _currentSites = sites;
+                });
+              },
             ),
           ),
         ],
@@ -41,14 +69,14 @@ class AppSiteSelectorPage extends StatelessWidget {
 class AppSiteSelector extends StatefulWidget {
   final List<String> selectedApps;
   final List<String> selectedSites;
-  final Function(List<String>, List<String>) onSave;
+  final Function(List<String>, List<String>) onSelectionChanged;
 
-  AppSiteSelector({
-    Key? key,
+  const AppSiteSelector({
+    super.key,
     required this.selectedApps,
     required this.selectedSites,
-    required this.onSave,
-  }) : super(key: key ?? GlobalKey());
+    required this.onSelectionChanged,
+  });
 
   @override
   State<AppSiteSelector> createState() => _AppSiteSelectorState();
@@ -61,7 +89,8 @@ class _AppSiteSelectorState extends State<AppSiteSelector> {
   @override
   void dispose() {
     if (_viewId != null) {
-      _channel?.invokeMethod('dispose');
+      // Don't wait for the result since the channel might be gone
+      _channel?.invokeMethod('dispose').catchError((_) {});
       _channel?.setMethodCallHandler(null);
       _channel = null;
       _viewId = null;
@@ -99,10 +128,9 @@ class _AppSiteSelectorState extends State<AppSiteSelector> {
         print("apps: ${call.arguments['apps']} = ${call.arguments['apps'].runtimeType}");
         print("sites: ${call.arguments['sites']} = ${call.arguments['sites'].runtimeType}");
 
-        final List<String> selectedApps = List<String>.from(call.arguments['apps'] ?? []);
-        final List<String> selectedSites = List<String>.from(call.arguments['sites'] ?? []);
-        print("calling onSave with $selectedApps, $selectedSites");
-        widget.onSave(selectedApps, selectedSites);
+        final selectedApps = List<String>.from(call.arguments['apps'] ?? []);
+        final selectedSites = List<String>.from(call.arguments['sites'] ?? []);
+        widget.onSelectionChanged(selectedApps, selectedSites);
         break;
       default:
         print('Unhandled method ${call.method}');

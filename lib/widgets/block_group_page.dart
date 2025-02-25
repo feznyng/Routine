@@ -94,7 +94,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
               widget.onSave(_selectedGroup);
               widget.onBack();
             },
-            child: const Text('Save'),
+            child: const Text('Done'),
           ),
         ],
       ),
