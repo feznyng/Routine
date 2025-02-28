@@ -45,10 +45,8 @@ class IOSService {
           'allow': routine.allow
         };
       }).toList();
-      
-      final String jsonData = jsonEncode(routineMaps);
-      
-      await _channel.invokeMethod('updateRoutines', {'routines': jsonData});
+            
+      await _channel.invokeMethod('updateRoutines', {'routines': routineMaps});
     } catch (e) {
       print('Error sending routines to iOS: $e');
     }
