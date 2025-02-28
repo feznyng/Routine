@@ -12,6 +12,9 @@ import 'package:window_manager/window_manager.dart' if (dart.library.html) '';
 import 'package:tray_manager/tray_manager.dart' if (dart.library.html) '';
 import 'desktop_service.dart' if (dart.library.html) '';
 
+// iOS-specific imports
+import 'ios_service.dart' if (dart.library.html) '';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -76,6 +79,7 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
     SettingsPage(),
   ];
   late final DesktopService? _desktopService = _isDesktop ? DesktopService() : null;
+  late final IOSService? _iosService = !_isDesktop ? IOSService() : null;
 
   @override
   void initState() {
@@ -86,6 +90,8 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
       windowManager.addListener(this);
       trayManager.addListener(this);
       _desktopService?.init();
+    } else {
+      _iosService!.init();
     }
   }
 

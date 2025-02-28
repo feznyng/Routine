@@ -20,7 +20,7 @@ class Routine {
   // break tracking
   int? _numBreaksTaken;
   DateTime? _lastBreakAt;
-  DateTime? _breakUntil;
+  DateTime? _pausedUntil;
   int? _maxBreaks;
   int _maxBreakDuration;
   FrictionType _friction;
@@ -46,7 +46,7 @@ class Routine {
     _endTime = -1,
     _numBreaksTaken = null,
     _lastBreakAt = null,
-    _breakUntil = null,
+    _pausedUntil = null,
     _maxBreaks = null,
     _maxBreakDuration = 15,
     _friction = FrictionType.delay,
@@ -66,7 +66,7 @@ class Routine {
     _endTime = entry.endTime,
     _numBreaksTaken = entry.numBreaksTaken,
     _lastBreakAt = entry.lastBreakAt,
-    _breakUntil = entry.breakUntil,
+    _pausedUntil = entry.pausedUntil,
     _maxBreaks = entry.maxBreaks,
     _maxBreakDuration = entry.maxBreakDuration,
     _friction = entry.friction,
@@ -88,7 +88,7 @@ class Routine {
     _endTime = other._endTime,
     _numBreaksTaken = other._numBreaksTaken,
     _lastBreakAt = other._lastBreakAt,
-    _breakUntil = other._breakUntil,
+    _pausedUntil = other._pausedUntil,
     _maxBreaks = other._maxBreaks,
     _maxBreakDuration = other._maxBreakDuration,
     _friction = other._friction,
@@ -125,7 +125,7 @@ class Routine {
       changes: Value(changes),
       numBreaksTaken: Value(_numBreaksTaken),
       lastBreakAt: Value(_lastBreakAt),
-      breakUntil: Value(_breakUntil),
+      pausedUntil: Value(_pausedUntil),
       maxBreaks: Value(_maxBreaks),
       maxBreakDuration: Value(_maxBreakDuration),
       friction: Value(_friction),
@@ -139,6 +139,7 @@ class Routine {
   }
 
   bool get saved => _entry != null;
+  DateTime? get snoozedUntil => _snoozedUntil;
 
   Future<void> delete() async {
     await getIt<AppDatabase>().tempDeleteRoutine(_id);
@@ -206,8 +207,8 @@ class Routine {
       changes.add('lastBreakAt');
     }
 
-    if (_entry!.breakUntil != _breakUntil) {
-      changes.add('breakUntil');
+    if (_entry!.pausedUntil != _pausedUntil) {
+      changes.add('pausedUntil');
     }
 
     if (_entry!.maxBreaks != _maxBreaks) {
@@ -306,14 +307,14 @@ class Routine {
   }
 
   bool get isPaused {
-    if (_breakUntil == null) return false;
+    if (_pausedUntil == null) return false;
 
     final now = DateTime.now().toUtc();
     print("isPaused debug:");
     print("  now: $now (${now.millisecondsSinceEpoch})");
-    print("  _breakUntil: $_breakUntil (${_breakUntil!.millisecondsSinceEpoch})");
-    print("  comparison: $now < $_breakUntil = ${now.isBefore(_breakUntil!)}");
-    return now.isBefore(_breakUntil!);
+    print("  _pausedUntil: $_pausedUntil (${_pausedUntil!.millisecondsSinceEpoch})");
+    print("  comparison: $now < $_pausedUntil = ${now.isBefore(_pausedUntil!)}");
+    return now.isBefore(_pausedUntil!);
   }
 
   bool get canBreak {
@@ -338,7 +339,7 @@ class Routine {
     return false;
   }
 
-  DateTime? get breakUntil => _breakUntil;
+  DateTime? get pausedUntil => _pausedUntil;
 
   Future<void> breakFor({int? minutes}) async {
     if (!canBreak) return;
@@ -347,14 +348,14 @@ class Routine {
     final now = DateTime.now();
     
     _lastBreakAt = now;
-    _breakUntil = now.add(Duration(minutes: duration));
+    _pausedUntil = now.add(Duration(minutes: duration));
     _numBreaksTaken = (_numBreaksTaken ?? 0) + 1;
     
     await save();
   }
 
   Future<void> endBreak() async {
-    _breakUntil = null;
+    _pausedUntil = null;
     await save();
   }
 
@@ -372,6 +373,7 @@ class Routine {
 
   List<String> get apps => getGroup()?.apps ?? const [];
   List<String> get sites => getGroup()?.sites ?? const [];
+  List<String> get categories => getGroup()?.categories ?? const [];
   bool get allow => getGroup()?.allow ?? false;
 
   // Break configuration getters

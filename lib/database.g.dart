@@ -141,11 +141,11 @@ class $RoutinesTable extends Routines
   late final GeneratedColumn<DateTime> lastBreakAt = GeneratedColumn<DateTime>(
       'last_break_at', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
-  static const VerificationMeta _breakUntilMeta =
-      const VerificationMeta('breakUntil');
+  static const VerificationMeta _pausedUntilMeta =
+      const VerificationMeta('pausedUntil');
   @override
-  late final GeneratedColumn<DateTime> breakUntil = GeneratedColumn<DateTime>(
-      'break_until', aliasedName, true,
+  late final GeneratedColumn<DateTime> pausedUntil = GeneratedColumn<DateTime>(
+      'paused_until', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _maxBreaksMeta =
       const VerificationMeta('maxBreaks');
@@ -200,7 +200,7 @@ class $RoutinesTable extends Routines
         groups,
         numBreaksTaken,
         lastBreakAt,
-        breakUntil,
+        pausedUntil,
         maxBreaks,
         maxBreakDuration,
         friction,
@@ -312,11 +312,11 @@ class $RoutinesTable extends Routines
           lastBreakAt.isAcceptableOrUnknown(
               data['last_break_at']!, _lastBreakAtMeta));
     }
-    if (data.containsKey('break_until')) {
+    if (data.containsKey('paused_until')) {
       context.handle(
-          _breakUntilMeta,
-          breakUntil.isAcceptableOrUnknown(
-              data['break_until']!, _breakUntilMeta));
+          _pausedUntilMeta,
+          pausedUntil.isAcceptableOrUnknown(
+              data['paused_until']!, _pausedUntilMeta));
     }
     if (data.containsKey('max_breaks')) {
       context.handle(_maxBreaksMeta,
@@ -388,8 +388,8 @@ class $RoutinesTable extends Routines
           .read(DriftSqlType.int, data['${effectivePrefix}num_breaks_taken']),
       lastBreakAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}last_break_at']),
-      breakUntil: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}break_until']),
+      pausedUntil: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}paused_until']),
       maxBreaks: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}max_breaks']),
       maxBreakDuration: attachedDatabase.typeMapping.read(
@@ -436,7 +436,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
   final List<String> groups;
   final int? numBreaksTaken;
   final DateTime? lastBreakAt;
-  final DateTime? breakUntil;
+  final DateTime? pausedUntil;
   final int? maxBreaks;
   final int maxBreakDuration;
   final FrictionType friction;
@@ -461,7 +461,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       required this.groups,
       this.numBreaksTaken,
       this.lastBreakAt,
-      this.breakUntil,
+      this.pausedUntil,
       this.maxBreaks,
       required this.maxBreakDuration,
       required this.friction,
@@ -498,8 +498,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
     if (!nullToAbsent || lastBreakAt != null) {
       map['last_break_at'] = Variable<DateTime>(lastBreakAt);
     }
-    if (!nullToAbsent || breakUntil != null) {
-      map['break_until'] = Variable<DateTime>(breakUntil);
+    if (!nullToAbsent || pausedUntil != null) {
+      map['paused_until'] = Variable<DateTime>(pausedUntil);
     }
     if (!nullToAbsent || maxBreaks != null) {
       map['max_breaks'] = Variable<int>(maxBreaks);
@@ -542,9 +542,9 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       lastBreakAt: lastBreakAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lastBreakAt),
-      breakUntil: breakUntil == null && nullToAbsent
+      pausedUntil: pausedUntil == null && nullToAbsent
           ? const Value.absent()
-          : Value(breakUntil),
+          : Value(pausedUntil),
       maxBreaks: maxBreaks == null && nullToAbsent
           ? const Value.absent()
           : Value(maxBreaks),
@@ -581,7 +581,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       groups: serializer.fromJson<List<String>>(json['groups']),
       numBreaksTaken: serializer.fromJson<int?>(json['numBreaksTaken']),
       lastBreakAt: serializer.fromJson<DateTime?>(json['lastBreakAt']),
-      breakUntil: serializer.fromJson<DateTime?>(json['breakUntil']),
+      pausedUntil: serializer.fromJson<DateTime?>(json['pausedUntil']),
       maxBreaks: serializer.fromJson<int?>(json['maxBreaks']),
       maxBreakDuration: serializer.fromJson<int>(json['maxBreakDuration']),
       friction: $RoutinesTable.$converterfriction
@@ -612,7 +612,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       'groups': serializer.toJson<List<String>>(groups),
       'numBreaksTaken': serializer.toJson<int?>(numBreaksTaken),
       'lastBreakAt': serializer.toJson<DateTime?>(lastBreakAt),
-      'breakUntil': serializer.toJson<DateTime?>(breakUntil),
+      'pausedUntil': serializer.toJson<DateTime?>(pausedUntil),
       'maxBreaks': serializer.toJson<int?>(maxBreaks),
       'maxBreakDuration': serializer.toJson<int>(maxBreakDuration),
       'friction': serializer
@@ -641,7 +641,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           List<String>? groups,
           Value<int?> numBreaksTaken = const Value.absent(),
           Value<DateTime?> lastBreakAt = const Value.absent(),
-          Value<DateTime?> breakUntil = const Value.absent(),
+          Value<DateTime?> pausedUntil = const Value.absent(),
           Value<int?> maxBreaks = const Value.absent(),
           int? maxBreakDuration,
           FrictionType? friction,
@@ -667,7 +667,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
         numBreaksTaken:
             numBreaksTaken.present ? numBreaksTaken.value : this.numBreaksTaken,
         lastBreakAt: lastBreakAt.present ? lastBreakAt.value : this.lastBreakAt,
-        breakUntil: breakUntil.present ? breakUntil.value : this.breakUntil,
+        pausedUntil: pausedUntil.present ? pausedUntil.value : this.pausedUntil,
         maxBreaks: maxBreaks.present ? maxBreaks.value : this.maxBreaks,
         maxBreakDuration: maxBreakDuration ?? this.maxBreakDuration,
         friction: friction ?? this.friction,
@@ -698,8 +698,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           : this.numBreaksTaken,
       lastBreakAt:
           data.lastBreakAt.present ? data.lastBreakAt.value : this.lastBreakAt,
-      breakUntil:
-          data.breakUntil.present ? data.breakUntil.value : this.breakUntil,
+      pausedUntil:
+          data.pausedUntil.present ? data.pausedUntil.value : this.pausedUntil,
       maxBreaks: data.maxBreaks.present ? data.maxBreaks.value : this.maxBreaks,
       maxBreakDuration: data.maxBreakDuration.present
           ? data.maxBreakDuration.value
@@ -734,7 +734,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           ..write('groups: $groups, ')
           ..write('numBreaksTaken: $numBreaksTaken, ')
           ..write('lastBreakAt: $lastBreakAt, ')
-          ..write('breakUntil: $breakUntil, ')
+          ..write('pausedUntil: $pausedUntil, ')
           ..write('maxBreaks: $maxBreaks, ')
           ..write('maxBreakDuration: $maxBreakDuration, ')
           ..write('friction: $friction, ')
@@ -764,7 +764,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
         groups,
         numBreaksTaken,
         lastBreakAt,
-        breakUntil,
+        pausedUntil,
         maxBreaks,
         maxBreakDuration,
         friction,
@@ -793,7 +793,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           other.groups == this.groups &&
           other.numBreaksTaken == this.numBreaksTaken &&
           other.lastBreakAt == this.lastBreakAt &&
-          other.breakUntil == this.breakUntil &&
+          other.pausedUntil == this.pausedUntil &&
           other.maxBreaks == this.maxBreaks &&
           other.maxBreakDuration == this.maxBreakDuration &&
           other.friction == this.friction &&
@@ -820,7 +820,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
   final Value<List<String>> groups;
   final Value<int?> numBreaksTaken;
   final Value<DateTime?> lastBreakAt;
-  final Value<DateTime?> breakUntil;
+  final Value<DateTime?> pausedUntil;
   final Value<int?> maxBreaks;
   final Value<int> maxBreakDuration;
   final Value<FrictionType> friction;
@@ -846,7 +846,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     this.groups = const Value.absent(),
     this.numBreaksTaken = const Value.absent(),
     this.lastBreakAt = const Value.absent(),
-    this.breakUntil = const Value.absent(),
+    this.pausedUntil = const Value.absent(),
     this.maxBreaks = const Value.absent(),
     this.maxBreakDuration = const Value.absent(),
     this.friction = const Value.absent(),
@@ -873,7 +873,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     required List<String> groups,
     this.numBreaksTaken = const Value.absent(),
     this.lastBreakAt = const Value.absent(),
-    this.breakUntil = const Value.absent(),
+    this.pausedUntil = const Value.absent(),
     this.maxBreaks = const Value.absent(),
     this.maxBreakDuration = const Value.absent(),
     required FrictionType friction,
@@ -915,7 +915,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     Expression<String>? groups,
     Expression<int>? numBreaksTaken,
     Expression<DateTime>? lastBreakAt,
-    Expression<DateTime>? breakUntil,
+    Expression<DateTime>? pausedUntil,
     Expression<int>? maxBreaks,
     Expression<int>? maxBreakDuration,
     Expression<String>? friction,
@@ -942,7 +942,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       if (groups != null) 'groups': groups,
       if (numBreaksTaken != null) 'num_breaks_taken': numBreaksTaken,
       if (lastBreakAt != null) 'last_break_at': lastBreakAt,
-      if (breakUntil != null) 'break_until': breakUntil,
+      if (pausedUntil != null) 'paused_until': pausedUntil,
       if (maxBreaks != null) 'max_breaks': maxBreaks,
       if (maxBreakDuration != null) 'max_break_duration': maxBreakDuration,
       if (friction != null) 'friction': friction,
@@ -971,7 +971,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       Value<List<String>>? groups,
       Value<int?>? numBreaksTaken,
       Value<DateTime?>? lastBreakAt,
-      Value<DateTime?>? breakUntil,
+      Value<DateTime?>? pausedUntil,
       Value<int?>? maxBreaks,
       Value<int>? maxBreakDuration,
       Value<FrictionType>? friction,
@@ -997,7 +997,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       groups: groups ?? this.groups,
       numBreaksTaken: numBreaksTaken ?? this.numBreaksTaken,
       lastBreakAt: lastBreakAt ?? this.lastBreakAt,
-      breakUntil: breakUntil ?? this.breakUntil,
+      pausedUntil: pausedUntil ?? this.pausedUntil,
       maxBreaks: maxBreaks ?? this.maxBreaks,
       maxBreakDuration: maxBreakDuration ?? this.maxBreakDuration,
       friction: friction ?? this.friction,
@@ -1066,8 +1066,8 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     if (lastBreakAt.present) {
       map['last_break_at'] = Variable<DateTime>(lastBreakAt.value);
     }
-    if (breakUntil.present) {
-      map['break_until'] = Variable<DateTime>(breakUntil.value);
+    if (pausedUntil.present) {
+      map['paused_until'] = Variable<DateTime>(pausedUntil.value);
     }
     if (maxBreaks.present) {
       map['max_breaks'] = Variable<int>(maxBreaks.value);
@@ -1112,7 +1112,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
           ..write('groups: $groups, ')
           ..write('numBreaksTaken: $numBreaksTaken, ')
           ..write('lastBreakAt: $lastBreakAt, ')
-          ..write('breakUntil: $breakUntil, ')
+          ..write('pausedUntil: $pausedUntil, ')
           ..write('maxBreaks: $maxBreaks, ')
           ..write('maxBreakDuration: $maxBreakDuration, ')
           ..write('friction: $friction, ')
@@ -1590,20 +1590,26 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupEntry> {
   @override
   late final GeneratedColumnWithTypeConverter<List<String>, String> apps =
       GeneratedColumn<String>('apps', aliasedName, false,
-              type: DriftSqlType.string, requiredDuringInsert: true)
+              type: DriftSqlType.string,
+              requiredDuringInsert: false,
+              clientDefault: () => '[]')
           .withConverter<List<String>>($GroupsTable.$converterapps);
   static const VerificationMeta _sitesMeta = const VerificationMeta('sites');
   @override
   late final GeneratedColumnWithTypeConverter<List<String>, String> sites =
       GeneratedColumn<String>('sites', aliasedName, false,
-              type: DriftSqlType.string, requiredDuringInsert: true)
+              type: DriftSqlType.string,
+              requiredDuringInsert: false,
+              clientDefault: () => '[]')
           .withConverter<List<String>>($GroupsTable.$convertersites);
   static const VerificationMeta _categoriesMeta =
       const VerificationMeta('categories');
   @override
   late final GeneratedColumnWithTypeConverter<List<String>, String> categories =
       GeneratedColumn<String>('categories', aliasedName, false,
-              type: DriftSqlType.string, requiredDuringInsert: true)
+              type: DriftSqlType.string,
+              requiredDuringInsert: false,
+              clientDefault: () => '[]')
           .withConverter<List<String>>($GroupsTable.$convertercategories);
   static const VerificationMeta _changesMeta =
       const VerificationMeta('changes');
@@ -1939,9 +1945,9 @@ class GroupsCompanion extends UpdateCompanion<GroupEntry> {
     this.name = const Value.absent(),
     required String device,
     required bool allow,
-    required List<String> apps,
-    required List<String> sites,
-    required List<String> categories,
+    this.apps = const Value.absent(),
+    this.sites = const Value.absent(),
+    this.categories = const Value.absent(),
     required List<String> changes,
     this.deleted = const Value.absent(),
     required DateTime updatedAt,
@@ -1949,9 +1955,6 @@ class GroupsCompanion extends UpdateCompanion<GroupEntry> {
   })  : id = Value(id),
         device = Value(device),
         allow = Value(allow),
-        apps = Value(apps),
-        sites = Value(sites),
-        categories = Value(categories),
         changes = Value(changes),
         updatedAt = Value(updatedAt);
   static Insertable<GroupEntry> custom({
@@ -2107,7 +2110,7 @@ typedef $$RoutinesTableCreateCompanionBuilder = RoutinesCompanion Function({
   required List<String> groups,
   Value<int?> numBreaksTaken,
   Value<DateTime?> lastBreakAt,
-  Value<DateTime?> breakUntil,
+  Value<DateTime?> pausedUntil,
   Value<int?> maxBreaks,
   Value<int> maxBreakDuration,
   required FrictionType friction,
@@ -2134,7 +2137,7 @@ typedef $$RoutinesTableUpdateCompanionBuilder = RoutinesCompanion Function({
   Value<List<String>> groups,
   Value<int?> numBreaksTaken,
   Value<DateTime?> lastBreakAt,
-  Value<DateTime?> breakUntil,
+  Value<DateTime?> pausedUntil,
   Value<int?> maxBreaks,
   Value<int> maxBreakDuration,
   Value<FrictionType> friction,
@@ -2211,8 +2214,8 @@ class $$RoutinesTableFilterComposer
   ColumnFilters<DateTime> get lastBreakAt => $composableBuilder(
       column: $table.lastBreakAt, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<DateTime> get breakUntil => $composableBuilder(
-      column: $table.breakUntil, builder: (column) => ColumnFilters(column));
+  ColumnFilters<DateTime> get pausedUntil => $composableBuilder(
+      column: $table.pausedUntil, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get maxBreaks => $composableBuilder(
       column: $table.maxBreaks, builder: (column) => ColumnFilters(column));
@@ -2297,8 +2300,8 @@ class $$RoutinesTableOrderingComposer
   ColumnOrderings<DateTime> get lastBreakAt => $composableBuilder(
       column: $table.lastBreakAt, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<DateTime> get breakUntil => $composableBuilder(
-      column: $table.breakUntil, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<DateTime> get pausedUntil => $composableBuilder(
+      column: $table.pausedUntil, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<int> get maxBreaks => $composableBuilder(
       column: $table.maxBreaks, builder: (column) => ColumnOrderings(column));
@@ -2381,8 +2384,8 @@ class $$RoutinesTableAnnotationComposer
   GeneratedColumn<DateTime> get lastBreakAt => $composableBuilder(
       column: $table.lastBreakAt, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get breakUntil => $composableBuilder(
-      column: $table.breakUntil, builder: (column) => column);
+  GeneratedColumn<DateTime> get pausedUntil => $composableBuilder(
+      column: $table.pausedUntil, builder: (column) => column);
 
   GeneratedColumn<int> get maxBreaks =>
       $composableBuilder(column: $table.maxBreaks, builder: (column) => column);
@@ -2441,7 +2444,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             Value<List<String>> groups = const Value.absent(),
             Value<int?> numBreaksTaken = const Value.absent(),
             Value<DateTime?> lastBreakAt = const Value.absent(),
-            Value<DateTime?> breakUntil = const Value.absent(),
+            Value<DateTime?> pausedUntil = const Value.absent(),
             Value<int?> maxBreaks = const Value.absent(),
             Value<int> maxBreakDuration = const Value.absent(),
             Value<FrictionType> friction = const Value.absent(),
@@ -2468,7 +2471,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             groups: groups,
             numBreaksTaken: numBreaksTaken,
             lastBreakAt: lastBreakAt,
-            breakUntil: breakUntil,
+            pausedUntil: pausedUntil,
             maxBreaks: maxBreaks,
             maxBreakDuration: maxBreakDuration,
             friction: friction,
@@ -2495,7 +2498,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             required List<String> groups,
             Value<int?> numBreaksTaken = const Value.absent(),
             Value<DateTime?> lastBreakAt = const Value.absent(),
-            Value<DateTime?> breakUntil = const Value.absent(),
+            Value<DateTime?> pausedUntil = const Value.absent(),
             Value<int?> maxBreaks = const Value.absent(),
             Value<int> maxBreakDuration = const Value.absent(),
             required FrictionType friction,
@@ -2522,7 +2525,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             groups: groups,
             numBreaksTaken: numBreaksTaken,
             lastBreakAt: lastBreakAt,
-            breakUntil: breakUntil,
+            pausedUntil: pausedUntil,
             maxBreaks: maxBreaks,
             maxBreakDuration: maxBreakDuration,
             friction: friction,
@@ -2850,9 +2853,9 @@ typedef $$GroupsTableCreateCompanionBuilder = GroupsCompanion Function({
   Value<String?> name,
   required String device,
   required bool allow,
-  required List<String> apps,
-  required List<String> sites,
-  required List<String> categories,
+  Value<List<String>> apps,
+  Value<List<String>> sites,
+  Value<List<String>> categories,
   required List<String> changes,
   Value<bool> deleted,
   required DateTime updatedAt,
@@ -3124,9 +3127,9 @@ class $$GroupsTableTableManager extends RootTableManager<
             Value<String?> name = const Value.absent(),
             required String device,
             required bool allow,
-            required List<String> apps,
-            required List<String> sites,
-            required List<String> categories,
+            Value<List<String>> apps = const Value.absent(),
+            Value<List<String>> sites = const Value.absent(),
+            Value<List<String>> categories = const Value.absent(),
             required List<String> changes,
             Value<bool> deleted = const Value.absent(),
             required DateTime updatedAt,

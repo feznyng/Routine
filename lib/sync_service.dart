@@ -201,7 +201,7 @@ class SyncService {
             allow: Value(overwriteMap['allow'] ?? group['allow'] as bool?),
             updatedAt: Value(updatedAt),
             deleted: Value(overwriteMap['deleted'] ?? group['deleted']),
-            changes: Value(overwriteMap['changes'] ?? const []),
+            changes: Value(overwriteMap['changes'] ?? const [])
           ));
         }
       }
@@ -247,7 +247,7 @@ class SyncService {
             groups: Value(overwriteMap['groups']?.cast<String>() ?? (routine['groups'] as List<dynamic>).cast<String>()),
             numBreaksTaken: Value(overwriteMap['num_breaks_taken'] ?? routine['num_breaks_taken']),
             lastBreakAt: Value(overwriteMap['last_break_at'] != null ? DateTime.parse(overwriteMap['last_break_at']) : routine['last_break_at'] != null ? DateTime.parse(routine['last_break_at']) : null),
-            breakUntil: Value(overwriteMap['break_until'] != null ? DateTime.parse(overwriteMap['break_until']) : routine['break_until'] != null ? DateTime.parse(routine['break_until']) : null),
+            pausedUntil: Value(overwriteMap['paused_until'] != null ? DateTime.parse(overwriteMap['paused_until']) : routine['paused_until'] != null ? DateTime.parse(routine['paused_until']) : null),
             maxBreaks: Value(overwriteMap['max_breaks'] ?? routine['max_breaks']),
             maxBreakDuration: Value(overwriteMap['max_break_duration'] ?? routine['max_break_duration']),
             friction: Value(FrictionType.values.byName(overwriteMap['friction'] ?? routine['friction'])),
@@ -377,7 +377,7 @@ class SyncService {
           'groups': routine.groups,
           'num_breaks_taken': routine.numBreaksTaken,
           'last_break_at': routine.lastBreakAt?.toUtc().toIso8601String(),
-          'break_until': routine.breakUntil?.toUtc().toIso8601String(),
+          'paused_until': routine.pausedUntil?.toUtc().toIso8601String(),
           'max_breaks': routine.maxBreaks,
           'max_break_duration': routine.maxBreakDuration,
           'friction': routine.friction.name,

@@ -42,7 +42,7 @@ class Routines extends Table {
   // breaks
   late final numBreaksTaken = integer().nullable()();
   late final lastBreakAt = dateTime().nullable()();
-  late final breakUntil = dateTime().nullable()();
+  late final pausedUntil = dateTime().nullable()();
   late final maxBreaks = integer().nullable()();
   late final maxBreakDuration = integer().clientDefault(() => 15)();
   late final friction = textEnum<FrictionType>()();
@@ -80,9 +80,9 @@ class Groups extends Table {
   late final allow = boolean()();
 
   // device only
-  late final apps = text().map(StringListTypeConverter())();
-  late final sites = text().map(StringListTypeConverter())();
-  late final categories = text().map(StringListTypeConverter())();
+  late final apps = text().clientDefault(() => '[]').map(StringListTypeConverter())();
+  late final sites = text().clientDefault(() => '[]').map(StringListTypeConverter())();
+  late final categories = text().clientDefault(() => '[]').map(StringListTypeConverter())();
 
   late final changes = text().map(StringListTypeConverter())();
   late final deleted = boolean().clientDefault(() => false)();
