@@ -1,11 +1,9 @@
 import Flutter
 import UIKit
-import ManagedSettings
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
-    let store = ManagedSettingsStore()
-    
+    let manager = RoutineManager()
     
   override func application(
     _ application: UIApplication,
@@ -32,15 +30,12 @@ import ManagedSettings
             print("Received routines from Dart:")
             print(routinesJson)
           
+          var routines: [Routine] = []
           for routineJson in routinesJson {
-              let routine = Routine(entity: routineJson)
-              if routine.isActive() {
-                  print("Blocking \(routine.apps.count) apps, \(routine.sites.count) sites, \(routine.categories.count) categories")
-                  self?.store.shield.applications = routine.apps
-                  self?.store.shield.webDomains = routine.sites
-                  self?.store.shield.applicationCategories = .specific(routine.categories)
-              }
+              routines.append(Routine(entity: routineJson))
           }
+          
+          self?.manager.update(routines: routines)
           
             result(true)
           } else {

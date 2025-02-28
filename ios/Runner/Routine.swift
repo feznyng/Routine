@@ -16,9 +16,9 @@ class Routine {
     let allDay: Bool
     let pausedUntil: Date?
     let snoozedUntil: Date?
-    var apps: Set<ApplicationToken>
-    var sites: Set<WebDomainToken>
-    var categories: Set<ActivityCategoryToken>
+    private(set) var apps: [ApplicationToken]
+    private(set) var sites: [WebDomainToken]
+    private(set) var categories: [ActivityCategoryToken]
     let allow: Bool
     
     init(entity: [String: Any]) {
@@ -46,34 +46,34 @@ class Routine {
         
         // Process application tokens
         let decoder = JSONDecoder()
-        self.apps = Set<ApplicationToken>()
+        self.apps = [ApplicationToken]()
         if let apps = entity["apps"] as? [String] {
             for appId in apps {
                 if let data = appId.data(using: .utf8),
                    let token = try? decoder.decode(ApplicationToken.self, from: data) {
-                    self.apps.insert(token)
+                    self.apps.append(token)
                 }
             }
         }
         
         // Process web domain tokens
-        self.sites = Set<WebDomainToken>()
+        self.sites = [WebDomainToken]()
         if let sites = entity["sites"] as? [String] {
             for siteId in sites {
                 if let data = siteId.data(using: .utf8),
                    let token = try? decoder.decode(WebDomainToken.self, from: data) {
-                    self.sites.insert(token)
+                    self.sites.append(token)
                 }
             }
         }
         
         // Process category tokens
-        self.categories = Set<ActivityCategoryToken>()
+        self.categories = [ActivityCategoryToken]()
         if let categories = entity["categories"] as? [String] {
             for categoryId in categories {
                 if let data = categoryId.data(using: .utf8),
                    let token = try? decoder.decode(ActivityCategoryToken.self, from: data) {
-                    self.categories.insert(token)
+                    self.categories.append(token)
                 }
             }
         }
