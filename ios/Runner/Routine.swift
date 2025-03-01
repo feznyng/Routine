@@ -40,13 +40,14 @@ class Routine: Codable {
         
         // Handle optional Date properties
         let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         
         if let pausedUntilString = try container.decodeIfPresent(String.self, forKey: .pausedUntil) {
             self.pausedUntil = formatter.date(from: pausedUntilString)
         } else {
             self.pausedUntil = nil
         }
-        
+
         if let snoozedUntilString = try container.decodeIfPresent(String.self, forKey: .snoozedUntil) {
             self.snoozedUntil = formatter.date(from: snoozedUntilString)
         } else {
@@ -162,6 +163,7 @@ extension Routine {
         
         // Create a single formatter for date properties
         let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         
         // Handle optional Date properties
         if let pausedUntil = pausedUntil {

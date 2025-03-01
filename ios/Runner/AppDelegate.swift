@@ -35,7 +35,6 @@ import Foundation
                     let jsonData = try JSONSerialization.data(withJSONObject: routinesJson)
                     let jsonString = String(data: jsonData, encoding: .utf8)!
                     
-                    // Save to UserDefaults in shared app group
                     if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker") {
                         sharedDefaults.set(jsonString, forKey: "routinesData")
                         sharedDefaults.synchronize()

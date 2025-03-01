@@ -310,10 +310,6 @@ class Routine {
     if (_pausedUntil == null) return false;
 
     final now = DateTime.now().toUtc();
-    print("isPaused debug:");
-    print("  now: $now (${now.millisecondsSinceEpoch})");
-    print("  _pausedUntil: $_pausedUntil (${_pausedUntil!.millisecondsSinceEpoch})");
-    print("  comparison: $now < $_pausedUntil = ${now.isBefore(_pausedUntil!)}");
     return now.isBefore(_pausedUntil!);
   }
 

@@ -17,11 +17,23 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
     
     override func intervalDidStart(for activity: DeviceActivityName) {
         super.intervalDidStart(for: activity)
+        
+        os_log("DeviceActivityMonitorExtension: intervalDidStart %@", activity.rawValue)
+        
         eval()
     }
     
     override func intervalDidEnd(for activity: DeviceActivityName) {
         super.intervalDidEnd(for: activity)
+        
+        os_log("DeviceActivityMonitorExtension: intervalDidEnd %@", activity.rawValue)
+        
+        let name = activity.rawValue
+        if name.starts(with: "paused") || name.starts(with: "snoozed") {
+            os_log("DeviceActivityMonitorExtension: skipping due to non-standard schedule")
+            return
+        }
+        
         eval()
     }
     
