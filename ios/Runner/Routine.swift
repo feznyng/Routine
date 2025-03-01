@@ -6,8 +6,9 @@
 //
 
 import ManagedSettings
+import Foundation
 
-class Routine {
+class Routine: Codable {
     let id: String
     let name: String
     let days: [Bool]
@@ -19,66 +20,80 @@ class Routine {
     private(set) var apps: [ApplicationToken]
     private(set) var sites: [WebDomainToken]
     private(set) var categories: [ActivityCategoryToken]
+    
+    enum CodingKeys: String, CodingKey {
+        case id, name, days, startTime, endTime, allDay, pausedUntil, snoozedUntil, apps, sites, categories, allow
+    }
     let allow: Bool
     
-    init(entity: [String: Any]) {
-        self.id = entity["id"] as? String ?? ""
-        self.name = entity["name"] as? String ?? ""
-        self.days = entity["days"] as? [Bool] ?? Array(repeating: false, count: 7)
-        self.startTime = entity["startTime"] as? Int
-        self.endTime = entity["endTime"] as? Int
-        self.allDay = entity["allDay"] as? Bool ?? false
+    // Required initializer for Decodable protocol
+    required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
         
+        self.id = try container.decode(String.self, forKey: .id)
+        self.name = try container.decode(String.self, forKey: .name)
+        self.days = try container.decode([Bool].self, forKey: .days)
+        self.startTime = try container.decodeIfPresent(Int.self, forKey: .startTime)
+        self.endTime = try container.decodeIfPresent(Int.self, forKey: .endTime)
+        self.allDay = try container.decode(Bool.self, forKey: .allDay)
+        self.allow = try container.decode(Bool.self, forKey: .allow)
+        
+        // Handle optional Date properties
         let formatter = ISO8601DateFormatter()
         
-        // Convert ISO8601 strings to Date objects if they exist
-        if let pausedUntilString = entity["pausedUntil"] as? String {
+        if let pausedUntilString = try container.decodeIfPresent(String.self, forKey: .pausedUntil) {
             self.pausedUntil = formatter.date(from: pausedUntilString)
         } else {
             self.pausedUntil = nil
         }
         
-        if let snoozedUntilString = entity["snoozedUntil"] as? String {
+        if let snoozedUntilString = try container.decodeIfPresent(String.self, forKey: .snoozedUntil) {
             self.snoozedUntil = formatter.date(from: snoozedUntilString)
         } else {
             self.snoozedUntil = nil
         }
         
-        // Process application tokens
-        let decoder = JSONDecoder()
+        // Process tokens directly
         self.apps = [ApplicationToken]()
-        if let apps = entity["apps"] as? [String] {
-            for appId in apps {
-                if let data = appId.data(using: .utf8),
-                   let token = try? decoder.decode(ApplicationToken.self, from: data) {
-                    self.apps.append(token)
-                }
-            }
-        }
-        
-        // Process web domain tokens
         self.sites = [WebDomainToken]()
-        if let sites = entity["sites"] as? [String] {
-            for siteId in sites {
-                if let data = siteId.data(using: .utf8),
-                   let token = try? decoder.decode(WebDomainToken.self, from: data) {
-                    self.sites.append(token)
-                }
-            }
-        }
-        
-        // Process category tokens
         self.categories = [ActivityCategoryToken]()
-        if let categories = entity["categories"] as? [String] {
-            for categoryId in categories {
-                if let data = categoryId.data(using: .utf8),
-                   let token = try? decoder.decode(ActivityCategoryToken.self, from: data) {
-                    self.categories.append(token)
+        
+        // Since the tokens are stored as JSON strings, we need to decode them separately
+        // We'll use a single JSONDecoder instance for all token types
+        let jsonDecoder = JSONDecoder()
+        
+        if let appsData = try container.decodeIfPresent([String].self, forKey: .apps) {
+            for appString in appsData {
+                if let data = appString.data(using: .utf8),
+                   let token = try? jsonDecoder.decode(ApplicationToken.self, from: data) {
+                    self.apps.append(token)
+                } else {
+                    print("failed to create app token")
                 }
             }
         }
         
-        self.allow = entity["allow"] as? Bool ?? false
+        if let sitesData = try container.decodeIfPresent([String].self, forKey: .sites) {
+            for siteString in sitesData {
+                if let data = siteString.data(using: .utf8),
+                   let token = try? jsonDecoder.decode(WebDomainToken.self, from: data) {
+                    self.sites.append(token)
+                } else {
+                    print("failed to create site token")
+                }
+            }
+        }
+        
+        if let categoriesData = try container.decodeIfPresent([String].self, forKey: .categories) {
+            for categoryString in categoriesData {
+                if let data = categoryString.data(using: .utf8),
+                   let token = try? jsonDecoder.decode(ActivityCategoryToken.self, from: data) {
+                    self.categories.append(token)
+                } else {
+                    print("failed to create category token")
+                }
+            }
+        }
     }
     
     func isActive() -> Bool {
@@ -129,5 +144,49 @@ class Routine {
         
         // Normal case: start time is before end time
         return (currMins >= start && currMins < end)
+    }
+}
+
+// MARK: - Encodable Implementation
+extension Routine {
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(days, forKey: .days)
+        try container.encode(startTime, forKey: .startTime)
+        try container.encode(endTime, forKey: .endTime)
+        try container.encode(allDay, forKey: .allDay)
+        try container.encode(allow, forKey: .allow)
+        
+        // Create a single formatter for date properties
+        let formatter = ISO8601DateFormatter()
+        
+        // Handle optional Date properties
+        if let pausedUntil = pausedUntil {
+            try container.encode(formatter.string(from: pausedUntil), forKey: .pausedUntil)
+        } else {
+            try container.encodeNil(forKey: .pausedUntil)
+        }
+        
+        if let snoozedUntil = snoozedUntil {
+            try container.encode(formatter.string(from: snoozedUntil), forKey: .snoozedUntil)
+        } else {
+            try container.encodeNil(forKey: .snoozedUntil)
+        }
+        
+        // Create a single JSONEncoder for token encoding
+        let jsonEncoder = JSONEncoder()
+        
+        // Encode tokens as strings
+        let appsData = try apps.map { try String(data: jsonEncoder.encode($0), encoding: .utf8) ?? "" }
+        try container.encode(appsData, forKey: .apps)
+        
+        let sitesData = try sites.map { try String(data: jsonEncoder.encode($0), encoding: .utf8) ?? "" }
+        try container.encode(sitesData, forKey: .sites)
+        
+        let categoriesData = try categories.map { try String(data: jsonEncoder.encode($0), encoding: .utf8) ?? "" }
+        try container.encode(categoriesData, forKey: .categories)
     }
 }

@@ -20,6 +20,7 @@
 		A7DB26AB2D725BF200F564E2 /* RoutineManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7DB26AA2D725BEB00F564E2 /* RoutineManager.swift */; };
 		A7E6A3C42D72935C0029FD40 /* DeviceActivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A7E6A3C32D72935C0029FD40 /* DeviceActivity.framework */; };
 		A7E6A3CC2D72935C0029FD40 /* ActivityMonitor.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A7E6A3C22D72935C0029FD40 /* ActivityMonitor.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A7E6A3EF2D7345A70029FD40 /* Routine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7DB26A82D72551C00F564E2 /* Routine.swift */; };
 		D1DF6D6922D9B326CDA7FAE9 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EA275C33CE315043624A7229 /* Pods_Runner.framework */; };
 /* End PBXBuildFile section */
 
@@ -482,6 +483,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A7E6A3EF2D7345A70029FD40 /* Routine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
