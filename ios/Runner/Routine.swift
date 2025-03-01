@@ -7,6 +7,7 @@
 
 import ManagedSettings
 import Foundation
+import os.log
 
 class Routine: Codable {
     let id: String
@@ -98,7 +99,7 @@ class Routine: Codable {
     }
     
     func isActive() -> Bool {
-        let now = Date()
+        let now = Date().addingTimeInterval(45)
         let calendar = Calendar.current
         
         // Get day of week (0-6, where 0 is Sunday in Swift)
@@ -118,6 +119,15 @@ class Routine: Codable {
         
         // Check if routine is paused
         if let pausedUntil = pausedUntil, now < pausedUntil {
+            let dateFormatter = DateFormatter()
+
+            // Set the date format you want
+            dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+
+            // Convert the Date to String
+            let dateString = dateFormatter.string(from: pausedUntil)
+            let nowString = dateFormatter.string(from: now)
+            os_log("DeviceActivityMonitorExtension: routine is paused - %{public}s < %{public}s", nowString, dateString)
             return false
         }
         

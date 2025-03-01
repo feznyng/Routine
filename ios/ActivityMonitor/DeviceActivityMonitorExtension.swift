@@ -18,7 +18,7 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
     override func intervalDidStart(for activity: DeviceActivityName) {
         super.intervalDidStart(for: activity)
         
-        os_log("DeviceActivityMonitorExtension: intervalDidStart %@", activity.rawValue)
+        os_log("DeviceActivityMonitorExtension: intervalDidStart %{public}s", activity.rawValue)
         
         eval()
     }
@@ -26,7 +26,7 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
     override func intervalDidEnd(for activity: DeviceActivityName) {
         super.intervalDidEnd(for: activity)
         
-        os_log("DeviceActivityMonitorExtension: intervalDidEnd %@", activity.rawValue)
+        os_log("DeviceActivityMonitorExtension: intervalDidEnd %{public}s", activity.rawValue)
         
         let name = activity.rawValue
         if name.starts(with: "paused") || name.starts(with: "snoozed") {
@@ -37,7 +37,7 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
         eval()
     }
     
-    func eval() {
+    private func eval() {
         os_log("DeviceActivityMonitorExtension: Evaluating")
         // Read routines from shared UserDefaults
         var routines: [Routine] = []
@@ -51,12 +51,15 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
                     os_log("DeviceActivityMonitorExtension: Successfully loaded %d routines from shared UserDefaults", routines.count)
                 }
             } catch {
-                os_log("DeviceActivityMonitorExtension: Failed to decode routines from shared UserDefaults: %@", error.localizedDescription)
+                os_log("DeviceActivityMonitorExtension: Failed to decode routines from shared UserDefaults: %{public}s", error.localizedDescription)
             }
         } else {
             os_log("DeviceActivityMonitorExtension: No routines data found in shared UserDefaults")
         }
         
+        routines = routines.filter { $0.isActive() }
+        os_log("DeviceActivityMonitorExtension: filtered routine count = %d", routines.count)
+
         let allow = routines.contains(where: { $0.allow })
         
         if (allow) {
@@ -103,11 +106,9 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
             var categories: [ActivityCategoryToken] = []
             
             for routine in routines {
-                if routine.isActive() {
-                    apps.append(contentsOf: routine.apps)
-                    sites.append(contentsOf: routine.sites)
-                    categories.append(contentsOf: routine.categories)
-                }
+                apps.append(contentsOf: routine.apps)
+                sites.append(contentsOf: routine.sites)
+                categories.append(contentsOf: routine.categories)
             }
             
             os_log("DeviceActivityMonitorExtension: Blocking \(apps.count) apps, \(sites.count) sites, \(categories.count) categories")
