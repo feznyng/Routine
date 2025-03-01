@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart';
-import 'package:uuid/uuid.dart';
 import 'dart:io';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'database.dart';
 import 'setup.dart';
 import 'sync_service.dart';
@@ -27,13 +29,23 @@ class Device {
     if (deviceEntry != null) {
       return Device.fromEntry(deviceEntry);
     } else {
-      final device =  Device(currDevice: true);
+      final device = await Device.create(currDevice: true);
       await device._save();
       return device;
     }
   }
 
-  Device({bool currDevice = false}) : _id = const Uuid().v4() {
+  Device._({required String id, required bool currDevice}) : _id = id, _curr = currDevice {
+    _lastPulledAt = null;
+    _initDeviceType();
+  }
+  
+  static Future<Device> create({bool currDevice = false}) async {
+    final id = await _generateDeviceHash();
+    return Device._(id: id, currDevice: currDevice);
+  }
+
+  void _initDeviceType() {
     _name = "";
     if (Platform.isMacOS) {
       _name = "Macbook";
@@ -53,8 +65,6 @@ class Device {
     } else {
       throw Exception('Unsupported platform');
     }
-    _lastPulledAt = null;
-    _curr = currDevice;
   }
   
   Future<void> _save() async {
@@ -71,10 +81,38 @@ class Device {
     print('device save sync');
     SyncService().addJob(SyncJob(remote: false));
   }
+
   Device.fromEntry(DeviceEntry entry)
       : _id = entry.id,
         _type = DeviceType.values.byName(entry.type),
         _curr = entry.curr;
+        
+  static Future<String> _generateDeviceHash() async {
+    final deviceInfo = DeviceInfoPlugin();
+    String deviceId = '';
+
+    if (Platform.isMacOS) {
+      final iosData = await deviceInfo.macOsInfo;
+      deviceId = '${iosData.systemGUID};';
+    } else if (Platform.isLinux) {
+      final linuxData = await deviceInfo.linuxInfo;
+      deviceId = '${linuxData.id};';
+    } else if (Platform.isWindows) {
+      final windowsData = await deviceInfo.windowsInfo;
+      deviceId = '${windowsData.deviceId};';
+    } else if (Platform.isIOS) {
+      final iosData = await deviceInfo.iosInfo;
+      deviceId = '${iosData.identifierForVendor};';
+    } else if (Platform.isAndroid) {
+      final androidData = await deviceInfo.androidInfo;
+      deviceId = '${androidData.id};';
+    }
+    
+    final bytes = utf8.encode(deviceId);
+    final digest = sha1.convert(bytes);
+    
+    return digest.toString();
+  }
 
   String get id => _id;
   DeviceType get type => _type;
