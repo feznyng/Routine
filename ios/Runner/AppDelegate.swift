@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import Foundation
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -33,6 +34,15 @@ import UIKit
                 do {
                     let jsonData = try JSONSerialization.data(withJSONObject: routinesJson)
                     let jsonString = String(data: jsonData, encoding: .utf8)!
+                    
+                    // Save to UserDefaults in shared app group
+                    if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker") {
+                        sharedDefaults.set(jsonString, forKey: "routinesData")
+                        sharedDefaults.synchronize()
+                        print("Saved routines data to shared UserDefaults")
+                    } else {
+                        print("Failed to access shared UserDefaults")
+                    }
 
                     let decoder = JSONDecoder()
                     let routines = try decoder.decode([Routine].self, from: jsonString.data(using: .utf8)!)

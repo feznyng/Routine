@@ -8,6 +8,7 @@
 import DeviceActivity
 import ManagedSettings
 import os.log
+import Foundation
 
 // Optionally override any of the functions below.
 // Make sure that your class name matches the NSExtensionPrincipalClass in your Info.plist.
@@ -16,54 +17,34 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
     
     override func intervalDidStart(for activity: DeviceActivityName) {
         super.intervalDidStart(for: activity)
-        
-        os_log("DeviceActivityMonitorExtension: intervalDidStart")
-
-        // store.shield.applicationCategories = .all()
-        
-        // Handle the start of the interval.
+        eval()
     }
     
     override func intervalDidEnd(for activity: DeviceActivityName) {
         super.intervalDidEnd(for: activity)
-        os_log("DeviceActivityMonitorExtension: intervalDidEnd")
-
-        // Handle the end of the interval.
-        
-        store.shield.applications = nil
-
-    }
-    
-    override func eventDidReachThreshold(_ event: DeviceActivityEvent.Name, activity: DeviceActivityName) {
-        super.eventDidReachThreshold(event, activity: activity)
-        os_log("DeviceActivityMonitorExtension: eventDidReachThreshold")
-
-        // Handle the event reaching its threshold.
-    }
-    
-    override func intervalWillStartWarning(for activity: DeviceActivityName) {
-        super.intervalWillStartWarning(for: activity)
-        os_log("DeviceActivityMonitorExtension: intervalWillStartWarning")
-
-        // Handle the warning before the interval starts.
-    }
-    
-    override func intervalWillEndWarning(for activity: DeviceActivityName) {
-        super.intervalWillEndWarning(for: activity)
-        os_log("DeviceActivityMonitorExtension: intervalWillEndWarning")
-
-        // Handle the warning before the interval ends.
-    }
-    
-    override func eventWillReachThresholdWarning(_ event: DeviceActivityEvent.Name, activity: DeviceActivityName) {
-        super.eventWillReachThresholdWarning(event, activity: activity)
-        os_log("DeviceActivityMonitorExtension: eventWillReachThresholdWarning")
-
-        // Handle the warning before the event reaches its threshold.
+        eval()
     }
     
     func eval() {
-        let routines: [Routine] = []
+        os_log("DeviceActivityMonitorExtension: Evaluating")
+        // Read routines from shared UserDefaults
+        var routines: [Routine] = []
+        
+        if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker"),
+           let jsonString = sharedDefaults.string(forKey: "routinesData") {
+            do {
+                let decoder = JSONDecoder()
+                if let data = jsonString.data(using: .utf8) {
+                    routines = try decoder.decode([Routine].self, from: data)
+                    os_log("DeviceActivityMonitorExtension: Successfully loaded %d routines from shared UserDefaults", routines.count)
+                }
+            } catch {
+                os_log("DeviceActivityMonitorExtension: Failed to decode routines from shared UserDefaults: %@", error.localizedDescription)
+            }
+        } else {
+            os_log("DeviceActivityMonitorExtension: No routines data found in shared UserDefaults")
+        }
+        
         let allow = routines.contains(where: { $0.allow })
         
         if (allow) {
@@ -103,6 +84,7 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
                         
             store.shield.applicationCategories = .all(except: Set(apps.map { $0.0 }))
             store.shield.webDomainCategories = .all(except: Set(sites.map { $0.0 }))
+            store.webContent.blockedByFilter = .all(except: Set(sites.map { WebDomain(token:  $0.0) }))
         } else {
             var apps: [ApplicationToken] = []
             var sites: [WebDomainToken] = []
@@ -116,12 +98,11 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
                 }
             }
             
-            print("Blocking \(apps.count) apps, \(sites.count) sites, \(categories.count) categories")
+            os_log("DeviceActivityMonitorExtension: Blocking \(apps.count) apps, \(sites.count) sites, \(categories.count) categories")
             
             store.shield.applications = Set(apps)
-            store.shield.webDomains = Set(sites)
             store.shield.applicationCategories = .specific(Set(categories))
-            store.shield.webDomainCategories = .specific(Set(categories))
+            store.webContent.blockedByFilter = .specific(Set(sites.map { WebDomain(token:  $0) }))
         }
     }
 }
