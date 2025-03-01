@@ -6,11 +6,45 @@
 //
 
 import ManagedSettings
+import DeviceActivity
 
 class RoutineManager {
-    private let store = ManagedSettingsStore()
+    private let store = ManagedSettingsStore(named: ManagedSettingsStore.Name("routineBlockerRestrictions"))
     
     func update(routines: [Routine]) {
+        store.shield.applications = nil
+        store.shield.webDomains = nil
+        store.shield.webDomainCategories = nil
+        store.shield.applicationCategories = nil
+        
+        let deviceActivityCenter = DeviceActivityCenter()
+        let activityName = DeviceActivityName("lunchBreak")
+
+        let now = Date()
+        let components: Set<Calendar.Component> = [.hour, .minute, .second]
+        let calendar = Calendar.current
+        let startDate = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: now)!
+        let endDate = calendar.date(bySettingHour: 20, minute: 30, second: 0, of: now)!
+        let intervalStart = calendar.dateComponents(components, from: startDate)
+        let intervalEnd = calendar.dateComponents(components, from: endDate)
+
+        let schedule = DeviceActivitySchedule(intervalStart: intervalStart, intervalEnd: intervalEnd, repeats: true)
+        // you can also provide a warningTime to DeviceActivitySchedule.
+
+        let thresholdDate = calendar.date(bySettingHour: 2, minute: 0, second: 0, of: now)!
+        let thresholdTime = calendar.dateComponents(components, from: thresholdDate)
+        let event = DeviceActivityEvent(threshold: thresholdTime)
+        let eventName = DeviceActivityEvent.Name("lunchBreakEvent")
+
+        do {
+            try deviceActivityCenter.startMonitoring(activityName, during: schedule, events: [eventName: event])
+            print("successfully scheduled for \(schedule.nextInterval!)")
+        } catch {
+            print("Error scheduling \(error)")
+        }
+    }
+    
+    func eval(routines: [Routine]) {
         let allow = routines.contains(where: { $0.allow })
         
         if (allow) {
