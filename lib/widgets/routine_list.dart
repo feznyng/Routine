@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import '../routine.dart';
 import '../condition.dart';
+import '../util.dart';
 import 'routine_page.dart';
 import 'break_dialog.dart';
 
@@ -264,7 +266,10 @@ class _RoutineListState extends State<RoutineList> {
     String getConditionDescription() {
       switch (condition.type) {
         case ConditionType.location:
-          return 'Location: ${condition.location ?? 'Not set'}';
+          if (condition.latitude != null && condition.longitude != null) {
+            return 'Location';
+          }
+          return 'Location: Not set';
         case ConditionType.nfc:
           return 'NFC Tag';
         case ConditionType.qr:
@@ -311,23 +316,70 @@ class _RoutineListState extends State<RoutineList> {
       return;
     }
     
-    // For now, only handle todo type for completing
-    if (condition.type == ConditionType.todo) {
-      routine.completeCondition(condition);
-    } else {
-      // Show a placeholder dialog for other condition types
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Complete ${condition.type.toString().split('.').last} Condition'),
-          content: Text('This condition type is not yet implemented.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
+    // Handle different condition types
+    switch (condition.type) {
+      case ConditionType.todo:
+        // Todo conditions can be completed directly
+        routine.completeCondition(condition);
+        break;
+        
+      case ConditionType.location:
+        // Check current location against condition location
+        _handleLocationCondition(routine, condition);
+        break;
+        
+      default:
+        // Show a placeholder dialog for other condition types
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Complete ${condition.type.toString().split('.').last} Condition'),
+            content: Text('This condition type is not yet implemented.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+    }
+  }
+  
+  void _handleLocationCondition(Routine routine, Condition condition) async {
+    if (condition.latitude == null || condition.longitude == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Location not set for this condition')),
+      );
+      return;
+    }
+    
+    try {
+      final position = await Util.determinePosition();
+      final distance = Geolocator.distanceBetween(
+        position.latitude,
+        position.longitude,
+        condition.latitude!,
+        condition.longitude!,
+      );
+      
+      final proximity = condition.proximity ?? 100; // Default to 100 meters if not set
+      
+      if (distance <= proximity) {
+        // User is within the proximity radius
+        routine.completeCondition(condition);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location condition completed!')),
+        );
+      } else {
+        // User is not within the proximity radius
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('You are ${distance.toInt()} meters away from the target location. Need to be within ${proximity.toInt()} meters.')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error checking location: $e')),
       );
     }
   }

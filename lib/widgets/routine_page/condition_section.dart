@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../routine.dart';
 import '../../condition.dart';
+import '../../util.dart';
 
 class ConditionSection extends StatelessWidget {
   final Routine routine;
@@ -45,7 +46,11 @@ class ConditionSection extends StatelessWidget {
   String _getConditionSummary(Condition condition) {
     switch (condition.type) {
       case ConditionType.location:
-        return condition.location ?? 'No location set';
+        if (condition.latitude != null && condition.longitude != null) {
+          final proximity = condition.proximity != null ? ' (${condition.proximity!.toInt()}m radius)' : '';
+          return 'Location condition$proximity';
+        }
+        return 'No location set';
       case ConditionType.nfc:
       case ConditionType.qr:
         return condition.nfcQrCode ?? 'No code set';
@@ -201,7 +206,9 @@ class _ConditionEditSheet extends StatefulWidget {
 
 class _ConditionEditSheetState extends State<_ConditionEditSheet> {
   late Condition _condition;
-  late TextEditingController _locationController;
+  late TextEditingController _latitudeController;
+  late TextEditingController _longitudeController;
+  late TextEditingController _proximityController;
   late TextEditingController _nfcQrCodeController;
   late TextEditingController _activityTypeController;
   late TextEditingController _activityAmtController;
@@ -214,14 +221,18 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
     _condition = Condition(
       id: widget.condition.id,
       type: widget.condition.type,
-      location: widget.condition.location,
+      latitude: widget.condition.latitude,
+      longitude: widget.condition.longitude,
+      proximity: widget.condition.proximity,
       nfcQrCode: widget.condition.nfcQrCode,
       activityType: widget.condition.activityType,
       activityAmt: widget.condition.activityAmt,
       todoText: widget.condition.todoText,
       completedAt: widget.condition.lastCompletedAt
     );
-    _locationController = TextEditingController(text: _condition.location ?? '');
+    _latitudeController = TextEditingController(text: _condition.latitude?.toString() ?? '');
+    _longitudeController = TextEditingController(text: _condition.longitude?.toString() ?? '');
+    _proximityController = TextEditingController(text: _condition.proximity?.toString() ?? '100');
     _nfcQrCodeController = TextEditingController(text: _condition.nfcQrCode ?? '');
     _activityTypeController = TextEditingController(text: _condition.activityType ?? '');
     _activityAmtController = TextEditingController(text: _condition.activityAmt ?? '');
@@ -230,7 +241,9 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
 
   @override
   void dispose() {
-    _locationController.dispose();
+    _latitudeController.dispose();
+    _longitudeController.dispose();
+    _proximityController.dispose();
     _nfcQrCodeController.dispose();
     _activityTypeController.dispose();
     _activityAmtController.dispose();
@@ -271,15 +284,94 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
   Widget _buildConditionFields() {
     switch (_condition.type) {
       case ConditionType.location:
-        return TextField(
-          controller: _locationController,
-          decoration: const InputDecoration(
-            labelText: 'Location',
-            hintText: 'Enter location name',
-          ),
-          onChanged: (value) {
-            _condition.location = value;
-          },
+        return Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.my_location),
+                    label: const Text('Get Current Location'),
+                    onPressed: () async {
+                      try {
+                        final position = await Util.determinePosition();
+                        setState(() {
+                          _latitudeController.text = position.latitude.toString();
+                          _longitudeController.text = position.longitude.toString();
+                          _condition.latitude = position.latitude;
+                          _condition.longitude = position.longitude;
+                        });
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error getting location: $e')),
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _latitudeController,
+              decoration: const InputDecoration(
+                labelText: 'Latitude',
+                hintText: 'Enter latitude',
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              onChanged: (value) {
+                if (value.isNotEmpty) {
+                  try {
+                    _condition.latitude = double.parse(value);
+                  } catch (e) {
+                    // Handle parsing error
+                  }
+                } else {
+                  _condition.latitude = null;
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _longitudeController,
+              decoration: const InputDecoration(
+                labelText: 'Longitude',
+                hintText: 'Enter longitude',
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              onChanged: (value) {
+                if (value.isNotEmpty) {
+                  try {
+                    _condition.longitude = double.parse(value);
+                  } catch (e) {
+                    // Handle parsing error
+                  }
+                } else {
+                  _condition.longitude = null;
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _proximityController,
+              decoration: const InputDecoration(
+                labelText: 'Proximity (meters)',
+                hintText: 'Enter proximity radius in meters',
+              ),
+              keyboardType: TextInputType.number,
+              onChanged: (value) {
+                if (value.isNotEmpty) {
+                  try {
+                    _condition.proximity = double.parse(value);
+                  } catch (e) {
+                    // Handle parsing error
+                  }
+                } else {
+                  _condition.proximity = 100; // Default to 100 meters
+                }
+              },
+            ),
+          ],
         );
       case ConditionType.nfc:
       case ConditionType.qr:

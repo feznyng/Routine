@@ -433,7 +433,15 @@ class Routine {
 
   bool isConditionMet(Condition condition) {
     final startedAt = this.startedAt;
-    return condition.lastCompletedAt?.isAfter(startedAt) ?? false;
+    
+    // If the condition has been manually completed after the routine started, it's met
+    if (condition.lastCompletedAt != null && condition.lastCompletedAt!.isAfter(startedAt)) {
+      return true;
+    }
+    
+    // For now, only todo conditions can be automatically checked as met
+    // Location, NFC, QR, and health conditions require user interaction or external verification
+    return false;
   }
 
   bool get areConditionsMet {

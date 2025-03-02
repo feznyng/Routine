@@ -9,7 +9,9 @@ part of 'condition.dart';
 Condition _$ConditionFromJson(Map<String, dynamic> json) => Condition(
       id: json['id'] as String,
       type: $enumDecode(_$ConditionTypeEnumMap, json['type']),
-      location: json['location'] as String?,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      proximity: (json['proximity'] as num?)?.toDouble(),
       nfcQrCode: json['nfcQrCode'] as String?,
       activityType: json['activityType'] as String?,
       activityAmt: json['activityAmt'] as String?,
@@ -21,7 +23,9 @@ Condition _$ConditionFromJson(Map<String, dynamic> json) => Condition(
 Map<String, dynamic> _$ConditionToJson(Condition instance) => <String, dynamic>{
       'id': instance.id,
       'type': _$ConditionTypeEnumMap[instance.type]!,
-      'location': instance.location,
+      'latitude': instance.latitude,
+      'longitude': instance.longitude,
+      'proximity': instance.proximity,
       'nfcQrCode': instance.nfcQrCode,
       'activityType': instance.activityType,
       'activityAmt': instance.activityAmt,

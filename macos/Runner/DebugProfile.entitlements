@@ -16,5 +16,7 @@
 	<array>
 		<string>$(AppIdentifierPrefix)com.example.Routine</string>
 	</array>
-	</dict>
+	<key>com.apple.security.personal-information.location</key>
+	<true/>	
+</dict>
 </plist>

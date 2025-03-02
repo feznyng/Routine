@@ -48,7 +48,7 @@ dependencies:
   crypto: ^3.0.3
   device_info_plus: ^11.0.0
   json_annotation: ^4.9.0
-  
+  geolocator: ^8.1.0  
 dev_dependencies:
   flutter_test:
     sdk: flutter

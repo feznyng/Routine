@@ -17,7 +17,9 @@ enum ConditionType {
 class Condition {
   String id;
   ConditionType _type;
-  String? _location;
+  double? _latitude;
+  double? _longitude;
+  double? _proximity; // in meters
   String? _nfcQrCode;
   String? _activityType;
   String? _activityAmt;
@@ -26,9 +28,11 @@ class Condition {
 
   bool _modified = false;
 
-  Condition({required this.id, required ConditionType type, String? location, String? nfcQrCode, String? activityType, String? activityAmt, String? todoText, DateTime? completedAt})
+  Condition({required this.id, required ConditionType type, double? latitude, double? longitude, double? proximity, String? nfcQrCode, String? activityType, String? activityAmt, String? todoText, DateTime? completedAt})
       : _type = type,
-        _location = location,
+        _latitude = latitude,
+        _longitude = longitude,
+        _proximity = proximity,
         _nfcQrCode = nfcQrCode,
         _activityType = activityType,
         _activityAmt = activityAmt,
@@ -42,7 +46,9 @@ class Condition {
   // Getters
   bool get modified => _modified;
   ConditionType get type => _type;
-  String? get location => _location;
+  double? get latitude => _latitude;
+  double? get longitude => _longitude;
+  double? get proximity => _proximity;
   String? get nfcQrCode => _nfcQrCode;
   String? get activityType => _activityType;
   String? get activityAmt => _activityAmt;
@@ -55,8 +61,18 @@ class Condition {
     _modified = true;
   }
 
-  set location(String? value) {
-    _location = value;
+  set latitude(double? value) {
+    _latitude = value;
+    _modified = true;
+  }
+
+  set longitude(double? value) {
+    _longitude = value;
+    _modified = true;
+  }
+
+  set proximity(double? value) {
+    _proximity = value;
     _modified = true;
   }
 
@@ -89,7 +105,9 @@ class Condition {
     final condition = Condition(
       id: json['id'] as String,
       type: $enumDecode(_$ConditionTypeEnumMap, json['type']),
-      location: json['location'] as String?,
+      latitude: json['latitude'] != null ? (json['latitude'] as num).toDouble() : null,
+      longitude: json['longitude'] != null ? (json['longitude'] as num).toDouble() : null,
+      proximity: json['proximity'] != null ? (json['proximity'] as num).toDouble() : null,
       nfcQrCode: json['nfcQrCode'] as String?,
       activityType: json['activityType'] as String?,
       activityAmt: json['activityAmt'] as String?,
@@ -104,7 +122,9 @@ class Condition {
   Map<String, dynamic> toJson() => {
     'id': id,
     'type': _$ConditionTypeEnumMap[type]!,
-    'location': location,
+    'latitude': latitude,
+    'longitude': longitude,
+    'proximity': proximity,
     'nfcQrCode': nfcQrCode,
     'activityType': activityType,
     'activityAmt': activityAmt,
