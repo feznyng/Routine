@@ -355,7 +355,37 @@ class _RoutineListState extends State<RoutineList> {
     }
     
     try {
-      final position = await Util.determinePosition();
+      // First, check permission status
+      LocationPermission permission = await Geolocator.checkPermission();
+      
+      // If permission is denied, request it
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        
+        // If still denied after request, show error
+        if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location permission denied. Cannot check location condition.')),
+          );
+          return;
+        }
+        
+        // Add a small delay after permission is granted to allow the system to update
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+      
+      // Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location services are disabled. Please enable them in settings.')),
+        );
+        return;
+      }
+      
+      // Get current position with high accuracy
+      final position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      
       final distance = Geolocator.distanceBetween(
         position.latitude,
         position.longitude,

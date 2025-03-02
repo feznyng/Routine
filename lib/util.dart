@@ -73,6 +73,9 @@ class Util {
         // your App should show an explanatory UI now.
         return Future.error('Location permissions are denied');
       }
+      
+      // Add a small delay after permission is granted to allow the system to update
+      await Future.delayed(const Duration(milliseconds: 500));
     }
     
     if (permission == LocationPermission.deniedForever) {
@@ -83,6 +86,6 @@ class Util {
 
     // When we reach here, permissions are granted and we can
     // continue accessing the position of the device.
-    return await Geolocator.getCurrentPosition();
+    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
   }
 }

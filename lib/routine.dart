@@ -204,6 +204,9 @@ class Routine {
       changes.add('groups');
     }
 
+    print("Conditions: ");
+    print(_entry!.conditions);
+    print(conditions);
     if (!listEquals(_entry!.conditions, conditions.map((g) => g.id).toList()) || conditions.any((g) => g.modified)) {
       changes.add('conditions');
     }
@@ -445,6 +448,8 @@ class Routine {
   }
 
   bool get areConditionsMet {
+    if (conditions.isEmpty) return false;
+
     return conditions.every((c) {
       return isConditionMet(c);
     });

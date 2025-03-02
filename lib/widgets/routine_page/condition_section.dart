@@ -140,7 +140,7 @@ class ConditionSection extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
-                  'Conditions must be met before the routine becomes active',
+                  'Conditions must be met to disable blocking.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
@@ -294,13 +294,26 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
                     label: const Text('Get Current Location'),
                     onPressed: () async {
                       try {
+                        // Show loading indicator
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Getting your current location...')),
+                        );
+                        
+                        // Get the current position
                         final position = await Util.determinePosition();
+                        
+                        // Update the UI
                         setState(() {
                           _latitudeController.text = position.latitude.toString();
                           _longitudeController.text = position.longitude.toString();
                           _condition.latitude = position.latitude;
                           _condition.longitude = position.longitude;
                         });
+                        
+                        // Show success message
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Location updated successfully!')),
+                        );
                       } catch (e) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('Error getting location: $e')),

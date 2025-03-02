@@ -119,7 +119,7 @@ class DesktopService {
   }
 
   void _evaluate(List<Routine> routines) {
-    routines = routines.where((r) => r.isActive && !r.isPaused).toList();
+    routines = routines.where((r) => r.isActive && !r.isPaused && !r.areConditionsMet).toList();
 
     print("Active Routines: $routines");
 
