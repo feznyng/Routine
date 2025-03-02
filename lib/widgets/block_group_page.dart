@@ -252,7 +252,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                   onBlockModeChanged: (value) {
                     print('Block mode changed: $value');
                     setState(() {
-                      _selectedGroup.allow = value;
+                      _selectedGroup.allow = !value;
                     });
                   },
                   onSave: (apps, sites, categories) {

@@ -167,17 +167,19 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
+                  // Use colorScheme.primaryContainer for better dark mode support
                   color: enabled 
-                    ? Theme.of(context).primaryColor.withOpacity(0.1)
-                    : Colors.grey.withOpacity(0.1),
+                    ? Theme.of(context).colorScheme.primaryContainer
+                    : Theme.of(context).colorScheme.surfaceVariant,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   icon,
                   size: 32,
+                  // Use colorScheme.onPrimaryContainer for better contrast in both modes
                   color: enabled 
-                    ? Theme.of(context).primaryColor
-                    : Colors.grey,
+                    ? Theme.of(context).colorScheme.onPrimaryContainer
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(width: 16),
@@ -235,8 +237,16 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
                       ),
                     ],
                     selected: {_blockSelected},
+                    style: ButtonStyle(
+                      // Use theme-aware colors for better dark mode support
+                      backgroundColor: MaterialStateProperty.resolveWith<Color?>(
+                        (states) => states.contains(MaterialState.selected) 
+                          ? Theme.of(context).colorScheme.secondaryContainer 
+                          : Theme.of(context).colorScheme.surface,
+                      ),
+                    ),
                     onSelectionChanged: (Set<bool> newSelection) {
-                      print(newSelection);
+                      print('newSelection: $newSelection');
                       setState(() {
                         _blockSelected = newSelection.first;
                       });
@@ -298,7 +308,16 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
                     ),
                   ],
                   selected: {_blockSelected},
+                  style: ButtonStyle(
+                    // Use theme-aware colors for better dark mode support
+                    backgroundColor: MaterialStateProperty.resolveWith<Color?>(
+                      (states) => states.contains(MaterialState.selected) 
+                        ? Theme.of(context).colorScheme.secondaryContainer 
+                        : Theme.of(context).colorScheme.surface,
+                    ),
+                  ),
                   onSelectionChanged: (Set<bool> newSelection) {
+                    print('newSelection: $newSelection');
                     setState(() {
                       _blockSelected = newSelection.first;
                     });

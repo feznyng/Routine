@@ -47,8 +47,7 @@ class BlockGroupSection extends StatelessWidget {
     
     // If creating a new group, set a default name for this device
     if (group == null) {
-      final deviceName = devices[deviceId]?.name ?? 'This Device';
-      final newGroup = Group(name: 'Default for $deviceName');
+      final newGroup = Group(name: 'Custom');
       Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (context) => BlockGroupPage(
@@ -118,7 +117,7 @@ class BlockGroupSection extends StatelessWidget {
               },
             ),
           );
-        }).toList(),
+        }),
         if (!hasCurrentDeviceGroup)
           Padding(
             padding: const EdgeInsets.only(top: 8.0),
