@@ -92,12 +92,12 @@ class Condition {
 
 
 class ConditionConverter extends TypeConverter<List<Condition>, String> with
-        JsonTypeConverter2<List<Condition>, String, List<Map<String, Object?>>> {
+        JsonTypeConverter2<List<Condition>, String, List<dynamic>> {
   const ConditionConverter();
 
   @override
   List<Condition> fromSql(String fromDb) {
-    return fromJson(json.decode(fromDb) as List<Map<String, dynamic>>);
+    return fromJson(json.decode(fromDb) as List<dynamic>);
   }
 
   @override
@@ -106,12 +106,12 @@ class ConditionConverter extends TypeConverter<List<Condition>, String> with
   }
 
   @override
-  List<Condition> fromJson(List<Map<String, Object?>> json) {
+  List<Condition> fromJson(List<dynamic> json) {
     return json.map((map) => Condition.fromJson(Map<String, dynamic>.from(map))).toList();
   }
 
   @override
-  List<Map<String, Object?>> toJson(List<Condition> value) {
+  List<dynamic> toJson(List<Condition> value) {
     return value.map((condition) => condition.toJson()).toList();
   }
 }

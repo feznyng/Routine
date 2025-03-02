@@ -28,7 +28,7 @@ class Routine {
   int? _frictionLen;
   DateTime? _snoozedUntil;
   
-  List<Condition> conditions;
+  List<Condition> conditions = [];
 
   late final Map<String, Group> _groups;
 
@@ -137,7 +137,8 @@ class Routine {
       frictionLen: Value(_frictionLen),
       snoozedUntil: Value(_snoozedUntil),
       updatedAt: Value(DateTime.now()),
-      recurring: Value(true)
+      recurring: Value(true),
+      conditions: Value(conditions)
     ));
     print('routine save sync');
     SyncService().addJob(SyncJob(remote: false));

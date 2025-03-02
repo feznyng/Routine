@@ -427,7 +427,7 @@ class $RoutinesTable extends Routines
       StringListTypeConverter();
   static JsonTypeConverter2<FrictionType, String, String> $converterfriction =
       const EnumNameConverter<FrictionType>(FrictionType.values);
-  static JsonTypeConverter2<List<Condition>, String, List<Map<String, Object?>>>
+  static JsonTypeConverter2<List<Condition>, String, List<dynamic>>
       $converterconditions = const ConditionConverter();
 }
 
@@ -609,8 +609,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           .fromJson(serializer.fromJson<String>(json['friction'])),
       frictionLen: serializer.fromJson<int?>(json['frictionLen']),
       snoozedUntil: serializer.fromJson<DateTime?>(json['snoozedUntil']),
-      conditions: $RoutinesTable.$converterconditions.fromJson(
-          serializer.fromJson<List<Map<String, Object?>>>(json['conditions'])),
+      conditions: $RoutinesTable.$converterconditions
+          .fromJson(serializer.fromJson<List<dynamic>>(json['conditions'])),
     );
   }
   @override
@@ -642,7 +642,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           .toJson<String>($RoutinesTable.$converterfriction.toJson(friction)),
       'frictionLen': serializer.toJson<int?>(frictionLen),
       'snoozedUntil': serializer.toJson<DateTime?>(snoozedUntil),
-      'conditions': serializer.toJson<List<Map<String, Object?>>>(
+      'conditions': serializer.toJson<List<dynamic>>(
           $RoutinesTable.$converterconditions.toJson(conditions)),
     };
   }
