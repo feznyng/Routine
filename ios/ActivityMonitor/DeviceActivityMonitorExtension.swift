@@ -57,7 +57,7 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
             os_log("DeviceActivityMonitorExtension: No routines data found in shared UserDefaults")
         }
         
-        routines = routines.filter { $0.isActive() }
+        routines = routines.filter { $0.isActive() && !$0.areConditionsMet() }
         os_log("DeviceActivityMonitorExtension: filtered routine count = %d", routines.count)
 
         let allow = routines.contains(where: { $0.allow })

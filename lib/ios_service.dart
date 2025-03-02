@@ -35,6 +35,20 @@ class IOSService {
   Future<void> _sendRoutinesToIOS(List<Routine> routines) async {
     try {
       final List<Map<String, dynamic>> routineMaps = routines.where((routine) => routine.getGroup() != null).map((routine) {
+        // Calculate conditionsLastMet based on the specified logic
+        DateTime? conditionsLastMet;
+        if (routine.conditions.isNotEmpty) {
+          // Check if any condition has lastCompletedAt set to null
+          if (routine.conditions.any((condition) => condition.lastCompletedAt == null)) {
+            conditionsLastMet = null;
+          } else {
+            // Find the earliest lastCompletedAt date among all conditions
+            conditionsLastMet = routine.conditions
+                .map((condition) => condition.lastCompletedAt!)
+                .reduce((earliest, date) => earliest.isBefore(date) ? earliest : date);
+          }
+        }
+        
         return {
           'id': routine.id,
           'name': routine.name,
@@ -47,7 +61,9 @@ class IOSService {
           'apps': routine.apps,
           'sites': routine.sites,
           'categories': routine.categories,
-          'allow': routine.allow
+          'allow': routine.allow,
+          'conditionsMet': routine.areConditionsMet,
+          'conditionsLastMet': conditionsLastMet?.toUtc().toIso8601String()
         };
       }).toList();
             

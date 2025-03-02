@@ -18,13 +18,14 @@ class Routine: Codable {
     let allDay: Bool
     let pausedUntil: Date?
     let snoozedUntil: Date?
+    let conditionsLastMet: Date?
     private(set) var apps: [ApplicationToken]
     private(set) var sites: [WebDomainToken]
     private(set) var domains: [String]
     private(set) var categories: [ActivityCategoryToken]
     
     enum CodingKeys: String, CodingKey {
-        case id, name, days, startTime, endTime, allDay, pausedUntil, snoozedUntil, apps, sites, categories, allow
+        case id, name, days, startTime, endTime, allDay, pausedUntil, snoozedUntil, apps, sites, categories, allow, conditionsMet, conditionsLastMet
     }
     let allow: Bool
     
@@ -40,9 +41,17 @@ class Routine: Codable {
         self.allDay = try container.decode(Bool.self, forKey: .allDay)
         self.allow = try container.decode(Bool.self, forKey: .allow)
         
-        // Handle optional Date properties
+        // Handle conditionsLastMet as an optional Date
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        
+        if let conditionsLastMetString = try container.decodeIfPresent(String.self, forKey: .conditionsLastMet) {
+            self.conditionsLastMet = formatter.date(from: conditionsLastMetString)
+        } else {
+            self.conditionsLastMet = nil
+        }
+
+        // Handle optional Date properties
         
         if let pausedUntilString = try container.decodeIfPresent(String.self, forKey: .pausedUntil) {
             self.pausedUntil = formatter.date(from: pausedUntilString)
@@ -158,6 +167,37 @@ class Routine: Codable {
         // Normal case: start time is before end time
         return (currMins >= start && currMins < end)
     }
+    
+    func areConditionsMet() -> Bool {
+        // If conditionsLastMet is nil, return false
+        guard let lastMet = conditionsLastMet else {
+            return false
+        }
+        
+        // Get the current date and extract the time components
+        let now = Date()
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month, .day], from: now)
+        
+        // Use startTime if defined, otherwise use 0 (midnight)
+        // This assumes all-day routines start at midnight
+        let effectiveStartTime = startTime ?? 0
+        
+        let startHour = effectiveStartTime / 60
+        let startMinute = effectiveStartTime % 60
+        
+        var startComponents = components
+        startComponents.hour = startHour
+        startComponents.minute = startMinute
+        startComponents.second = 0
+        
+        guard let todayAtStartTime = calendar.date(from: startComponents) else {
+            return false
+        }
+        
+        // Return true if conditionsLastMet is before today's start time
+        return lastMet.compare(todayAtStartTime) == .orderedAscending
+    }
 }
 
 // MARK: - Encodable Implementation
@@ -172,10 +212,17 @@ extension Routine {
         try container.encode(endTime, forKey: .endTime)
         try container.encode(allDay, forKey: .allDay)
         try container.encode(allow, forKey: .allow)
-        
+
         // Create a single formatter for date properties
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        
+        // Handle conditionsLastMet
+        if let conditionsLastMet = conditionsLastMet {
+            try container.encode(formatter.string(from: conditionsLastMet), forKey: .conditionsLastMet)
+        } else {
+            try container.encodeNil(forKey: .conditionsLastMet)
+        }
         
         // Handle optional Date properties
         if let pausedUntil = pausedUntil {
