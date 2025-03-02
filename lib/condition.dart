@@ -133,7 +133,6 @@ class Condition {
   };
 }
 
-
 class ConditionConverter extends TypeConverter<List<Condition>, String> with
         JsonTypeConverter2<List<Condition>, String, List<dynamic>> {
   const ConditionConverter();

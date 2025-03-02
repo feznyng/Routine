@@ -61,13 +61,11 @@ class Group {
       changes: Value(changes),
       updatedAt: Value(DateTime.now()),
     ));
-    print('group save sync');
     SyncService().addJob(SyncJob(remote: false));
   }
 
   delete() async {
     await getIt<AppDatabase>().tempDeleteGroup(_id);
-    print('group delete sync');
     SyncService().addJob(SyncJob(remote: false));
   }
 

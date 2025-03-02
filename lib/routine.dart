@@ -204,7 +204,6 @@ class Routine {
       changes.add('groups');
     }
 
-    print("Conditions: $conditions ${_entry!.conditions} ${_entry != null}");
     if (!setEquals(Set.from(_entry!.conditions.map((c) => c.id)), conditions.map((g) => g.id).toSet()) || conditions.any((g) => g.modified)) {
       changes.add('conditions');
     }

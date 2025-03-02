@@ -44,20 +44,39 @@ class BlockGroupSection extends StatelessWidget {
 
   void _toggleBlockGroup(BuildContext context, String deviceId) {
     final group = routine.getGroup(deviceId);
-
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (context) => BlockGroupPage(
-          selectedGroup: group,
-          deviceId: deviceId,
-          onSave: (group) {
-            routine.setGroup(group, deviceId);
-            onChanged();
-          },
-          onBack: () => Navigator.of(context).pop(),
+    
+    // If creating a new group, set a default name for this device
+    if (group == null) {
+      final deviceName = devices[deviceId]?.name ?? 'This Device';
+      final newGroup = Group(name: 'Default for $deviceName');
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (context) => BlockGroupPage(
+            selectedGroup: newGroup,
+            deviceId: deviceId,
+            onSave: (group) {
+              routine.setGroup(group, deviceId);
+              onChanged();
+            },
+            onBack: () => Navigator.of(context).pop(),
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (context) => BlockGroupPage(
+            selectedGroup: group,
+            deviceId: deviceId,
+            onSave: (group) {
+              routine.setGroup(group, deviceId);
+              onChanged();
+            },
+            onBack: () => Navigator.of(context).pop(),
+          ),
+        ),
+      );
+    }
   }
 
   @override

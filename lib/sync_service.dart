@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:Routine/condition.dart';
+
 import 'setup.dart';
 import 'database.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -210,7 +213,6 @@ class SyncService {
     // Pull and apply remote routine changes
     {
       final remoteRoutines = await _client.from('routines').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
-
      
       final localRoutines = await db.getRoutinesById(remoteRoutines.map((routine) => routine['id'] as String).toList());
       final localRoutineMap = {for (final routine in localRoutines) routine.id: routine};
@@ -227,11 +229,24 @@ class SyncService {
         }
 
         final DateTime updatedAt = localRoutine != null && localRoutine.updatedAt.toIso8601String().compareTo(routine['updated_at']) > 0 ? localRoutine.updatedAt : DateTime.parse(routine['updated_at']);
+        
+        final List<Condition> conditions = routine['conditions'] != null ? 
+          json.decode(routine['conditions'] as String).map<Condition>((map) => Condition.fromJson(Map<String, dynamic>.from(map))).toList() : [];
 
+        final List<Condition> localConditions = localRoutine?.conditions ?? [];
+        final Map<String, Condition> localConditionMap = {for (final condition in localConditions) condition.id: condition};
+
+        for (final condition in conditions) {
+          final localCondition = localConditionMap[condition.id];
+          if (localCondition != null && (condition.lastCompletedAt != null && (localCondition.lastCompletedAt?.isAfter(condition.lastCompletedAt!) ?? false))) {
+            condition.lastCompletedAt = localCondition.lastCompletedAt;
+          }
+        }
+        
         if (routine['deleted'] as bool) {
           db.deleteRoutine(routine['id']);
         } else {
-          db.upsertRoutine(RoutinesCompanion(
+          db.upsertRoutine(RoutinesCompanion( 
             id: Value(routine['id']),
             name: Value(overwriteMap['name'] ?? routine['name']),
             monday: Value(overwriteMap['monday'] ?? routine['monday']),
@@ -256,6 +271,7 @@ class SyncService {
             updatedAt: Value(updatedAt),
             deleted: Value(overwriteMap['deleted'] ?? routine['deleted']),
             changes: Value(overwriteMap['changes'] ?? []),
+            conditions: Value(conditions),
           ));
         }
       }

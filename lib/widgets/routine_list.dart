@@ -93,7 +93,25 @@ class _RoutineListState extends State<RoutineList> {
 
   Widget _buildBlockedChips(Routine routine) {
     final group = routine.getGroup();
-    if (group == null) return const SizedBox.shrink();
+    
+    // If there's no block group configured for the current device, show a 'None' chip
+    if (group == null) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          Chip(
+            label: const Text(
+              'None',
+              style: TextStyle(fontSize: 12),
+            ),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+          ),
+        ],
+      );
+    }
 
     final apps = group.apps;
     final sites = group.sites;
