@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/services.dart';
 import 'routine.dart';
 
@@ -19,6 +20,11 @@ class IOSService {
     _routineSubscription = Routine.watchAll().listen((routines) {
       _sendRoutinesToIOS(routines);
     });
+    
+    // Check for FamilyControls authorization on initialization
+    if (Platform.isIOS) {
+      checkAndRequestFamilyControlsAuthorization();
+    }
   }
   
   void stopWatchingRoutines() {
@@ -52,4 +58,42 @@ class IOSService {
   }
   
   static IOSService get instance => _instance;
+  
+  /// Checks if the app has FamilyControls authorization
+  Future<bool> checkFamilyControlsAuthorization() async {
+    if (!Platform.isIOS) return false;
+    
+    try {
+      final bool isAuthorized = await _channel.invokeMethod('checkFamilyControlsAuthorization');
+      return isAuthorized;
+    } catch (e) {
+      print('Error checking FamilyControls authorization: $e');
+      return false;
+    }
+  }
+  
+  /// Requests FamilyControls authorization from the user
+  Future<bool> requestFamilyControlsAuthorization() async {
+    if (!Platform.isIOS) return false;
+    
+    try {
+      final bool isAuthorized = await _channel.invokeMethod('requestFamilyControlsAuthorization');
+      return isAuthorized;
+    } catch (e) {
+      print('Error requesting FamilyControls authorization: $e');
+      return false;
+    }
+  }
+  
+  /// Checks current authorization status and requests if not authorized
+  Future<bool> checkAndRequestFamilyControlsAuthorization() async {
+    if (!Platform.isIOS) return false;
+    
+    final bool isAuthorized = await checkFamilyControlsAuthorization();
+    if (isAuthorized) {
+      return true;
+    } else {
+      return await requestFamilyControlsAuthorization();
+    }
+  }
 }

@@ -92,6 +92,23 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
       _desktopService?.init();
     } else {
       _iosService!.init();
+      
+      // Request FamilyControls authorization after initialization
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (Platform.isIOS) {
+          _checkFamilyControlsAuthorization();
+        }
+      });
+    }
+  }
+  
+  // Check and request FamilyControls authorization if needed
+  Future<void> _checkFamilyControlsAuthorization() async {
+    if (_iosService == null) return;
+    
+    final bool isAuthorized = await _iosService.checkFamilyControlsAuthorization();
+    if (!isAuthorized) {
+      await _iosService.requestFamilyControlsAuthorization();
     }
   }
 
