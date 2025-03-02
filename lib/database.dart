@@ -263,6 +263,10 @@ class AppDatabase extends _$AppDatabase {
     await (update(devices)..where((t) => t.id.equals(entry.id.value))).write(entry);
   }
 
+  Future<List<DeviceEntry>> getDevices() {
+    return select(devices).get();
+  }
+
   Future<List<RoutineEntry>> getRoutineChanges(DateTime? since) {
     var query = select(routines);
     if (since != null) {

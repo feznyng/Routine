@@ -60,10 +60,7 @@ class _RoutinePageState extends State<RoutinePage> {
 
   Future<void> _loadDevices() async {
     final devices = Map.fromEntries(
-      (await getIt<AppDatabase>().getDevicesById(
-        _routine.groups.entries.map((e) => e.key).toList(),
-      ))
-          .map((e) => MapEntry(e.id, e)),
+      (await getIt<AppDatabase>().getDevices()).map((e) => MapEntry(e.id, e)),
     );
 
     setState(() {
