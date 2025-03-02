@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:Routine/widgets/edit_block_group_page.dart';
 import 'package:flutter/material.dart';
 import 'block_group_editor.dart';
 import 'block_groups_page.dart';
@@ -75,6 +76,34 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
     }
   }
 
+  Future<void> _editCurrentGroup() async {
+    if (_selectedGroup.id == null || !_blockGroups.any((group) => group.id == _selectedGroup.id)) {
+      return; // Don't allow editing custom groups
+    }
+
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => EditBlockGroupPage(
+          group: _selectedGroup,
+          onSave: (updatedGroup) {
+            updatedGroup.save();
+            Navigator.of(context).pop();
+            setState(() {
+              _selectedGroup = updatedGroup;
+            });
+          },
+          onDelete: _selectedGroup.saved ? () {
+            _selectedGroup.delete();
+            Navigator.of(context).pop();
+            setState(() {
+              _selectedGroup = Group(); // Reset to custom group if the selected one was deleted
+            });
+          } : null,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final usingNamedGroup = _blockGroups.any((group) => group.id == _selectedGroup.id);
@@ -129,8 +158,22 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                             child: Text(blockGroup.name ?? 'Unnamed List'),
                           );
                         }),
+                        // Add a divider and Edit Groups option at the bottom
+                        if (_blockGroups.isNotEmpty) const DropdownMenuItem<String>(
+                          value: 'divider',
+                          enabled: false,
+                          child: Divider(),
+                        ),
+                        const DropdownMenuItem<String>(
+                          value: 'edit_groups',
+                          child: Text('Edit Groups'),
+                        ),
                       ],
                       onChanged: (String? newId) {
+                        if (newId == 'edit_groups') {
+                          _navigateToManageGroups();
+                          return;
+                        }
                         setState(() {
                           _selectedGroup = newId == null ? Group() : _blockGroups.firstWhere((group) => group.id == newId);
                         });
@@ -139,8 +182,10 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.edit),
-                    onPressed: _navigateToManageGroups,
-                    tooltip: 'Edit Groups',
+                    onPressed: usingNamedGroup ? _editCurrentGroup : null,
+                    tooltip: usingNamedGroup ? 'Edit Group' : 'Cannot edit custom group',
+                    // Disable the button if not using a named group
+                    color: usingNamedGroup ? null : Theme.of(context).disabledColor,
                   ),
                 ],
               ),
