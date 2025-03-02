@@ -375,6 +375,7 @@ class SyncService {
           'end_time': routine.endTime,
           'recurring': routine.recurring,
           'groups': routine.groups,
+          'conditions': routine.conditions,
           'num_breaks_taken': routine.numBreaksTaken,
           'last_break_at': routine.lastBreakAt?.toUtc().toIso8601String(),
           'paused_until': routine.pausedUntil?.toUtc().toIso8601String(),

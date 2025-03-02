@@ -431,10 +431,22 @@ class Routine {
     );
   }
 
-  bool get areConditionsMet {
+  bool isConditionMet(Condition condition) {
     final startedAt = this.startedAt;
+    return condition.lastCompletedAt?.isAfter(startedAt) ?? false;
+  }
+
+  bool get areConditionsMet {
     return conditions.every((c) {
-      return c.lastCompletedAt?.isAfter(startedAt) ?? false;
+      return isConditionMet(c);
     });
+  }
+
+  void completeCondition(Condition condition, {bool complete = true}) {
+    final index = conditions.indexWhere((c) => c.id == condition.id);
+    if (index != -1) {
+      conditions[index].lastCompletedAt = complete ? DateTime.now() : null;
+      save();
+    }
   }
 }

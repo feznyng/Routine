@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../routine.dart';
+import '../condition.dart';
 import 'routine_page.dart';
 import 'break_dialog.dart';
 
@@ -81,6 +82,10 @@ class _RoutineListState extends State<RoutineList> {
         Text(timeText),
         const SizedBox(height: 4),
         _buildBlockedChips(routine),
+        if (routine.isActive && routine.conditions.isNotEmpty) ...[  
+          const SizedBox(height: 8),
+          _buildConditionsList(context, routine),
+        ],
       ],
     );
   }
@@ -222,6 +227,130 @@ class _RoutineListState extends State<RoutineList> {
             Navigator.of(context).pop();
           } : null,
         ),
+      ),
+    );
+  }
+  
+  Widget _buildConditionsList(BuildContext context, Routine routine) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 4),
+        ...routine.conditions.map((condition) => _buildConditionItem(context, routine, condition)),
+      ],
+    );
+  }
+  
+  Widget _buildConditionItem(BuildContext context, Routine routine, Condition condition) {
+    final isMet = routine.isConditionMet(condition);
+    
+    // Get the appropriate icon based on condition type
+    IconData getConditionIcon() {
+      switch (condition.type) {
+        case ConditionType.location:
+          return Icons.location_on;
+        case ConditionType.nfc:
+          return Icons.nfc;
+        case ConditionType.qr:
+          return Icons.qr_code;
+        case ConditionType.health:
+          return Icons.favorite;
+        case ConditionType.todo:
+          return Icons.assignment_turned_in;
+      }
+    }
+    
+    // Get the condition description
+    String getConditionDescription() {
+      switch (condition.type) {
+        case ConditionType.location:
+          return 'Location: ${condition.location ?? 'Not set'}';
+        case ConditionType.nfc:
+          return 'NFC Tag';
+        case ConditionType.qr:
+          return 'QR Code';
+        case ConditionType.health:
+          return 'Health: ${condition.activityType ?? 'Not set'}';
+        case ConditionType.todo:
+          return condition.todoText ?? 'To-do item';
+      }
+    }
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: InkWell(
+        onTap: () => _handleConditionTap(routine, condition),
+        child: Row(
+          children: [
+            Checkbox(
+              value: isMet,
+              onChanged: (_) => _handleConditionTap(routine, condition),
+            ),
+            Icon(getConditionIcon(), size: 16),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                getConditionDescription(),
+                style: TextStyle(
+                  decoration: isMet ? TextDecoration.lineThrough : null,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  void _handleConditionTap(Routine routine, Condition condition) {
+    final isMet = routine.isConditionMet(condition);
+    
+    // If the condition is already completed, show a confirmation dialog
+    if (isMet) {
+      _showUncompleteConfirmationDialog(routine, condition);
+      return;
+    }
+    
+    // For now, only handle todo type for completing
+    if (condition.type == ConditionType.todo) {
+      routine.completeCondition(condition);
+    } else {
+      // Show a placeholder dialog for other condition types
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Complete ${condition.type.toString().split('.').last} Condition'),
+          content: Text('This condition type is not yet implemented.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+  
+  void _showUncompleteConfirmationDialog(Routine routine, Condition condition) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Uncomplete Condition'),
+        content: const Text('Are you sure you want to mark this condition as not completed?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              routine.completeCondition(condition, complete: false);
+              Navigator.of(context).pop();
+            },
+            child: const Text('Uncomplete'),
+          ),
+        ],
       ),
     );
   }

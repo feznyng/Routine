@@ -13,16 +13,16 @@ enum ConditionType {
   todo
 }
 
-@JsonSerializable()
+@JsonSerializable(explicitToJson: true)
 class Condition {
-  late final String id;
-  late final ConditionType _type;
-  late final String? _location;
-  late final String? _nfcQrCode;
-  late final String? _activityType;
-  late final String? _activityAmt;
-  late final String? _todoText;
-  late final DateTime? _lastCompletedAt;
+  String id;
+  ConditionType _type;
+  String? _location;
+  String? _nfcQrCode;
+  String? _activityType;
+  String? _activityAmt;
+  String? _todoText;
+  DateTime? _lastCompletedAt;
 
   bool _modified = false;
 
@@ -85,9 +85,32 @@ class Condition {
     _modified = true;
   }
 
-  factory Condition.fromJson(Map<String, dynamic> json) => _$ConditionFromJson(json);
+  factory Condition.fromJson(Map<String, dynamic> json) {
+    final condition = Condition(
+      id: json['id'] as String,
+      type: $enumDecode(_$ConditionTypeEnumMap, json['type']),
+      location: json['location'] as String?,
+      nfcQrCode: json['nfcQrCode'] as String?,
+      activityType: json['activityType'] as String?,
+      activityAmt: json['activityAmt'] as String?,
+      todoText: json['todoText'] as String?,
+      completedAt: json['lastCompletedAt'] == null
+        ? null
+        : DateTime.parse(json['lastCompletedAt'] as String),
+    );
+    return condition;
+  }
 
-  Map<String, dynamic> toJson() => _$ConditionToJson(this);
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'type': _$ConditionTypeEnumMap[type]!,
+    'location': location,
+    'nfcQrCode': nfcQrCode,
+    'activityType': activityType,
+    'activityAmt': activityAmt,
+    'todoText': todoText,
+    'lastCompletedAt': lastCompletedAt?.toIso8601String(),
+  };
 }
 
 

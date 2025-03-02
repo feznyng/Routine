@@ -153,6 +153,11 @@ class _RoutinePageState extends State<RoutinePage> {
                 routine: _routine,
                 onChanged: _validateRoutine,
               ),
+              const SizedBox(height: 16),
+              ConditionSection(
+                routine: _routine,
+                onChanged: _validateRoutine,
+              ),
               const SizedBox(height: 32),
               if (_routine.saved) ...[
                 SizedBox(
