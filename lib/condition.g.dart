@@ -15,7 +15,7 @@ Condition _$ConditionFromJson(Map<String, dynamic> json) => Condition(
       nfcQrCode: json['nfcQrCode'] as String?,
       activityType: json['activityType'] as String?,
       activityAmt: json['activityAmt'] as String?,
-      todoText: json['todoText'] as String?,
+      name: json['name'] as String?,
     )..lastCompletedAt = json['lastCompletedAt'] == null
         ? null
         : DateTime.parse(json['lastCompletedAt'] as String);
@@ -29,7 +29,7 @@ Map<String, dynamic> _$ConditionToJson(Condition instance) => <String, dynamic>{
       'nfcQrCode': instance.nfcQrCode,
       'activityType': instance.activityType,
       'activityAmt': instance.activityAmt,
-      'todoText': instance.todoText,
+      'name': instance.name,
       'lastCompletedAt': instance.lastCompletedAt?.toIso8601String(),
     };
 

@@ -89,10 +89,7 @@ class _BlockAppsDialogState extends State<BlockAppsDialog> {
               Flexible(
                 child: Container(
                   constraints: const BoxConstraints(maxHeight: 400),
-                  child: Material(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(4),
-                    child: ListView.builder(
+                  child: ListView.builder(
                       padding: const EdgeInsets.all(4),
                       shrinkWrap: true,
                       itemCount: _availableApps.length,
@@ -118,7 +115,6 @@ class _BlockAppsDialogState extends State<BlockAppsDialog> {
                         );
                       },
                     ),
-                  ),
                 ),
               ),
             const SizedBox(height: 16),

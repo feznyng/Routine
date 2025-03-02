@@ -23,12 +23,12 @@ class Condition {
   String? _nfcQrCode;
   String? _activityType;
   String? _activityAmt;
-  String? _todoText;
+  String? _name; // Used as name/description for all condition types
   DateTime? _lastCompletedAt;
 
   bool _modified = false;
 
-  Condition({required this.id, required ConditionType type, double? latitude, double? longitude, double? proximity, String? nfcQrCode, String? activityType, String? activityAmt, String? todoText, DateTime? completedAt})
+  Condition({required this.id, required ConditionType type, double? latitude, double? longitude, double? proximity, String? nfcQrCode, String? activityType, String? activityAmt, String? name, DateTime? completedAt})
       : _type = type,
         _latitude = latitude,
         _longitude = longitude,
@@ -36,12 +36,13 @@ class Condition {
         _nfcQrCode = nfcQrCode,
         _activityType = activityType,
         _activityAmt = activityAmt,
-        _todoText = todoText,
+        _name = name,
         _lastCompletedAt = completedAt;
 
-  Condition.create({required ConditionType type}) 
+  Condition.create({required ConditionType type, String? name}) 
       : id = Uuid().v4(),
-        _type = type;
+        _type = type,
+        _name = name;
 
   // Getters
   bool get modified => _modified;
@@ -52,7 +53,7 @@ class Condition {
   String? get nfcQrCode => _nfcQrCode;
   String? get activityType => _activityType;
   String? get activityAmt => _activityAmt;
-  String? get todoText => _todoText;
+  String? get name => _name;
   DateTime? get lastCompletedAt => _lastCompletedAt;
 
   // Setters
@@ -91,8 +92,8 @@ class Condition {
     _modified = true;
   }
 
-  set todoText(String? value) {
-    _todoText = value;
+  set name(String? value) {
+    _name = value;
     _modified = true;
   }
 
@@ -111,11 +112,16 @@ class Condition {
       nfcQrCode: json['nfcQrCode'] as String?,
       activityType: json['activityType'] as String?,
       activityAmt: json['activityAmt'] as String?,
-      todoText: json['todoText'] as String?,
+      name: json['name'] as String?,
       completedAt: json['lastCompletedAt'] == null
         ? null
         : DateTime.parse(json['lastCompletedAt'] as String),
     );
+    
+    // Handle legacy data that might have a name field
+    if (json.containsKey('name') && json['name'] != null && condition.name == null) {
+      condition.name = json['name'] as String?;
+    }
     return condition;
   }
 
@@ -128,7 +134,7 @@ class Condition {
     'nfcQrCode': nfcQrCode,
     'activityType': activityType,
     'activityAmt': activityAmt,
-    'todoText': todoText,
+    'name': name,
     'lastCompletedAt': lastCompletedAt?.toIso8601String(),
   };
 }

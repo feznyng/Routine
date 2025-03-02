@@ -44,11 +44,17 @@ class ConditionSection extends StatelessWidget {
   }
 
   String _getConditionSummary(Condition condition) {
+    // If the condition has a name, use it as the summary for any condition type
+    if (condition.name != null && condition.name!.isNotEmpty) {
+      return '${condition.name!} (${condition.proximity!.toInt()} m)';
+    }
+    
+    // Otherwise, use the default summary based on condition type
     switch (condition.type) {
       case ConditionType.location:
         if (condition.latitude != null && condition.longitude != null) {
           final proximity = condition.proximity != null ? ' (${condition.proximity!.toInt()}m radius)' : '';
-          return 'Location condition$proximity';
+          return 'Location$proximity';
         }
         return 'No location set';
       case ConditionType.nfc:
@@ -60,7 +66,7 @@ class ConditionSection extends StatelessWidget {
         }
         return 'No activity set';
       case ConditionType.todo:
-        return condition.todoText ?? 'No task set';
+        return condition.name ?? 'No task set';
     }
   }
 
@@ -212,7 +218,7 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
   late TextEditingController _nfcQrCodeController;
   late TextEditingController _activityTypeController;
   late TextEditingController _activityAmtController;
-  late TextEditingController _todoTextController;
+  late TextEditingController _nameController;
 
   @override
   void initState() {
@@ -227,7 +233,7 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
       nfcQrCode: widget.condition.nfcQrCode,
       activityType: widget.condition.activityType,
       activityAmt: widget.condition.activityAmt,
-      todoText: widget.condition.todoText,
+      name: widget.condition.name,
       completedAt: widget.condition.lastCompletedAt
     );
     _latitudeController = TextEditingController(text: _condition.latitude?.toString() ?? '');
@@ -236,7 +242,7 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
     _nfcQrCodeController = TextEditingController(text: _condition.nfcQrCode ?? '');
     _activityTypeController = TextEditingController(text: _condition.activityType ?? '');
     _activityAmtController = TextEditingController(text: _condition.activityAmt ?? '');
-    _todoTextController = TextEditingController(text: _condition.todoText ?? '');
+    _nameController = TextEditingController(text: _condition.name ?? '');
   }
 
   @override
@@ -247,7 +253,7 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
     _nfcQrCodeController.dispose();
     _activityTypeController.dispose();
     _activityAmtController.dispose();
-    _todoTextController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
@@ -425,16 +431,9 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
           ],
         );
       case ConditionType.todo:
-        return TextField(
-          controller: _todoTextController,
-          decoration: const InputDecoration(
-            labelText: 'Task',
-            hintText: 'Enter task description',
-          ),
-          onChanged: (value) {
-            _condition.todoText = value;
-          },
-        );
+        // For todo type, we already have the name field at the top of the form
+        // that serves as both the name and the task description
+        return const SizedBox.shrink();
     }
   }
 
@@ -469,6 +468,17 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
                 onPressed: widget.onDelete,
               ),
             ],
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _nameController,
+            decoration: const InputDecoration(
+              labelText: 'Name',
+              hintText: 'Enter a name or description for this condition',
+            ),
+            onChanged: (value) {
+              _condition.name = value.isNotEmpty ? value : null;
+            },
           ),
           const SizedBox(height: 16),
           _buildConditionFields(),

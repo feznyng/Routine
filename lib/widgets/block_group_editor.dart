@@ -37,9 +37,6 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
   @override
   void initState() {
     super.initState();
-
-    print('BlockGroupEditor: ${widget.selectedCategories}');
-
     _selectedApps = List.from(widget.selectedApps);
     _selectedSites = List.from(widget.selectedSites);
     _selectedCategories = List.from(widget.selectedCategories ?? []);
@@ -239,6 +236,7 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
                     ],
                     selected: {_blockSelected},
                     onSelectionChanged: (Set<bool> newSelection) {
+                      print(newSelection);
                       setState(() {
                         _blockSelected = newSelection.first;
                       });

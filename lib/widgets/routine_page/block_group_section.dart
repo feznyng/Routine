@@ -103,8 +103,8 @@ class BlockGroupSection extends StatelessWidget {
                     context: context,
                     builder: (BuildContext context) {
                       return AlertDialog(
-                        title: const Text('Device Group Access'),
-                        content: const Text('Block groups for other devices can only be edited from those devices.'),
+                        title: Text('Modify ${devices[deviceId]?.name ?? 'Device'} Group'),
+                        content: Text('Please use Routine on ${devices[deviceId]?.name ?? 'the device'} to configure this block group.'),
                         actions: <Widget>[
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(),

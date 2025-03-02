@@ -140,7 +140,6 @@ class Routine {
       recurring: Value(true),
       conditions: Value(conditions)
     ));
-    print('routine save sync');
     SyncService().addJob(SyncJob(remote: false));
   }
 

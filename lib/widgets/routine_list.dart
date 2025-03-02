@@ -279,8 +279,11 @@ class _RoutineListState extends State<RoutineList> {
       }
     }
     
-    // Get the condition description
     String getConditionDescription() {
+      if (condition.name != null && condition.name!.isNotEmpty) {
+        return condition.name! + (condition.proximity != null ? ' (${condition.proximity!.toInt()} m)' : '');
+      }
+      
       switch (condition.type) {
         case ConditionType.location:
           if (condition.latitude != null && condition.longitude != null) {
@@ -294,7 +297,7 @@ class _RoutineListState extends State<RoutineList> {
         case ConditionType.health:
           return 'Health: ${condition.activityType ?? 'Not set'}';
         case ConditionType.todo:
-          return condition.todoText ?? 'To-do item';
+          return condition.name ?? 'To-do item';
       }
     }
     
@@ -304,12 +307,12 @@ class _RoutineListState extends State<RoutineList> {
         onTap: () => _handleConditionTap(routine, condition),
         child: Row(
           children: [
+            Icon(getConditionIcon(), size: 16),
+            const SizedBox(width: 8),
             Checkbox(
               value: isMet,
               onChanged: (_) => _handleConditionTap(routine, condition),
             ),
-            Icon(getConditionIcon(), size: 16),
-            const SizedBox(width: 8),
             Expanded(
               child: Text(
                 getConditionDescription(),
@@ -421,7 +424,7 @@ class _RoutineListState extends State<RoutineList> {
       } else {
         // User is not within the proximity radius
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('You are ${distance.toInt()} meters away from the target location. Need to be within ${proximity.toInt()} meters.')),
+          SnackBar(content: Text('${distance.toInt()} meters away from the target location. Please move within ${proximity.toInt()} meter${proximity == 1.0 ? '' : 's'}.')),
         );
       }
     } catch (e) {
