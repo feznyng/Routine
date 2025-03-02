@@ -4,6 +4,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import 'string_list_converter.dart';
+import 'condition.dart';
 part 'database.g.dart';
 
 enum FrictionType {
@@ -48,6 +49,8 @@ class Routines extends Table {
   late final friction = textEnum<FrictionType>()();
   late final frictionLen = integer().nullable()();
   late final snoozedUntil = dateTime().nullable()();
+
+  late final conditions = text().map(const ConditionConverter())();
 }
 
 @DataClassName('DeviceEntry')

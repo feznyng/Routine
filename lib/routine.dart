@@ -7,6 +7,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'sync_service.dart';
 import 'util.dart';
+import 'condition.dart';
 
 class Routine {
   final String _id;
@@ -26,6 +27,8 @@ class Routine {
   FrictionType _friction;
   int? _frictionLen;
   DateTime? _snoozedUntil;
+  
+  List<Condition> conditions;
 
   late final Map<String, Group> _groups;
 
@@ -52,6 +55,7 @@ class Routine {
     _friction = FrictionType.delay,
     _frictionLen = null,
     _snoozedUntil = null,
+    conditions = [],
     _entry = null {
       _groups = {
         getIt<Device>().id: Group()
@@ -70,10 +74,10 @@ class Routine {
     _maxBreaks = entry.maxBreaks,
     _maxBreakDuration = entry.maxBreakDuration,
     _friction = entry.friction,
+    conditions = entry.conditions,
     _frictionLen = entry.frictionLen,
     _snoozedUntil = entry.snoozedUntil {
       _entry = entry;
-
       _groups = {};
       for (final group in groups) {
         _groups[group.device] = Group.fromEntry(group);
@@ -94,6 +98,7 @@ class Routine {
     _friction = other._friction,
     _frictionLen = other._frictionLen,
     _snoozedUntil = other._snoozedUntil,
+    conditions = other.conditions,
     _entry = other._entry {
       _groups = Map.fromEntries(
         other._groups.entries.map(
@@ -194,9 +199,12 @@ class Routine {
       changes.add('endTime');
     }
 
-    print('changes: ${_groups.values.any((g) => g.modified)}');
     if (!listEquals(_entry!.groups, _groups.values.map((g) => g.id).toList()) || _groups.values.any((g) => g.modified)) {
       changes.add('groups');
+    }
+
+    if (!listEquals(_entry!.conditions, conditions.map((g) => g.id).toList()) || conditions.any((g) => g.modified)) {
+      changes.add('conditions');
     }
 
     if (_entry!.numBreaksTaken != _numBreaksTaken) {
@@ -408,5 +416,24 @@ class Routine {
   int calculateCodeLength() {
     if (_frictionLen != null) return _frictionLen!;
     return (_numBreaksTaken ?? 0) * 2 + 4; // Base 4 chars + 2 per break taken
+  }
+
+  DateTime get startedAt {
+    final now = DateTime.now();
+    
+    return DateTime(
+      now.year,
+      now.month,
+      now.day,
+      startHour,
+      startMinute, 
+    );
+  }
+
+  bool get areConditionsMet {
+    final startedAt = this.startedAt;
+    return conditions.every((c) {
+      return c.lastCompletedAt?.isAfter(startedAt) ?? false;
+    });
   }
 }

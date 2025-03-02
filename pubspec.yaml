@@ -47,7 +47,8 @@ dependencies:
   flutter_secure_storage: ^9.0.0
   crypto: ^3.0.3
   device_info_plus: ^11.0.0
-
+  json_annotation: ^4.9.0
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -62,6 +63,7 @@ dev_dependencies:
   build_runner: ^2.4.14
   supabase_flutter: ^2.0.0
   flutter_dotenv: ^5.1.0
+  json_serializable: ^6.8.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
