@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../auth_service.dart';
+import '../theme_provider.dart';
 import 'auth_page.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -36,6 +38,44 @@ class _SettingsPageState extends State<SettingsPage> {
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
+          Card(
+            child: Consumer<ThemeProvider>(
+              builder: (context, themeProvider, _) => ListTile(
+                title: const Text('Theme'),
+                leading: Icon(
+                  themeProvider.isSystemMode
+                      ? Icons.brightness_auto
+                      : themeProvider.isDarkMode
+                          ? Icons.dark_mode
+                          : Icons.light_mode,
+                ),
+                trailing: DropdownButton<ThemeMode>(
+                  value: themeProvider.themeMode,
+                  underline: const SizedBox(),
+                  onChanged: (ThemeMode? newMode) {
+                    if (newMode != null) {
+                      themeProvider.setThemeMode(newMode);
+                    }
+                  },
+                  items: const [
+                    DropdownMenuItem(
+                      value: ThemeMode.system,
+                      child: Text('System Default'),
+                    ),
+                    DropdownMenuItem(
+                      value: ThemeMode.light,
+                      child: Text('Light Mode'),
+                    ),
+                    DropdownMenuItem(
+                      value: ThemeMode.dark,
+                      child: Text('Dark Mode'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           if (!_authService.isSignedIn) ...[            
             Card(
               child: InkWell(

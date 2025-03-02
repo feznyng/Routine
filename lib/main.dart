@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:provider/provider.dart';
 import 'widgets/routine_list.dart';
 import 'widgets/settings_page.dart';
 import 'auth_service.dart';
 import 'setup.dart';
 import 'sync_service.dart';
+import 'theme_provider.dart';
 
 // Desktop-specific imports
 import 'package:window_manager/window_manager.dart' if (dart.library.html) '';
@@ -44,7 +46,10 @@ void main() async {
 
   setup();
 
-  runApp(const MyApp());
+  runApp(ChangeNotifierProvider(
+    create: (_) => ThemeProvider(),
+    child: const MyApp(),
+  ));
 }
 
 class MyApp extends StatelessWidget {
@@ -52,10 +57,19 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
     return MaterialApp(
       title: 'Routine',
+      themeMode: themeProvider.themeMode,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightBlue),
+        useMaterial3: true,
+      ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.lightBlue,
+          brightness: Brightness.dark,
+        ),
         useMaterial3: true,
       ),
       home: const MyHomePage(title: 'Routine'),
