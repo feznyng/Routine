@@ -33,6 +33,7 @@ class _RoutinePageState extends State<RoutinePage> {
     super.initState();
     _initializeRoutine();
     _loadDevices();
+    _refreshRoutine();
   }
 
   void _initializeRoutine() {
@@ -40,6 +41,21 @@ class _RoutinePageState extends State<RoutinePage> {
     _nameController = TextEditingController(text: _routine.name);
     _nameController.addListener(_validateRoutine);
     _validateRoutine();
+  }
+
+  Future<void> _refreshRoutine() async {
+    if (_routine.saved) {
+      final routines = await getIt<AppDatabase>().getRoutinesById([_routine.id]);
+      if (routines.isNotEmpty) {
+        final routine = routines.first;
+        final groups = await getIt<AppDatabase>().getGroupsById(routine.groups);
+        setState(() {
+          _routine = Routine.fromEntry(routine, groups);
+          _nameController.text = _routine.name;
+          _validateRoutine();
+        });
+      }
+    }
   }
 
   Future<void> _loadDevices() async {
@@ -61,6 +77,7 @@ class _RoutinePageState extends State<RoutinePage> {
     if (oldWidget.routine != widget.routine) {
       _nameController.dispose();
       _initializeRoutine();
+      _refreshRoutine();
     }
   }
 

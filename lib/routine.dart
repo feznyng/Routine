@@ -200,14 +200,12 @@ class Routine {
       changes.add('endTime');
     }
 
-    if (!listEquals(_entry!.groups, _groups.values.map((g) => g.id).toList()) || _groups.values.any((g) => g.modified)) {
+    if (!setEquals(Set.from(_entry!.groups), _groups.values.map((g) => g.id).toSet()) || _groups.values.any((g) => g.modified)) {
       changes.add('groups');
     }
 
-    print("Conditions: ");
-    print(_entry!.conditions);
-    print(conditions);
-    if (!listEquals(_entry!.conditions, conditions.map((g) => g.id).toList()) || conditions.any((g) => g.modified)) {
+    print("Conditions: $conditions ${_entry!.conditions} ${_entry != null}");
+    if (!setEquals(Set.from(_entry!.conditions.map((c) => c.id)), conditions.map((g) => g.id).toSet()) || conditions.any((g) => g.modified)) {
       changes.add('conditions');
     }
 

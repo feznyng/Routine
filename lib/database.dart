@@ -147,8 +147,6 @@ class AppDatabase extends _$AppDatabase {
         final routine = row.readTable(routines);
         final group = row.readTable(groups);
 
-        print('routine: ${routine.id}, group: $group');
-
         groupsByRoutine.putIfAbsent(routine.id, () => []).add(group);
         routinesById[routine.id] = routine;
       }

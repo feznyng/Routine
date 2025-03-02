@@ -24,7 +24,6 @@ class Device {
 
   static Future<Device> getCurrent() async {
     final deviceEntry = await getIt<AppDatabase>().getThisDevice();
-    print('currDevice $deviceEntry');
 
     if (deviceEntry != null) {
       return Device.fromEntry(deviceEntry);

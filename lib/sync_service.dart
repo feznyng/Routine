@@ -125,7 +125,7 @@ class SyncService {
 
   // order matters: devices, groups, routines
   Future<bool> _sync(bool notifyRemote) async {
-    print('syncing...');
+
     
     if (_userId.isEmpty) return true;
     
@@ -137,7 +137,7 @@ class SyncService {
     // Pull and apply remote device changes
     {
       final remoteDevices = await _client.from('devices').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
-      print('remote device changes: $remoteDevices');
+
      
       final localDevices = await db.getDevicesById(remoteDevices.map((device) => device['id'] as String).toList());
       final localDeviceMap = {for (final device in localDevices) device.id: device};
@@ -173,7 +173,7 @@ class SyncService {
     // Pull and apply remote group changes
     {
       final remoteGroups = await _client.from('groups').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
-      print('remote group changes: $remoteGroups');
+
      
       final localGroups = await db.getGroupsById(remoteGroups.map((group) => group['id'] as String).toList());
       final localGroupMap = {for (final group in localGroups) group.id: group};
@@ -210,7 +210,7 @@ class SyncService {
     // Pull and apply remote routine changes
     {
       final remoteRoutines = await _client.from('routines').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
-      print('remote routine changes: $remoteRoutines');
+
      
       final localRoutines = await db.getRoutinesById(remoteRoutines.map((routine) => routine['id'] as String).toList());
       final localRoutineMap = {for (final routine in localRoutines) routine.id: routine};
@@ -270,7 +270,7 @@ class SyncService {
     // Push local device changes if no conflicts
     {
       final localDevices = await db.getDeviceChanges(lastPulledAt);
-      print('local device changes: $localDevices');
+
       final remoteDevices = await _client
         .from('devices')
         .select()
@@ -280,7 +280,7 @@ class SyncService {
       for (final device in localDevices) {
         final remoteDevice = remoteDeviceMap[device.id];
         if (remoteDevice != null && remoteDevice['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
-          print("detected remote device change, exiting");
+
           return false;
         }
       }
@@ -304,7 +304,7 @@ class SyncService {
     // Push local group changes if no conflicts
     {
       final localGroups = await db.getGroupChanges(lastPulledAt);
-      print('local group changes: $localGroups');
+
       final remoteGroups = await _client
         .from('groups')
         .select()
@@ -315,7 +315,7 @@ class SyncService {
       for (final group in localGroups) {
         final remoteGroup = remoteGroupMap[group.id];
         if (remoteGroup != null && remoteGroup['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
-          print("detected remote group change, exiting");
+
           return false;
         }
       }
@@ -339,7 +339,7 @@ class SyncService {
     // Push local routine changes if no conflicts
     {
       final localRoutines = await db.getRoutineChanges(lastPulledAt);
-      print('local routine changes: $localRoutines');
+
       final remoteRoutines = await _client
         .from('routines')
         .select()
@@ -350,14 +350,14 @@ class SyncService {
       for (final routine in localRoutines) {
         final remoteRoutine = remoteRoutineMap[routine.id];
         if (remoteRoutine != null && remoteRoutine['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
-          print("detected remote routine change, exiting");
+
           return false;
         }
       }
 
       for (final routine in localRoutines) {
 
-        print('upserting routine ${routine.id} ${routine.lastBreakAt?.toIso8601String()} ${routine.lastBreakAt?.toUtc().toIso8601String()}');
+
         await _client
         .from('routines')
         .upsert({
@@ -406,7 +406,7 @@ class SyncService {
 
     if (deviceList.isNotEmpty) {
       final pulledAt = deviceList[0];
-      print('Deleting routines older than $pulledAt');
+
       await _client.from('routines').delete().lt('updated_at', pulledAt).eq('deleted', true);
       await _client.from('groups').delete().lt('updated_at', pulledAt).eq('deleted', true);
       await _client.from('devices').delete().lt('updated_at', pulledAt).eq('deleted', true);

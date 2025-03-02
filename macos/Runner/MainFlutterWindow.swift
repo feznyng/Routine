@@ -38,18 +38,15 @@ class MainFlutterWindow: NSWindow {
         self.processPendingMessages()
 
         let isEnabled = SMAppService.mainApp.status == .enabled
-        NSLog("App starts at login = \(isEnabled)")
 
         result(true)
       case "updateAppList":
         if let args = call.arguments as? [String: Any],
           let apps = args["apps"] as? [String], let allowList = args["allowList"] as? Bool {
-          NSLog("updating app list to: \(apps), allowList: \(allowList)")
           self.appList = Set(apps.map { $0.lowercased() })  // Store lowercase for case-insensitive comparison
           self.allowList = allowList
           result(nil)
         } else {
-          NSLog("Invalid arguments received for updateappList")
           result(FlutterError(code: "INVALID_ARGUMENTS",
                               message: "Invalid arguments for updateappList",
                               details: nil))
@@ -92,22 +89,19 @@ class MainFlutterWindow: NSWindow {
   }
     
   private func setStartOnLogin(enabled: Bool) {
-      if enabled {
-          do {
-              try SMAppService.mainApp.register()
-          } catch {
-              NSLog("Failed to register app for launch at login: \(error)")
-          }
-      } else {
-          do {
-              try SMAppService.mainApp.unregister()
-          } catch {
-              NSLog("Failed to unregister app for launch at login: \(error)")
-          }
-      }
-      
-      let isEnabled = SMAppService.mainApp.status == .enabled
-      NSLog("App starts at login = \(isEnabled)")
+    if enabled {
+        do {
+            try SMAppService.mainApp.register()
+        } catch {
+            NSLog("Failed to register app for launch at login: \(error)")
+        }
+    } else {
+        do {
+            try SMAppService.mainApp.unregister()
+        } catch {
+            NSLog("Failed to unregister app for launch at login: \(error)")
+        }
+    }
   }
 
   private func startMonitoring() {

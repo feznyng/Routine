@@ -90,8 +90,6 @@ class Group {
     if (!listEquals(_entry.sites, sites)) changes.add('sites');
     if (!listEquals(_entry.categories, categories)) changes.add('categories');
 
-    print('group changes: ${_entry.categories} -> $categories');
-
     return changes;
   }
 

@@ -121,8 +121,6 @@ class DesktopService {
   void _evaluate(List<Routine> routines) {
     routines = routines.where((r) => r.isActive && !r.isPaused && !r.areConditionsMet).toList();
 
-    print("Active Routines: $routines");
-
     Set<String> apps = {}; 
     Set<String> sites = {};
     bool allowList = routines.any((r) => r.allow);
@@ -148,11 +146,7 @@ class DesktopService {
         sites.addAll(routine.sites);
       }
     }
-
-    debugPrint("App List: $apps");
-    debugPrint("Site List: $sites");
-    debugPrint("Allow List: $allowList");
-
+    
     // Update cached values
     _cachedSites = sites.toList();
     _cachedApps = apps.toList();
