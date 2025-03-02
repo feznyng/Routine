@@ -216,7 +216,7 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
             const SizedBox(height: 10),
           ],
           _buildBlockButton(
-            title: 'Applications',
+            title: 'Applications & Websites',
             subtitle: _getAppSubtitle(),
             icon: Icons.apps,
             onPressed: () async {
@@ -239,13 +239,6 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
                 ),
               );
             },
-          ),
-          const SizedBox(height: 8),
-          _buildBlockButton(
-            title: 'Websites',
-            subtitle: _getSiteSubtitle(),
-            icon: Icons.language,
-            onPressed: _openSitesDialog,
           ),
         ],
       );

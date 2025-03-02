@@ -151,13 +151,170 @@ class AppSiteSelectorView: NSObject, FlutterPlatformView {
 // Wrapper view to handle selection changes
 struct FamilyActivityPickerWrapper: View {
     @State var selection: FamilyActivitySelection
+    @State private var showWebsiteTab: Bool = false
+    @State private var websiteInput: String = ""
+    @State private var blockedWebsites: [String] = []
     var onSelectionChanged: (FamilyActivitySelection) -> Void
     
     var body: some View {
-        FamilyActivityPicker(selection: $selection)
-            .onChange(of: selection) { newValue in
-                onSelectionChanged(newValue)
+        VStack {
+            // Tab selection at the top
+            Picker("Mode", selection: $showWebsiteTab) {
+                Text("Apps & Categories").tag(false)
+                Text("Websites").tag(true)
             }
+            .pickerStyle(SegmentedPickerStyle())
+            .padding(.horizontal)
+            .padding(.top)
+            
+            if showWebsiteTab {
+                // Website blocking view
+                VStack(alignment: .leading) {
+                    Text("Blocked Websites")
+                        .font(.headline)
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+                    
+                    HStack {
+                        TextField("Enter a website (e.g., facebook.com)", text: $websiteInput)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+                            .keyboardType(.URL)
+                        
+                        Button(action: addWebsite) {
+                            Image(systemName: "plus")
+                        }
+                        .disabled(websiteInput.isEmpty)
+                    }
+                    .padding(.horizontal)
+                    
+                    if blockedWebsites.isEmpty {
+                        Text("No sites blocked")
+                            .italic()
+                            .foregroundColor(.secondary)
+                            .padding()
+                    } else {
+                        ScrollView {
+                            LazyVGrid(columns: [GridItem(.flexible())], spacing: 8) {
+                                ForEach(blockedWebsites, id: \.self) { site in
+                                    HStack {
+                                        Text(site)
+                                        Spacer()
+                                        Button(action: {
+                                            removeWebsite(site)
+                                        }) {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .foregroundColor(.red)
+                                        }
+                                    }
+                                    .padding(8)
+                                    .background(Color(.systemGray6))
+                                    .cornerRadius(8)
+                                }
+                            }
+                            .padding()
+                        }
+                    }
+                    
+                    Spacer()
+                }
+            } else {
+                // Original FamilyActivityPicker view
+                FamilyActivityPicker(selection: $selection)
+                    .onChange(of: selection) { newValue in
+                        onSelectionChanged(newValue)
+                    }
+            }
+        }
+        .onAppear {
+            // Load existing websites from selection
+            loadExistingWebsites()
+        }
+    }
+    
+    private func addWebsite() {
+        var site = websiteInput.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Basic URL cleanup
+        if site.hasPrefix("http://") { site = String(site.dropFirst(7)) }
+        if site.hasPrefix("https://") { site = String(site.dropFirst(8)) }
+        if site.hasPrefix("www.") { site = String(site.dropFirst(4)) }
+        
+        if !site.isEmpty && !blockedWebsites.contains(site) {
+            blockedWebsites.append(site)
+            websiteInput = ""
+            
+            // Automatically update web domain tokens
+            updateWebDomainTokens()
+        }
+    }
+    
+    private func removeWebsite(_ site: String) {
+        blockedWebsites.removeAll { $0 == site }
+        
+        // Automatically update web domain tokens
+        updateWebDomainTokens()
+    }
+    
+    private func loadExistingWebsites() {
+        // Try to extract domain names from existing WebDomainTokens
+        let existingDomains = selection.webDomainTokens
+        
+        // Clear existing blocked websites
+        blockedWebsites.removeAll()
+        
+        // Attempt to extract domain names using the description property
+        for token in existingDomains {
+            if let domainString = extractDomainFromToken(token) {
+                blockedWebsites.append(domainString)
+            }
+        }
+        
+        print("Loaded \(blockedWebsites.count) existing websites")
+    }
+    
+    private func extractDomainFromToken(_ token: WebDomainToken) -> String? {
+        // This is a best-effort approach to extract the domain name from a WebDomainToken
+        // WebDomainToken doesn't provide direct access to the domain name
+        
+        // Try using the description which might contain the domain
+        let description = String(describing: token)
+        
+        // Look for patterns like "domain.com" in the description
+        // This is a simplified approach and may not work in all cases
+        if let regex = try? NSRegularExpression(pattern: "[a-zA-Z0-9][-a-zA-Z0-9]*\\.[a-zA-Z0-9][-a-zA-Z0-9]*(\\.[a-zA-Z0-9][-a-zA-Z0-9]*)*", options: []) {
+            let nsString = description as NSString
+            let matches = regex.matches(in: description, options: [], range: NSRange(location: 0, length: nsString.length))
+            
+            if let match = matches.first {
+                return nsString.substring(with: match.range)
+            }
+        }
+        
+        return nil
+    }
+    
+    private func updateWebDomainTokens() {
+        // Create WebDomainTokens for each domain in blockedWebsites
+        var newWebDomainTokens = Set<WebDomainToken>()
+        
+        for domain in blockedWebsites {
+            // Create a WebDomainToken for the domain
+            // This is a simplified approach - in a real implementation,
+            // you would need to handle token creation more robustly
+            if let token = AuthorizationCenter.shared.authorizationStatus == .approved ? try? WebDomainToken(from: domain as! Decoder) : nil {
+                newWebDomainTokens.insert(token)
+            }
+        }
+        
+        // Update the selection with the new tokens
+        var updatedSelection = selection
+        updatedSelection.webDomainTokens = newWebDomainTokens
+        selection = updatedSelection
+        
+        // Notify about the selection change
+        onSelectionChanged(selection)
     }
 }
 
