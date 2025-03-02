@@ -65,6 +65,7 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
         if (allow) {
             var apps = [ApplicationToken: Int]()
             var sites = [WebDomainToken: Int]()
+            var domains = [String: Int]()
             var categories = [ActivityCategoryToken: Int]()
             
             for routine in routines {
@@ -73,6 +74,9 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
                 }
                 for site in routine.sites {
                     sites[site, default: 0] += 1
+                }
+                for domain in routine.domains {
+                    domains[domain, default: 0] += 1
                 }
                 for category in routine.categories {
                     categories[category, default: 0] += 1
@@ -85,29 +89,38 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
                 }
             }
             
-            for (tok, cnt) in sites {
-                if routines.count != cnt {
-                    sites.removeValue(forKey: tok)
-                }
-            }
-            
             for (tok, cnt) in categories {
                 if routines.count != cnt {
                     categories.removeValue(forKey: tok)
                 }
             }
+            
+            var webDomains: Set<WebDomain> = []
+            
+            for (tok, cnt) in sites {
+                if routines.count == cnt {
+                    webDomains.insert(WebDomain(token: tok))
+                }
+            }
+            
+            for (domain, cnt) in domains {
+                if routines.count == cnt {
+                    webDomains.insert(WebDomain(domain: domain))
+                }
+            }
                         
             store.shield.applicationCategories = .all(except: Set(apps.map { $0.0 }))
             store.shield.webDomainCategories = .all(except: Set(sites.map { $0.0 }))
-            store.webContent.blockedByFilter = .all(except: Set(sites.map { WebDomain(token:  $0.0) }))
+            store.webContent.blockedByFilter = .all(except: webDomains)
         } else {
             var apps: [ApplicationToken] = []
-            var sites: [WebDomainToken] = []
+            var sites: [WebDomain] = []
             var categories: [ActivityCategoryToken] = []
             
             for routine in routines {
                 apps.append(contentsOf: routine.apps)
-                sites.append(contentsOf: routine.sites)
+                sites.append(contentsOf: routine.sites.map { WebDomain(token: $0) })
+                sites.append(contentsOf: routine.domains.map { WebDomain(domain: $0) })
                 categories.append(contentsOf: routine.categories)
             }
             
@@ -115,7 +128,7 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
             
             store.shield.applications = Set(apps)
             store.shield.applicationCategories = .specific(Set(categories))
-            store.webContent.blockedByFilter = .specific(Set(sites.map { WebDomain(token:  $0) }))
+            store.webContent.blockedByFilter = .specific(Set(sites.map { $0 }))
         }
     }
 }

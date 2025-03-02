@@ -20,6 +20,7 @@ class Routine: Codable {
     let snoozedUntil: Date?
     private(set) var apps: [ApplicationToken]
     private(set) var sites: [WebDomainToken]
+    private(set) var domains: [String]
     private(set) var categories: [ActivityCategoryToken]
     
     enum CodingKeys: String, CodingKey {
@@ -59,6 +60,7 @@ class Routine: Codable {
         self.apps = [ApplicationToken]()
         self.sites = [WebDomainToken]()
         self.categories = [ActivityCategoryToken]()
+        self.domains = [String]()
         
         // Since the tokens are stored as JSON strings, we need to decode them separately
         // We'll use a single JSONDecoder instance for all token types
@@ -81,7 +83,7 @@ class Routine: Codable {
                    let token = try? jsonDecoder.decode(WebDomainToken.self, from: data) {
                     self.sites.append(token)
                 } else {
-                    print("failed to create site token")
+                    self.domains.append(siteString)
                 }
             }
         }

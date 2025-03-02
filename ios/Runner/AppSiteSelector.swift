@@ -10,6 +10,7 @@ class AppSiteSelectorView: NSObject, FlutterPlatformView {
     private var channel: FlutterMethodChannel
     private var hostingController: UIHostingController<FamilyActivityPickerWrapper>?
     private var parentViewController: UIViewController?
+    private var initialPlainTextSites: [String] = []
     
     init(
         frame: CGRect,
@@ -43,12 +44,25 @@ class AppSiteSelectorView: NSObject, FlutterPlatformView {
             }
             
             if let sites = params["sites"] as? [String] {
-                selection.webDomainTokens = Set(sites.compactMap { siteId in
-                    if let data = siteId.data(using: .utf8) {
-                        return try? JSONDecoder().decode(WebDomainToken.self, from: data)
+                // Separate encoded tokens and plaintext domains
+                var encodedTokens = Set<WebDomainToken>()
+                self.initialPlainTextSites = []
+                
+                for siteId in sites {
+                    if let data = siteId.data(using: .utf8),
+                       let token = try? JSONDecoder().decode(WebDomainToken.self, from: data) {
+                        // This is an encoded token
+                        encodedTokens.insert(token)
+                    } else {
+                        // This is a plaintext domain
+                        self.initialPlainTextSites.append(siteId)
                     }
-                    return nil
-                })
+                }
+                
+                // Set the encoded tokens to the selection
+                selection.webDomainTokens = encodedTokens
+                
+                print("Stored \(self.initialPlainTextSites.count) plaintext domains for later use")
             }
 
             if let categories: [String] = params["categories"] as? [String] {
@@ -89,8 +103,11 @@ class AppSiteSelectorView: NSObject, FlutterPlatformView {
         _view.frame = frame
         _view.backgroundColor = .systemBackground
         
-        let wrapper = FamilyActivityPickerWrapper(selection: selection) { [weak self] newSelection in
-            self?.handleSelectionChange(newSelection)
+        // Use the stored plaintext domains
+        print("Using \(self.initialPlainTextSites.count) stored plaintext domains")
+        
+        let wrapper = FamilyActivityPickerWrapper(selection: selection, initialPlainTextDomains: self.initialPlainTextSites) { [weak self] newSelection, plainTextDomains in
+            self?.handleSelectionChange(newSelection, plainTextDomains: plainTextDomains)
         }
         
         hostingController = UIHostingController(rootView: wrapper)
@@ -126,14 +143,20 @@ class AppSiteSelectorView: NSObject, FlutterPlatformView {
         return nil
     }
     
-    private func handleSelectionChange(_ newSelection: FamilyActivitySelection) {
+    private func handleSelectionChange(_ newSelection: FamilyActivitySelection, plainTextDomains: [String]) {
         let encoder = JSONEncoder()
         let apps = newSelection.applicationTokens.compactMap { token -> String? in
             return processToken(token, encoder: encoder)
         }
-        let sites = newSelection.webDomainTokens.compactMap { token -> String? in
+        
+        // Process encoded token domains
+        let encodedSites = newSelection.webDomainTokens.compactMap { token -> String? in
             return processToken(token, encoder: encoder)
         }
+        
+        // Combine encoded tokens and plaintext domains
+        let allSites = encodedSites + plainTextDomains
+        
         let categories = newSelection.categoryTokens.compactMap { token -> String? in
             return processToken(token, encoder: encoder)
         }
@@ -141,7 +164,7 @@ class AppSiteSelectorView: NSObject, FlutterPlatformView {
         DispatchQueue.main.async { [weak self] in
             self?.channel.invokeMethod("onSelectionChanged", arguments: [
                 "apps": apps, 
-                "sites": sites,
+                "sites": allSites,
                 "categories": categories
             ])
         }
@@ -153,8 +176,14 @@ struct FamilyActivityPickerWrapper: View {
     @State var selection: FamilyActivitySelection
     @State private var showWebsiteTab: Bool = false
     @State private var websiteInput: String = ""
-    @State private var blockedWebsites: [String] = []
-    var onSelectionChanged: (FamilyActivitySelection) -> Void
+    @State private var plainTextDomains: [String] = []
+    var onSelectionChanged: (FamilyActivitySelection, [String]) -> Void
+    
+    init(selection: FamilyActivitySelection, initialPlainTextDomains: [String] = [], onSelectionChanged: @escaping (FamilyActivitySelection, [String]) -> Void) {
+        _selection = State(initialValue: selection)
+        _plainTextDomains = State(initialValue: initialPlainTextDomains)
+        self.onSelectionChanged = onSelectionChanged
+    }
     
     var body: some View {
         VStack {
@@ -189,7 +218,7 @@ struct FamilyActivityPickerWrapper: View {
                     }
                     .padding(.horizontal)
                     
-                    if blockedWebsites.isEmpty {
+                    if plainTextDomains.isEmpty {
                         Text("No sites blocked")
                             .italic()
                             .foregroundColor(.secondary)
@@ -197,7 +226,7 @@ struct FamilyActivityPickerWrapper: View {
                     } else {
                         ScrollView {
                             LazyVGrid(columns: [GridItem(.flexible())], spacing: 8) {
-                                ForEach(blockedWebsites, id: \.self) { site in
+                                ForEach(plainTextDomains, id: \.self) { site in
                                     HStack {
                                         Text(site)
                                         Spacer()
@@ -223,7 +252,7 @@ struct FamilyActivityPickerWrapper: View {
                 // Original FamilyActivityPicker view
                 FamilyActivityPicker(selection: $selection)
                     .onChange(of: selection) { newValue in
-                        onSelectionChanged(newValue)
+                        onSelectionChanged(newValue, plainTextDomains)
                     }
             }
         }
@@ -241,37 +270,26 @@ struct FamilyActivityPickerWrapper: View {
         if site.hasPrefix("https://") { site = String(site.dropFirst(8)) }
         if site.hasPrefix("www.") { site = String(site.dropFirst(4)) }
         
-        if !site.isEmpty && !blockedWebsites.contains(site) {
-            blockedWebsites.append(site)
+        if !site.isEmpty && !plainTextDomains.contains(site) {
+            plainTextDomains.append(site)
             websiteInput = ""
             
-            // Automatically update web domain tokens
-            updateWebDomainTokens()
+            // Notify about the change
+            onSelectionChanged(selection, plainTextDomains)
         }
     }
     
     private func removeWebsite(_ site: String) {
-        blockedWebsites.removeAll { $0 == site }
+        plainTextDomains.removeAll { $0 == site }
         
-        // Automatically update web domain tokens
-        updateWebDomainTokens()
+        // Notify about the change
+        onSelectionChanged(selection, plainTextDomains)
     }
     
     private func loadExistingWebsites() {
-        // Try to extract domain names from existing WebDomainTokens
-        let existingDomains = selection.webDomainTokens
-        
-        // Clear existing blocked websites
-        blockedWebsites.removeAll()
-        
-        // Attempt to extract domain names using the description property
-        for token in existingDomains {
-            if let domainString = extractDomainFromToken(token) {
-                blockedWebsites.append(domainString)
-            }
-        }
-        
-        print("Loaded \(blockedWebsites.count) existing websites")
+        // We don't need to extract domains from tokens anymore
+        // as plainTextDomains are passed directly in the initializer
+        print("Loaded \(plainTextDomains.count) existing plaintext websites")
     }
     
     private func extractDomainFromToken(_ token: WebDomainToken) -> String? {
@@ -293,28 +311,6 @@ struct FamilyActivityPickerWrapper: View {
         }
         
         return nil
-    }
-    
-    private func updateWebDomainTokens() {
-        // Create WebDomainTokens for each domain in blockedWebsites
-        var newWebDomainTokens = Set<WebDomainToken>()
-        
-        for domain in blockedWebsites {
-            // Create a WebDomainToken for the domain
-            // This is a simplified approach - in a real implementation,
-            // you would need to handle token creation more robustly
-            if let token = AuthorizationCenter.shared.authorizationStatus == .approved ? try? WebDomainToken(from: domain as! Decoder) : nil {
-                newWebDomainTokens.insert(token)
-            }
-        }
-        
-        // Update the selection with the new tokens
-        var updatedSelection = selection
-        updatedSelection.webDomainTokens = newWebDomainTokens
-        selection = updatedSelection
-        
-        // Notify about the selection change
-        onSelectionChanged(selection)
     }
 }
 

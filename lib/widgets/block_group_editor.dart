@@ -104,6 +104,41 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
     // If no categories or no apps, return the appropriate text
     return categoryText.isNotEmpty ? categoryText : appText;
   }
+  
+  String _getCombinedSubtitle() {
+    List<String> parts = [];
+    String blockModePrefix = _blockSelected ? 'Blocking' : 'Allowing';
+    
+    // Handle apps
+    if (_selectedApps.isNotEmpty) {
+      parts.add('${_selectedApps.length} applications');
+    }
+    
+    // Handle categories
+    if (_selectedCategories != null && _selectedCategories!.isNotEmpty) {
+      parts.add('${_selectedCategories!.length} categories');
+    }
+    
+    // Handle sites
+    if (_selectedSites.isNotEmpty) {
+      parts.add('${_selectedSites.length} sites');
+    }
+    
+    // If nothing is selected
+    if (parts.isEmpty) {
+      return _blockSelected ? 'Blocking nothing' : 'Blocking everything';
+    }
+    
+    // Join all parts with commas and add the block mode at the beginning
+    if (parts.length == 1) {
+      return '$blockModePrefix ${parts[0]}';
+    } else if (parts.length == 2) {
+      return '$blockModePrefix ${parts[0]} and ${parts[1]}';
+    } else {
+      String allButLast = parts.sublist(0, parts.length - 1).join(', ');
+      return '$blockModePrefix $allButLast, and ${parts.last}';
+    }
+  }
 
   String _getSiteSubtitle() {
     if (_selectedSites.isEmpty) {
@@ -217,7 +252,7 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
           ],
           _buildBlockButton(
             title: 'Applications & Websites',
-            subtitle: _getAppSubtitle(),
+            subtitle: _getCombinedSubtitle(),
             icon: Icons.apps,
             onPressed: () async {
               await Navigator.of(context).push(
