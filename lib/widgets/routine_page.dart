@@ -169,7 +169,7 @@ class _RoutinePageState extends State<RoutinePage> {
                         selected: _routine.days[i],
                         onSelected: (bool selected) {
                           setState(() {
-                            _routine.days[i] = selected;
+                            _routine.updateDay(i, selected);
                             _validateRoutine();
                           });
                         },

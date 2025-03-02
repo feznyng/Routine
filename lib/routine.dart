@@ -246,6 +246,12 @@ class Routine {
 
   String get id => _id;
   List<bool> get days => List.unmodifiable(_days);
+  
+  void updateDay(int index, bool value) {
+    if (index >= 0 && index < 7) {
+      _days[index] = value;
+    }
+  }
   int get startTime => _startTime;
   int get endTime => _endTime;
   set startTime(int value) {
