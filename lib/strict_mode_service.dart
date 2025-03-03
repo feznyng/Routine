@@ -1,10 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
-import 'desktop_service.dart';
 import 'package:flutter/material.dart';
 import 'routine.dart';
-import 'database.dart';
 
 class StrictModeService with ChangeNotifier {
   static final StrictModeService _instance = StrictModeService._internal();
@@ -20,7 +17,6 @@ class StrictModeService with ChangeNotifier {
   
   static StrictModeService get instance => _instance;
   
-  late SharedPreferences _prefs;
   bool _initialized = false;
   bool _inStrictMode = false;
   
@@ -77,7 +73,6 @@ class StrictModeService with ChangeNotifier {
     if (_initialized) return;
     
     final prefs = await SharedPreferences.getInstance();
-    _prefs = prefs;
     
     // Load desktop settings
     _blockAppExit = prefs.getBool(_blockAppExitKey) ?? false;
@@ -281,10 +276,6 @@ class StrictModeService with ChangeNotifier {
     );
   }
   
-  // Helper method to show a dialog when strict mode is active
-  void _showStrictModeActiveDialog(BuildContext context) {
-    showStrictModeActiveDialog(context);
-  }
   
   // Helper method to show a confirmation dialog when enabling a setting
   Future<bool?> _showEnableConfirmationDialog(BuildContext context, String title, String message) {
