@@ -18,7 +18,6 @@ class BreakConfigSection extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         width: double.infinity,
-        constraints: const BoxConstraints(minHeight: 300),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -37,24 +36,39 @@ class BreakConfigSection extends StatelessWidget {
                   children: [
                     const Text('Max Breaks'),
                     const SizedBox(height: 8),
-                    SegmentedButton<bool>(
+                    SegmentedButton<String>(
                       segments: const [
                         ButtonSegment(
-                          value: false,
+                          value: 'none',
+                          label: Text('None'),
+                        ),
+                        ButtonSegment(
+                          value: 'unlimited',
                           label: Text('Unlimited'),
                         ),
                         ButtonSegment(
-                          value: true,
+                          value: 'limited',
                           label: Text('Limited'),
                         ),
                       ],
-                      selected: {routine.maxBreaks != null},
-                      onSelectionChanged: (Set<bool> selection) {
-                        routine.maxBreaks = selection.first ? 3 : null;
+                      selected: {
+                        if (routine.maxBreaks == 0) 'none'
+                        else if (routine.maxBreaks == null) 'unlimited'
+                        else 'limited'
+                      },
+                      onSelectionChanged: (Set<String> selection) {
+                        final selected = selection.first;
+                        if (selected == 'none') {
+                          routine.maxBreaks = 0;
+                        } else if (selected == 'unlimited') {
+                          routine.maxBreaks = null;
+                        } else { // limited
+                          routine.maxBreaks = 3;
+                        }
                         onChanged();
                       },
                     ),
-                    if (routine.maxBreaks != null) ...[                
+                    if (routine.maxBreaks != null && routine.maxBreaks != 0) ...[                
                       const SizedBox(height: 16),
                       SegmentedButton<String>(
                         segments: [
@@ -85,10 +99,11 @@ class BreakConfigSection extends StatelessWidget {
                         },
                       ),
                     ],
-                    const SizedBox(height: 16),
-                    const Text('Break Duration'),
-                    const SizedBox(height: 8),
-                    SegmentedButton<String>(
+                    if (routine.maxBreaks != 0) ...[                
+                      const SizedBox(height: 16),
+                      const Text('Break Duration'),
+                      const SizedBox(height: 8),
+                      SegmentedButton<String>(
                       segments: [
                         ButtonSegment(
                           value: 'minus',
@@ -116,10 +131,12 @@ class BreakConfigSection extends StatelessWidget {
                         onChanged();
                       },
                     ),
-                    const SizedBox(height: 16),
-                    const Text('Friction'),
-                    const SizedBox(height: 8),
-                    SegmentedButton<FrictionType>(
+                    ],
+                    if (routine.maxBreaks != 0) ...[                
+                      const SizedBox(height: 16),
+                      const Text('Friction'),
+                      const SizedBox(height: 8),
+                      SegmentedButton<FrictionType>(
                       segments: const [
                         ButtonSegment(
                           value: FrictionType.none,
@@ -148,7 +165,8 @@ class BreakConfigSection extends StatelessWidget {
                         onChanged();
                       },
                     ),
-                    if (routine.friction == FrictionType.delay || routine.friction == FrictionType.code) ...[                
+                    ],
+                    if (routine.maxBreaks != 0 && (routine.friction == FrictionType.delay || routine.friction == FrictionType.code)) ...[                
                       const SizedBox(height: 16),
                       Row(
                         children: [
@@ -215,7 +233,7 @@ class BreakConfigSection extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
             ],
           ),
         ),

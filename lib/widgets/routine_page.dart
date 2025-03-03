@@ -163,12 +163,12 @@ class _RoutinePageState extends State<RoutinePage> {
                 onChanged: _validateRoutine,
               ),
               const SizedBox(height: 16),
-              BreakConfigSection(
+              ConditionSection(
                 routine: _routine,
                 onChanged: _validateRoutine,
               ),
               const SizedBox(height: 16),
-              ConditionSection(
+              BreakConfigSection(
                 routine: _routine,
                 onChanged: _validateRoutine,
               ),

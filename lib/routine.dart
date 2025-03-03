@@ -328,6 +328,11 @@ class Routine {
   }
 
   bool get canBreak {
+    // If maxBreaks is 0, breaks are disabled
+    if (_maxBreaks == 0) {
+      return false;
+    }
+    
     if (_maxBreaks == null || _numBreaksTaken == null || _numBreaksTaken! < _maxBreaks!) {
       return true;
     }
