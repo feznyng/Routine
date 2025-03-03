@@ -155,110 +155,65 @@ class _RoutineListState extends State<RoutineList> {
     );
   }
 
+  // Helper method to create consistently styled chips
+  Widget _buildStyledChip(String text) {
+    return Chip(
+      label: Text(
+        text,
+        style: const TextStyle(fontSize: 12),
+      ),
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+    );
+  }
+
   Widget _buildBlockedChips(Routine routine) {
     final group = routine.getGroup();
+    List<String> chipTexts = [];
     
-    // If there's no block group configured for the current device, show a 'None' chip
+    // Collect all chip texts first
     if (group == null) {
-      return Wrap(
-        spacing: 8,
-        runSpacing: 4,
-        children: [
-          Chip(
-            label: const Text(
-              'None',
-              style: TextStyle(fontSize: 12),
-            ),
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-          ),
-        ],
-      );
+      // If there's no block group configured for the current device, show a 'None' chip
+      chipTexts.add('None');
+    } else if (group.name != null) {
+      // If the group has a name, just show that
+      chipTexts.add(group.name!);
+    } else {
+      // Otherwise show details about what's being blocked/allowed
+      final apps = group.apps;
+      final sites = group.sites;
+      final categories = group.categories;
+      final isAllowlist = group.allow;
+      
+      // Add block/allow chip
+      chipTexts.add(isAllowlist ? 'Allow' : 'Block');
+      
+      // Add app chip if there are apps or if it's an allowlist with no apps
+      if (apps.isNotEmpty || (isAllowlist && apps.isEmpty)) {
+        chipTexts.add(apps.isEmpty && isAllowlist
+            ? 'No apps'
+            : '${apps.length} ${apps.length == 1 ? 'app' : 'apps'}');
+      }
+      
+      // Add site chip if there are sites or if it's an allowlist with no sites
+      if (sites.isNotEmpty || (isAllowlist && sites.isEmpty)) {
+        chipTexts.add(sites.isEmpty && isAllowlist
+            ? 'No sites'
+            : '${sites.length} ${sites.length == 1 ? 'site' : 'sites'}');
+      }
+      
+      // Add category chip if there are categories
+      if (categories.isNotEmpty) {
+        chipTexts.add('${categories.length} ${categories.length == 1 ? 'category' : 'categories'}');
+      }
     }
+    
+    // Always add breaks chip
+    chipTexts.add('${routine.breaksLeftText} ${routine.breaksLeftText == "Unlimited" ? "breaks" : routine.isActive ? "break${routine.numBreaksLeft == 1 ? '' : 's'} left" : "break${routine.numBreaksLeft == 1 ? '' : 's'}"}');
 
-    final apps = group.apps;
-    final sites = group.sites;
-    final categories = group.categories;
-    final isAllowlist = group.allow;
-    
-    List<Widget> chips = [
-      Chip(
-        label: Text(
-          isAllowlist ? 'Allow' : 'Block',
-          style: const TextStyle(fontSize: 12),
-        ),
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        visualDensity: VisualDensity.compact,
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-      ),
-    ];
-    
-    // We'll add the breaks chip at the end
-    
-    // Only add app chip if there are apps or if it's an allowlist with no apps
-    if (apps.isNotEmpty || (isAllowlist && apps.isEmpty)) {
-      chips.add(
-        Chip(
-          label: Text(
-            apps.isEmpty && isAllowlist
-                ? 'No apps'
-                : '${apps.length} ${apps.length == 1 ? 'app' : 'apps'}',
-            style: const TextStyle(fontSize: 12),
-          ),
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          visualDensity: VisualDensity.compact,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-        ),
-      );
-    }
-    
-    // Only add site chip if there are sites or if it's an allowlist with no sites
-    if (sites.isNotEmpty || (isAllowlist && sites.isEmpty)) {
-      chips.add(
-        Chip(
-          label: Text(
-            sites.isEmpty && isAllowlist
-                ? 'No sites'
-                : '${sites.length} ${sites.length == 1 ? 'site' : 'sites'}',
-            style: const TextStyle(fontSize: 12),
-          ),
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          visualDensity: VisualDensity.compact,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-        ),
-      );
-    }
-    
-    // Only add category chip if there are categories
-    if (categories.isNotEmpty) {
-      chips.add(
-        Chip(
-          label: Text(
-            '${categories.length} ${categories.length == 1 ? 'category' : 'categories'}',
-            style: const TextStyle(fontSize: 12),
-          ),
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          visualDensity: VisualDensity.compact,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-        ),
-      );
-    }
-    
-    // Add breaks chip at the end if routine has breaks configured or had breaks that are used up
-    if (routine.maxBreaks != 0 || (routine.numBreaksTaken != null && routine.numBreaksTaken! > 0)) {
-      chips.add(
-        Chip(
-          label: Text(
-            '${routine.breaksLeftText} ${routine.breaksLeftText == "Unlimited" ? "breaks" : routine.isActive ? "break${routine.numBreaksLeft == 1 ? '' : 's'} left" : "break${routine.numBreaksLeft == 1 ? '' : 's'}"}',
-            style: const TextStyle(fontSize: 12),
-          ),
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          visualDensity: VisualDensity.compact,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-        ),
-      );
-    }
+    // Transform all texts to styled chips
+    final chips = chipTexts.map((text) => _buildStyledChip(text)).toList();
     
     return Wrap(
       spacing: 8,
