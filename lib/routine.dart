@@ -404,17 +404,21 @@ class Routine {
   }
   
   int? get numBreaksTaken => _numBreaksTaken;
-  
+
+  int? get numBreaksLeft => _maxBreaks! - (_numBreaksTaken ?? 0);
+
   String get breaksLeftText {
-    if (_maxBreaks == 0) {
-      return 'None';
-    }
     if (_maxBreaks == null) {
       return 'Unlimited';
     }
+
+    if (numBreaksLeft == 0) {
+      return 'No';
+    }
+    
     final taken = _numBreaksTaken ?? 0;
     final left = _maxBreaks! - taken;
-    return left <= 0 ? 'None' : left.toString();
+    return left <= 0 ? 'No' : left.toString();
   }
 
   FrictionType get friction => _friction;

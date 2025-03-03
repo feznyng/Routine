@@ -194,6 +194,8 @@ class _RoutineListState extends State<RoutineList> {
       ),
     ];
     
+    // We'll add the breaks chip at the end
+    
     // Only add app chip if there are apps or if it's an allowlist with no apps
     if (apps.isNotEmpty || (isAllowlist && apps.isEmpty)) {
       chips.add(
@@ -234,6 +236,21 @@ class _RoutineListState extends State<RoutineList> {
         Chip(
           label: Text(
             '${categories.length} ${categories.length == 1 ? 'category' : 'categories'}',
+            style: const TextStyle(fontSize: 12),
+          ),
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+        ),
+      );
+    }
+    
+    // Add breaks chip at the end if routine has breaks configured or had breaks that are used up
+    if (routine.maxBreaks != 0 || (routine.numBreaksTaken != null && routine.numBreaksTaken! > 0)) {
+      chips.add(
+        Chip(
+          label: Text(
+            '${routine.breaksLeftText} ${routine.breaksLeftText == "Unlimited" ? "breaks" : routine.isActive ? "break${routine.numBreaksLeft == 1 ? '' : 's'} left" : "break${routine.numBreaksLeft == 1 ? '' : 's'}"}',
             style: const TextStyle(fontSize: 12),
           ),
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
