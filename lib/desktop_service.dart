@@ -41,6 +41,7 @@ class DesktopService {
   // Cache fields for blocked items
   List<String> _cachedSites = [];
   List<String> _cachedApps = [];
+  List<String> _cachedCategories = [];
   bool _isAllowList = false;
 
   // Set of browser names in lowercase for O(1) lookup
@@ -123,11 +124,13 @@ class DesktopService {
 
     Set<String> apps = {}; 
     Set<String> sites = {};
+    Set<String> categories = {};
     bool allowList = routines.any((r) => r.allow);
 
     if (allowList) {
       Map<String, int> appCounts = {};
       Map<String, int> siteCounts = {};
+      Map<String, int> categoryCounts = {};
 
       for (final Routine routine in routines) {
         for (final String app in routine.apps) {
@@ -136,20 +139,26 @@ class DesktopService {
         for (final String site in routine.sites) {
           siteCounts[site] = (siteCounts[site] ?? 0) + 1;
         }
+        for (final String category in routine.categories) {
+          categoryCounts[category] = (categoryCounts[category] ?? 0) + 1;
+        }
       }
 
       apps.addAll(appCounts.keys.where((app) => appCounts[app] == routines.length));
       sites.addAll(siteCounts.keys.where((site) => siteCounts[site] == routines.length));
+      categories.addAll(categoryCounts.keys.where((category) => categoryCounts[category] == routines.length));
     } else {
       for (final Routine routine in routines) {
         apps.addAll(routine.apps);
         sites.addAll(routine.sites);
+        categories.addAll(routine.categories);
       }
     }
     
     // Update cached values
     _cachedSites = sites.toList();
     _cachedApps = apps.toList();
+    _cachedCategories = categories.toList();
     _isAllowList = allowList;
 
     // Update both apps and sites
@@ -250,6 +259,7 @@ class DesktopService {
     // Update platform channel
     platform.invokeMethod('updateAppList', {
       'apps': _cachedApps,
+      'categories': _cachedCategories,
       'allowList': _isAllowList,
     });
   }

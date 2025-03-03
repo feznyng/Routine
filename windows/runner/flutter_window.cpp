@@ -17,14 +17,8 @@
 
 #include "flutter/generated_plugin_registrant.h"
 
-std::mutex g_appListMutex;
-std::unordered_set<std::wstring> g_appList;
-std::unordered_set<std::wstring> g_appExclusionList = { 
-    L"C:\\Windows\\explorer.exe"
-};
-bool g_allowList = false;
+#include "block_manager.h"
 
-// Timer ID for the window check
 const UINT_PTR WINDOW_CHECK_TIMER_ID = 1;
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
@@ -41,7 +35,6 @@ void LogToFile(const std::wstring& message) {
     logFile << message << std::endl;
 }
 
-// Timer callback for checking active window
 void CALLBACK CheckActiveWindow(HWND hwnd, UINT message, UINT_PTR idTimer, DWORD dwTime) {
     HWND foregroundWindow = GetForegroundWindow();
     if (foregroundWindow != NULL) {
@@ -55,18 +48,9 @@ void CALLBACK CheckActiveWindow(HWND hwnd, UINT message, UINT_PTR idTimer, DWORD
                 wchar_t processPath[MAX_PATH];
                 DWORD size = MAX_PATH;
                 if (QueryFullProcessImageNameW(hProcess, 0, processPath, &size)) {
-                    logMessage << L"\nProcess Path: " << processPath;
                     const std::wstring processPathW{ processPath };
 
-                    if (g_appExclusionList.find(processPathW) != g_appExclusionList.end()) {
-                        return;
-                    }
-
-                    std::lock_guard lock{ g_appListMutex };
-                    // Check if app should be blocked
-                    bool inList = g_appList.find(processPathW) != g_appList.end();
-
-                    if ((g_allowList && !inList) || (!g_allowList && inList)) {
+                    if (BlockManager::IsBlocked(processPathW)) {
                         logMessage << L"\nBlocking application: " << processPath;
                         ShowWindow(foregroundWindow, SW_MINIMIZE);
                     }
@@ -96,6 +80,7 @@ bool FlutterWindow::OnCreate() {
   }
   RegisterPlugins(flutter_controller_->engine());
 
+  BlockManager::Init();
 
   flutter::MethodChannel<> channel(
       flutter_controller_->engine()->messenger(), "com.routine.applist",
@@ -103,7 +88,6 @@ bool FlutterWindow::OnCreate() {
   channel.SetMethodCallHandler(
       [](const flutter::MethodCall<>& call, std::unique_ptr<flutter::MethodResult<>> result) {
           const auto& methodType = call.method_name();
-          std::lock_guard lock{ g_appListMutex };
 
           if (methodType == "engineReady") {
               LogToFile(L"Received engineReady");
@@ -116,8 +100,8 @@ bool FlutterWindow::OnCreate() {
                     auto list_it = arguments->find(flutter::EncodableValue("apps"));
                     auto allow_it = arguments->find(flutter::EncodableValue("allowList"));
 
-                    g_appList.clear();
-                    g_allowList = std::get<bool>(allow_it->second);
+                    std::vector<std::string> appList;
+                    std::vector<std::string> dirList;
 
                     if (list_it != arguments->end() && allow_it != arguments->end()) {
                         const auto& list = std::get<flutter::EncodableList>(list_it->second);
@@ -125,11 +109,11 @@ bool FlutterWindow::OnCreate() {
                         for (const auto& item : list) {
                             if (std::holds_alternative<std::string>(item)) {
                                 const auto& path = std::get<std::string>(item);
-                                const auto& pathW = std::wstring(path.begin(), path.end());
-                                LogToFile(pathW);
-                                g_appList.insert(pathW);
+                                appList.emplace_back(path);
                             }
                         }
+
+                        BlockManager::Set(std::get<bool>(allow_it->second), appList, dirList);
 
                         return result->Success(true);
                     }

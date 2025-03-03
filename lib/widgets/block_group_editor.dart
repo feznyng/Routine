@@ -44,14 +44,18 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
   }
 
   Future<void> _openAppsDialog() async {
-    final result = await showDialog<List<String>>(
+    final result = await showDialog<Map<String, List<String>>>(
       context: context,
-      builder: (context) => BlockAppsDialog(selectedApps: _selectedApps),
+      builder: (context) => BlockAppsDialog(
+        selectedApps: _selectedApps,
+        selectedCategories: _selectedCategories ?? [],
+      ),
     );
 
     if (result != null) {
       setState(() {
-        _selectedApps = result;
+        _selectedApps = result['apps'] ?? [];
+        _selectedCategories = result['categories'] ?? [];
       });
       widget.onSave(_selectedApps, _selectedSites, _selectedCategories);
     }
