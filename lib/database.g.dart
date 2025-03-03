@@ -187,6 +187,16 @@ class $RoutinesTable extends Routines
       conditions = GeneratedColumn<String>('conditions', aliasedName, false,
               type: DriftSqlType.string, requiredDuringInsert: true)
           .withConverter<List<Condition>>($RoutinesTable.$converterconditions);
+  static const VerificationMeta _strictModeMeta =
+      const VerificationMeta('strictMode');
+  @override
+  late final GeneratedColumn<bool> strictMode = GeneratedColumn<bool>(
+      'strict_mode', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("strict_mode" IN (0, 1))'),
+      clientDefault: () => false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -213,7 +223,8 @@ class $RoutinesTable extends Routines
         friction,
         frictionLen,
         snoozedUntil,
-        conditions
+        conditions,
+        strictMode
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -350,6 +361,12 @@ class $RoutinesTable extends Routines
               data['snoozed_until']!, _snoozedUntilMeta));
     }
     context.handle(_conditionsMeta, const VerificationResult.success());
+    if (data.containsKey('strict_mode')) {
+      context.handle(
+          _strictModeMeta,
+          strictMode.isAcceptableOrUnknown(
+              data['strict_mode']!, _strictModeMeta));
+    }
     return context;
   }
 
@@ -413,6 +430,8 @@ class $RoutinesTable extends Routines
       conditions: $RoutinesTable.$converterconditions.fromSql(attachedDatabase
           .typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}conditions'])!),
+      strictMode: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}strict_mode'])!,
     );
   }
 
@@ -457,6 +476,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
   final int? frictionLen;
   final DateTime? snoozedUntil;
   final List<Condition> conditions;
+  final bool strictMode;
   const RoutineEntry(
       {required this.id,
       required this.name,
@@ -482,7 +502,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       required this.friction,
       this.frictionLen,
       this.snoozedUntil,
-      required this.conditions});
+      required this.conditions,
+      required this.strictMode});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -535,6 +556,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       map['conditions'] = Variable<String>(
           $RoutinesTable.$converterconditions.toSql(conditions));
     }
+    map['strict_mode'] = Variable<bool>(strictMode);
     return map;
   }
 
@@ -577,6 +599,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           ? const Value.absent()
           : Value(snoozedUntil),
       conditions: Value(conditions),
+      strictMode: Value(strictMode),
     );
   }
 
@@ -611,6 +634,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       snoozedUntil: serializer.fromJson<DateTime?>(json['snoozedUntil']),
       conditions: $RoutinesTable.$converterconditions
           .fromJson(serializer.fromJson<List<dynamic>>(json['conditions'])),
+      strictMode: serializer.fromJson<bool>(json['strictMode']),
     );
   }
   @override
@@ -644,6 +668,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       'snoozedUntil': serializer.toJson<DateTime?>(snoozedUntil),
       'conditions': serializer.toJson<List<dynamic>>(
           $RoutinesTable.$converterconditions.toJson(conditions)),
+      'strictMode': serializer.toJson<bool>(strictMode),
     };
   }
 
@@ -672,7 +697,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           FrictionType? friction,
           Value<int?> frictionLen = const Value.absent(),
           Value<DateTime?> snoozedUntil = const Value.absent(),
-          List<Condition>? conditions}) =>
+          List<Condition>? conditions,
+          bool? strictMode}) =>
       RoutineEntry(
         id: id ?? this.id,
         name: name ?? this.name,
@@ -701,6 +727,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
         snoozedUntil:
             snoozedUntil.present ? snoozedUntil.value : this.snoozedUntil,
         conditions: conditions ?? this.conditions,
+        strictMode: strictMode ?? this.strictMode,
       );
   RoutineEntry copyWithCompanion(RoutinesCompanion data) {
     return RoutineEntry(
@@ -739,6 +766,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           : this.snoozedUntil,
       conditions:
           data.conditions.present ? data.conditions.value : this.conditions,
+      strictMode:
+          data.strictMode.present ? data.strictMode.value : this.strictMode,
     );
   }
 
@@ -769,7 +798,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           ..write('friction: $friction, ')
           ..write('frictionLen: $frictionLen, ')
           ..write('snoozedUntil: $snoozedUntil, ')
-          ..write('conditions: $conditions')
+          ..write('conditions: $conditions, ')
+          ..write('strictMode: $strictMode')
           ..write(')'))
         .toString();
   }
@@ -800,7 +830,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
         friction,
         frictionLen,
         snoozedUntil,
-        conditions
+        conditions,
+        strictMode
       ]);
   @override
   bool operator ==(Object other) =>
@@ -830,7 +861,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           other.friction == this.friction &&
           other.frictionLen == this.frictionLen &&
           other.snoozedUntil == this.snoozedUntil &&
-          other.conditions == this.conditions);
+          other.conditions == this.conditions &&
+          other.strictMode == this.strictMode);
 }
 
 class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
@@ -859,6 +891,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
   final Value<int?> frictionLen;
   final Value<DateTime?> snoozedUntil;
   final Value<List<Condition>> conditions;
+  final Value<bool> strictMode;
   final Value<int> rowid;
   const RoutinesCompanion({
     this.id = const Value.absent(),
@@ -886,6 +919,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     this.frictionLen = const Value.absent(),
     this.snoozedUntil = const Value.absent(),
     this.conditions = const Value.absent(),
+    this.strictMode = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   RoutinesCompanion.insert({
@@ -914,6 +948,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     this.frictionLen = const Value.absent(),
     this.snoozedUntil = const Value.absent(),
     required List<Condition> conditions,
+    this.strictMode = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name),
@@ -958,6 +993,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     Expression<int>? frictionLen,
     Expression<DateTime>? snoozedUntil,
     Expression<String>? conditions,
+    Expression<bool>? strictMode,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -986,6 +1022,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       if (frictionLen != null) 'friction_len': frictionLen,
       if (snoozedUntil != null) 'snoozed_until': snoozedUntil,
       if (conditions != null) 'conditions': conditions,
+      if (strictMode != null) 'strict_mode': strictMode,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1016,6 +1053,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       Value<int?>? frictionLen,
       Value<DateTime?>? snoozedUntil,
       Value<List<Condition>>? conditions,
+      Value<bool>? strictMode,
       Value<int>? rowid}) {
     return RoutinesCompanion(
       id: id ?? this.id,
@@ -1043,6 +1081,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       frictionLen: frictionLen ?? this.frictionLen,
       snoozedUntil: snoozedUntil ?? this.snoozedUntil,
       conditions: conditions ?? this.conditions,
+      strictMode: strictMode ?? this.strictMode,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1129,6 +1168,9 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       map['conditions'] = Variable<String>(
           $RoutinesTable.$converterconditions.toSql(conditions.value));
     }
+    if (strictMode.present) {
+      map['strict_mode'] = Variable<bool>(strictMode.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1163,6 +1205,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
           ..write('frictionLen: $frictionLen, ')
           ..write('snoozedUntil: $snoozedUntil, ')
           ..write('conditions: $conditions, ')
+          ..write('strictMode: $strictMode, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2162,6 +2205,7 @@ typedef $$RoutinesTableCreateCompanionBuilder = RoutinesCompanion Function({
   Value<int?> frictionLen,
   Value<DateTime?> snoozedUntil,
   required List<Condition> conditions,
+  Value<bool> strictMode,
   Value<int> rowid,
 });
 typedef $$RoutinesTableUpdateCompanionBuilder = RoutinesCompanion Function({
@@ -2190,6 +2234,7 @@ typedef $$RoutinesTableUpdateCompanionBuilder = RoutinesCompanion Function({
   Value<int?> frictionLen,
   Value<DateTime?> snoozedUntil,
   Value<List<Condition>> conditions,
+  Value<bool> strictMode,
   Value<int> rowid,
 });
 
@@ -2286,6 +2331,9 @@ class $$RoutinesTableFilterComposer
       get conditions => $composableBuilder(
           column: $table.conditions,
           builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnFilters<bool> get strictMode => $composableBuilder(
+      column: $table.strictMode, builder: (column) => ColumnFilters(column));
 }
 
 class $$RoutinesTableOrderingComposer
@@ -2374,6 +2422,9 @@ class $$RoutinesTableOrderingComposer
 
   ColumnOrderings<String> get conditions => $composableBuilder(
       column: $table.conditions, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get strictMode => $composableBuilder(
+      column: $table.strictMode, builder: (column) => ColumnOrderings(column));
 }
 
 class $$RoutinesTableAnnotationComposer
@@ -2460,6 +2511,9 @@ class $$RoutinesTableAnnotationComposer
   GeneratedColumnWithTypeConverter<List<Condition>, String> get conditions =>
       $composableBuilder(
           column: $table.conditions, builder: (column) => column);
+
+  GeneratedColumn<bool> get strictMode => $composableBuilder(
+      column: $table.strictMode, builder: (column) => column);
 }
 
 class $$RoutinesTableTableManager extends RootTableManager<
@@ -2510,6 +2564,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             Value<int?> frictionLen = const Value.absent(),
             Value<DateTime?> snoozedUntil = const Value.absent(),
             Value<List<Condition>> conditions = const Value.absent(),
+            Value<bool> strictMode = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               RoutinesCompanion(
@@ -2538,6 +2593,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             frictionLen: frictionLen,
             snoozedUntil: snoozedUntil,
             conditions: conditions,
+            strictMode: strictMode,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -2566,6 +2622,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             Value<int?> frictionLen = const Value.absent(),
             Value<DateTime?> snoozedUntil = const Value.absent(),
             required List<Condition> conditions,
+            Value<bool> strictMode = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               RoutinesCompanion.insert(
@@ -2594,6 +2651,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             frictionLen: frictionLen,
             snoozedUntil: snoozedUntil,
             conditions: conditions,
+            strictMode: strictMode,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

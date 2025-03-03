@@ -27,12 +27,13 @@ class Routine {
   FrictionType _friction;
   int? _frictionLen;
   DateTime? _snoozedUntil;
-  
+  bool strictMode = false;
   List<Condition> conditions = [];
 
   late final Map<String, Group> _groups;
 
   late RoutineEntry? _entry;
+
 
   static Stream<List<Routine>> watchAll() {
     return getIt<AppDatabase>()
@@ -55,6 +56,7 @@ class Routine {
     _friction = FrictionType.delay,
     _frictionLen = null,
     _snoozedUntil = null,
+    strictMode = false,
     conditions = [],
     _entry = null {
       _groups = {
@@ -76,7 +78,8 @@ class Routine {
     _friction = entry.friction,
     conditions = List.from(entry.conditions),
     _frictionLen = entry.frictionLen,
-    _snoozedUntil = entry.snoozedUntil {
+    _snoozedUntil = entry.snoozedUntil,
+    strictMode = entry.strictMode {
       _entry = entry;
       _groups = {};
       for (final group in groups) {
@@ -99,6 +102,7 @@ class Routine {
     _frictionLen = other._frictionLen,
     _snoozedUntil = other._snoozedUntil,
     conditions = other.conditions,
+    strictMode = other.strictMode,
     _entry = other._entry {
       _groups = Map.fromEntries(
         other._groups.entries.map(
@@ -138,7 +142,8 @@ class Routine {
       snoozedUntil: Value(_snoozedUntil),
       updatedAt: Value(DateTime.now()),
       recurring: Value(true),
-      conditions: Value(conditions)
+      conditions: Value(conditions),
+      strictMode: Value(strictMode)
     ));
     SyncService().addJob(SyncJob(remote: false));
   }
@@ -194,6 +199,10 @@ class Routine {
     if (_entry!.startTime != _startTime) {
       changes.add('startTime');
     } 
+
+    if (_entry!.strictMode != strictMode) {
+      changes.add('strictMode');
+    }
 
     if (_entry!.endTime != _endTime) {
       changes.add('endTime');

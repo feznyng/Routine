@@ -209,11 +209,31 @@ class _RoutineListState extends State<RoutineList> {
       }
     }
     
+    // Add strict mode chip if enabled
+    if (routine.strictMode) {
+      chipTexts.add('Strict');
+    }
+    
     // Always add breaks chip
     chipTexts.add('${routine.breaksLeftText} ${routine.breaksLeftText == "Unlimited" ? "breaks" : routine.isActive ? "break${routine.numBreaksLeft == 1 ? '' : 's'} left" : "break${routine.numBreaksLeft == 1 ? '' : 's'}"}');
 
     // Transform all texts to styled chips
-    final chips = chipTexts.map((text) => _buildStyledChip(text)).toList();
+    final chips = chipTexts.map((text) {
+      // Special styling for strict mode chip
+      if (text == 'Strict') {
+        return Chip(
+          label: const Text(
+            'Strict',
+            style: TextStyle(fontSize: 12, color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+        );
+      }
+      return _buildStyledChip(text);
+    }).toList();
     
     return Wrap(
       spacing: 8,

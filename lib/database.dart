@@ -51,6 +51,7 @@ class Routines extends Table {
   late final snoozedUntil = dateTime().nullable()();
 
   late final conditions = text().map(const ConditionConverter())();
+  late final strictMode = boolean().clientDefault(() => false)();
 }
 
 @DataClassName('DeviceEntry')

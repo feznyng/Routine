@@ -6,11 +6,13 @@ import '../../util.dart';
 class ConditionSection extends StatelessWidget {
   final Routine routine;
   final Function() onChanged;
+  final bool enabled;
 
   const ConditionSection({
     super.key,
     required this.routine,
     required this.onChanged,
+    this.enabled = true,
   });
 
   String _getConditionTypeLabel(ConditionType type) {

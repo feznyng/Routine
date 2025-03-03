@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'routine.dart';
+import 'strict_mode_service.dart';
 import 'package:cron/cron.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -283,6 +284,13 @@ class DesktopService {
   }
 
   Future<void> setStartOnLogin(bool enabled) async {
+    // Check if strict mode is enabled and we're trying to disable startup
+    final strictModeService = StrictModeService.instance;
+    if (!enabled && strictModeService.blockDisablingSystemStartup) {
+      debugPrint('Strict mode is enabled, cannot disable startup');
+      return;
+    }
+    
     if (Platform.isWindows || Platform.isLinux) {
       try {
         // Ensure setup is done

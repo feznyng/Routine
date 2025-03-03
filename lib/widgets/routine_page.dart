@@ -25,6 +25,7 @@ class _RoutinePageState extends State<RoutinePage> {
   late Routine _routine;
   bool _isValid = false;
   bool _hasChanges = false;
+  bool _originalStrictMode = false;
 
   late Map<String, DeviceEntry> _devices = {};
 
@@ -38,6 +39,7 @@ class _RoutinePageState extends State<RoutinePage> {
 
   void _initializeRoutine() {
     _routine = Routine.from(widget.routine);
+    _originalStrictMode = _routine.strictMode;
     _nameController = TextEditingController(text: _routine.name);
     _nameController.addListener(_validateRoutine);
     _validateRoutine();
@@ -51,6 +53,7 @@ class _RoutinePageState extends State<RoutinePage> {
         final groups = await getIt<AppDatabase>().getGroupsById(routine.groups);
         setState(() {
           _routine = Routine.fromEntry(routine, groups);
+          _originalStrictMode = _routine.strictMode;
           _nameController.text = _routine.name;
           _validateRoutine();
         });
@@ -92,17 +95,47 @@ class _RoutinePageState extends State<RoutinePage> {
   }
 
   Future<void> _saveRoutine() async {
+    // If strict mode is being enabled, show a confirmation dialog
+    if (!_originalStrictMode && _routine.strictMode) {
+      final bool? confirm = await showDialog<bool>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Save Routine'),
+            content: const Text(
+              'You are enabling strict mode for this routine. When this routine is active, you will not be able to modify or delete it, and other restrictions will be enforced. Are you sure you want to continue?'
+            ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Save Routine'),
+              ),
+            ],
+          );
+        },
+      );
+      
+      if (confirm != true) {
+        return;
+      }
+    }
+    
     _routine.save();
+    _originalStrictMode = _routine.strictMode;
     widget.onSave(_routine);
   }
 
-  // All widget sections have been moved to separate files
-
-
-  // All widget sections have been moved to separate files
-
   @override
   Widget build(BuildContext context) {
+    // Check if the routine is active and strict mode is enabled
+    final bool isActiveAndStrictMode = _routine.isActive && _routine.strictMode;
+    // Allow saving if the routine is changing from non-strict to strict mode
+    final bool allowSaveForStrictModeChange = !_originalStrictMode && _routine.strictMode;
+    
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 80,
@@ -134,6 +167,7 @@ class _RoutinePageState extends State<RoutinePage> {
                     suffixIcon: const Icon(Icons.edit, size: 18),
                   ),
                   style: Theme.of(context).textTheme.titleLarge,
+                  enabled: true, // Always enable the title field
                 ),
               ),
             ],
@@ -141,7 +175,7 @@ class _RoutinePageState extends State<RoutinePage> {
         ),
         actions: [
           TextButton(
-            onPressed: (_isValid && _hasChanges) ? _saveRoutine : null,
+            onPressed: (_isValid && _hasChanges) ? _saveRoutine : null, // Always allow saving if valid and has changes
             child: const Text('Save'),
           ),
         ],
@@ -152,25 +186,71 @@ class _RoutinePageState extends State<RoutinePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (isActiveAndStrictMode) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.lock, color: Colors.red),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Strict Mode Active',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'This routine is currently active and in strict mode. You cannot make changes until the routine becomes inactive.',
+                              style: TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               BlockGroupSection(
                 routine: _routine,
                 devices: _devices,
                 onChanged: _validateRoutine,
+                enabled: !isActiveAndStrictMode || allowSaveForStrictModeChange,
               ),
               const SizedBox(height: 16),
               TimeSection(
                 routine: _routine,
                 onChanged: _validateRoutine,
+                enabled: !isActiveAndStrictMode || allowSaveForStrictModeChange,
               ),
               const SizedBox(height: 16),
               ConditionSection(
                 routine: _routine,
                 onChanged: _validateRoutine,
+                enabled: !isActiveAndStrictMode || allowSaveForStrictModeChange,
               ),
               const SizedBox(height: 16),
               BreakConfigSection(
                 routine: _routine,
                 onChanged: _validateRoutine,
+                enabled: !isActiveAndStrictMode || allowSaveForStrictModeChange,
+              ),
+              const SizedBox(height: 16),
+              StrictModeSection(
+                routine: _routine,
+                onChanged: _validateRoutine,
+                enabled: !isActiveAndStrictMode || allowSaveForStrictModeChange,
               ),
               const SizedBox(height: 32),
               if (_routine.saved) ...[
@@ -182,7 +262,7 @@ class _RoutinePageState extends State<RoutinePage> {
                     ),
                     icon: const Icon(Icons.delete_outline, color: Colors.red),
                     label: const Text('Delete Routine', style: TextStyle(color: Colors.red)),
-                    onPressed: () async {
+                    onPressed: (_routine.strictMode) ? null : () async {
                       final BuildContext dialogContext = context;
                       final bool? confirm = await showDialog<bool>(
                         context: dialogContext,
@@ -203,7 +283,6 @@ class _RoutinePageState extends State<RoutinePage> {
                           );
                         },
                       );
-                      
                       if (confirm == true) {
                         await _routine.delete();
                         if (mounted && context.mounted) {

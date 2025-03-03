@@ -4,6 +4,7 @@ import 'dart:io';
 import '../auth_service.dart';
 import '../theme_provider.dart';
 import '../desktop_service.dart';
+import '../strict_mode_service.dart';
 import 'auth_page.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -16,6 +17,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final _authService = AuthService();
   final _desktopService = DesktopService.instance;
+  final _strictModeService = StrictModeService.instance;
   bool _startOnLogin = false;
   bool _isLoading = true;
 
@@ -32,6 +34,13 @@ class _SettingsPageState extends State<SettingsPage> {
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       _loadStartupSetting();
     }
+    
+    // Initialize strict mode service
+    _strictModeService.init().then((_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
   }
   
   Future<void> _loadStartupSetting() async {
@@ -121,20 +130,97 @@ class _SettingsPageState extends State<SettingsPage> {
                     )
                   : Switch(
                       value: _startOnLogin,
-                      onChanged: (value) async {
-                        setState(() => _isLoading = true);
-                        await _desktopService.setStartOnLogin(value);
-                        final result = await _desktopService.getStartOnLogin();
-                        setState(() {
-                          _startOnLogin = result;
-                          _isLoading = false;
-                        });
-                      },
+                      onChanged: _strictModeService.blockDisablingSystemStartup && _startOnLogin
+                        ? null  // Disable the switch if strict mode is enabled and startup is on
+                        : (value) async {
+                            setState(() => _isLoading = true);
+                            await _desktopService.setStartOnLogin(value);
+                            final result = await _desktopService.getStartOnLogin();
+                            setState(() {
+                              _startOnLogin = result;
+                              _isLoading = false;
+                            });
+                          },
                     ),
               ),
             ),
             const SizedBox(height: 16),
           ],
+          
+          // Strict Mode section
+          Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text(
+                    'Strict Mode',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const Divider(height: 1),
+                
+                // Desktop strict mode options
+                if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) ...[
+                  SwitchListTile(
+                    title: const Text('Block app exit'),
+                    subtitle: const Text('Prevent closing the app'),
+                    value: _strictModeService.blockAppExit,
+                    onChanged: (value) async {
+                      await _strictModeService.setBlockAppExit(value);
+                      setState(() {});
+                    },
+                  ),
+                  SwitchListTile(
+                    title: const Text('Block disabling system startup'),
+                    subtitle: const Text('Prevent turning off startup with system'),
+                    value: _strictModeService.blockDisablingSystemStartup,
+                    onChanged: (value) async {
+                      await _strictModeService.setBlockDisablingSystemStartup(value);
+                      setState(() {});
+                    },
+                  ),
+                ],
+                
+                // iOS strict mode options
+                if (Platform.isIOS) ...[
+                  SwitchListTile(
+                    title: const Text('Block changing time settings'),
+                    subtitle: const Text('Prevent changing system time'),
+                    value: _strictModeService.blockChangingTimeSettings,
+                    onChanged: (value) async {
+                      await _strictModeService.setBlockChangingTimeSettings(value);
+                      setState(() {});
+                    },
+                  ),
+                  SwitchListTile(
+                    title: const Text('Block uninstalling apps'),
+                    subtitle: const Text('Prevent uninstalling apps'),
+                    value: _strictModeService.blockUninstallingApps,
+                    onChanged: (value) async {
+                      await _strictModeService.setBlockUninstallingApps(value);
+                      setState(() {});
+                    },
+                  ),
+                  SwitchListTile(
+                    title: const Text('Block installing apps'),
+                    subtitle: const Text('Prevent installing new apps'),
+                    value: _strictModeService.blockInstallingApps,
+                    onChanged: (value) async {
+                      await _strictModeService.setBlockInstallingApps(value);
+                      setState(() {});
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          
           if (!_authService.isSignedIn) ...[            
             Card(
               child: InkWell(

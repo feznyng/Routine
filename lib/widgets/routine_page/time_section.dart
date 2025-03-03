@@ -4,11 +4,13 @@ import '../../routine.dart';
 class TimeSection extends StatelessWidget {
   final Routine routine;
   final Function() onChanged;
+  final bool enabled;
 
   const TimeSection({
     super.key,
     required this.routine,
     required this.onChanged,
+    this.enabled = true,
   });
 
   @override
@@ -30,10 +32,10 @@ class TimeSection extends StatelessWidget {
           SwitchListTile(
             title: const Text('All Day'),
             value: routine.allDay,
-            onChanged: (value) {
+            onChanged: enabled ? (value) {
               routine.allDay = value;
               onChanged();
-            },
+            } : null,
           ),
           if (!routine.allDay) ...[
             ListTile(
@@ -41,7 +43,7 @@ class TimeSection extends StatelessWidget {
               trailing: TextButton.icon(
                 icon: const Icon(Icons.access_time),
                 label: Text(startTime.format(context)),
-                onPressed: () async {
+                onPressed: enabled ? () async {
                   final TimeOfDay? time = await showTimePicker(
                     context: context,
                     initialTime: startTime,
@@ -81,7 +83,7 @@ class TimeSection extends StatelessWidget {
                       onChanged();
                     }
                   }
-                },
+                } : null,
               ),
             ),
             ListTile(
@@ -89,7 +91,7 @@ class TimeSection extends StatelessWidget {
               trailing: TextButton.icon(
                 icon: const Icon(Icons.access_time),
                 label: Text(endTime.format(context)),
-                onPressed: () async {
+                onPressed: enabled ? () async {
                   final TimeOfDay? time = await showTimePicker(
                     context: context,
                     initialTime: endTime,
@@ -129,7 +131,7 @@ class TimeSection extends StatelessWidget {
                       onChanged();
                     }
                   }
-                },
+                } : null,
               ),
             ),
           ],
@@ -151,10 +153,10 @@ class TimeSection extends StatelessWidget {
                       FilterChip(
                         label: Text(['M', 'T', 'W', 'T', 'F', 'S', 'S'][i]),
                         selected: routine.days[i],
-                        onSelected: (bool selected) {
+                        onSelected: enabled ? (bool selected) {
                           routine.updateDay(i, selected);
                           onChanged();
-                        },
+                        } : null,
                       ),
                   ],
                 ),

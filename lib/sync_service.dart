@@ -242,7 +242,7 @@ class SyncService {
             condition.lastCompletedAt = localCondition.lastCompletedAt;
           }
         }
-        
+
         if (routine['deleted'] as bool) {
           db.deleteRoutine(routine['id']);
         } else {
@@ -271,6 +271,7 @@ class SyncService {
             updatedAt: Value(updatedAt),
             deleted: Value(overwriteMap['deleted'] ?? routine['deleted']),
             changes: Value(overwriteMap['changes'] ?? []),
+            strictMode: Value((overwriteMap['strictMode'] ?? routine['strict_mode']) ?? false),
             conditions: Value(conditions),
           ));
         }
@@ -400,6 +401,7 @@ class SyncService {
           'friction': routine.friction.name,
           'friction_len': routine.frictionLen,
           'snoozed_until': routine.snoozedUntil?.toUtc().toIso8601String(),
+          'strict_mode': routine.strictMode,
           'updated_at': routine.updatedAt.toUtc().toIso8601String(),
           'deleted': routine.deleted,
         })

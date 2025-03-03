@@ -5,11 +5,13 @@ import '../../routine.dart';
 class BreakConfigSection extends StatelessWidget {
   final Routine routine;
   final Function() onChanged;
+  final bool enabled;
 
   const BreakConfigSection({
     super.key,
     required this.routine,
     required this.onChanged,
+    this.enabled = true,
   });
 
   @override
@@ -56,7 +58,7 @@ class BreakConfigSection extends StatelessWidget {
                         else if (routine.maxBreaks == null) 'unlimited'
                         else 'limited'
                       },
-                      onSelectionChanged: (Set<String> selection) {
+                      onSelectionChanged: enabled ? (Set<String> selection) {
                         final selected = selection.first;
                         if (selected == 'none') {
                           routine.maxBreaks = 0;
@@ -66,7 +68,7 @@ class BreakConfigSection extends StatelessWidget {
                           routine.maxBreaks = 3;
                         }
                         onChanged();
-                      },
+                      } : null,
                     ),
                     if (routine.maxBreaks != null && routine.maxBreaks != 0) ...[                
                       const SizedBox(height: 16),
@@ -75,7 +77,7 @@ class BreakConfigSection extends StatelessWidget {
                           ButtonSegment(
                             value: 'minus',
                             icon: const Icon(Icons.remove),
-                            enabled: routine.maxBreaks! > 1,
+                            enabled: enabled && routine.maxBreaks! > 1,
                           ),
                           ButtonSegment(
                             value: 'text',
@@ -84,19 +86,19 @@ class BreakConfigSection extends StatelessWidget {
                           ButtonSegment(
                             value: 'plus',
                             icon: const Icon(Icons.add),
-                            enabled: routine.maxBreaks! < 10,
+                            enabled: enabled && routine.maxBreaks! < 10,
                           ),
                         ],
                         emptySelectionAllowed: true,
                         selected: const {},
-                        onSelectionChanged: (Set<String> selected) {
+                        onSelectionChanged: enabled ? (Set<String> selected) {
                           if (selected.first == 'minus' && routine.maxBreaks! > 1) {
                             routine.maxBreaks = routine.maxBreaks! - 1;
                           } else if (selected.first == 'plus' && routine.maxBreaks! < 10) {
                             routine.maxBreaks = routine.maxBreaks! + 1;
                           }
                           onChanged();
-                        },
+                        } : null,
                       ),
                     ],
                     if (routine.maxBreaks != 0) ...[                
@@ -108,7 +110,7 @@ class BreakConfigSection extends StatelessWidget {
                         ButtonSegment(
                           value: 'minus',
                           icon: const Icon(Icons.remove),
-                          enabled: routine.maxBreakDuration > 5,
+                          enabled: enabled && routine.maxBreakDuration > 5,
                         ),
                         ButtonSegment(
                           value: 'text',
@@ -117,19 +119,19 @@ class BreakConfigSection extends StatelessWidget {
                         ButtonSegment(
                           value: 'plus',
                           icon: const Icon(Icons.add),
-                          enabled: routine.maxBreakDuration < 60,
+                          enabled: enabled && routine.maxBreakDuration < 60,
                         ),
                       ],
                       emptySelectionAllowed: true,
                       selected: const {},
-                      onSelectionChanged: (Set<String> selected) {
+                      onSelectionChanged: enabled ? (Set<String> selected) {
                         if (selected.first == 'minus' && routine.maxBreakDuration > 5) {
                           routine.maxBreakDuration = routine.maxBreakDuration - 5;
                         } else if (selected.first == 'plus' && routine.maxBreakDuration < 60) {
                           routine.maxBreakDuration = routine.maxBreakDuration + 5;
                         }
                         onChanged();
-                      },
+                      } : null,
                     ),
                     ],
                     if (routine.maxBreaks != 0) ...[                
@@ -156,14 +158,14 @@ class BreakConfigSection extends StatelessWidget {
                         ),
                       ],
                       selected: {routine.friction},
-                      onSelectionChanged: (Set<FrictionType> selection) {
+                      onSelectionChanged: enabled ? (Set<FrictionType> selection) {
                         routine.friction = selection.first;
                         if (routine.friction == FrictionType.none || 
                             routine.friction == FrictionType.intention) {
                           routine.frictionLen = null;
                         }
                         onChanged();
-                      },
+                      } : null,
                     ),
                     ],
                     if (routine.maxBreaks != 0 && (routine.friction == FrictionType.delay || routine.friction == FrictionType.code)) ...[                
@@ -187,12 +189,12 @@ class BreakConfigSection extends StatelessWidget {
                           ),
                         ],
                         selected: {routine.frictionLen != null},
-                        onSelectionChanged: (Set<bool> selection) {
+                        onSelectionChanged: enabled ? (Set<bool> selection) {
                           routine.frictionLen = selection.first 
                             ? (routine.friction == FrictionType.delay ? 30 : 6)
                             : null;
                           onChanged();
-                        },
+                        } : null,
                       ),
                       if (routine.frictionLen != null) ...[                
                         const SizedBox(height: 16),
@@ -201,7 +203,7 @@ class BreakConfigSection extends StatelessWidget {
                             ButtonSegment(
                               value: 'minus',
                               icon: const Icon(Icons.remove),
-                              enabled: routine.frictionLen! > (routine.friction == FrictionType.delay ? 5 : 4),
+                              enabled: enabled && routine.frictionLen! > (routine.friction == FrictionType.delay ? 5 : 4),
                             ),
                             ButtonSegment(
                               value: 'text',
@@ -212,12 +214,12 @@ class BreakConfigSection extends StatelessWidget {
                             ButtonSegment(
                               value: 'plus',
                               icon: const Icon(Icons.add),
-                              enabled: routine.frictionLen! < (routine.friction == FrictionType.delay ? 60 : 12),
+                              enabled: enabled && routine.frictionLen! < (routine.friction == FrictionType.delay ? 60 : 12),
                             ),
                           ],
                           emptySelectionAllowed: true,
                           selected: const {},
-                          onSelectionChanged: (Set<String> selected) {
+                          onSelectionChanged: enabled ? (Set<String> selected) {
                             if (selected.first == 'minus' && 
                                 routine.frictionLen! > (routine.friction == FrictionType.delay ? 5 : 4)) {
                               routine.frictionLen = routine.frictionLen! - (routine.friction == FrictionType.delay ? 5 : 1);
@@ -226,7 +228,7 @@ class BreakConfigSection extends StatelessWidget {
                               routine.frictionLen = routine.frictionLen! + (routine.friction == FrictionType.delay ? 5 : 1);
                             }
                             onChanged();
-                          },
+                          } : null,
                         ),
                       ],
                     ],

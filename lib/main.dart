@@ -8,6 +8,7 @@ import 'auth_service.dart';
 import 'setup.dart';
 import 'sync_service.dart';
 import 'theme_provider.dart';
+import 'strict_mode_service.dart';
 
 // Desktop-specific imports
 import 'package:window_manager/window_manager.dart' if (dart.library.html) '';
@@ -46,10 +47,15 @@ void main() async {
 
   setup();
 
-  runApp(ChangeNotifierProvider(
-    create: (_) => ThemeProvider(),
-    child: const MyApp(),
-  ));
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => StrictModeService.instance),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -175,6 +181,18 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
   @override
   void onTrayIconRightMouseDown() async {
     await trayManager.popUpContextMenu();
+  }
+
+  @override
+  Future<void> onWindowClose() async {
+    // Check if app exit is blocked in strict mode
+    final strictModeService = Provider.of<StrictModeService>(context, listen: false);
+    if (strictModeService.blockAppExit) {
+      // Prevent window from closing
+      await windowManager.minimize();
+    } else {
+      await windowManager.destroy();
+    }
   }
 
   @override

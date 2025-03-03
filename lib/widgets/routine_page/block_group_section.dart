@@ -10,12 +10,14 @@ class BlockGroupSection extends StatelessWidget {
   final Routine routine;
   final Map<String, DeviceEntry> devices;
   final Function() onChanged;
+  final bool enabled;
 
   const BlockGroupSection({
     super.key,
     required this.routine,
     required this.devices,
     required this.onChanged,
+    this.enabled = true,
   });
 
   String _buildGroupSummary(Group? group) {
@@ -93,8 +95,8 @@ class BlockGroupSection extends StatelessWidget {
             child: ListTile(
               title: Text('${devices[deviceId]?.name}${deviceId == currentDeviceId ? ' (This Device)' : ''}'),
               subtitle: Text(_buildGroupSummary(group)),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
+              trailing: enabled ? const Icon(Icons.chevron_right) : null,
+              onTap: enabled ? () {
                 if (deviceId == currentDeviceId) {
                   _toggleBlockGroup(context, deviceId);
                 } else {
@@ -114,7 +116,7 @@ class BlockGroupSection extends StatelessWidget {
                     },
                   );
                 }
-              },
+              } : null,
             ),
           );
         }),
@@ -122,7 +124,7 @@ class BlockGroupSection extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 8.0),
             child: ElevatedButton.icon(
-              onPressed: () => _toggleBlockGroup(context, currentDeviceId),
+              onPressed: enabled ? () => _toggleBlockGroup(context, currentDeviceId) : null,
               icon: const Icon(Icons.add),
               label: const Text('Add Device Group'),
             ),
