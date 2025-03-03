@@ -85,16 +85,21 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
           ? 'No applications blocked'
           : 'All applications blocked';
     } else {
+      String appLabel = _selectedApps.length == 1 ? 'application' : 'applications';
       appText = _blockSelected
-          ? '${_selectedApps.length} applications blocked'
-          : '${_selectedApps.length} applications allowed';
+          ? '${_selectedApps.length} $appLabel blocked'
+          : '${_selectedApps.length} $appLabel allowed';
     }
     
     // Handle categories text
     if (_selectedCategories != null && _selectedCategories!.isNotEmpty) {
+      String categoryLabel = Platform.isIOS 
+          ? (_selectedCategories!.length == 1 ? 'category' : 'categories')
+          : (_selectedCategories!.length == 1 ? 'folder' : 'folders');
+          
       categoryText = _blockSelected
-          ? '${_selectedCategories!.length} categories blocked'
-          : '${_selectedCategories!.length} categories allowed';
+          ? '${_selectedCategories!.length} $categoryLabel blocked'
+          : '${_selectedCategories!.length} $categoryLabel allowed';
       
       // Combine both texts if both are present
       if (_selectedApps.isNotEmpty) {
@@ -112,17 +117,23 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
     
     // Handle apps
     if (_selectedApps.isNotEmpty) {
-      parts.add('${_selectedApps.length} applications');
+      String appLabel = _selectedApps.length == 1 ? 'application' : 'applications';
+      parts.add('${_selectedApps.length} $appLabel');
     }
     
     // Handle categories
     if (_selectedCategories != null && _selectedCategories!.isNotEmpty) {
-      parts.add('${_selectedCategories!.length} categories');
+      String categoryLabel = Platform.isIOS 
+          ? (_selectedCategories!.length == 1 ? 'category' : 'categories')
+          : (_selectedCategories!.length == 1 ? 'folder' : 'folders');
+          
+      parts.add('${_selectedCategories!.length} $categoryLabel');
     }
     
     // Handle sites
     if (_selectedSites.isNotEmpty) {
-      parts.add('${_selectedSites.length} sites');
+      String siteLabel = _selectedSites.length == 1 ? 'site' : 'sites';
+      parts.add('${_selectedSites.length} $siteLabel');
     }
     
     // If nothing is selected
@@ -147,9 +158,10 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
           ? 'No sites blocked'
           : 'All sites blocked';
     }
+    String siteLabel = _selectedSites.length == 1 ? 'site' : 'sites';
     return _blockSelected
-        ? '${_selectedSites.length} sites blocked'
-        : '${_selectedSites.length} sites allowed';
+        ? '${_selectedSites.length} $siteLabel blocked'
+        : '${_selectedSites.length} $siteLabel allowed';
   }
 
   Widget _buildBlockButton({
