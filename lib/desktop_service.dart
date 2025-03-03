@@ -311,37 +311,113 @@ class DesktopService {
     List<InstalledApplication> installedApps = [];
 
     if (Platform.isWindows) {
-      // PowerShell command to get installed applications on Windows with their paths
-      var result = await Process.run('powershell.exe', [
-        '-Command',
-      "Get-ItemProperty HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*, HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | Where-Object DisplayName | Select-Object DisplayName, InstallLocation"      ]);
+      try {
+        // Get installed applications from Windows registry
+        // First, check the 64-bit applications
+        final process64 = await Process.run('powershell.exe', [
+          '-Command',
+          'Get-ItemProperty HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | ' +
+          'Where-Object { \$_.DisplayName -ne \$null } | ' +
+          'Select-Object DisplayName, InstallLocation, UninstallString | ' +
+          'ConvertTo-Json'
+        ]);
 
-      if (result.exitCode == 0) {
-        String output = result.stdout.toString();
-        List<String> lines = output.split('\n');
-        String? currentName;
-        String? currentPath;
-
-        for (var line in lines) {
-          line = line.trim();
-          if (line.startsWith('DisplayName')) {
-            currentName = line.substring(line.indexOf(':') + 1).trim();
-          } else if (line.startsWith('InstallLocation')) {
-            currentPath = line.substring(line.indexOf(':') + 1).trim();
+        if (process64.exitCode == 0 && process64.stdout.toString().trim().isNotEmpty) {
+          final List<dynamic> apps64 = json.decode(process64.stdout.toString());
+          for (var app in apps64) {
+            String name = app['DisplayName'] ?? '';
+            String filePath = app['InstallLocation'] ?? '';
             
-            if (currentName != null && currentPath.isNotEmpty) {
+            // If InstallLocation is empty, try to extract from UninstallString
+            if (filePath.isEmpty && app['UninstallString'] != null) {
+              final uninstallString = app['UninstallString'].toString();
+              final match = RegExp(r'"([^"]+)\\').firstMatch(uninstallString);
+              if (match != null) {
+                filePath = match.group(1) ?? '';
+              }
+            }
+            
+            if (name.isNotEmpty && !installedApps.any((a) => a.name == name)) {
               installedApps.add(InstalledApplication(
-                name: currentName,
-                filePath: currentPath,
+                name: name,
+                filePath: filePath,
               ));
             }
-            currentName = null;
-            currentPath = null;
           }
         }
+
+        // Then check the 32-bit applications on 64-bit Windows
+        final process32 = await Process.run('powershell.exe', [
+          '-Command',
+          'Get-ItemProperty HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | ' +
+          'Where-Object { \$_.DisplayName -ne \$null } | ' +
+          'Select-Object DisplayName, InstallLocation, UninstallString | ' +
+          'ConvertTo-Json'
+        ]);
+
+        if (process32.exitCode == 0 && process32.stdout.toString().trim().isNotEmpty) {
+          final List<dynamic> apps32 = json.decode(process32.stdout.toString());
+          for (var app in apps32) {
+            String name = app['DisplayName'] ?? '';
+            String filePath = app['InstallLocation'] ?? '';
+            
+            // If InstallLocation is empty, try to extract from UninstallString
+            if (filePath.isEmpty && app['UninstallString'] != null) {
+              final uninstallString = app['UninstallString'].toString();
+              final match = RegExp(r'"([^"]+)\\').firstMatch(uninstallString);
+              if (match != null) {
+                filePath = match.group(1) ?? '';
+              }
+            }
+            
+            if (name.isNotEmpty && !installedApps.any((a) => a.name == name)) {
+              installedApps.add(InstalledApplication(
+                name: name,
+                filePath: filePath,
+              ));
+            }
+          }
+        }
+        
+        // Also check user-specific installed applications
+        final processUser = await Process.run('powershell.exe', [
+          '-Command',
+          'Get-ItemProperty HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | ' +
+          'Where-Object { \$_.DisplayName -ne \$null } | ' +
+          'Select-Object DisplayName, InstallLocation, UninstallString | ' +
+          'ConvertTo-Json'
+        ]);
+
+        if (processUser.exitCode == 0 && processUser.stdout.toString().trim().isNotEmpty) {
+          final dynamic userApps = json.decode(processUser.stdout.toString());
+          // Handle both single object and array responses
+          final List<dynamic> apps = userApps is List ? userApps : [userApps];
+          
+          for (var app in apps) {
+            String name = app['DisplayName'] ?? '';
+            String filePath = app['InstallLocation'] ?? '';
+            
+            // If InstallLocation is empty, try to extract from UninstallString
+            if (filePath.isEmpty && app['UninstallString'] != null) {
+              final uninstallString = app['UninstallString'].toString();
+              final match = RegExp(r'"([^"]+)\\').firstMatch(uninstallString);
+              if (match != null) {
+                filePath = match.group(1) ?? '';
+              }
+            }
+            
+            if (name.isNotEmpty && !installedApps.any((a) => a.name == name)) {
+              installedApps.add(InstalledApplication(
+                name: name,
+                filePath: filePath,
+              ));
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Error getting installed applications: $e');
       }
     } else if (Platform.isMacOS) {  
-      // Also check the Applications directory
       Directory appDir = Directory('/Applications');
       if (await appDir.exists()) {
         await for (var entity in appDir.list(recursive: false)) {
@@ -358,7 +434,6 @@ class DesktopService {
       }
     }
 
-    // Sort the list alphabetically by name
     installedApps.sort((a, b) => a.name.compareTo(b.name));
     return installedApps;
   }
