@@ -121,6 +121,7 @@ class DesktopService {
   }
 
   void _evaluate(List<Routine> routines) {
+    // Filter for active, not paused, and conditions not met routines
     routines = routines.where((r) => r.isActive && !r.isPaused && !r.areConditionsMet).toList();
 
     Set<String> apps = {}; 
@@ -332,10 +333,8 @@ class DesktopService {
         );
         
         final bool enabled = await launchAtStartup.isEnabled();
-        debugPrint('Getting start on login status $enabled');
         return enabled;
       } catch (e) {
-        debugPrint('Error getting start on login status: $e');
         return false;
       }
     } else {

@@ -130,9 +130,15 @@ class _SettingsPageState extends State<SettingsPage> {
                     )
                   : Switch(
                       value: _startOnLogin,
-                      onChanged: _strictModeService.blockDisablingSystemStartup && _startOnLogin
-                        ? null  // Disable the switch if strict mode is enabled and startup is on
+                      onChanged: _strictModeService.inStrictMode
+                        ? null  // Disable the switch completely when in strict mode
                         : (value) async {
+                            // If trying to disable while effective block is on, show dialog
+                            if (!value && _strictModeService.effectiveBlockDisablingSystemStartup) {
+                              _strictModeService.showStrictModeActiveDialog(context);
+                              return;
+                            }
+                            
                             setState(() => _isLoading = true);
                             await _desktopService.setStartOnLogin(value);
                             final result = await _desktopService.getStartOnLogin();
@@ -164,25 +170,71 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 const Divider(height: 1),
                 
+                // Warning banner when in strict mode
+                if (_strictModeService.inStrictMode) ...[
+                  Container(
+                    margin: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.lock, color: Colors.red),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Strict Mode Active',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'A routine with strict mode is currently active. You cannot disable strict mode settings until all strict mode routines become inactive.',
+                                style: TextStyle(fontSize: 14),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                
                 // Desktop strict mode options
                 if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) ...[
                   SwitchListTile(
                     title: const Text('Block app exit'),
                     subtitle: const Text('Prevent closing the app'),
                     value: _strictModeService.blockAppExit,
-                    onChanged: (value) async {
-                      await _strictModeService.setBlockAppExit(value);
-                      setState(() {});
-                    },
+                    onChanged: _strictModeService.inStrictMode
+                      ? null // Disable the switch completely when in strict mode
+                      : (value) async {
+                        final success = await _strictModeService.setBlockAppExitWithConfirmation(context, value);
+                        if (success && mounted) {
+                          setState(() {});
+                        }
+                      },
                   ),
                   SwitchListTile(
                     title: const Text('Block disabling system startup'),
                     subtitle: const Text('Prevent turning off startup with system'),
                     value: _strictModeService.blockDisablingSystemStartup,
-                    onChanged: (value) async {
-                      await _strictModeService.setBlockDisablingSystemStartup(value);
-                      setState(() {});
-                    },
+                    onChanged: _strictModeService.inStrictMode
+                      ? null // Disable the switch completely when in strict mode
+                      : (value) async {
+                        final success = await _strictModeService.setBlockDisablingSystemStartupWithConfirmation(context, value);
+                        if (success && mounted) {
+                          setState(() {});
+                        }
+                      },
                   ),
                 ],
                 
@@ -192,28 +244,40 @@ class _SettingsPageState extends State<SettingsPage> {
                     title: const Text('Block changing time settings'),
                     subtitle: const Text('Prevent changing system time'),
                     value: _strictModeService.blockChangingTimeSettings,
-                    onChanged: (value) async {
-                      await _strictModeService.setBlockChangingTimeSettings(value);
-                      setState(() {});
-                    },
+                    onChanged: _strictModeService.inStrictMode
+                      ? null // Disable the switch completely when in strict mode
+                      : (value) async {
+                        final success = await _strictModeService.setBlockChangingTimeSettingsWithConfirmation(context, value);
+                        if (success && mounted) {
+                          setState(() {});
+                        }
+                      },
                   ),
                   SwitchListTile(
                     title: const Text('Block uninstalling apps'),
                     subtitle: const Text('Prevent uninstalling apps'),
                     value: _strictModeService.blockUninstallingApps,
-                    onChanged: (value) async {
-                      await _strictModeService.setBlockUninstallingApps(value);
-                      setState(() {});
-                    },
+                    onChanged: _strictModeService.inStrictMode
+                      ? null // Disable the switch completely when in strict mode
+                      : (value) async {
+                        final success = await _strictModeService.setBlockUninstallingAppsWithConfirmation(context, value);
+                        if (success && mounted) {
+                          setState(() {});
+                        }
+                      },
                   ),
                   SwitchListTile(
                     title: const Text('Block installing apps'),
                     subtitle: const Text('Prevent installing new apps'),
                     value: _strictModeService.blockInstallingApps,
-                    onChanged: (value) async {
-                      await _strictModeService.setBlockInstallingApps(value);
-                      setState(() {});
-                    },
+                    onChanged: _strictModeService.inStrictMode
+                      ? null // Disable the switch completely when in strict mode
+                      : (value) async {
+                        final success = await _strictModeService.setBlockInstallingAppsWithConfirmation(context, value);
+                        if (success && mounted) {
+                          setState(() {});
+                        }
+                      },
                   ),
                 ],
               ],

@@ -111,6 +111,9 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
       windowManager.addListener(this);
       trayManager.addListener(this);
       _desktopService?.init();
+      
+      // Listen for changes in strict mode status
+      StrictModeService.instance.addListener(_updateTrayMenu);
     } else {
       _iosService!.init();
       
@@ -139,6 +142,7 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
     if (_isDesktop) {
       windowManager.removeListener(this);
       trayManager.removeListener(this);
+      StrictModeService.instance.removeListener(_updateTrayMenu);
     }
     super.dispose();
   }
@@ -154,6 +158,10 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
     await trayManager.setIcon(
       'assets/app_icon.png',
     );
+    
+    // Get the strict mode service to check if app exit is blocked
+    final strictModeService = StrictModeService.instance;
+    
     Menu menu = Menu(
       items: [
         MenuItem(
@@ -167,6 +175,32 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
           onClick: (menuItem) async {
             await windowManager.destroy();
           },
+          disabled: strictModeService.effectiveBlockAppExit,
+        ),
+      ],
+    );
+    await trayManager.setContextMenu(menu);
+  }
+
+  void _updateTrayMenu() async {
+    if (!_isDesktop) return;
+    
+    final strictModeService = StrictModeService.instance;
+    
+    Menu menu = Menu(
+      items: [
+        MenuItem(
+          label: 'Show',
+          onClick: (menuItem) async {
+            await windowManager.show();
+          },
+        ),
+        MenuItem(
+          label: 'Exit',
+          onClick: (menuItem) async {
+            await windowManager.destroy();
+          },
+          disabled: strictModeService.effectiveBlockAppExit,
         ),
       ],
     );
@@ -187,7 +221,7 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
   Future<void> onWindowClose() async {
     // Check if app exit is blocked in strict mode
     final strictModeService = Provider.of<StrictModeService>(context, listen: false);
-    if (strictModeService.blockAppExit) {
+    if (strictModeService.effectiveBlockAppExit) {
       // Prevent window from closing
       await windowManager.minimize();
     } else {
