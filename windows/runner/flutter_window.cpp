@@ -18,7 +18,10 @@
 #include "flutter/generated_plugin_registrant.h"
 
 std::mutex g_appListMutex;
-std::unordered_set<std::string> g_appList;
+std::unordered_set<std::wstring> g_appList;
+std::unordered_set<std::wstring> g_appExclusionList = { 
+    L"C:\\Windows\\explorer.exe"
+};
 bool g_allowList = false;
 
 // Timer ID for the window check
@@ -53,39 +56,18 @@ void CALLBACK CheckActiveWindow(HWND hwnd, UINT message, UINT_PTR idTimer, DWORD
                 DWORD size = MAX_PATH;
                 if (QueryFullProcessImageNameW(hProcess, 0, processPath, &size)) {
                     logMessage << L"\nProcess Path: " << processPath;
+                    const std::wstring processPathW{ processPath };
 
-                    // Convert process path to lowercase string for comparison
-                    std::wstring wProcessPath(processPath);
-                    size_t lastBackslash = wProcessPath.find_last_of(L"\\");
-                    std::wstring exeName = wProcessPath.substr(lastBackslash + 1);
-                    
-                    // Convert exe name to lowercase before removing extension
-                    std::transform(exeName.begin(), exeName.end(), exeName.begin(), ::towlower);
-                    
-                    size_t lastDot = exeName.find_last_of(L".");
-                    if (lastDot != std::wstring::npos) {
-                        exeName = exeName.substr(0, lastDot);
+                    if (g_appExclusionList.find(processPathW) != g_appExclusionList.end()) {
+                        return;
                     }
-
-                    // Convert wide string to narrow string using Windows API
-                    int narrowSize = WideCharToMultiByte(CP_UTF8, 0, exeName.c_str(), -1, nullptr, 0, nullptr, nullptr);
-                    std::string narrowExeName(narrowSize, 0);
-                    WideCharToMultiByte(CP_UTF8, 0, exeName.c_str(), -1, &narrowExeName[0], narrowSize, nullptr, nullptr);
-                    narrowExeName.pop_back(); // Remove the null terminator
-                    
-                    // Convert to lowercase using explicit cast to avoid warning
-                    std::transform(narrowExeName.begin(), narrowExeName.end(), 
-                                 narrowExeName.begin(), 
-                                 [](unsigned char c) -> char { return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); });
-                    
-                    logMessage << L"\nExecutable Name: " << exeName.c_str();
 
                     std::lock_guard lock{ g_appListMutex };
                     // Check if app should be blocked
-                    bool inList = g_appList.find(narrowExeName) != g_appList.end();
+                    bool inList = g_appList.find(processPathW) != g_appList.end();
 
                     if ((g_allowList && !inList) || (!g_allowList && inList)) {
-                        logMessage << L"\nBlocking application: " << exeName.c_str();
+                        logMessage << L"\nBlocking application: " << processPath;
                         ShowWindow(foregroundWindow, SW_MINIMIZE);
                     }
 
@@ -100,7 +82,7 @@ void CALLBACK CheckActiveWindow(HWND hwnd, UINT message, UINT_PTR idTimer, DWORD
 bool FlutterWindow::OnCreate() {
   if (!Win32Window::OnCreate()) {
     return false;
-  }
+  } 
 
   RECT frame = GetClientArea();
 
@@ -131,22 +113,26 @@ bool FlutterWindow::OnCreate() {
               LogToFile(L"Received updateAppList");
              
               if (const auto* arguments = std::get_if<flutter::EncodableMap>(call.arguments())) {
-                  auto list_it = arguments->find(flutter::EncodableValue("apps"));
-                  auto allow_it = arguments->find(flutter::EncodableValue("allowList"));
+                    auto list_it = arguments->find(flutter::EncodableValue("apps"));
+                    auto allow_it = arguments->find(flutter::EncodableValue("allowList"));
 
-                  if (list_it != arguments->end() && allow_it != arguments->end()) {
-                      const auto& list = std::get<flutter::EncodableList>(list_it->second);
-                      std::vector<std::string> apps;
-                      for (const auto& item : list) {
-                          if (std::holds_alternative<std::string>(item)) {
-                              apps.push_back(std::get<std::string>(item));
-                          }
-                      }
-                      g_appList = std::unordered_set<std::string>{ apps.begin(), apps.end() };
-                      g_allowList = std::get<bool>(allow_it->second);
+                    g_appList.clear();
+                    g_allowList = std::get<bool>(allow_it->second);
 
-                      return result->Success(true);
-                  }
+                    if (list_it != arguments->end() && allow_it != arguments->end()) {
+                        const auto& list = std::get<flutter::EncodableList>(list_it->second);
+                        
+                        for (const auto& item : list) {
+                            if (std::holds_alternative<std::string>(item)) {
+                                const auto& path = std::get<std::string>(item);
+                                const auto& pathW = std::wstring(path.begin(), path.end());
+                                LogToFile(pathW);
+                                g_appList.insert(pathW);
+                            }
+                        }
+
+                        return result->Success(true);
+                    }
               }
               
               result->Error("Arguments for updateAppList are invalid");

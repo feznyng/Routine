@@ -338,9 +338,11 @@ class DesktopService {
             }
             
             if (name.isNotEmpty && !installedApps.any((a) => a.name == name)) {
+              // Find the executable file in the installation directory
+              String exePath = await _findExecutableForApp(name, filePath);
               installedApps.add(InstalledApplication(
                 name: name,
-                filePath: filePath,
+                filePath: exePath.isNotEmpty ? exePath : filePath,
               ));
             }
           }
@@ -371,9 +373,11 @@ class DesktopService {
             }
             
             if (name.isNotEmpty && !installedApps.any((a) => a.name == name)) {
+              // Find the executable file in the installation directory
+              String exePath = await _findExecutableForApp(name, filePath);
               installedApps.add(InstalledApplication(
                 name: name,
-                filePath: filePath,
+                filePath: exePath.isNotEmpty ? exePath : filePath,
               ));
             }
           }
@@ -407,13 +411,18 @@ class DesktopService {
             }
             
             if (name.isNotEmpty && !installedApps.any((a) => a.name == name)) {
+              // Find the executable file in the installation directory
+              String exePath = await _findExecutableForApp(name, filePath);
               installedApps.add(InstalledApplication(
                 name: name,
-                filePath: filePath,
+                filePath: exePath.isNotEmpty ? exePath : filePath,
               ));
             }
           }
         }
+
+        // Add common applications that might not be in the registry
+        await _addCommonApplications(installedApps);
       } catch (e) {
         debugPrint('Error getting installed applications: $e');
       }
@@ -436,5 +445,132 @@ class DesktopService {
 
     installedApps.sort((a, b) => a.name.compareTo(b.name));
     return installedApps;
+  }
+
+  // Helper method to find executable files for an application
+  static Future<String> _findExecutableForApp(String appName, String installPath) async {
+    if (installPath.isEmpty) return '';
+    
+    try {
+      // First, try to find an executable with the same name as the app
+      final sanitizedAppName = appName.replaceAll(RegExp(r'[^\w\s]'), '').trim();
+      final possibleExeNames = [
+        '$sanitizedAppName.exe',
+        '${sanitizedAppName.replaceAll(' ', '')}.exe',
+        sanitizedAppName.split(' ').first + '.exe',
+      ];
+      
+      // Check if the directory exists
+      final dir = Directory(installPath);
+      if (!await dir.exists()) return installPath;
+      
+      // First, try to find the executable directly in the install path
+      for (var exeName in possibleExeNames) {
+        final exePath = '$installPath\\$exeName';
+        final exeFile = File(exePath);
+        if (await exeFile.exists()) {
+          return exePath;
+        }
+      }
+      
+      // If not found, search recursively for any .exe files
+      final exeFiles = <FileSystemEntity>[];
+      await for (var entity in dir.list(recursive: true, followLinks: false)) {
+        if (entity is File && entity.path.toLowerCase().endsWith('.exe')) {
+          exeFiles.add(entity);
+        }
+      }
+      
+      // If we found any .exe files, return the first one
+      if (exeFiles.isNotEmpty) {
+        return exeFiles.first.path;
+      }
+    } catch (e) {
+      debugPrint('Error finding executable for $appName at $installPath: $e');
+    }
+    
+    return installPath;
+  }
+  
+  // Add common applications that might not be in the registry
+  static Future<void> _addCommonApplications(List<InstalledApplication> installedApps) async {
+    // List of common applications to check
+    final List<Map<String, List<String>>> commonApps = [
+      {
+        'name': ['Discord'],
+        'paths': [
+          'C:\\Users\\${Platform.environment['USERNAME']}\\AppData\\Local\\Discord\\',
+        ]
+      },
+      {
+        'name': ['Chrome'],
+        'paths': [
+          'C:\\Program Files\\Google\\Chrome\\Application\\',
+          'C:\\Program Files (x86)\\Google\\Chrome\\Application\\',
+        ]
+      },
+      {
+        'name': ['Firefox'],
+        'paths': [
+          'C:\\Program Files\\Mozilla Firefox\\',
+          'C:\\Program Files (x86)\\Mozilla Firefox\\',
+        ]
+      },
+      {
+        'name': ['Edge'],
+        'paths': [
+          'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\',
+          'C:\\Program Files\\Microsoft\\Edge\\Application\\',
+        ]
+      },
+    ];
+    
+    for (var app in commonApps) {
+      final String appName = app['name']![0];
+      
+      // Skip if we already have this app
+      if (installedApps.any((a) => a.name == appName)) continue;
+      
+      for (var basePath in app['paths']!) {
+        try {
+          final dir = Directory(basePath);
+          if (await dir.exists()) {
+            // For Discord, we need to find the app-X.X.XXXX folder
+            if (appName == 'Discord') {
+              await for (var entity in dir.list()) {
+                if (entity is Directory && entity.path.contains('app-')) {
+                  final exePath = '${entity.path}\\Discord.exe';
+                  final exeFile = File(exePath);
+                  if (await exeFile.exists()) {
+                    installedApps.add(InstalledApplication(
+                      name: appName,
+                      filePath: exePath,
+                    ));
+                    break;
+                  }
+                }
+              }
+            } else {
+              // For other apps, search for .exe files
+              final exeFiles = <FileSystemEntity>[];
+              await for (var entity in dir.list(recursive: false)) {
+                if (entity is File && entity.path.toLowerCase().endsWith('.exe')) {
+                  exeFiles.add(entity);
+                }
+              }
+              
+              if (exeFiles.isNotEmpty) {
+                installedApps.add(InstalledApplication(
+                  name: appName,
+                  filePath: exeFiles.first.path,
+                ));
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('Error checking common app $appName: $e');
+        }
+      }
+    }
   }
 }
