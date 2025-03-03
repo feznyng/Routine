@@ -46,27 +46,39 @@ class SyncService {
     // Clean up existing subscription if any
     _syncChannel?.unsubscribe();
 
-    // Subscribe to sync channel for this user
-    _syncChannel = _client.channel('sync-$userId');
+    try {
+      // Subscribe to sync channel for this user
+      _syncChannel = _client.channel('sync-$userId');
 
-    _syncChannel!
-      .onBroadcast( 
-        event: 'sync', 
-        callback: (payload, [_]) {
-          addJob(SyncJob(remote: true));
-        }
-      )
-      .subscribe();
+      _syncChannel!
+        .onBroadcast( 
+          event: 'sync', 
+          callback: (payload, [_]) {
+            addJob(SyncJob(remote: true));
+          }
+        )
+        .subscribe();
+    } catch (e) {
+      print('Error setting up realtime sync: $e');
+      // We'll try again later when the app resumes or when auth state changes
+    }
   }
 
   Future<void> _notifyPeers() async {
     final channel = _syncChannel;
     if (channel == null) return;
 
-    await channel.sendBroadcastMessage(
-      event: 'sync',
-      payload: { 'timestamp': DateTime.now().toIso8601String() },
-    );
+    try {
+      await channel.sendBroadcastMessage(
+        event: 'sync',
+        payload: { 'timestamp': DateTime.now().toIso8601String() },
+      );
+    } catch (e) {
+      print('Error notifying peers: $e');
+      // If we get an error here, it might be due to an expired token
+      // We'll try to set up the sync again
+      setupRealtimeSync();
+    }
   }
   
   final _jobController = StreamController<SyncJob>();
@@ -128,9 +140,8 @@ class SyncService {
 
   // order matters: devices, groups, routines
   Future<bool> _sync(bool notifyRemote) async {
-
-    
-    if (_userId.isEmpty) return true;
+    try {
+      if (_userId.isEmpty) return true;
     
     final db = getIt<AppDatabase>();
     final currDevice = (await db.getThisDevice())!;
@@ -435,5 +446,10 @@ class SyncService {
     }
 
     return true;
+    } catch (e) {
+      print('Error during sync: $e');
+      // If we encounter an error during sync, we'll try again later
+      return false;
+    }
   }
 }

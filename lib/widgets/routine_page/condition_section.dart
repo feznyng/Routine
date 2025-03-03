@@ -73,6 +73,8 @@ class ConditionSection extends StatelessWidget {
   }
 
   void _editCondition(BuildContext context, Condition condition) {
+    if (!enabled) return;
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -96,6 +98,8 @@ class ConditionSection extends StatelessWidget {
   }
 
   void _addCondition(BuildContext context) {
+    if (!enabled) return;
+    
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -177,14 +181,14 @@ class ConditionSection extends StatelessWidget {
                       title: Text(_getConditionTypeLabel(condition.type)),
                       subtitle: Text(_getConditionSummary(condition)),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => _editCondition(context, condition),
+                      onTap: enabled ? () => _editCondition(context, condition) : null,
                     );
                   },
                 ),
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: ElevatedButton.icon(
-                  onPressed: () => _addCondition(context),
+                  onPressed: enabled ? () => _addCondition(context) : null,
                   icon: const Icon(Icons.add),
                   label: const Text('Add Condition'),
                 ),
