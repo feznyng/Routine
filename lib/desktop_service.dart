@@ -257,6 +257,7 @@ class DesktopService {
 
   Future<void> updateAppList() async {
     // Update platform channel
+    print("Cached apps: $_cachedApps, categories: $_cachedCategories, allowList: $_isAllowList");
     platform.invokeMethod('updateAppList', {
       'apps': _cachedApps,
       'categories': _cachedCategories,

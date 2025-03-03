@@ -49,6 +49,7 @@ void CALLBACK CheckActiveWindow(HWND hwnd, UINT message, UINT_PTR idTimer, DWORD
                 DWORD size = MAX_PATH;
                 if (QueryFullProcessImageNameW(hProcess, 0, processPath, &size)) {
                     const std::wstring processPathW{ processPath };
+                    logMessage << L"\nFocused application: " << processPath;
 
                     if (BlockManager::IsBlocked(processPathW)) {
                         logMessage << L"\nBlocking application: " << processPath;
@@ -61,6 +62,16 @@ void CALLBACK CheckActiveWindow(HWND hwnd, UINT message, UINT_PTR idTimer, DWORD
             }
         }
     }
+}
+
+std::vector<std::string> ConvertFlutterListToVector(const std::vector<flutter::EncodableValue>& list) {
+    std::vector<std::string> items;
+    for (const auto& item : list) {
+        if (const auto* str = std::get_if<std::string>(&item)) {
+            items.push_back(*str);
+        }
+    }
+    return items;
 }
 
 bool FlutterWindow::OnCreate() {
@@ -80,8 +91,6 @@ bool FlutterWindow::OnCreate() {
   }
   RegisterPlugins(flutter_controller_->engine());
 
-  BlockManager::Init();
-
   flutter::MethodChannel<> channel(
       flutter_controller_->engine()->messenger(), "com.routine.applist",
       &flutter::StandardMethodCodec::GetInstance());
@@ -97,24 +106,17 @@ bool FlutterWindow::OnCreate() {
               LogToFile(L"Received updateAppList");
              
               if (const auto* arguments = std::get_if<flutter::EncodableMap>(call.arguments())) {
-                    auto list_it = arguments->find(flutter::EncodableValue("apps"));
-                    auto allow_it = arguments->find(flutter::EncodableValue("allowList"));
+                    auto itAppList = arguments->find(flutter::EncodableValue("apps"));
+                    auto itDirList = arguments->find(flutter::EncodableValue("categories"));
+                    auto itAllow = arguments->find(flutter::EncodableValue("allowList"));
 
-                    std::vector<std::string> appList;
-                    std::vector<std::string> dirList;
+                    if (itAppList != arguments->end() && itAllow != arguments->end() && itDirList != arguments->end()) {
 
-                    if (list_it != arguments->end() && allow_it != arguments->end()) {
-                        const auto& list = std::get<flutter::EncodableList>(list_it->second);
-                        
-                        for (const auto& item : list) {
-                            if (std::holds_alternative<std::string>(item)) {
-                                const auto& path = std::get<std::string>(item);
-                                appList.emplace_back(path);
-                            }
-                        }
-
-                        BlockManager::Set(std::get<bool>(allow_it->second), appList, dirList);
-
+                        bool allow = std::get<bool>(itAllow->second);
+                        std::vector<std::string> appList = ConvertFlutterListToVector(std::get<flutter::EncodableList>(itAppList->second));
+                        std::vector<std::string> dirList = ConvertFlutterListToVector(std::get<flutter::EncodableList>(itDirList->second));
+          
+                        BlockManager::Set(allow, appList, dirList);
                         return result->Success(true);
                     }
               }

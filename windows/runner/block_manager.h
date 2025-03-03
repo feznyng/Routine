@@ -1,39 +1,60 @@
 
 #include <mutex>
 #include <unordered_set>
+#include <unordered_map>
 #include <vector>
 
 class BlockManager {
 public:
-	static inline void Init() {
-        std::lock_guard lock{ _mutex };
-		_appExclusionList.insert(L"C:\\Windows\\explorer.exe");
-	}
-	static inline void Set(bool a_allow, std::vector<std::string> a_apps, std::vector<std::string> a_dirs) {
+	static inline void Set(bool a_allow, const std::vector<std::string>& a_apps, const std::vector<std::string>& a_dirs) {
 		std::lock_guard lock{ _mutex };
 
 		_allow = a_allow;
-		_appList.clear();
+    
+        _cache.clear();
+        _cache.insert({ L"C:\\Windows\\explorer.exe", false });
 
+		_appList.clear();
         for (const auto& app : a_apps) {
             _appList.insert(std::wstring{ app.begin(), app.end() });
+        }
+
+        _dirList.clear();
+        for (const auto& dir : a_dirs) {
+            _dirList.emplace_back(std::wstring{ dir.begin(), dir.end() });
         }
 	}
 	static inline bool IsBlocked(const std::wstring& a_exePath) {
 		std::lock_guard lock{ _mutex };
 		
-		if (_appExclusionList.find(a_exePath) != _appExclusionList.end()) {
-			return false;
-		}
+        const auto& inCacheList = _cache.find(a_exePath);
+        if (inCacheList != _cache.end()) {
+            return inCacheList->second;
+        }
 
-		bool inList = _appList.find(a_exePath) != _appList.end();
+		const bool inList = _appList.find(a_exePath) != _appList.end() || InDirectories(a_exePath);
+        const bool res = (!_allow && inList) || (_allow && !inList);
 
-		return ((_allow && !inList) || (!_allow && inList));
+		_cache[a_exePath] = res;
+
+		return res;
 	}
 private:
+    static inline bool InDirectories(const std::wstring& a_dir) {
+		for (const auto& dir : _dirList) {
+			if (a_dir.find(dir) != std::wstring::npos) {
+				return true;
+			}
+		}
+
+        return false;
+    }
+
 	static inline std::mutex _mutex;
 	static inline std::unordered_set<std::wstring> _appList;
-	static inline std::unordered_set<std::wstring> _appExclusionList;
+    static inline std::vector<std::wstring> _dirList;
+
+    static inline std::unordered_map<std::wstring, bool> _cache;
 
 	static inline bool _allow;
 };
