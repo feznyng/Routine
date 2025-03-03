@@ -16,6 +16,8 @@ class RoutineList extends StatefulWidget {
 class _RoutineListState extends State<RoutineList> {
   late List<Routine> _routines;
   late StreamSubscription<List<Routine>> _routineSubscription;
+  bool _activeRoutinesExpanded = true;
+  bool _inactiveRoutinesExpanded = true;
 
   @override
   void initState() {
@@ -39,28 +41,90 @@ class _RoutineListState extends State<RoutineList> {
 
   @override
   Widget build(BuildContext context) {
+    // Split routines into active and inactive
+    final activeRoutines = _routines.where((routine) => routine.isActive).toList();
+    final inactiveRoutines = _routines.where((routine) => !routine.isActive).toList();
+    
     return Scaffold(
-      body: ListView.builder(
-        itemCount: _routines.length,
-        itemBuilder: (context, index) {
-          final routine = _routines[index];
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: ListTile(
-              title: Text(routine.name),
-              subtitle: _buildRoutineSubtitle(context, routine),
-              isThreeLine: true,
-              trailing: routine.isActive ? _buildBreakButton(context, routine) : null,
-              onTap: () {
-                _showRoutinePage(context, routine);
-              },
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: ListView(
+            children: [
+          // Active routines section
+          if (activeRoutines.isNotEmpty) ...[  
+            _buildSectionHeader(
+              context, 
+              'Active', 
+              _activeRoutinesExpanded, 
+              () => setState(() => _activeRoutinesExpanded = !_activeRoutinesExpanded)
             ),
-          );
-        },
+            if (_activeRoutinesExpanded)
+              ...activeRoutines.map((routine) => _buildRoutineCard(context, routine)),
+          ],
+          
+          // Add padding between sections
+          const SizedBox(height: 24),
+          
+          // Inactive routines section
+          if (inactiveRoutines.isNotEmpty) ...[  
+            _buildSectionHeader(
+              context, 
+              'Inactive', 
+              _inactiveRoutinesExpanded, 
+              () => setState(() => _inactiveRoutinesExpanded = !_inactiveRoutinesExpanded)
+            ),
+            if (_inactiveRoutinesExpanded)
+              ...inactiveRoutines.map((routine) => _buildRoutineCard(context, routine)),
+          ],
+            ],
+          ),
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showRoutinePage(context, null),
         child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(BuildContext context, String title, bool isExpanded, VoidCallback onToggle) {
+    return InkWell(
+      onTap: onToggle,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                '$title',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ),
+            Icon(
+              isExpanded ? Icons.expand_less : Icons.expand_more,
+              size: 20,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRoutineCard(BuildContext context, Routine routine) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: ListTile(
+        title: Text(routine.name),
+        subtitle: _buildRoutineSubtitle(context, routine),
+        isThreeLine: true,
+        trailing: routine.isActive ? _buildBreakButton(context, routine) : null,
+        onTap: () {
+          _showRoutinePage(context, routine);
+        },
       ),
     );
   }
