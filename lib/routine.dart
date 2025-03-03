@@ -402,6 +402,20 @@ class Routine {
     if (value < 1) throw Exception('Break duration must be at least 1 minute');
     _maxBreakDuration = value;
   }
+  
+  int? get numBreaksTaken => _numBreaksTaken;
+  
+  String get breaksLeftText {
+    if (_maxBreaks == 0) {
+      return 'None';
+    }
+    if (_maxBreaks == null) {
+      return 'Unlimited';
+    }
+    final taken = _numBreaksTaken ?? 0;
+    final left = _maxBreaks! - taken;
+    return left <= 0 ? 'None' : left.toString();
+  }
 
   FrictionType get friction => _friction;
   set friction(FrictionType value) {
