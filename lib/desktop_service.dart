@@ -284,15 +284,26 @@ class DesktopService {
 
   Future<void> setStartOnLogin(bool enabled) async {
     if (Platform.isWindows || Platform.isLinux) {
-      final bool before = await launchAtStartup.isEnabled();
-      debugPrint('Setting start on login to $before');
-      if (enabled) {
-        await launchAtStartup.enable();
-      } else {
-        await launchAtStartup.disable();
+      try {
+        // Ensure setup is done
+        PackageInfo packageInfo = await PackageInfo.fromPlatform();
+        launchAtStartup.setup(
+          appName: packageInfo.appName,
+          appPath: Platform.resolvedExecutable
+        );
+        
+        final bool before = await launchAtStartup.isEnabled();
+        debugPrint('Setting start on login to $before');
+        if (enabled) {
+          await launchAtStartup.enable();
+        } else {
+          await launchAtStartup.disable();
+        }
+        final bool result = await launchAtStartup.isEnabled();
+        debugPrint('set start on login to $result');
+      } catch (e) {
+        debugPrint('Error setting start on login: $e');
       }
-      final bool result = await launchAtStartup.isEnabled();
-      debugPrint('set start on login to $result');
     } else {
       try {
         await platform.invokeMethod('setStartOnLogin', enabled);
@@ -304,9 +315,21 @@ class DesktopService {
 
   Future<bool> getStartOnLogin() async {
     if (Platform.isWindows || Platform.isLinux) {
-      final bool enabled = await launchAtStartup.isEnabled();
-      debugPrint('Getting start on login status $enabled');
-      return enabled;
+      try {
+        // Ensure setup is done
+        PackageInfo packageInfo = await PackageInfo.fromPlatform();
+        launchAtStartup.setup(
+          appName: packageInfo.appName,
+          appPath: Platform.resolvedExecutable
+        );
+        
+        final bool enabled = await launchAtStartup.isEnabled();
+        debugPrint('Getting start on login status $enabled');
+        return enabled;
+      } catch (e) {
+        debugPrint('Error getting start on login status: $e');
+        return false;
+      }
     } else {
       try {
         final bool enabled = await platform.invokeMethod('getStartOnLogin');
