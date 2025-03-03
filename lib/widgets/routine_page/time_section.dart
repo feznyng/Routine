@@ -47,8 +47,39 @@ class TimeSection extends StatelessWidget {
                     initialTime: startTime,
                   );
                   if (time != null) {
-                    routine.startTime = time.hour * 60 + time.minute;
-                    onChanged();
+                    final newStartTime = time.hour * 60 + time.minute;
+                    final currentEndTime = routine.endTime;
+                    
+                    // Check if new start time is after end time
+                    if (newStartTime >= currentEndTime) {
+                      // Calculate new end time (start time + 60 minutes)
+                      final newEndTime = newStartTime + 60;
+                      
+                      // Check if new end time is valid (not exceeding 24 hours)
+                      if (newEndTime <= 1440) {
+                        routine.startTime = newStartTime;
+                        routine.endTime = newEndTime;
+                        onChanged();
+                      } else {
+                        // Show warning if new end time would exceed 24 hours
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Cannot set start time: would cause end time to exceed midnight'),
+                          ),
+                        );
+                      }
+                    } else if (currentEndTime - newStartTime < 15) {
+                      // Check if duration would be less than 15 minutes
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Routines must be at least 15 minutes long'),
+                        ),
+                      );
+                    } else {
+                      // Normal case: start time is before end time with at least 15 minutes gap
+                      routine.startTime = newStartTime;
+                      onChanged();
+                    }
                   }
                 },
               ),
@@ -64,8 +95,39 @@ class TimeSection extends StatelessWidget {
                     initialTime: endTime,
                   );
                   if (time != null) {
-                    routine.endTime = time.hour * 60 + time.minute;
-                    onChanged();
+                    final newEndTime = time.hour * 60 + time.minute;
+                    final currentStartTime = routine.startTime;
+                    
+                    // Check if new end time is before start time
+                    if (newEndTime <= currentStartTime) {
+                      // Calculate new start time (end time - 60 minutes)
+                      final newStartTime = newEndTime - 60;
+                      
+                      // Check if new start time is valid (not negative)
+                      if (newStartTime >= 0) {
+                        routine.startTime = newStartTime;
+                        routine.endTime = newEndTime;
+                        onChanged();
+                      } else {
+                        // Show warning if new start time would be negative
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Cannot set end time: would cause start time to be before midnight'),
+                          ),
+                        );
+                      }
+                    } else if (newEndTime - currentStartTime < 15) {
+                      // Check if duration would be less than 15 minutes
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Routines must be at least 15 minutes long'),
+                        ),
+                      );
+                    } else {
+                      // Normal case: end time is after start time with at least 15 minutes gap
+                      routine.endTime = newEndTime;
+                      onChanged();
+                    }
                   }
                 },
               ),
