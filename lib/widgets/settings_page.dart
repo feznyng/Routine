@@ -358,7 +358,19 @@ class _SettingsPageState extends State<SettingsPage> {
                         final device = devices[index];
                         return ListTile(
                           title: Text(device.name),
-                          subtitle: Text(device.curr ? 'Current Device' : device.formattedType),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(device.curr ? 'Current Device' : device.formattedType),
+                              Text(
+                                device.lastSyncStatus,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+                                ),
+                              ),
+                            ],
+                          ),
+                          isThreeLine: true,
                           leading: Icon(_getDeviceIcon(device.type)),
                           trailing: device.curr ? const Icon(Icons.check_circle, color: Colors.green) : null,
                           onTap: () => _showDeviceOptions(device),
@@ -427,6 +439,18 @@ class _DeviceOptionsBottomSheetState extends State<DeviceOptionsBottomSheet> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   bool _isLoading = false;
+  
+  IconData _getDeviceIcon(DeviceType type) {
+    switch (type) {
+      case DeviceType.windows:
+      case DeviceType.linux:
+      case DeviceType.macos:
+        return Icons.computer;
+      case DeviceType.ios:
+      case DeviceType.android:
+        return Icons.smartphone;
+    }
+  }
   
   @override
   void initState() {
@@ -515,6 +539,39 @@ class _DeviceOptionsBottomSheetState extends State<DeviceOptionsBottomSheet> {
               IconButton(
                 icon: const Icon(Icons.close),
                 onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(
+                _getDeviceIcon(widget.device.type),
+                size: 16,
+                color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                widget.device.formattedType,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+                ),
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              Icon(
+                Icons.sync,
+                size: 16,
+                color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                widget.device.lastSyncStatus,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+                ),
               ),
             ],
           ),

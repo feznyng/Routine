@@ -167,6 +167,7 @@ class SyncService {
         }
 
         final DateTime updatedAt = localDevice != null && localDevice.updatedAt.toIso8601String().compareTo(device['updated_at']) > 0 ? localDevice.updatedAt : DateTime.parse(device['updated_at']);
+        final DateTime deviceLastSynced = localDevice?.lastPulledAt != null && localDevice!.lastPulledAt!.toIso8601String().compareTo(device['last_pulled_at']) > 0 ? localDevice.lastPulledAt! : DateTime.parse(device['last_pulled_at']);
 
         if (device['deleted'] as bool) {
           db.deleteDevice(device['id']);
@@ -177,6 +178,7 @@ class SyncService {
             type: Value(overwriteMap['type'] ?? device['type']),
             curr: Value(localDevice?.curr ?? false),
             updatedAt: Value(updatedAt),
+            lastPulledAt: Value(deviceLastSynced),
             deleted: Value(overwriteMap['deleted'] ?? device['deleted']),
             changes: Value(overwriteMap['changes'] ?? const []),
           ));
@@ -384,8 +386,6 @@ class SyncService {
       }
 
       for (final routine in localRoutines) {
-
-
         await _client
         .from('routines')
         .upsert({

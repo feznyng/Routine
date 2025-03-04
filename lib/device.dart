@@ -91,7 +91,8 @@ class Device {
       : _id = entry.id,
         name = entry.name,
         _type = DeviceType.values.byName(entry.type),
-        _curr = entry.curr;
+        _curr = entry.curr,
+        _lastPulledAt = entry.lastPulledAt;
         
   static Future<String> _generateDeviceHash() async {
     final deviceInfo = DeviceInfoPlugin();
@@ -137,6 +138,27 @@ class Device {
         return 'iOS';
       case DeviceType.android:
         return 'Android';
+    }
+  }
+  
+  String get lastSyncStatus {
+    if (_lastPulledAt == null) {
+      return 'Never synced';
+    }
+    
+    final now = DateTime.now();
+    final difference = now.difference(_lastPulledAt!);
+    
+    if (difference.inSeconds < 60) {
+      return 'Synced just now';
+    } else if (difference.inMinutes < 60) {
+      return 'Synced ${difference.inMinutes} minute${difference.inMinutes == 1 ? '' : 's'} ago';
+    } else if (difference.inHours < 24) {
+      return 'Synced ${difference.inHours} hour${difference.inHours == 1 ? '' : 's'} ago';
+    } else if (difference.inDays < 30) {
+      return 'Synced ${difference.inDays} day${difference.inDays == 1 ? '' : 's'} ago';
+    } else {
+      return 'Synced on ${_lastPulledAt!.month}/${_lastPulledAt!.day}/${_lastPulledAt!.year}';
     }
   }
 }
