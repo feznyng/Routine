@@ -196,6 +196,26 @@ class AppDatabase extends _$AppDatabase {
       await (update(devices)..where((t) => t.id.equals(id))).write(DevicesCompanion(deleted: Value(true), updatedAt: Value(DateTime.now())));
     });
   }
+  
+  /// Restores groups that were mistakenly deleted with a device
+  Future<void> restoreDeviceGroups(String deviceId) async {
+    await transaction(() async {
+      // Find all groups for this device that are marked as deleted
+      final deletedGroups = await (select(groups)..where((t) => t.device.equals(deviceId) & t.deleted.equals(true))).get();
+      
+      // Restore each group by setting deleted to false
+      for (final group in deletedGroups) {
+        await (update(groups)..where((t) => t.id.equals(group.id)))
+          .write(GroupsCompanion(
+            deleted: Value(false),
+            updatedAt: Value(DateTime.now()),
+            changes: Value([...group.changes, 'deleted']), // Mark 'deleted' as changed
+          ));
+        
+        print('Restored group ${group.id} for device $deviceId');
+      }
+    });
+  }
 
   Future<void> tempDeleteRoutine(id) async {
     await transaction(() async {

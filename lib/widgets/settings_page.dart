@@ -356,24 +356,37 @@ class _SettingsPageState extends State<SettingsPage> {
                       itemCount: devices.length,
                       itemBuilder: (context, index) {
                         final device = devices[index];
-                        return ListTile(
-                          title: Text(device.name),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(device.curr ? 'Current Device' : device.formattedType),
-                              Text(
-                                device.lastSyncStatus,
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+                        return Stack(
+                          children: [
+                            ListTile(
+                              title: Text(device.name),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(device.curr ? 'Current Device' : device.formattedType),
+                                  Text(
+                                    device.lastSyncStatus,
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              isThreeLine: true,
+                              leading: Icon(_getDeviceIcon(device.type)),
+                              trailing: SizedBox(width: 24), // Reserve space for the icon
+                              onTap: () => _showDeviceOptions(device),
+                            ),
+                            if (device.curr)
+                              Positioned(
+                                right: 16,
+                                top: 0,
+                                bottom: 0,
+                                child: Center(
+                                  child: Icon(Icons.check_circle, color: Colors.green),
                                 ),
                               ),
-                            ],
-                          ),
-                          isThreeLine: true,
-                          leading: Icon(_getDeviceIcon(device.type)),
-                          trailing: device.curr ? const Icon(Icons.check_circle, color: Colors.green) : null,
-                          onTap: () => _showDeviceOptions(device),
+                          ],
                         );
                       },
                     );
@@ -543,37 +556,55 @@ class _DeviceOptionsBottomSheetState extends State<DeviceOptionsBottomSheet> {
             ],
           ),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(
-                _getDeviceIcon(widget.device.type),
-                size: 16,
-                color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Theme.of(context).dividerColor.withOpacity(0.5),
               ),
-              const SizedBox(width: 8),
-              Text(
-                widget.device.formattedType,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      _getDeviceIcon(widget.device.type),
+                      size: 16,
+                      color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      widget.device.formattedType,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-          Row(
-            children: [
-              Icon(
-                Icons.sync,
-                size: 16,
-                color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                widget.device.lastSyncStatus,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.sync,
+                      size: 16,
+                      color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.device.lastSyncStatus,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           Form(

@@ -169,7 +169,29 @@ class SyncService {
         final DateTime updatedAt = localDevice != null && localDevice.updatedAt.toIso8601String().compareTo(device['updated_at']) > 0 ? localDevice.updatedAt : DateTime.parse(device['updated_at']);
         final DateTime deviceLastSynced = localDevice?.lastPulledAt != null && localDevice!.lastPulledAt!.toIso8601String().compareTo(device['last_pulled_at']) > 0 ? localDevice.lastPulledAt! : DateTime.parse(device['last_pulled_at']);
 
-        if (device['deleted'] as bool) {
+        // Check if this is the current device or an active device that was mistakenly deleted
+        final isCurrentDevice = localDevice?.curr ?? false;
+        final isActiveDevice = device['id'] == currDevice.id;
+        
+        if (device['deleted'] as bool && (isCurrentDevice || isActiveDevice)) {
+          // This is an active device that was mistakenly marked as deleted
+          // We need to restore it and any associated groups
+          print('Restoring mistakenly deleted active device: ${device['id']}');
+          
+          db.upsertDevice(DevicesCompanion(
+            id: Value(device['id']),
+            name: Value(overwriteMap['name'] ?? device['name']),
+            type: Value(overwriteMap['type'] ?? device['type']),
+            curr: Value(isCurrentDevice),
+            updatedAt: Value(updatedAt),
+            lastPulledAt: Value(deviceLastSynced),
+            deleted: Value(false), // Explicitly set to false to restore
+            changes: Value(['deleted', ...overwriteMap['changes'] ?? const []]), // Mark 'deleted' as changed
+          ));
+          
+          // Also restore any groups belonging to this device that were deleted
+          await db.restoreDeviceGroups(device['id']);
+        } else if (device['deleted'] as bool) {
           db.deleteDevice(device['id']);
         } else {
            db.upsertDevice(DevicesCompanion(
