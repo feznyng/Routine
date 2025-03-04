@@ -168,12 +168,6 @@ class SyncService {
             }
           }
 
-          print('device: ${device['id']}: overwriteMap: $overwriteMap');
-
-          if (overwriteMap.isNotEmpty) {
-            madeRemoteChange = true;
-          }
-
           final DateTime updatedAt = localDevice != null && localDevice.updatedAt.toIso8601String().compareTo(device['updated_at']) > 0 ? localDevice.updatedAt : DateTime.parse(device['updated_at']);
           final DateTime deviceLastSynced = localDevice?.lastPulledAt != null && localDevice!.lastPulledAt!.toIso8601String().compareTo(device['last_pulled_at']) > 0 ? localDevice.lastPulledAt! : DateTime.parse(device['last_pulled_at']);
 
@@ -343,6 +337,9 @@ class SyncService {
         }
 
         for (final device in localDevices) {
+          print('remote change: $device');
+          madeRemoteChange = true;
+
           await _client
           .from('devices')
           .upsert({

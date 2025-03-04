@@ -21,6 +21,7 @@ class Device {
   late final DeviceType _type;
   late final bool _curr;
   late DateTime? _lastPulledAt;
+  late DeviceEntry? _entry;
 
   static Stream<List<Device>> watchAll() {
     return getIt<AppDatabase>()
@@ -73,6 +74,9 @@ class Device {
   }
   
   Future<void> save() async {
+    final changes = this.changes;
+    print("Changes: $changes");
+
     await getIt<AppDatabase>().upsertDevice(DevicesCompanion(
       id: Value(_id),
       name: Value(name),
@@ -80,7 +84,7 @@ class Device {
       curr: Value(_curr),
       updatedAt: Value(DateTime.now()),
       deleted: Value(false),
-      changes: Value(const []),
+      changes: Value(changes),
     ));
 
     SyncService().addJob(SyncJob(remote: false));
@@ -91,7 +95,8 @@ class Device {
         name = entry.name,
         _type = DeviceType.values.byName(entry.type),
         _curr = entry.curr,
-        _lastPulledAt = entry.lastPulledAt;
+        _lastPulledAt = entry.lastPulledAt,
+        _entry = entry;
         
   static Future<String> _generateDeviceHash() async {
     final deviceInfo = DeviceInfoPlugin();
@@ -118,6 +123,16 @@ class Device {
     final digest = sha1.convert(bytes);
     
     return digest.toString();
+  }
+
+  List<String> get changes {
+    final List<String> changes = [];
+
+    if (name != _entry?.name) {
+      changes.add('name');
+    }
+
+    return changes;
   }
 
   String get id => _id;

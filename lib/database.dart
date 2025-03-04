@@ -311,13 +311,15 @@ class AppDatabase extends _$AppDatabase {
   Future<List<DeviceEntry>> getDeviceChanges(DateTime? since) {
     var query = select(devices);
     if (since != null) {
-      query.where((t) => t.updatedAt.isBiggerThanValue(since.toUtc()));
+      query.where((t) => t.updatedAt.isBiggerThanValue(since.toUtc()) & (t.changes.isNull() | t.changes.isNotValue('[]')));
     }
     return query.get();
   }
 
   Future<void> clearChangesSince(DateTime time) async {
     return await transaction(() async {
+      await (update(devices)..where((t) => t.updatedAt.isSmallerOrEqualValue(time) & t.deleted.equals(false))).write(DevicesCompanion(changes: Value([])));
+      await (delete(devices)..where((t) => t.deleted.equals(true))).go();
       await (update(groups)..where((t) => t.updatedAt.isSmallerOrEqualValue(time) & t.deleted.equals(false))).write(GroupsCompanion(changes: Value([])));
       await (delete(groups)..where((t) => t.deleted.equals(true))).go();
       await (update(routines)..where((t) => t.updatedAt.isSmallerOrEqualValue(time) & t.deleted.equals(false))).write(RoutinesCompanion(changes: Value([])));
