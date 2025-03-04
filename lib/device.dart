@@ -83,7 +83,6 @@ class Device {
       changes: Value(const []),
     ));
 
-    print('device save sync');
     SyncService().addJob(SyncJob(remote: false));
   }
 
