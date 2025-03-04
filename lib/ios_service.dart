@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:flutter/services.dart';
 import 'routine.dart';
+import 'strict_mode_service.dart';
 
 class IOSService {
   static final IOSService _instance = IOSService._internal();
@@ -19,17 +20,39 @@ class IOSService {
     
     _routineSubscription = Routine.watchAll().listen((routines) {
       _sendRoutinesToIOS(routines);
+      _sendStrictModeSettingsToIOS();
     });
     
     // Check for FamilyControls authorization on initialization
     if (Platform.isIOS) {
       checkAndRequestFamilyControlsAuthorization();
+      _sendStrictModeSettingsToIOS();
     }
   }
   
   void stopWatchingRoutines() {
     _routineSubscription?.cancel();
     _routineSubscription = null;
+  }
+  
+  Future<void> _sendStrictModeSettingsToIOS() async {
+    if (!Platform.isIOS) return;
+    
+    try {
+      final strictModeService = StrictModeService.instance;
+      
+      // Use the underlying settings, not the effective ones
+      final Map<String, dynamic> settings = {
+        'blockChangingTimeSettings': strictModeService.blockChangingTimeSettings,
+        'blockUninstallingApps': strictModeService.blockUninstallingApps,
+        'blockInstallingApps': strictModeService.blockInstallingApps,
+        'inStrictMode': strictModeService.inStrictMode,
+      };
+      
+      await _channel.invokeMethod('updateStrictModeSettings', settings);
+    } catch (e) {
+      print('Error sending strict mode settings to iOS: $e');
+    }
   }
   
   Future<void> _sendRoutinesToIOS(List<Routine> routines) async {
@@ -63,7 +86,8 @@ class IOSService {
           'categories': routine.categories,
           'allow': routine.allow,
           'conditionsMet': routine.areConditionsMet,
-          'conditionsLastMet': conditionsLastMet?.toUtc().toIso8601String()
+          'conditionsLastMet': conditionsLastMet?.toUtc().toIso8601String(),
+          'strictMode': routine.strictMode,
         };
       }).toList();
             

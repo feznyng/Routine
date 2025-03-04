@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import 'desktop_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'routine.dart';
 import 'database.dart';
 
@@ -45,6 +46,11 @@ class StrictModeService with ChangeNotifier {
     // Notify listeners if the strict mode status changed
     if (wasInStrictMode != _inStrictMode) {
       notifyListeners();
+      
+      // Update iOS if on iOS platform
+      if (Platform.isIOS) {
+        _updateIOSStrictModeSettings();
+      }
     }
   }
   
@@ -123,6 +129,11 @@ class StrictModeService with ChangeNotifier {
     await prefs.setBool(_blockChangingTimeSettingsKey, value);
     _blockChangingTimeSettings = value;
     notifyListeners();
+    
+    // Update iOS if on iOS platform
+    if (Platform.isIOS) {
+      _updateIOSStrictModeSettings();
+    }
   }
   
   Future<void> setBlockUninstallingApps(bool value) async {
@@ -132,6 +143,11 @@ class StrictModeService with ChangeNotifier {
     await prefs.setBool(_blockUninstallingAppsKey, value);
     _blockUninstallingApps = value;
     notifyListeners();
+    
+    // Update iOS if on iOS platform
+    if (Platform.isIOS) {
+      _updateIOSStrictModeSettings();
+    }
   }
   
   Future<void> setBlockInstallingApps(bool value) async {
@@ -141,6 +157,31 @@ class StrictModeService with ChangeNotifier {
     await prefs.setBool(_blockInstallingAppsKey, value);
     _blockInstallingApps = value;
     notifyListeners();
+    
+    // Update iOS if on iOS platform
+    if (Platform.isIOS) {
+      _updateIOSStrictModeSettings();
+    }
+  }
+  
+  // Helper method to update iOS strict mode settings
+  void _updateIOSStrictModeSettings() {
+    if (Platform.isIOS) {
+      // Use method channel directly to avoid circular dependency
+      const MethodChannel _channel = MethodChannel('com.routine.ios_channel');
+      try {
+        final Map<String, dynamic> settings = {
+          'blockChangingTimeSettings': blockChangingTimeSettings,
+          'blockUninstallingApps': blockUninstallingApps,
+          'blockInstallingApps': blockInstallingApps,
+          'inStrictMode': inStrictMode,
+        };
+        
+        _channel.invokeMethod('updateStrictModeSettings', settings);
+      } catch (e) {
+        print('Error updating iOS strict mode settings: $e');
+      }
+    }
   }
   
   // Set desktop settings with confirmation when needed

@@ -46,6 +46,9 @@ void main() async {
   }
 
   setup();
+  
+  // Initialize strict mode service
+  await StrictModeService.instance.init();
 
   runApp(
     MultiProvider(
