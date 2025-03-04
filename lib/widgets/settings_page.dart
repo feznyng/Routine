@@ -5,7 +5,11 @@ import '../auth_service.dart';
 import '../theme_provider.dart';
 import '../desktop_service.dart';
 import '../strict_mode_service.dart';
+import '../device.dart';
+import '../database.dart';
+import '../setup.dart';
 import 'auth_page.dart';
+
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -69,6 +73,26 @@ class _SettingsPageState extends State<SettingsPage> {
       MaterialPageRoute(
         builder: (context) => const AuthPage(),
       ),
+    );
+  }
+  
+  IconData _getDeviceIcon(DeviceType type) {
+    switch (type) {
+      case DeviceType.windows:
+      case DeviceType.linux:
+      case DeviceType.macos:
+        return Icons.computer;
+      case DeviceType.ios:
+      case DeviceType.android:
+        return Icons.smartphone;
+    }
+  }
+  
+  void _showDeviceOptions(Device device) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => DeviceOptionsBottomSheet(device: device),
     );
   }
 
@@ -285,6 +309,70 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: 16),
           
+          // Device Management section
+          Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text(
+                    'Devices',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const Divider(height: 1),
+                StreamBuilder<List<Device>>(
+                  stream: Device.watchAll(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    
+                    if (snapshot.hasError) {
+                      return Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text('Error: ${snapshot.error}'),
+                      );
+                    }
+                    
+                    final devices = snapshot.data ?? [];
+                    if (devices.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Center(child: Text('No devices found')),
+                      );
+                    }
+                    
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: devices.length,
+                      itemBuilder: (context, index) {
+                        final device = devices[index];
+                        return ListTile(
+                          title: Text(device.name),
+                          subtitle: Text(device.curr ? 'Current Device' : device.formattedType),
+                          leading: Icon(_getDeviceIcon(device.type)),
+                          trailing: device.curr ? const Icon(Icons.check_circle, color: Colors.green) : null,
+                          onTap: () => _showDeviceOptions(device),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 16),
+          
           if (!_authService.isSignedIn) ...[            
             Card(
               child: InkWell(
@@ -324,6 +412,155 @@ class AuthDialog extends StatefulWidget {
 
   @override
   State<AuthDialog> createState() => _AuthDialogState();
+}
+
+class DeviceOptionsBottomSheet extends StatefulWidget {
+  final Device device;
+  
+  const DeviceOptionsBottomSheet({super.key, required this.device});
+  
+  @override
+  State<DeviceOptionsBottomSheet> createState() => _DeviceOptionsBottomSheetState();
+}
+
+class _DeviceOptionsBottomSheetState extends State<DeviceOptionsBottomSheet> {
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _nameController;
+  bool _isLoading = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.device.name);
+  }
+  
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+  
+  Future<void> _updateDeviceName() async {
+    if (!_formKey.currentState!.validate()) return;
+    
+    setState(() => _isLoading = true);
+    
+    try {
+      widget.device.name = _nameController.text.trim();
+      widget.device.save();
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating device: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+  
+  Future<void> _deleteDevice() async {
+    if (widget.device.curr) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You cannot delete the current device')),
+      );
+      return;
+    }
+    
+    setState(() => _isLoading = true);
+    
+    try {
+      await getIt<AppDatabase>().tempDeleteDevice(widget.device.id);
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting device: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        left: 16,
+        right: 16,
+        top: 16,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                widget.device.curr ? 'Current Device' : 'Device Options',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Form(
+            key: _formKey,
+            child: TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Device Name',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Device name cannot be empty';
+                }
+                return null;
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: _isLoading ? null : _updateDeviceName,
+            child: _isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Update Name'),
+          ),
+          if (!widget.device.curr) ...[  
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: _isLoading ? null : _deleteDevice,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: const Text('Delete Device'),
+            ),
+          ],
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
 }
 
 class _AuthDialogState extends State<AuthDialog> {
