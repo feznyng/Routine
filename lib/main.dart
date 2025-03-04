@@ -152,8 +152,14 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (!_isDesktop && state == AppLifecycleState.resumed) {
-      SyncService().addJob(SyncJob(remote: false));
+    if (state == AppLifecycleState.resumed) {
+      // Notify the auth service that the app has resumed
+      AuthService().notifyAppResumed();
+      
+      // Trigger a sync job when the app resumes
+      if (!_isDesktop) {
+        SyncService().addJob(SyncJob(remote: false));
+      }
     }
   }
 

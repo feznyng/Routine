@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -14,6 +15,10 @@ class AuthService {
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
   
+  // Add a stream controller to handle app resume events
+  final StreamController<void> _resumeStreamController = StreamController<void>.broadcast();
+  Stream<void> get onResume => _resumeStreamController.stream;
+  
   AuthService._internal();
 
   Future<void> initialize() async {
@@ -27,8 +32,14 @@ class AuthService {
       throw Exception('Missing Supabase credentials. Please check your .env file.');
     }
 
-    // Try to restore the refresh token
-    final refreshToken = await _storage.read(key: 'supabase_refresh_token');
+    // Try to restore the refresh token with error handling
+    String? refreshToken;
+    try {
+      refreshToken = await _storage.read(key: 'supabase_refresh_token');
+    } catch (e) {
+      print('Failed to read refresh token from secure storage: $e');
+      // Continue without the refresh token
+    }
     
     await Supabase.initialize(
       url: url,
@@ -49,7 +60,12 @@ class AuthService {
         }
       } catch (e) {
         print('Failed to restore session: $e');
-        await _storage.delete(key: 'supabase_refresh_token');
+        try {
+          await _storage.delete(key: 'supabase_refresh_token');
+        } catch (storageError) {
+          print('Failed to delete refresh token: $storageError');
+          // Continue despite storage error
+        }
       }
     }
     // Listen for auth state changes
@@ -59,9 +75,19 @@ class AuthService {
       
       // Store or remove refresh token based on auth state
       if (session != null) {
-        await _storage.write(key: 'supabase_refresh_token', value: session.refreshToken);
+        try {
+          await _storage.write(key: 'supabase_refresh_token', value: session.refreshToken);
+        } catch (e) {
+          print('Failed to write refresh token to secure storage: $e');
+          // Continue despite storage error
+        }
       } else {
-        await _storage.delete(key: 'supabase_refresh_token');
+        try {
+          await _storage.delete(key: 'supabase_refresh_token');
+        } catch (e) {
+          print('Failed to delete refresh token from secure storage: $e');
+          // Continue despite storage error
+        }
       }
       
       switch (event) {
@@ -77,10 +103,16 @@ class AuthService {
         case AuthChangeEvent.passwordRecovery:
           print('Password recovery requested');
           break;
+        case AuthChangeEvent.tokenRefreshed:
+          print('Token refreshed for user: ${session?.user.email}');
+          break;
         default:
           print('Auth event: $event');
       }
     });
+    
+    // Add method to handle app resume events
+    _setupResumeListener();
   }
 
   bool get isSignedIn => _initialized ? _client.auth.currentUser != null : false;
@@ -145,5 +177,57 @@ class AuthService {
       print('Sign out error: $e');
       throw 'Unable to sign out. Please try again later.';
     }
+  }
+  
+  // Method to handle app resume events
+  void _setupResumeListener() {
+    // This will be called from the app lifecycle state changes
+  }
+  
+  // Method to notify that the app has resumed
+  void notifyAppResumed() {
+    _resumeStreamController.add(null);
+    _refreshSessionIfNeeded();
+  }
+  
+  // Method to refresh the session if needed
+  Future<void> _refreshSessionIfNeeded() async {
+    if (!_initialized || _client.auth.currentUser == null) return;
+    
+    try {
+      // Check if we need to refresh the token
+      final session = _client.auth.currentSession;
+      if (session != null) {
+        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        final expiresAt = session.expiresAt;
+        
+        // If token is expired or about to expire in the next 5 minutes, refresh it
+        if (expiresAt != null && (expiresAt < now + 300)) {
+          print('Token expired or about to expire, refreshing...');
+          await _client.auth.refreshSession();
+        }
+      }
+    } catch (e) {
+      print('Error refreshing session: $e');
+      // If refresh fails, try to recover by reading from storage
+      try {
+        final refreshToken = await _storage.read(key: 'supabase_refresh_token');
+        if (refreshToken != null) {
+          try {
+            await _client.auth.refreshSession();
+            print('Successfully refreshed session after error');
+          } catch (refreshError) {
+            print('Failed to refresh session after error: $refreshError');
+          }
+        }
+      } catch (storageError) {
+        print('Failed to read refresh token from storage: $storageError');
+      }
+    }
+  }
+  
+  // Clean up resources
+  void dispose() {
+    _resumeStreamController.close();
   }
 }

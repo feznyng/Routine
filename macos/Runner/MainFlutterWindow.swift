@@ -36,9 +36,6 @@ class MainFlutterWindow: NSWindow {
         self.isFlutterReady = true
         // Process any pending messages
         self.processPendingMessages()
-
-        let isEnabled = SMAppService.mainApp.status == .enabled
-
         result(true)
       case "updateAppList":
         if let args = call.arguments as? [String: Any],
@@ -183,9 +180,15 @@ class MainFlutterWindow: NSWindow {
   private func checkActiveApplication(_ app: NSRunningApplication?) {
     if let app = app,
        let appPath = app.bundleURL?.path.lowercased() {
+
+      if let executablePath = Bundle.main.executablePath {
+        if (executablePath.lowercased().contains(appPath.lowercased())) {
+          return
+        }
+      }
       
       let isAllowed = allowList ? appList.contains(appPath) : !appList.contains(appPath)
-      
+
       if !isAllowed && !isHiding && app.localizedName?.lowercased() != "finder" {
         isHiding = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in

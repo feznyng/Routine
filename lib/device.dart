@@ -16,11 +16,17 @@ enum DeviceType {
 }
 
 class Device {
-  late String _name;
+  late String name;
   final String _id;
   late final DeviceType _type;
   late final bool _curr;
   late DateTime? _lastPulledAt;
+
+  static Stream<List<Device>> watchAll() {
+    return getIt<AppDatabase>()
+      .watchDevices()
+      .map((entries) => entries.map((e) => Device.fromEntry(e)).toList());
+  }
 
   static Future<Device> getCurrent() async {
     final deviceEntry = await getIt<AppDatabase>().getThisDevice();
@@ -29,7 +35,7 @@ class Device {
       return Device.fromEntry(deviceEntry);
     } else {
       final device = await Device.create(currDevice: true);
-      await device._save();
+      await device.save();
       return device;
     }
   }
@@ -45,31 +51,31 @@ class Device {
   }
 
   void _initDeviceType() {
-    _name = "";
+    name = "";
     if (Platform.isMacOS) {
-      _name = "Macbook";
+      name = "Macbook";
       _type = DeviceType.macos;
     } else if (Platform.isLinux) {
-      _name = "Linux";
+      name = "Linux";
       _type = DeviceType.linux;
     } else if (Platform.isWindows) {
-      _name = "Windows";
+      name = "Windows";
       _type = DeviceType.windows;
     } else if (Platform.isIOS) {
-      _name = "iPhone";
+      name = "iPhone";
       _type = DeviceType.ios;
     } else if (Platform.isAndroid) {
-      _name = "Android";
+      name = "Android";
       _type = DeviceType.android;
     } else {
       throw Exception('Unsupported platform');
     }
   }
   
-  Future<void> _save() async {
+  Future<void> save() async {
     await getIt<AppDatabase>().upsertDevice(DevicesCompanion(
       id: Value(_id),
-      name: Value(_name),
+      name: Value(name),
       type: Value(_type.name),
       curr: Value(_curr),
       updatedAt: Value(DateTime.now()),
@@ -83,8 +89,10 @@ class Device {
 
   Device.fromEntry(DeviceEntry entry)
       : _id = entry.id,
+        name = entry.name,
         _type = DeviceType.values.byName(entry.type),
-        _curr = entry.curr;
+        _curr = entry.curr,
+        _lastPulledAt = entry.lastPulledAt;
         
   static Future<String> _generateDeviceHash() async {
     final deviceInfo = DeviceInfoPlugin();
@@ -117,4 +125,40 @@ class Device {
   DeviceType get type => _type;
   bool get curr => _curr;
   DateTime? get lastPulledAt => _lastPulledAt;
+  
+  String get formattedType {
+    switch (_type) {
+      case DeviceType.windows:
+        return 'Windows';
+      case DeviceType.linux:
+        return 'Linux';
+      case DeviceType.macos:
+        return 'macOS';
+      case DeviceType.ios:
+        return 'iOS';
+      case DeviceType.android:
+        return 'Android';
+    }
+  }
+  
+  String get lastSyncStatus {
+    if (_lastPulledAt == null) {
+      return 'Never synced';
+    }
+    
+    final now = DateTime.now();
+    final difference = now.difference(_lastPulledAt!);
+    
+    if (difference.inSeconds < 60) {
+      return 'Synced just now';
+    } else if (difference.inMinutes < 60) {
+      return 'Synced ${difference.inMinutes} minute${difference.inMinutes == 1 ? '' : 's'} ago';
+    } else if (difference.inHours < 24) {
+      return 'Synced ${difference.inHours} hour${difference.inHours == 1 ? '' : 's'} ago';
+    } else if (difference.inDays < 30) {
+      return 'Synced ${difference.inDays} day${difference.inDays == 1 ? '' : 's'} ago';
+    } else {
+      return 'Synced on ${_lastPulledAt!.month}/${_lastPulledAt!.day}/${_lastPulledAt!.year}';
+    }
+  }
 }

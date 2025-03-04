@@ -127,6 +127,10 @@ class AppDatabase extends _$AppDatabase {
     return entry?.lastPulledAt;
   }
 
+  Stream<List<DeviceEntry>> watchDevices() {
+    return (select(devices)..where((t) => t.deleted.equals(false))).watch();
+  }
+
   Stream<List<RoutineWithGroups>> watchRoutines() {
     final referencedItems = routines.groups.jsonEach(this);
 
@@ -186,17 +190,37 @@ class AppDatabase extends _$AppDatabase {
     await into(groups).insertOnConflictUpdate(group);
   }
 
+  Future<void> tempDeleteDevice(id) async {
+    await transaction(() async {
+      await (update(groups)..where((t) => t.device.equals(id))).write(GroupsCompanion(deleted: Value(true), updatedAt: Value(DateTime.now())));
+      await (update(devices)..where((t) => t.id.equals(id))).write(DevicesCompanion(deleted: Value(true), updatedAt: Value(DateTime.now())));
+    });
+  }
+  
+  /// Restores groups that were mistakenly deleted with a device
+  Future<void> restoreDeviceGroups(String deviceId) async {
+    await transaction(() async {
+      // Find all groups for this device that are marked as deleted
+      final deletedGroups = await (select(groups)..where((t) => t.device.equals(deviceId) & t.deleted.equals(true))).get();
+      
+      // Restore each group by setting deleted to false
+      for (final group in deletedGroups) {
+        await (update(groups)..where((t) => t.id.equals(group.id)))
+          .write(GroupsCompanion(
+            deleted: Value(false),
+            updatedAt: Value(DateTime.now()),
+            changes: Value([...group.changes, 'deleted']), // Mark 'deleted' as changed
+          ));
+        
+        print('Restored group ${group.id} for device $deviceId');
+      }
+    });
+  }
+
   Future<void> tempDeleteRoutine(id) async {
     await transaction(() async {
       final routine = await (select(routines)..where((t) => t.id.equals(id))).getSingle();
-      final routineGroups = await (select(groups)..where((t) => t.id.isIn(routine.groups) & t.name.isNull())).get();
-
-      for (final group in routineGroups) {
-        if (group.name == null) {
-          await (update(groups)..where((t) => t.id.equals(group.id))).write(GroupsCompanion(deleted: Value(true), updatedAt: Value(DateTime.now())));
-        }
-      }
-
+      await (update(groups)..where((t) => t.id.isIn(routine.groups) & t.name.isNull())).write(GroupsCompanion(deleted: Value(true), updatedAt: Value(DateTime.now())));
       await (update(routines)..where((t) => t.id.equals(id))).write(RoutinesCompanion(deleted: Value(true), updatedAt: Value(DateTime.now())));
     });
   }

@@ -46,27 +46,39 @@ class SyncService {
     // Clean up existing subscription if any
     _syncChannel?.unsubscribe();
 
-    // Subscribe to sync channel for this user
-    _syncChannel = _client.channel('sync-$userId');
+    try {
+      // Subscribe to sync channel for this user
+      _syncChannel = _client.channel('sync-$userId');
 
-    _syncChannel!
-      .onBroadcast( 
-        event: 'sync', 
-        callback: (payload, [_]) {
-          addJob(SyncJob(remote: true));
-        }
-      )
-      .subscribe();
+      _syncChannel!
+        .onBroadcast( 
+          event: 'sync', 
+          callback: (payload, [_]) {
+            addJob(SyncJob(remote: true));
+          }
+        )
+        .subscribe();
+    } catch (e) {
+      print('Error setting up realtime sync: $e');
+      // We'll try again later when the app resumes or when auth state changes
+    }
   }
 
   Future<void> _notifyPeers() async {
     final channel = _syncChannel;
     if (channel == null) return;
 
-    await channel.sendBroadcastMessage(
-      event: 'sync',
-      payload: { 'timestamp': DateTime.now().toIso8601String() },
-    );
+    try {
+      await channel.sendBroadcastMessage(
+        event: 'sync',
+        payload: { 'timestamp': DateTime.now().toIso8601String() },
+      );
+    } catch (e) {
+      print('Error notifying peers: $e');
+      // If we get an error here, it might be due to an expired token
+      // We'll try to set up the sync again
+      setupRealtimeSync();
+    }
   }
   
   final _jobController = StreamController<SyncJob>();
@@ -128,9 +140,8 @@ class SyncService {
 
   // order matters: devices, groups, routines
   Future<bool> _sync(bool notifyRemote) async {
-
-    
-    if (_userId.isEmpty) return true;
+    try {
+      if (_userId.isEmpty) return true;
     
     final db = getIt<AppDatabase>();
     final currDevice = (await db.getThisDevice())!;
@@ -156,8 +167,31 @@ class SyncService {
         }
 
         final DateTime updatedAt = localDevice != null && localDevice.updatedAt.toIso8601String().compareTo(device['updated_at']) > 0 ? localDevice.updatedAt : DateTime.parse(device['updated_at']);
+        final DateTime deviceLastSynced = localDevice?.lastPulledAt != null && localDevice!.lastPulledAt!.toIso8601String().compareTo(device['last_pulled_at']) > 0 ? localDevice.lastPulledAt! : DateTime.parse(device['last_pulled_at']);
 
-        if (device['deleted'] as bool) {
+        // Check if this is the current device or an active device that was mistakenly deleted
+        final isCurrentDevice = localDevice?.curr ?? false;
+        final isActiveDevice = device['id'] == currDevice.id;
+        
+        if (device['deleted'] as bool && (isCurrentDevice || isActiveDevice)) {
+          // This is an active device that was mistakenly marked as deleted
+          // We need to restore it and any associated groups
+          print('Restoring mistakenly deleted active device: ${device['id']}');
+          
+          db.upsertDevice(DevicesCompanion(
+            id: Value(device['id']),
+            name: Value(overwriteMap['name'] ?? device['name']),
+            type: Value(overwriteMap['type'] ?? device['type']),
+            curr: Value(isCurrentDevice),
+            updatedAt: Value(updatedAt),
+            lastPulledAt: Value(deviceLastSynced),
+            deleted: Value(false), // Explicitly set to false to restore
+            changes: Value(['deleted', ...overwriteMap['changes'] ?? const []]), // Mark 'deleted' as changed
+          ));
+          
+          // Also restore any groups belonging to this device that were deleted
+          await db.restoreDeviceGroups(device['id']);
+        } else if (device['deleted'] as bool) {
           db.deleteDevice(device['id']);
         } else {
            db.upsertDevice(DevicesCompanion(
@@ -166,6 +200,7 @@ class SyncService {
             type: Value(overwriteMap['type'] ?? device['type']),
             curr: Value(localDevice?.curr ?? false),
             updatedAt: Value(updatedAt),
+            lastPulledAt: Value(deviceLastSynced),
             deleted: Value(overwriteMap['deleted'] ?? device['deleted']),
             changes: Value(overwriteMap['changes'] ?? const []),
           ));
@@ -373,8 +408,6 @@ class SyncService {
       }
 
       for (final routine in localRoutines) {
-
-
         await _client
         .from('routines')
         .upsert({
@@ -435,5 +468,10 @@ class SyncService {
     }
 
     return true;
+    } catch (e) {
+      print('Error during sync: $e');
+      // If we encounter an error during sync, we'll try again later
+      return false;
+    }
   }
 }
