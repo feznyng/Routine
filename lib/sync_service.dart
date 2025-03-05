@@ -151,6 +151,7 @@ class SyncService {
       final pulledAt = DateTime.now();
 
       bool madeRemoteChange = false;
+      bool accidentalDeletion = false;
 
       // Pull and apply remote device changes
       {
@@ -181,6 +182,7 @@ class SyncService {
             // This is an active device that was mistakenly marked as deleted
             // We need to restore it and any associated groups
             print('Restoring mistakenly deleted active device: ${device['id']}');
+            accidentalDeletion = true;
             
             db.upsertDevice(DevicesCompanion(
               id: Value(device['id']),
@@ -193,8 +195,6 @@ class SyncService {
               changes: Value(['deleted', ...overwriteMap['changes'] ?? const []]), // Mark 'deleted' as changed
             ));
             
-            // Also restore any groups belonging to this device that were deleted
-            await db.restoreDeviceGroups(device['id']);
           } else if (device['deleted'] as bool) {
             db.deleteDevice(device['id']);
           } else {
@@ -203,7 +203,7 @@ class SyncService {
               name: Value(overwriteMap['name'] ?? device['name']),
               type: Value(overwriteMap['type'] ?? device['type']),
               curr: Value(localDevice?.curr ?? false),
-              updatedAt: Value(updatedAt),
+              updatedAt: Value(DateTime.now()),
               lastPulledAt: Value(deviceLastSynced),
               deleted: Value(overwriteMap['deleted'] ?? device['deleted']),
               changes: Value(overwriteMap['changes'] ?? const []),
@@ -232,7 +232,21 @@ class SyncService {
           final DateTime updatedAt = localGroup != null && localGroup.updatedAt.toIso8601String().compareTo(group['updated_at']) > 0 ? localGroup.updatedAt : DateTime.parse(group['updated_at']);
 
           if (group['deleted'] as bool) {
-            db.deleteGroup(group['id']);
+            if (group['device'] == currDevice.id && accidentalDeletion) {
+              print('Restoring mistakenly deleted active device: ${group['id']}');
+              db.upsertGroup(GroupsCompanion(
+                id: Value(group['id']),
+                name: Value(overwriteMap['name'] ?? group['name'] as String?),
+                device: Value(overwriteMap['device'] ?? group['device'] as String?),
+                allow: Value(overwriteMap['allow'] ?? group['allow'] as bool?),
+                updatedAt: Value(DateTime.now()),
+                deleted: Value(false),
+                changes: Value(['deleted', ...overwriteMap['changes'] ?? const []])
+              ));
+            } else {
+              db.deleteGroup(group['id']);
+            }
+
           } else {
             db.upsertGroup(GroupsCompanion(
               id: Value(group['id']),
