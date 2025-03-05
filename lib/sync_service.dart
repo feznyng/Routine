@@ -168,6 +168,8 @@ class SyncService {
             }
           }
 
+          print("remote device change: $device");
+
           final DateTime updatedAt = localDevice != null && localDevice.updatedAt.toIso8601String().compareTo(device['updated_at']) > 0 ? localDevice.updatedAt : DateTime.parse(device['updated_at']);
           final DateTime deviceLastSynced = localDevice?.lastPulledAt != null && localDevice!.lastPulledAt!.toIso8601String().compareTo(device['last_pulled_at']) > 0 ? localDevice.lastPulledAt! : DateTime.parse(device['last_pulled_at']);
 
@@ -469,7 +471,7 @@ class SyncService {
       
       print("made remote change $madeRemoteChange");
 
-      if (madeRemoteChange && notifyRemote) {
+      if (madeRemoteChange) {
         _notifyPeers();
       }
 
