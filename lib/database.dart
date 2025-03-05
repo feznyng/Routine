@@ -192,8 +192,8 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> tempDeleteDevice(id) async {
     await transaction(() async {
-      await (update(groups)..where((t) => t.device.equals(id))).write(GroupsCompanion(deleted: Value(true), updatedAt: Value(DateTime.now())));
-      await (update(devices)..where((t) => t.id.equals(id))).write(DevicesCompanion(deleted: Value(true), updatedAt: Value(DateTime.now())));
+      await (update(groups)..where((t) => t.device.equals(id))).write(GroupsCompanion(deleted: Value(true), updatedAt: Value(DateTime.now()), changes: Value(['deleted'])));
+      await (update(devices)..where((t) => t.id.equals(id))).write(DevicesCompanion(deleted: Value(true), updatedAt: Value(DateTime.now()), changes: Value(['deleted'])));
     });
   }
   
@@ -220,8 +220,8 @@ class AppDatabase extends _$AppDatabase {
   Future<void> tempDeleteRoutine(id) async {
     await transaction(() async {
       final routine = await (select(routines)..where((t) => t.id.equals(id))).getSingle();
-      await (update(groups)..where((t) => t.id.isIn(routine.groups) & t.name.isNull())).write(GroupsCompanion(deleted: Value(true), updatedAt: Value(DateTime.now())));
-      await (update(routines)..where((t) => t.id.equals(id))).write(RoutinesCompanion(deleted: Value(true), updatedAt: Value(DateTime.now())));
+      await (update(groups)..where((t) => t.id.isIn(routine.groups) & t.name.isNull())).write(GroupsCompanion(deleted: Value(true), changes: Value(['deleted']), updatedAt: Value(DateTime.now())));
+      await (update(routines)..where((t) => t.id.equals(id))).write(RoutinesCompanion(deleted: Value(true), changes: Value(['deleted']), updatedAt: Value(DateTime.now())));
     });
   }
 
@@ -243,7 +243,7 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> tempDeleteGroup(String id) async {
     await transaction(() async {
-      await (update(groups)..where((t) => t.id.equals(id))).write(GroupsCompanion(deleted: Value(true), updatedAt: Value(DateTime.now())));
+      await (update(groups)..where((t) => t.id.equals(id))).write(GroupsCompanion(deleted: Value(true), updatedAt: Value(DateTime.now()), changes: Value(['deleted'])));
 
       final group = await (select(groups)..where((t) => t.id.equals(id))).getSingleOrNull();
 

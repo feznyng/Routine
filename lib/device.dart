@@ -21,7 +21,7 @@ class Device {
   late final DeviceType _type;
   late final bool _curr;
   late DateTime? _lastPulledAt;
-  late DeviceEntry? _entry;
+  DeviceEntry? _entry;
 
   static Stream<List<Device>> watchAll() {
     return getIt<AppDatabase>()
