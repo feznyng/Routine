@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "name": "RoutineSite Blocker",
+  "name": "Routine Blocker",
   "version": "1.0",
   "description": "Routine site blocking extension",
   "permissions": [
@@ -19,7 +19,7 @@
   "icons": {},
   "browser_specific_settings": {
     "gecko": {
-      "id": "blocker@routine-blocker.com"
+      "id": "ajanprabakar@gmail.com"
     }
   }
 }

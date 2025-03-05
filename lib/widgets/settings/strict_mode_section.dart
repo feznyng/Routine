@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'dart:async';
 import '../../strict_mode_service.dart';
 
 class StrictModeSection extends StatefulWidget {
@@ -11,6 +12,8 @@ class StrictModeSection extends StatefulWidget {
 
 class _StrictModeSectionState extends State<StrictModeSection> {
   final _strictModeService = StrictModeService.instance;
+  Timer? _gracePeriodTimer;
+  Timer? _cooldownTimer;
 
   @override
   void initState() {
@@ -20,6 +23,57 @@ class _StrictModeSectionState extends State<StrictModeSection> {
         setState(() {});
       }
     });
+    
+    // Listen for changes to strict mode service
+    _strictModeService.addListener(_onStrictModeServiceChanged);
+    
+    // Start timers if needed
+    _startTimersIfNeeded();
+  }
+  
+  void _onStrictModeServiceChanged() {
+    if (mounted) {
+      setState(() {});
+      _startTimersIfNeeded();
+    }
+  }
+  
+  void _startTimersIfNeeded() {
+    // Cancel existing timers
+    _gracePeriodTimer?.cancel();
+    _cooldownTimer?.cancel();
+    
+    // Start grace period timer if in grace period
+    if (_strictModeService.isInExtensionGracePeriod) {
+      _gracePeriodTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!_strictModeService.isInExtensionGracePeriod) {
+          timer.cancel();
+        }
+        if (mounted) {
+          setState(() {});
+        }
+      });
+    }
+    
+    // Start cooldown timer if in cooldown
+    if (_strictModeService.isInExtensionCooldown) {
+      _cooldownTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+        if (!_strictModeService.isInExtensionCooldown) {
+          timer.cancel();
+        }
+        if (mounted) {
+          setState(() {});
+        }
+      });
+    }
+  }
+  
+  @override
+  void dispose() {
+    _strictModeService.removeListener(_onStrictModeServiceChanged);
+    _gracePeriodTimer?.cancel();
+    _cooldownTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -106,6 +160,68 @@ class _StrictModeSectionState extends State<StrictModeSection> {
                   }
                 },
             ),
+            SwitchListTile(
+              title: const Text('Block browsers without extension'),
+              subtitle: const Text('Block browsers when extension is not installed or connected'),
+              value: _strictModeService.blockBrowsersWithoutExtension,
+              onChanged: _strictModeService.inStrictMode
+                ? null // Disable the switch completely when in strict mode
+                : (value) async {
+                  final success = await _strictModeService.setBlockBrowsersWithoutExtensionWithConfirmation(context, value);
+                  if (success && mounted) {
+                    setState(() {});
+                  }
+                },
+            ),
+            if (_strictModeService.blockBrowsersWithoutExtension) ...[  
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Grace period button
+                    ElevatedButton(
+                      onPressed: _strictModeService.isInExtensionGracePeriod || _strictModeService.isInExtensionCooldown
+                        ? null // Disable during grace period or cooldown
+                        : () {
+                          _strictModeService.startExtensionGracePeriod();
+                        },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _strictModeService.isInExtensionGracePeriod ? Colors.green : null,
+                        foregroundColor: _strictModeService.isInExtensionGracePeriod ? Colors.white : null,
+                      ),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12.0),
+                          child: Column(
+                            children: [
+                              Text(
+                                _strictModeService.isInExtensionGracePeriod
+                                  ? 'Grace period active: ${_strictModeService.remainingGracePeriodSeconds}s remaining'
+                                  : _strictModeService.isInExtensionCooldown
+                                    ? 'Cooldown: ${_strictModeService.remainingCooldownMinutes} min remaining'
+                                    : 'Allow 30s to install extension',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              if (!_strictModeService.isInExtensionGracePeriod && !_strictModeService.isInExtensionCooldown) ...[  
+                                const SizedBox(height: 4),
+                                const Text(
+                                  '10 minute cooldown between uses',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
           
           // iOS strict mode options

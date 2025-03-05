@@ -44,6 +44,9 @@ class DesktopService {
   List<String> _cachedApps = [];
   List<String> _cachedCategories = [];
   bool _isAllowList = false;
+  
+  // Flag to track extension connection status
+  bool _extensionConnected = false;
 
   // Set of browser names in lowercase for O(1) lookup
   final Set<String> _browserNames = {
@@ -68,6 +71,9 @@ class DesktopService {
           final lowerAppName = appName.toLowerCase();
           if (_browserNames.any((browser) => lowerAppName.contains(browser))) {
             updateBlockedSites();
+            
+            // Check if we need to block browsers without extension
+            _checkAndBlockBrowsersIfNeeded(appName);
           }
           break;
       }
@@ -128,7 +134,7 @@ class DesktopService {
     Set<String> sites = {};
     Set<String> categories = {};
     bool allowList = routines.any((r) => r.allow);
-
+    
     if (allowList) {
       Map<String, int> appCounts = {};
       Map<String, int> siteCounts = {};
@@ -215,10 +221,14 @@ class DesktopService {
         onError: (error) {
           debugPrint('Socket error: $error');
           _connected = false;
+          _setExtensionConnected(false);
+          _blockBrowsersIfNeeded();
         },
         onDone: () {
           debugPrint('Socket closed');
           _connected = false;
+          _setExtensionConnected(false);
+          _blockBrowsersIfNeeded();
         },
       );
     } on SocketException catch (e) {
@@ -234,6 +244,7 @@ class DesktopService {
   void _sendToNMH(String action, Map<String, dynamic> data) {
     if (!_connected) {
       debugPrint('Cannot send to NMH: not connected');
+      _setExtensionConnected(false);
       return;
     }
 
@@ -265,6 +276,100 @@ class DesktopService {
       'allowList': _isAllowList,
     });
   }
+  
+  // Unblock all browsers when grace period starts
+  void unblockAllBrowsers() {
+    debugPrint('Grace period started, unblocking all browsers');
+    
+    // Create a copy of the current apps list
+    final List<String> appsToBlock = List.from(_cachedApps);
+    
+    // Remove any browsers from the list
+    bool removed = false;
+    appsToBlock.removeWhere((app) {
+      final lowerAppName = app.toLowerCase();
+      final isBrowser = _browserNames.any((browser) => lowerAppName.contains(browser));
+      if (isBrowser) {
+        removed = true;
+      }
+      return isBrowser;
+    });
+    
+    // Only update if we actually removed browsers
+    if (removed) {
+      debugPrint('Removed browsers from blocked apps list');
+      // Update the platform with the modified list
+      platform.invokeMethod('updateAppList', {
+        'apps': appsToBlock,
+        'categories': _cachedCategories,
+        'allowList': _isAllowList,
+      });
+    }
+  }
+  
+  // Check if we need to block browsers when extension isn't connected
+  void _checkAndBlockBrowsersIfNeeded(String appName) async {
+    final strictModeService = StrictModeService.instance;
+    
+    // If the setting to block browsers without extension is enabled
+    if (strictModeService.effectiveBlockBrowsersWithoutExtension) {
+      // If extension is not connected
+      if (!_extensionConnected) {
+        debugPrint('Browser detected without extension connected: $appName');
+        
+        // Check if we're in grace period - don't block during grace period
+        if (strictModeService.isInExtensionGracePeriod) {
+          debugPrint('In extension grace period, not blocking browser');
+          
+          // Create a temporary list of apps to block (excluding this browser)
+          final List<String> appsToBlock = List.from(_cachedApps);
+          final lowerAppName = appName.toLowerCase();
+          
+          // Remove this browser from the blocked apps list if it exists
+          appsToBlock.removeWhere((app) => app.toLowerCase() == lowerAppName);
+          
+          // Update the platform with the list excluding this browser
+          platform.invokeMethod('updateAppList', {
+            'apps': appsToBlock,
+            'categories': _cachedCategories,
+            'allowList': _isAllowList,
+          });
+          
+          return;
+        }
+        
+        // Create a temporary list of apps to block
+        final List<String> appsToBlock = List.from(_cachedApps);
+        
+        // Check if the browser is already in the list
+        final lowerAppName = appName.toLowerCase();
+        bool browserAlreadyBlocked = false;
+        
+        for (final app in appsToBlock) {
+          if (app.toLowerCase() == lowerAppName) {
+            browserAlreadyBlocked = true;
+            break;
+          }
+        }
+        
+        // If browser is not already blocked, add it to the list
+        if (!browserAlreadyBlocked) {
+          debugPrint('Adding browser to blocked apps: $appName');
+          appsToBlock.add(appName);
+          
+          // Update the platform with the temporary list including the browser
+          platform.invokeMethod('updateAppList', {
+            'apps': appsToBlock,
+            'categories': _cachedCategories,
+            'allowList': _isAllowList,
+          });
+        }
+      } else {
+        // Extension is connected
+        // This is handled in _setExtensionConnected
+      }
+    }
+  }
 
   Future<void> updateBlockedSites() async {
     if (!_connected) {
@@ -272,6 +377,7 @@ class DesktopService {
       await _connectToNMH();
       if (!_connected) {
         debugPrint('Failed to connect to NMH, skipping update');
+        _setExtensionConnected(false);
         return;
       }
     }
@@ -281,6 +387,96 @@ class DesktopService {
       'sites': _cachedSites,
       'allowList': _isAllowList,
     });
+    
+    // Set extension connected to true when we successfully send an update
+    _setExtensionConnected(true);
+  }
+  
+  // Handle extension connection status changes
+  void _setExtensionConnected(bool connected) {
+    if (_extensionConnected != connected) {
+      _extensionConnected = connected;
+      debugPrint('Extension connection status changed: $_extensionConnected');
+      
+      if (_extensionConnected) {
+        // Extension is now connected
+        // End grace period if it was active
+        StrictModeService.instance.endExtensionGracePeriod();
+        
+        // Unblock all browsers since extension is now connected
+        if (StrictModeService.instance.blockBrowsersWithoutExtension) {
+          unblockAllBrowsers();
+        }
+      } else {
+        // Extension is now disconnected
+        // Start blocking browsers if needed
+        _blockBrowsersIfNeeded();
+      }
+    }
+  }
+  
+  // Block all browsers when extension disconnects (if setting is enabled)
+  void _blockBrowsersIfNeeded() {
+    final strictModeService = StrictModeService.instance;
+    
+    // Only block browsers if the setting is enabled and not in grace period
+    if (strictModeService.effectiveBlockBrowsersWithoutExtension && 
+        !strictModeService.isInExtensionGracePeriod) {
+      debugPrint('Extension disconnected, blocking all browsers');
+      
+      // Get list of browsers to block
+      List<String> browsersToBlock = [];
+      
+      // Try to get a list of installed browsers
+      try {
+        // On macOS, we can look in the Applications folder
+        if (Platform.isMacOS) {
+          final Directory appDir = Directory('/Applications');
+          if (appDir.existsSync()) {
+            for (var entity in appDir.listSync(recursive: false)) {
+              if (entity is Directory && entity.path.endsWith('.app')) {
+                final String appName = entity.path.split('/').last.replaceAll('.app', '');
+                final String lowerAppName = appName.toLowerCase();
+                
+                if (_browserNames.any((browser) => lowerAppName.contains(browser))) {
+                  browsersToBlock.add(appName);
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Error getting browser list: $e');
+      }
+      
+      // If we couldn't get specific browsers, use generic browser names
+      if (browsersToBlock.isEmpty) {
+        browsersToBlock = _browserNames.toList();
+      }
+      
+      // Create a copy of the current apps list
+      final List<String> appsToBlock = List.from(_cachedApps);
+      
+      // Add all browsers to the block list if not already there
+      bool changed = false;
+      for (final String browser in browsersToBlock) {
+        if (!appsToBlock.any((app) => app.toLowerCase() == browser.toLowerCase())) {
+          appsToBlock.add(browser);
+          changed = true;
+        }
+      }
+      
+      // Only update if we actually added browsers
+      if (changed) {
+        debugPrint('Added browsers to blocked apps list: $browsersToBlock');
+        // Update the platform with the modified list
+        platform.invokeMethod('updateAppList', {
+          'apps': appsToBlock,
+          'categories': _cachedCategories,
+          'allowList': _isAllowList,
+        });
+      }
+    }
   }
 
   Future<void> setStartOnLogin(bool enabled) async {

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'routine.dart';
+import 'desktop_service.dart';
 
 class StrictModeService with ChangeNotifier {
   static final StrictModeService _instance = StrictModeService._internal();
@@ -10,6 +11,12 @@ class StrictModeService with ChangeNotifier {
   factory StrictModeService() {
     return _instance;
   }
+  
+  // Grace period for extension reinstallation
+  DateTime? _extensionGracePeriodEnd;
+  DateTime? _extensionCooldownEnd;
+  static const int _extensionGracePeriodSeconds = 30;
+  static const int _extensionCooldownMinutes = 10;
   
   // Private constructor
   StrictModeService._internal() {
@@ -24,6 +31,7 @@ class StrictModeService with ChangeNotifier {
   // Desktop strict mode settings
   bool _blockAppExit = false;
   bool _blockDisablingSystemStartup = false;
+  bool _blockBrowsersWithoutExtension = false;
   
   // iOS strict mode settings
   bool _blockChangingTimeSettings = false;
@@ -56,13 +64,38 @@ class StrictModeService with ChangeNotifier {
   // Basic getters for settings (without considering active routines)
   bool get blockAppExit => _blockAppExit;
   bool get blockDisablingSystemStartup => _blockDisablingSystemStartup;
+  bool get blockBrowsersWithoutExtension => _blockBrowsersWithoutExtension;
   bool get blockChangingTimeSettings => _blockChangingTimeSettings;
   bool get blockUninstallingApps => _blockUninstallingApps;
   bool get blockInstallingApps => _blockInstallingApps;
   
+  // Grace period getters
+  bool get isInExtensionGracePeriod {
+    if (_extensionGracePeriodEnd == null) return false;
+    return DateTime.now().isBefore(_extensionGracePeriodEnd!);
+  }
+  
+  bool get isInExtensionCooldown {
+    if (_extensionCooldownEnd == null) return false;
+    return DateTime.now().isBefore(_extensionCooldownEnd!);
+  }
+  
+  // Remaining time in grace period (in seconds)
+  int get remainingGracePeriodSeconds {
+    if (!isInExtensionGracePeriod) return 0;
+    return _extensionGracePeriodEnd!.difference(DateTime.now()).inSeconds;
+  }
+  
+  // Remaining time in cooldown (in minutes)
+  int get remainingCooldownMinutes {
+    if (!isInExtensionCooldown) return 0;
+    return _extensionCooldownEnd!.difference(DateTime.now()).inMinutes + 1; // +1 to round up
+  }
+  
   // Enhanced getters that consider if any active routine is in strict mode
   bool get effectiveBlockAppExit => _blockAppExit || _inStrictMode;
   bool get effectiveBlockDisablingSystemStartup => _blockDisablingSystemStartup || _inStrictMode;
+  bool get effectiveBlockBrowsersWithoutExtension => _blockBrowsersWithoutExtension || _inStrictMode;
   bool get effectiveBlockChangingTimeSettings => _blockChangingTimeSettings || _inStrictMode;
   bool get effectiveBlockUninstallingApps => _blockUninstallingApps || _inStrictMode;
   bool get effectiveBlockInstallingApps => _blockInstallingApps || _inStrictMode;
@@ -70,9 +103,37 @@ class StrictModeService with ChangeNotifier {
   // Shared preferences keys
   static const String _blockAppExitKey = 'block_app_exit';
   static const String _blockDisablingSystemStartupKey = 'block_disabling_system_startup';
+  static const String _blockBrowsersWithoutExtensionKey = 'block_browsers_without_extension';
   static const String _blockChangingTimeSettingsKey = 'block_changing_time_settings';
   static const String _blockUninstallingAppsKey = 'block_uninstalling_apps';
   static const String _blockInstallingAppsKey = 'block_installing_apps';
+  
+  // Start a grace period for extension reinstallation
+  void startExtensionGracePeriod() {
+    // Check if in cooldown
+    if (isInExtensionCooldown) {
+      return;
+    }
+    
+    // Set grace period end time
+    _extensionGracePeriodEnd = DateTime.now().add(Duration(seconds: _extensionGracePeriodSeconds));
+    
+    // Set cooldown end time
+    _extensionCooldownEnd = DateTime.now().add(Duration(minutes: _extensionCooldownMinutes));
+    
+    // Unblock all browsers immediately
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      DesktopService.instance.unblockAllBrowsers();
+    }
+    
+    notifyListeners();
+  }
+  
+  // End the grace period early
+  void endExtensionGracePeriod() {
+    _extensionGracePeriodEnd = null;
+    notifyListeners();
+  }
   
   // Initialize the service by loading saved preferences
   Future<void> init() async {
@@ -83,6 +144,7 @@ class StrictModeService with ChangeNotifier {
     // Load desktop settings
     _blockAppExit = prefs.getBool(_blockAppExitKey) ?? false;
     _blockDisablingSystemStartup = prefs.getBool(_blockDisablingSystemStartupKey) ?? false;
+    _blockBrowsersWithoutExtension = prefs.getBool(_blockBrowsersWithoutExtensionKey) ?? false;
     
     // Load iOS settings
     _blockChangingTimeSettings = prefs.getBool(_blockChangingTimeSettingsKey) ?? false;
@@ -113,6 +175,15 @@ class StrictModeService with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_blockDisablingSystemStartupKey, value);
     _blockDisablingSystemStartup = value;
+    notifyListeners();
+  }
+  
+  Future<void> setBlockBrowsersWithoutExtension(bool value) async {
+    if (_blockBrowsersWithoutExtension == value) return;
+    
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_blockBrowsersWithoutExtensionKey, value);
+    _blockBrowsersWithoutExtension = value;
     notifyListeners();
   }
   
@@ -223,6 +294,29 @@ class StrictModeService with ChangeNotifier {
     }
     
     await setBlockDisablingSystemStartup(value);
+    return true;
+  }
+  
+  Future<bool> setBlockBrowsersWithoutExtensionWithConfirmation(BuildContext context, bool value) async {
+    // If trying to disable while in strict mode, block the change
+    if (!value && _inStrictMode) {
+      showStrictModeActiveDialog(context);
+      return false;
+    }
+    
+    // If enabling, show confirmation dialog
+    if (value) {
+      final bool? confirmed = await _showEnableConfirmationDialog(
+        context, 
+        'Block Browsers Without Extension',
+        'This will block browsers when the extension is not installed or not connected. Are you sure you want to enable this setting?'
+      );
+      if (confirmed != true) {
+        return false;
+      }
+    }
+    
+    await setBlockBrowsersWithoutExtension(value);
     return true;
   }
   
@@ -344,7 +438,7 @@ class StrictModeService with ChangeNotifier {
   // Check if any strict mode setting is enabled (based on settings only)
   bool get isStrictModeEnabled {
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      return _blockAppExit || _blockDisablingSystemStartup;
+      return _blockAppExit || _blockDisablingSystemStartup || _blockBrowsersWithoutExtension;
     } else if (Platform.isIOS) {
       return _blockChangingTimeSettings || _blockUninstallingApps || _blockInstallingApps;
     }
