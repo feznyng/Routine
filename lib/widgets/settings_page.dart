@@ -6,8 +6,6 @@ import '../theme_provider.dart';
 import '../desktop_service.dart';
 import '../strict_mode_service.dart';
 import '../device.dart';
-import '../database.dart';
-import '../setup.dart';
 import 'auth_page.dart';
 
 

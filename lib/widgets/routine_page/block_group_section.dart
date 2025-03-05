@@ -23,6 +23,8 @@ class BlockGroupSection extends StatelessWidget {
   String _buildGroupSummary(Group? group) {
     if (group == null) {
       return 'No block group configured';
+    } else if (group.name != null) {
+      return group.name!;
     } else if (group.apps.isEmpty && group.sites.isEmpty && group.categories.isEmpty) {
       return group.allow ? 'Everything blocked' : 'Nothing blocked';
     } else if (group.apps.isNotEmpty || group.sites.isNotEmpty || group.categories.isNotEmpty) {

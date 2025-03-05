@@ -96,7 +96,7 @@ class _BlockSitesDialogState extends State<BlockSitesDialog> {
                 child: Container(
                   constraints: const BoxConstraints(maxHeight: 300),
                   child: Material(
-                    color: Colors.grey.shade50,
+                    color: Colors.transparent,
                     borderRadius: BorderRadius.circular(4),
                     child: ListView(
                       padding: const EdgeInsets.all(8),
