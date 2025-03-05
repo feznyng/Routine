@@ -72,6 +72,11 @@ class Device {
       throw Exception('Unsupported platform');
     }
   }
+
+  void delete() async { 
+    await getIt<AppDatabase>().tempDeleteDevice(id);
+    SyncService().addJob(SyncJob(remote: false));
+  }
   
   Future<void> save() async {
     final changes = this.changes;

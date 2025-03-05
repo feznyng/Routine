@@ -512,7 +512,7 @@ class _DeviceOptionsBottomSheetState extends State<DeviceOptionsBottomSheet> {
     setState(() => _isLoading = true);
     
     try {
-      await getIt<AppDatabase>().tempDeleteDevice(widget.device.id);
+      widget.device.delete();
       if (mounted) {
         Navigator.of(context).pop();
       }
