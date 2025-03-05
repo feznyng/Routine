@@ -23,11 +23,9 @@ class BlockGroupSection extends StatelessWidget {
   String _buildGroupSummary(Group? group) {
     if (group == null) {
       return 'No block group configured';
-    } else if (group.name != null) {
-      return group.name!;
     } else if (group.apps.isEmpty && group.sites.isEmpty && group.categories.isEmpty) {
       return group.allow ? 'Everything blocked' : 'Nothing blocked';
-    } else {
+    } else if (group.apps.isNotEmpty || group.sites.isNotEmpty || group.categories.isNotEmpty) {
       List<String> parts = [];
       if (group.apps.isNotEmpty) {
         parts.add('${group.apps.length} app${group.apps.length > 1 ? "s" : ""}');
@@ -41,6 +39,8 @@ class BlockGroupSection extends StatelessWidget {
       return group.allow 
           ? 'Custom (Allowing ${parts.join(", ")})'
           : 'Custom (Blocking ${parts.join(", ")})';
+    } else {
+      return group.name ?? 'Custom';
     }
   }
 
