@@ -11,10 +11,10 @@ import DeviceActivity
 class RoutineManager {
     private let store = ManagedSettingsStore(named: ManagedSettingsStore.Name("routineBlockerRestrictions"))
     private let center = DeviceActivityCenter()
+    var routines: [Routine] = []
     
     func update(routines: [Routine]) {
         store.clearAllSettings()
-        
         center.stopMonitoring()
         
         let now = Date()
@@ -56,6 +56,8 @@ class RoutineManager {
                 scheduleOneTimeActivity(for: routine, startDate: snoozedUntil, activityType: "snoozed")
             }
         }
+
+        self.routines = routines
         
         print("Center Activities: \(center.activities)")
     }

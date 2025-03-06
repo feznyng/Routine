@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'routine.dart';
@@ -243,10 +244,27 @@ class StrictModeService with ChangeNotifier {
           'inStrictMode': inStrictMode,
         };
         
+        // Send settings to iOS via platform channel
         _channel.invokeMethod('updateStrictModeSettings', settings);
+        print('Updated iOS strict mode settings via direct channel');
+        
+        // Also store in shared preferences with the required key
+        _storeStrictModeDataInSharedPreferences(settings);
       } catch (e) {
         print('Error updating iOS strict mode settings: $e');
       }
+    }
+  }
+  
+  // Helper method to store strict mode data in shared preferences
+  Future<void> _storeStrictModeDataInSharedPreferences(Map<String, dynamic> settings) async {
+    try {
+      final jsonString = jsonEncode(settings);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('strictModeData', jsonString);
+      print('Stored strict mode data in shared preferences');
+    } catch (e) {
+      print('Error storing strict mode data in shared preferences: $e');
     }
   }
   

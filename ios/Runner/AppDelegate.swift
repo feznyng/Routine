@@ -100,6 +100,79 @@ import ManagedSettings
                     }
                 }
                 
+            case "updateStrictModeSettings":
+                if let args = call.arguments as? [String: Any] {
+                    print("Received strict mode settings from Dart:")
+                    print(args)
+                    
+                    do {
+                        let jsonData = try JSONSerialization.data(withJSONObject: args)
+                        let jsonString = String(data: jsonData, encoding: .utf8)!
+                        
+                        if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker") {
+                            sharedDefaults.set(jsonString, forKey: "strictModeData")
+                            sharedDefaults.synchronize()
+                            print("Saved strict mode data to shared UserDefaults")
+                        } else {
+                            print("Failed to access shared UserDefaults")
+                        }
+
+                        // Get routines from the manager to check if any active routine has strict mode enabled
+                        let manager = (UIApplication.shared.delegate as! AppDelegate).manager
+                        let strictMode = manager.routines.contains(where: { $0.isActive() && $0.strictMode ?? false })
+                        
+                        print("Strict mode: \(strictMode)")
+                        
+                        // Apply settings to managed settings store immediately
+                        let store = ManagedSettingsStore(named: ManagedSettingsStore.Name("routineBlockerRestrictions"))
+                        
+                        // Apply strict mode settings
+                        if strictMode || (args["inStrictMode"] as? Bool == true) {
+                            // Block installing apps if setting is enabled
+                            if let blockInstallingApps = args["blockInstallingApps"] as? Bool, blockInstallingApps {
+                                print("Blocking app installation")
+                                store.application.denyAppInstallation = true
+                            } else {
+                                store.application.denyAppInstallation = false
+                            }
+                            
+                            // Block uninstalling apps if setting is enabled
+                            if let blockUninstallingApps = args["blockUninstallingApps"] as? Bool, blockUninstallingApps {
+                                print("Blocking app removal")
+                                store.application.denyAppRemoval = true
+                            } else {
+                                store.application.denyAppRemoval = false
+                            }
+                            
+                            // Block changing time settings if setting is enabled
+                            if let blockChangingTimeSettings = args["blockChangingTimeSettings"] as? Bool, blockChangingTimeSettings {
+                                print("Requiring automatic date and time")
+                                store.dateAndTime.requireAutomaticDateAndTime = true
+                            } else {
+                                store.dateAndTime.requireAutomaticDateAndTime = false
+                            }
+                        } else {
+                            // If strict mode is not enabled, make sure restrictions are removed
+                            store.application.denyAppInstallation = false
+                            store.application.denyAppRemoval = false
+                            store.dateAndTime.requireAutomaticDateAndTime = false
+                            print("Strict mode disabled, removing restrictions")
+                        }
+
+                        result(true)
+                    } catch {
+                        print("Failed to serialize strict mode settings: \(error)")
+                        return result(FlutterError(code: "JSON_ENCODE_ERROR",
+                                                  message: "Failed to serialize: \(error.localizedDescription)",
+                                                  details: nil))
+                    }
+                } else {
+                    print("Error: Invalid arguments for updateStrictModeSettings")
+                    result(FlutterError(code: "INVALID_ARGUMENTS",
+                                        message: "Invalid arguments for updateStrictModeSettings",
+                                        details: nil))
+                }
+                
             default:
                 result(FlutterMethodNotImplemented)
             }

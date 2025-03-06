@@ -19,13 +19,14 @@ class Routine: Codable {
     let pausedUntil: Date?
     let snoozedUntil: Date?
     let conditionsLastMet: Date?
+    let strictMode: Bool?
     private(set) var apps: [ApplicationToken]
     private(set) var sites: [WebDomainToken]
     private(set) var domains: [String]
     private(set) var categories: [ActivityCategoryToken]
     
     enum CodingKeys: String, CodingKey {
-        case id, name, days, startTime, endTime, allDay, pausedUntil, snoozedUntil, apps, sites, categories, allow, conditionsMet, conditionsLastMet
+        case id, name, days, startTime, endTime, allDay, pausedUntil, snoozedUntil, apps, sites, categories, allow, conditionsMet, conditionsLastMet, strictMode
     }
     let allow: Bool
     
@@ -40,7 +41,8 @@ class Routine: Codable {
         self.endTime = try container.decodeIfPresent(Int.self, forKey: .endTime)
         self.allDay = try container.decode(Bool.self, forKey: .allDay)
         self.allow = try container.decode(Bool.self, forKey: .allow)
-        
+        self.strictMode = try container.decodeIfPresent(Bool.self, forKey: .strictMode)
+
         // Handle conditionsLastMet as an optional Date
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -212,6 +214,7 @@ extension Routine {
         try container.encode(endTime, forKey: .endTime)
         try container.encode(allDay, forKey: .allDay)
         try container.encode(allow, forKey: .allow)
+        try container.encode(strictMode, forKey: .strictMode)
 
         // Create a single formatter for date properties
         let formatter = ISO8601DateFormatter()

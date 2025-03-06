@@ -130,5 +130,55 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
             store.shield.applicationCategories = .specific(Set(categories))
             store.webContent.blockedByFilter = .specific(Set(sites.map { $0 }))
         }
+
+        let strictMode = routines.contains(where: { $0.strictMode ?? false })
+        if strictMode {
+            os_log("DeviceActivityMonitorExtension: Strict mode enabled")
+            
+            // Retrieve strict mode settings from shared preferences
+            if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker"),
+               let strictModeDataString = sharedDefaults.string(forKey: "strictModeData") {
+                do {
+                    // Parse the JSON string
+                    if let strictModeData = strictModeDataString.data(using: .utf8),
+                       let strictModeSettings = try JSONSerialization.jsonObject(with: strictModeData) as? [String: Any] {
+                        
+                        os_log("DeviceActivityMonitorExtension: Successfully loaded strict mode settings from shared UserDefaults")
+                        
+                        // Apply the settings to ManagedSettingsStore
+                        if let blockInstallingApps = strictModeSettings["blockInstallingApps"] as? Bool, blockInstallingApps {
+                            os_log("DeviceActivityMonitorExtension: Blocking app installation")
+                            store.application.denyAppInstallation = true
+                        } else {
+                            store.application.denyAppInstallation = false
+                        }
+                        
+                        if let blockUninstallingApps = strictModeSettings["blockUninstallingApps"] as? Bool, blockUninstallingApps {
+                            os_log("DeviceActivityMonitorExtension: Blocking app removal")
+                            store.application.denyAppRemoval = true
+                        } else {
+                            store.application.denyAppRemoval = false
+                        }
+                        
+                        if let blockChangingTimeSettings = strictModeSettings["blockChangingTimeSettings"] as? Bool, blockChangingTimeSettings {
+                            os_log("DeviceActivityMonitorExtension: Requiring automatic date and time")
+                            store.dateAndTime.requireAutomaticDateAndTime = true
+                        } else {
+                            store.dateAndTime.requireAutomaticDateAndTime = false
+                        }
+                    }
+                } catch {
+                    os_log("DeviceActivityMonitorExtension: Failed to parse strict mode settings: %{public}s", error.localizedDescription)
+                }
+            } else {
+                os_log("DeviceActivityMonitorExtension: No strict mode data found in shared UserDefaults")
+            }
+        } else {
+            // If strict mode is not enabled, make sure restrictions are removed
+            store.application.denyAppInstallation = false
+            store.application.denyAppRemoval = false
+            store.dateAndTime.requireAutomaticDateAndTime = false
+            os_log("DeviceActivityMonitorExtension: Strict mode disabled, removing restrictions")
+        }
     }
 }

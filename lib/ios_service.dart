@@ -49,7 +49,9 @@ class IOSService {
         'inStrictMode': strictModeService.inStrictMode,
       };
       
+      // Send settings to iOS via platform channel
       await _channel.invokeMethod('updateStrictModeSettings', settings);
+      print('Sent strict mode settings to iOS');
     } catch (e) {
       print('Error sending strict mode settings to iOS: $e');
     }

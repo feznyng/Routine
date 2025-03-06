@@ -138,9 +138,12 @@ class _StrictModeSectionState extends State<StrictModeSection> {
               title: const Text('Block app exit'),
               subtitle: const Text('Prevent closing the app'),
               value: _strictModeService.blockAppExit,
-              onChanged: _strictModeService.inStrictMode
-                ? null // Disable the switch completely when in strict mode
+              onChanged: (_strictModeService.inStrictMode && _strictModeService.blockAppExit)
+                ? null // Disable the switch when trying to turn it off in strict mode
                 : (value) async {
+                  // Only allow turning on in strict mode, not turning off
+                  if (_strictModeService.inStrictMode && !value) return;
+                  
                   final success = await _strictModeService.setBlockAppExitWithConfirmation(context, value);
                   if (success && mounted) {
                     setState(() {});
@@ -151,9 +154,12 @@ class _StrictModeSectionState extends State<StrictModeSection> {
               title: const Text('Block disabling system startup'),
               subtitle: const Text('Prevent turning off startup with system'),
               value: _strictModeService.blockDisablingSystemStartup,
-              onChanged: _strictModeService.inStrictMode
-                ? null // Disable the switch completely when in strict mode
+              onChanged: (_strictModeService.inStrictMode && _strictModeService.blockDisablingSystemStartup)
+                ? null // Disable the switch when trying to turn it off in strict mode
                 : (value) async {
+                  // Only allow turning on in strict mode, not turning off
+                  if (_strictModeService.inStrictMode && !value) return;
+                  
                   final success = await _strictModeService.setBlockDisablingSystemStartupWithConfirmation(context, value);
                   if (success && mounted) {
                     setState(() {});
@@ -164,9 +170,12 @@ class _StrictModeSectionState extends State<StrictModeSection> {
               title: const Text('Block browsers without extension'),
               subtitle: const Text('Block browsers when extension is not installed or connected'),
               value: _strictModeService.blockBrowsersWithoutExtension,
-              onChanged: _strictModeService.inStrictMode
-                ? null // Disable the switch completely when in strict mode
+              onChanged: (_strictModeService.inStrictMode && _strictModeService.blockBrowsersWithoutExtension)
+                ? null // Disable the switch when trying to turn it off in strict mode
                 : (value) async {
+                  // Only allow turning on in strict mode, not turning off
+                  if (_strictModeService.inStrictMode && !value) return;
+                  
                   final success = await _strictModeService.setBlockBrowsersWithoutExtensionWithConfirmation(context, value);
                   if (success && mounted) {
                     setState(() {});
@@ -230,9 +239,12 @@ class _StrictModeSectionState extends State<StrictModeSection> {
               title: const Text('Block changing time settings'),
               subtitle: const Text('Prevent changing system time'),
               value: _strictModeService.blockChangingTimeSettings,
-              onChanged: _strictModeService.inStrictMode
-                ? null // Disable the switch completely when in strict mode
+              onChanged: (_strictModeService.inStrictMode && _strictModeService.blockChangingTimeSettings)
+                ? null // Disable the switch when trying to turn it off in strict mode
                 : (value) async {
+                  // Only allow turning on in strict mode, not turning off
+                  if (_strictModeService.inStrictMode && !value) return;
+                  
                   final success = await _strictModeService.setBlockChangingTimeSettingsWithConfirmation(context, value);
                   if (success && mounted) {
                     setState(() {});
@@ -243,9 +255,12 @@ class _StrictModeSectionState extends State<StrictModeSection> {
               title: const Text('Block uninstalling apps'),
               subtitle: const Text('Prevent uninstalling apps'),
               value: _strictModeService.blockUninstallingApps,
-              onChanged: _strictModeService.inStrictMode
-                ? null // Disable the switch completely when in strict mode
+              onChanged: (_strictModeService.inStrictMode && _strictModeService.blockUninstallingApps)
+                ? null // Disable the switch when trying to turn it off in strict mode
                 : (value) async {
+                  // Only allow turning on in strict mode, not turning off
+                  if (_strictModeService.inStrictMode && !value) return;
+                  
                   final success = await _strictModeService.setBlockUninstallingAppsWithConfirmation(context, value);
                   if (success && mounted) {
                     setState(() {});
@@ -256,9 +271,12 @@ class _StrictModeSectionState extends State<StrictModeSection> {
               title: const Text('Block installing apps'),
               subtitle: const Text('Prevent installing new apps'),
               value: _strictModeService.blockInstallingApps,
-              onChanged: _strictModeService.inStrictMode
-                ? null // Disable the switch completely when in strict mode
+              onChanged: (_strictModeService.inStrictMode && _strictModeService.blockInstallingApps)
+                ? null // Disable the switch when trying to turn it off in strict mode
                 : (value) async {
+                  // Only allow turning on in strict mode, not turning off
+                  if (_strictModeService.inStrictMode && !value) return;
+                  
                   final success = await _strictModeService.setBlockInstallingAppsWithConfirmation(context, value);
                   if (success && mounted) {
                     setState(() {});
