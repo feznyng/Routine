@@ -6,6 +6,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'database.dart';
 import 'setup.dart';
 import 'sync_service.dart';
+import 'syncable.dart';
 
 enum DeviceType {
   windows,
@@ -15,7 +16,7 @@ enum DeviceType {
   android
 }
 
-class Device {
+class Device implements Syncable {
   late String name;
   final String _id;
   late final DeviceType _type;
@@ -73,11 +74,13 @@ class Device {
     }
   }
 
-  void delete() async { 
+  @override
+  Future<void> delete() async { 
     await getIt<AppDatabase>().tempDeleteDevice(id);
-    SyncService().addJob(SyncJob(remote: false));
+    scheduleSyncJob();
   }
   
+  @override
   Future<void> save() async {
     final changes = this.changes;
     print("Changes: $changes");
@@ -92,7 +95,7 @@ class Device {
       changes: Value(changes),
     ));
 
-    SyncService().addJob(SyncJob(remote: false));
+    scheduleSyncJob();
   }
 
   Device.fromEntry(DeviceEntry entry)
@@ -130,6 +133,7 @@ class Device {
     return digest.toString();
   }
 
+  @override
   List<String> get changes {
     final List<String> changes = [];
 
@@ -140,10 +144,22 @@ class Device {
     return changes;
   }
 
+  @override
   String get id => _id;
   DeviceType get type => _type;
   bool get curr => _curr;
   DateTime? get lastPulledAt => _lastPulledAt;
+  
+  @override
+  bool get saved => _entry != null;
+  
+  @override
+  bool get modified => _entry == null || changes.isNotEmpty;
+  
+  @override
+  void scheduleSyncJob() {
+    SyncService().addJob(SyncJob(remote: false));
+  }
   
   String get formattedType {
     switch (_type) {

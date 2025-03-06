@@ -8,10 +8,14 @@ import 'package:flutter/foundation.dart';
 import 'sync_service.dart';
 import 'util.dart';
 import 'condition.dart';
+import 'syncable.dart';
 
-class Routine {
+class Routine implements Syncable {
   final String _id;
   String _name;
+  
+  @override
+  String get id => _id;
   
   // scheduling
   final List<bool> _days;
@@ -111,7 +115,8 @@ class Routine {
       );
     }
 
-  save() async {
+  @override
+  Future<void> save() async {
     final changes = this.changes;
 
     for (final group in _groups.values) {
@@ -145,18 +150,29 @@ class Routine {
       conditions: Value(conditions),
       strictMode: Value(strictMode)
     ));
-    SyncService().addJob(SyncJob(remote: false));
+    scheduleSyncJob();
   }
 
+  @override
   bool get saved => _entry != null;
+  
+  @override
+  bool get modified => _entry == null || changes.isNotEmpty;
+  
+  @override
+  void scheduleSyncJob() {
+    SyncService().addJob(SyncJob(remote: false));
+  }
   DateTime? get snoozedUntil => _snoozedUntil;
 
+  @override
   Future<void> delete() async {
     await getIt<AppDatabase>().tempDeleteRoutine(_id);
     print('routine delete sync');
-    SyncService().addJob(SyncJob(remote: false));
+    scheduleSyncJob();
   }
 
+  @override
   List<String> get changes {
     List<String> changes = [];
 
@@ -251,17 +267,12 @@ class Routine {
     return changes;
   }
 
-  bool get modified {
-    if (_entry == null) return true;
-    return changes.isNotEmpty;
-  }
 
   bool get valid {
     return _name.isNotEmpty && 
            _days.contains(true);
   }
 
-  String get id => _id;
   List<bool> get days => List.unmodifiable(_days);
   
   void updateDay(int index, bool value) {

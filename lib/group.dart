@@ -5,8 +5,9 @@ import 'device.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'sync_service.dart';
+import 'syncable.dart';
 
-class Group {
+class Group implements Syncable {
   final String _id;
   String? name;
   late List<String> apps;
@@ -16,7 +17,8 @@ class Group {
   late final String _deviceId;
   final GroupEntry? _entry;
 
-  get id => _id;
+  @override
+  String get id => _id;
   get deviceId => _deviceId;
 
   static Stream<List<Group>> watchAllNamed({String? deviceId}) {
@@ -49,7 +51,8 @@ class Group {
         _deviceId = other._deviceId,
         _entry = other._entry;
 
-  save() async {
+  @override
+  Future<void> save() async {
     await getIt<AppDatabase>().upsertGroup(GroupsCompanion(
       id: Value(_id), 
       name: Value(name), 
@@ -61,14 +64,16 @@ class Group {
       changes: Value(changes),
       updatedAt: Value(DateTime.now()),
     ));
-    SyncService().addJob(SyncJob(remote: false));
+    scheduleSyncJob();
   }
 
-  delete() async {
+  @override
+  Future<void> delete() async {
     await getIt<AppDatabase>().tempDeleteGroup(_id);
-    SyncService().addJob(SyncJob(remote: false));
+    scheduleSyncJob();
   }
 
+  @override
   bool get saved {
     return _entry != null;
   }
@@ -77,6 +82,7 @@ class Group {
     return name != null && name!.isNotEmpty;
   }
 
+  @override
   List<String> get changes {
     if (_entry == null) return [];
 
@@ -91,7 +97,13 @@ class Group {
     return changes;
   }
 
+  @override
   bool get modified {
     return _entry == null || changes.isNotEmpty;
+  }
+  
+  @override
+  void scheduleSyncJob() {
+    SyncService().addJob(SyncJob(remote: false));
   }
 }
