@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import '../auth_service.dart';
+import '../services/auth_service.dart';
 import 'auth_page.dart';
 import 'settings/theme_settings_section.dart';
 import 'settings/startup_settings_section.dart';
@@ -8,7 +8,7 @@ import 'settings/strict_mode_section.dart';
 import 'settings/device_management_section.dart';
 import 'settings/auth_section.dart';
 import 'settings/device_options_bottom_sheet.dart';
-import '../device.dart';
+import '../models/device.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});

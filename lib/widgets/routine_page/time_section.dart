@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../routine.dart';
+import '../../models/routine.dart';
 
 class TimeSection extends StatelessWidget {
   final Routine routine;

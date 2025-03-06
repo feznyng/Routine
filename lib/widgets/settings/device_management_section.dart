@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../device.dart';
+import '../../models/device.dart';
 
 class DeviceManagementSection extends StatelessWidget {
   final Function(Device) onDeviceOptionsTap;

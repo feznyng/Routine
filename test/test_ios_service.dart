@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../lib/ios_service.dart';
+import '../lib/services/ios_service.dart';
 
 /// A simple test widget to verify that the iOS service works
 class TestIOSService extends StatefulWidget {

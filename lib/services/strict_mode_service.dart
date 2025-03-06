@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'routine.dart';
+import '../models/routine.dart';
 import 'desktop_service.dart';
 
 class StrictModeService with ChangeNotifier {

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../device.dart';
-import '../../group.dart';
-import '../../routine.dart';
-import '../../database.dart';
+import '../../models/device.dart';
+import '../../models/group.dart';
+import '../../models/routine.dart';
+import '../../database/database.dart';
 import '../../setup.dart';
 import '../block_group_page.dart';
 

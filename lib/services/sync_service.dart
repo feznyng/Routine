@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:Routine/condition.dart';
+import 'package:Routine/models/condition.dart';
 
-import 'setup.dart';
-import 'database.dart';
+import '../setup.dart';
+import '../database/database.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:drift/drift.dart';
 

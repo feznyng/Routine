@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../routine.dart';
-import '../database.dart';
+import '../models/routine.dart';
+import '../database/database.dart';
 
 class BreakDialog extends StatefulWidget {
   final Routine routine;

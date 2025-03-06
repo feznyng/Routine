@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import '../group.dart';
+import '../models/group.dart';
 import 'edit_block_group_page.dart';
 
 class BlockGroupsPage extends StatefulWidget {

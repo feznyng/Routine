@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io' show Platform;
-import '../desktop_service.dart';
+import '../services/desktop_service.dart';
 
 class BlockAppsDialog extends StatefulWidget {
   final List<String> selectedApps;

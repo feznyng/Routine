@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../routine.dart';
-import '../database.dart';
+import '../models/routine.dart';
+import '../database/database.dart';
 import '../setup.dart';
 import 'routine_page/index.dart';
 

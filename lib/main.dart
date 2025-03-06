@@ -4,19 +4,19 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'widgets/routine_list.dart';
 import 'widgets/settings_page.dart';
-import 'auth_service.dart';
+import 'services/auth_service.dart';
 import 'setup.dart';
-import 'sync_service.dart';
-import 'theme_provider.dart';
-import 'strict_mode_service.dart';
+import 'services/sync_service.dart';
+import 'services/theme_provider.dart';
+import 'services/strict_mode_service.dart';
 
 // Desktop-specific imports
 import 'package:window_manager/window_manager.dart' if (dart.library.html) '';
 import 'package:tray_manager/tray_manager.dart' if (dart.library.html) '';
-import 'desktop_service.dart' if (dart.library.html) '';
+import 'services/desktop_service.dart' if (dart.library.html) '';
 
 // iOS-specific imports
-import 'ios_service.dart' if (dart.library.html) '';
+import 'services/ios_service.dart' if (dart.library.html) '';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../theme_provider.dart';
+import '../../services/theme_provider.dart';
 
 class ThemeSettingsSection extends StatelessWidget {
   const ThemeSettingsSection({super.key});

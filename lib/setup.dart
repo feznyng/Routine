@@ -1,7 +1,7 @@
-import 'database.dart';
+import 'database/database.dart';
 import 'package:get_it/get_it.dart';
-import 'device.dart';
-import 'sync_service.dart';
+import 'models/device.dart';
+import 'services/sync_service.dart';
 
 final getIt = GetIt.instance;
 

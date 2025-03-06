@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
-import 'routine.dart';
+import '../models/routine.dart';
 import 'strict_mode_service.dart';
 import 'package:cron/cron.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';

@@ -3,9 +3,9 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'database.dart';
-import 'setup.dart';
-import 'sync_service.dart';
+import '../database/database.dart';
+import '../setup.dart';
+import '../services/sync_service.dart';
 import 'syncable.dart';
 
 enum DeviceType {

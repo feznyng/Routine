@@ -1,6 +1,6 @@
-import 'package:Routine/database.dart';
+import 'package:Routine/database/database.dart';
 import 'package:flutter/material.dart';
-import '../../routine.dart';
+import '../../models/routine.dart';
 
 class BreakConfigSection extends StatelessWidget {
   final Routine routine;

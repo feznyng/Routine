@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../desktop_service.dart';
-import '../../strict_mode_service.dart';
+import '../../services/desktop_service.dart';
+import '../../services/strict_mode_service.dart';
 
 class StartupSettingsSection extends StatefulWidget {
   const StartupSettingsSection({super.key});

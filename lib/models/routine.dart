@@ -1,12 +1,12 @@
 import 'package:uuid/uuid.dart';
-import 'setup.dart';
-import 'database.dart';
+import '../setup.dart';
+import '../database/database.dart';
 import 'group.dart';
 import 'device.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
-import 'sync_service.dart';
-import 'util.dart';
+import '../services/sync_service.dart';
+import '../util.dart';
 import 'condition.dart';
 import 'syncable.dart';
 

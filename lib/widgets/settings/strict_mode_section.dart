@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'dart:async';
-import '../../strict_mode_service.dart';
+import '../../services/strict_mode_service.dart';
 
 class StrictModeSection extends StatefulWidget {
   const StrictModeSection({super.key});

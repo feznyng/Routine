@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../routine.dart';
-import '../../condition.dart';
+import '../../models/routine.dart';
+import '../../models/condition.dart';
 import '../../util.dart';
 
 class ConditionSection extends StatelessWidget {

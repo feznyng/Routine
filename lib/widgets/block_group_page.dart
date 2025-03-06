@@ -4,7 +4,7 @@ import 'package:Routine/widgets/edit_block_group_page.dart';
 import 'package:flutter/material.dart';
 import 'block_group_editor.dart';
 import 'block_groups_page.dart';
-import '../group.dart';
+import '../models/group.dart';
 
 class BlockGroupPage extends StatefulWidget {
   final Group? selectedGroup;

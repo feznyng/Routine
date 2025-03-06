@@ -1,10 +1,10 @@
 import 'package:uuid/uuid.dart';
-import 'database.dart';
-import 'setup.dart';
+import '../database/database.dart';
+import '../setup.dart';
 import 'device.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
-import 'sync_service.dart';
+import '../services/sync_service.dart';
 import 'syncable.dart';
 
 class Group implements Syncable {

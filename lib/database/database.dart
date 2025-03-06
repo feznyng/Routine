@@ -4,7 +4,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import 'string_list_converter.dart';
-import 'condition.dart';
+import '../models/condition.dart';
 part 'database.g.dart';
 
 enum FrictionType {

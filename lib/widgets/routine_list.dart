@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import '../routine.dart';
-import '../condition.dart';
+import '../models/routine.dart';
+import '../models/condition.dart';
 import 'routine_page.dart';
 import 'break_dialog.dart';
 

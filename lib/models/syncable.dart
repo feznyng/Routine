@@ -1,4 +1,4 @@
-import 'sync_service.dart';
+import '../services/sync_service.dart';
 
 /// An abstract class that defines the interface for entities that can be synced
 /// across devices in the Routine app.
