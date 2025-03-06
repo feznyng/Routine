@@ -63,7 +63,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
   }
 
   Future<void> _editCurrentGroup() async {
-    if (_selectedGroup.id == null || !_blockGroups.any((group) => group.id == _selectedGroup.id)) {
+    if (!_blockGroups.any((group) => group.id == _selectedGroup.id)) {
       return; // Don't allow editing custom groups
     }
 
