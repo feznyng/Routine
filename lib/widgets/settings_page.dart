@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import '../services/auth_service.dart';
+import '../services/browser_extension_service.dart';
 import 'auth_page.dart';
 import 'settings/theme_settings_section.dart';
 import 'settings/startup_settings_section.dart';
 import 'settings/strict_mode_section.dart';
 import 'settings/device_management_section.dart';
 import 'settings/auth_section.dart';
+import 'settings/browser_extension_section.dart';
 import 'settings/device_options_bottom_sheet.dart';
 import '../models/device.dart';
 
@@ -19,6 +21,7 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final _authService = AuthService();
+  final _browserExtensionService = BrowserExtensionService();
 
   @override
   void initState() {
@@ -45,6 +48,16 @@ class _SettingsPageState extends State<SettingsPage> {
       builder: (context) => DeviceOptionsBottomSheet(device: device),
     );
   }
+  
+  Future<void> _restartBrowserExtensionOnboarding() async {
+    // Reset the setup status
+    await _browserExtensionService.resetSetupStatus();
+    
+    // Force refresh the state
+    if (mounted) {
+      setState(() {});
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,6 +81,12 @@ class _SettingsPageState extends State<SettingsPage> {
           
           // Device Management section
           DeviceManagementSection(onDeviceOptionsTap: _showDeviceOptions),
+          const SizedBox(height: 16),
+          
+          // Browser Extension section
+          BrowserExtensionSection(
+            onRestartOnboarding: _restartBrowserExtensionOnboarding,
+          ),
           const SizedBox(height: 16),
           
           // Authentication section

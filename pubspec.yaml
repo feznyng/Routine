@@ -52,6 +52,7 @@ dependencies:
   provider: ^6.1.2
   shared_preferences: ^2.2.2
   file_picker: ^9.0.2
+  win32: ^5.10.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

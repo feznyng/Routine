@@ -50,12 +50,7 @@ class DesktopService {
 
   // Set of browser names in lowercase for O(1) lookup
   final Set<String> _browserNames = {
-    'google chrome',
-    'firefox',
-    'safari',
-    'microsoft edge',
-    'opera',
-    'brave browser',
+    'firefox'
   };
 
   Future<void> init() async {

@@ -3,6 +3,8 @@ import 'dart:io' show Platform;
 import 'block_apps_dialog.dart';
 import 'block_sites_dialog.dart';
 import 'app_site_selector.dart';
+import 'browser_extension_onboarding_dialog.dart';
+import '../services/browser_extension_service.dart';
 
 class BlockGroupEditor extends StatefulWidget {
   final List<String> selectedApps;
@@ -62,16 +64,47 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
   }
 
   Future<void> _openSitesDialog() async {
-    final result = await showDialog<List<String>>(
-      context: context,
-      builder: (context) => BlockSitesDialog(selectedSites: _selectedSites),
-    );
+    // Check if browser extension setup has been completed
+    final browserExtensionService = BrowserExtensionService.instance;
+    final isSetupCompleted = await browserExtensionService.isSetupCompleted();
+    
+    if (!isSetupCompleted && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
+      // Show onboarding dialog if setup is not completed
+      final result = await showDialog<List<String>>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => BrowserExtensionOnboardingDialog(
+          selectedSites: _selectedSites,
+          onComplete: (sites) {
+            // Mark setup as completed
+            browserExtensionService.markSetupCompleted();
+            Navigator.of(context).pop(sites);
+          },
+          onSkip: () {
+            Navigator.of(context).pop();
+          },
+        ),
+      );
+      
+      if (result != null) {
+        setState(() {
+          _selectedSites = result;
+        });
+        widget.onSave(_selectedApps, _selectedSites, _selectedCategories);
+      }
+    } else {
+      // Show regular sites dialog if setup is completed
+      final result = await showDialog<List<String>>(
+        context: context,
+        builder: (context) => BlockSitesDialog(selectedSites: _selectedSites),
+      );
 
-    if (result != null) {
-      setState(() {
-        _selectedSites = result;
-      });
-      widget.onSave(_selectedApps, _selectedSites, _selectedCategories);
+      if (result != null) {
+        setState(() {
+          _selectedSites = result;
+        });
+        widget.onSave(_selectedApps, _selectedSites, _selectedCategories);
+      }
     }
   }
 

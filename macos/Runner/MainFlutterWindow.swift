@@ -21,6 +21,9 @@ class MainFlutterWindow: NSWindow {
     self.setFrame(windowFrame, display: true)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
+    
+    // Request notification authorization
+    requestNotificationAuthorization()
 
     // Set up method channel
     methodChannel = FlutterMethodChannel(
@@ -58,6 +61,19 @@ class MainFlutterWindow: NSWindow {
       case "getStartOnLogin":
         let isEnabled = SMAppService.mainApp.status == .enabled
         result(isEnabled)
+      case "saveNativeMessagingHostManifest":
+        if let args = call.arguments as? [String: Any],
+           let manifestContent = args["content"] as? String {
+          saveNativeMessagingHostManifest(content: manifestContent) { success, error in
+            if success {
+              result(true)
+            } else {
+              result(FlutterError(code: "SAVE_FAILED", message: error, details: nil))
+            }
+          }
+        } else {
+          result(FlutterError(code: "INVALID_ARGUMENTS", message: "Expected manifest content", details: nil))
+        }
       default:
         NSLog("Method not implemented: %@", call.method)
         result(FlutterMethodNotImplemented)
@@ -65,15 +81,6 @@ class MainFlutterWindow: NSWindow {
     }
 
     super.awakeFromNib()
-
-    // Request notification permissions
-    UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
-      if let error = error {
-        NSLog("Failed to request notification permission: %@", error.localizedDescription)
-      } else {
-        NSLog("Notification permission granted: %@", String(granted))
-      }
-    }
 
     startMonitoring()
 
@@ -176,6 +183,16 @@ class MainFlutterWindow: NSWindow {
     }
     pendingMessages.removeAll()
   }
+  
+  private func requestNotificationAuthorization() {
+    UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
+      if let error = error {
+        NSLog("Failed to request notification permission: %@", error.localizedDescription)
+      } else {
+        NSLog("Notification permission granted: %@", String(granted))
+      }
+    }
+  }
 
   private func checkActiveApplication(_ app: NSRunningApplication?) {
     if let app = app,
@@ -207,6 +224,76 @@ class MainFlutterWindow: NSWindow {
         channel.invokeMethod(message.method, arguments: message.arguments)
       } else {
         pendingMessages.append(message)
+      }
+    }
+  }
+  
+  private func saveNativeMessagingHostManifest(content: String, completion: @escaping (Bool, String) -> Void) {
+    // Create an NSOpenPanel for selecting the save location
+    let savePanel = NSOpenPanel()
+    savePanel.title = "Browser Extension Setup"
+    savePanel.message = "Click 'Save' to install the browser extension. The recommended directory is already selected."
+    savePanel.prompt = "Save"
+    savePanel.canCreateDirectories = true
+    savePanel.canChooseFiles = false
+    savePanel.canChooseDirectories = true
+    savePanel.allowsMultipleSelection = false
+    
+    // Set the initial directory to the recommended location
+    let homeDir = FileManager.default.homeDirectoryForCurrentUser
+    let recommendedPath = homeDir.appendingPathComponent("Library/Application Support/Mozilla/NativeMessagingHosts")
+    
+    // Check permissions and set up directories
+    let fileManager = FileManager.default
+    
+    if fileManager.fileExists(atPath: recommendedPath.path) {
+      savePanel.directoryURL = recommendedPath
+    } else {
+      // Try to create the directory structure
+      do {
+        try fileManager.createDirectory(at: recommendedPath, withIntermediateDirectories: true, attributes: nil)
+        savePanel.directoryURL = recommendedPath
+      } catch {
+        // If we can't create it, just start at the home directory
+        savePanel.directoryURL = homeDir
+      }
+    }
+    
+    // Show the save panel
+    savePanel.begin { response in
+      if response == .OK, let selectedURL = savePanel.url {
+        // Create the file URL
+        let fileURL = selectedURL.appendingPathComponent("com.routine.native_messaging.json")
+        
+        do {
+          // Write the content to the file
+          try content.write(to: fileURL, atomically: true, encoding: .utf8)
+          
+          // Verify file was created
+          let fileManager = FileManager.default
+          if fileManager.fileExists(atPath: fileURL.path) {
+            
+            // Show a success notification using UserNotifications framework
+          let notificationCenter = UNUserNotificationCenter.current()
+          let notificationContent = UNMutableNotificationContent()
+          notificationContent.title = "Browser Extension Setup Complete"
+          notificationContent.body = "The browser extension has been successfully configured. You can now use Routine with your browser."
+          
+          // Create a request with the notification content
+          let request = UNNotificationRequest(identifier: UUID().uuidString, content: notificationContent, trigger: nil)
+          
+          // Add the request to the notification center
+          notificationCenter.add(request) { error in }
+          
+            completion(true, "")
+          } else {
+            completion(false, "Failed to verify file was created")
+          }
+        } catch {
+          completion(false, error.localizedDescription)
+        }
+      } else {
+        completion(false, "User cancelled the operation")
       }
     }
   }
