@@ -20,22 +20,17 @@ class BrowserExtensionSection extends StatefulWidget {
 class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
   final BrowserExtensionService _browserExtensionService = BrowserExtensionService();
   final StrictModeService _strictModeService = StrictModeService();
-  bool _isSetupCompleted = false;
   StreamSubscription<bool>? _connectionSubscription;
   Timer? _gracePeriodTimer;
 
   @override
   void initState() {
     super.initState();
-    _checkSetupStatus();
     
     // Subscribe to connection status changes
     _connectionSubscription = _browserExtensionService.connectionStream.listen((isConnected) {
       if (mounted) {
-        setState(() {
-          // No need to update any state variable as we'll use BrowserExtensionService.instance.isExtensionConnected
-          // directly in the build method
-        });
+        setState(() {});
       }
     });
   }
@@ -46,15 +41,6 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
     _connectionSubscription?.cancel();
     _gracePeriodTimer?.cancel();
     super.dispose();
-  }
-
-  Future<void> _checkSetupStatus() async {
-    final isCompleted = await _browserExtensionService.isSetupCompleted();
-    if (mounted) {
-      setState(() {
-        _isSetupCompleted = isCompleted;
-      });
-    }
   }
 
   Future<void> _showOnboardingDialog() async {
@@ -71,13 +57,6 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
             // Mark setup as completed
             _browserExtensionService.markSetupCompleted();
             Navigator.of(context).pop(sites);
-            
-            // Refresh the state
-            if (mounted) {
-              setState(() {
-                _isSetupCompleted = true;
-              });
-            }
           },
           onSkip: () {
             Navigator.of(context).pop();

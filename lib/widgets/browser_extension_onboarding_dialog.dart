@@ -36,6 +36,11 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
   bool _isInstallingExtension = false;
   String? _extensionInstallError;
   
+  // Grace period tracking
+  bool _inGracePeriod = false;
+  int _remainingGracePeriodSeconds = 0;
+  Timer? _gracePeriodCountdownTimer;
+  
   // Subscription for extension connection status
   StreamSubscription<bool>? _connectionSubscription;
   
@@ -46,6 +51,16 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
   void initState() {
     super.initState();
     _detectInstalledBrowsers();
+    
+    // Initialize grace period state
+    _inGracePeriod = widget.inGracePeriod;
+    if (_inGracePeriod) {
+      _remainingGracePeriodSeconds = StrictModeService.instance.remainingGracePeriodSeconds;
+      _startGracePeriodCountdown();
+      
+      // Add listener for grace period expiration
+      StrictModeService.instance.addGracePeriodExpirationListener(_onGracePeriodExpired);
+    }
     
     // Subscribe to extension connection status changes
     _connectionSubscription = BrowserExtensionService.instance.connectionStream.listen((isConnected) {
@@ -63,7 +78,40 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
     _pageController.dispose();
     _connectionSubscription?.cancel();
     _connectionAttemptTimer?.cancel();
+    _gracePeriodCountdownTimer?.cancel();
+    
+    // Remove grace period expiration listener
+    if (_inGracePeriod) {
+      StrictModeService.instance.removeGracePeriodExpirationListener(_onGracePeriodExpired);
+    }
+    
     super.dispose();
+  }
+  
+  // Start a timer to update the grace period countdown
+  void _startGracePeriodCountdown() {
+    _gracePeriodCountdownTimer?.cancel();
+    _gracePeriodCountdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _remainingGracePeriodSeconds = StrictModeService.instance.remainingGracePeriodSeconds;
+          
+          // If grace period has expired, cancel the timer
+          if (_remainingGracePeriodSeconds <= 0) {
+            timer.cancel();
+            _gracePeriodCountdownTimer = null;
+          }
+        });
+      }
+    });
+  }
+  
+  // Handle grace period expiration
+  void _onGracePeriodExpired() {
+    if (mounted) {
+      // Close the dialog when grace period expires
+      Navigator.of(context).pop();
+    }
   }
   
   Future<void> _detectInstalledBrowsers() async {
@@ -233,9 +281,10 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
     }
     
     if (_detectedBrowsers.isEmpty) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+      return SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
           const Icon(
             Icons.warning_amber_rounded,
             size: 48,
@@ -251,14 +300,16 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
             'We currently support Firefox. Please install it to use website blocking.',
             textAlign: TextAlign.center,
           ),
-        ],
+          ],
+        ),
       );
     }
     
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         const Text(
           'Supported browsers detected:',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -275,14 +326,16 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
           'To block websites, you need to set up our browser extension for each browser.',
           style: TextStyle(fontSize: 14),
         ),
-      ],
+        ],
+      ),
     );
   }
   
   Widget _buildInstallNativeMessagingHostStep() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
         const SizedBox(height: 16),
         const Text(
           'The native messaging host allows the browser extension to communicate with Routine.',
@@ -348,7 +401,8 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
               Text('Native Messaging Host installed successfully!'),
             ],
           ),
-      ],
+        ],
+      ),
     );
   }
   
@@ -356,9 +410,10 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
     // Get the actual connection status from the service
     final isExtensionConnected = BrowserExtensionService.instance.isExtensionConnected;
     
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
         const SizedBox(height: 16),
         const Text(
           'The browser extension is required to block websites in your browser.',
@@ -371,6 +426,41 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
           style: TextStyle(fontStyle: FontStyle.italic, fontSize: 13),
         ),
         const SizedBox(height: 16),
+        // Display grace period countdown if in grace period
+        if (_inGracePeriod && _remainingGracePeriodSeconds > 0)
+          Container(
+            padding: const EdgeInsets.all(12.0),
+            margin: const EdgeInsets.only(bottom: 16.0),
+            decoration: BoxDecoration(
+              color: Colors.amber.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8.0),
+              border: Border.all(color: Colors.amber.shade300),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.timer, color: Colors.amber.shade800),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Time remaining: $_remainingGracePeriodSeconds seconds',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.amber.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Browsers will be blocked when this time expires if the extension is not connected.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: Colors.amber.shade800),
+                ),
+              ],
+            ),
+          ),
         if (_extensionInstallError != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 16.0),
@@ -437,7 +527,8 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
               Text('Browser extension connected successfully!'),
             ],
           ),
-      ],
+        ],
+      ),
     );
   }
 
