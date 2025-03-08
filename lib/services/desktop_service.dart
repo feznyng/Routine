@@ -45,24 +45,11 @@ class DesktopService {
     final browserExtensionService = BrowserExtensionService.instance;
     await browserExtensionService.init();
     
-    // Set up callback for extension connection status changes
-    browserExtensionService.onExtensionConnectionChanged = (connected) {
-      if (connected) {
-        // Extension is now connected
-        // End grace period if it was active
-        StrictModeService.instance.endExtensionGracePeriod();
-        
-        // Unblock all browsers since extension is now connected
-        if (StrictModeService.instance.blockBrowsersWithoutExtension) {
-          unblockAllBrowsers();
-        }
-      } else {
-        // Extension is now disconnected
-        // Start blocking browsers if needed
-        // Use unawaited to avoid blocking the callback
-        _blockBrowsersIfNeeded(); // This is now async but we don't need to await it
-      }
-    };
+    // Set up listener for extension connection status changes
+    browserExtensionService.addConnectionListener(_handleExtensionConnectionChange);
+    
+    // Also listen to the stream for future integrations
+    browserExtensionService.connectionStream.listen(_handleExtensionConnectionChange);
 
     // Set up platform channel method handler
     platform.setMethodCallHandler((call) async {
@@ -178,7 +165,28 @@ class DesktopService {
 
   void dispose() {
     // Clean up resources
-    BrowserExtensionService.instance.dispose();
+    final browserExtensionService = BrowserExtensionService.instance;
+    browserExtensionService.removeConnectionListener(_handleExtensionConnectionChange);
+    browserExtensionService.dispose();
+  }
+  
+  // Handle extension connection status changes
+  void _handleExtensionConnectionChange(bool connected) {
+    if (connected) {
+      // Extension is now connected
+      // End grace period if it was active
+      StrictModeService.instance.endExtensionGracePeriod();
+      
+      // Unblock all browsers since extension is now connected
+      if (StrictModeService.instance.blockBrowsersWithoutExtension) {
+        unblockAllBrowsers();
+      }
+    } else {
+      // Extension is now disconnected
+      // Start blocking browsers if needed
+      // Use unawaited to avoid blocking the callback
+      _blockBrowsersIfNeeded(); // This is now async but we don't need to await it
+    }
   }
 
   Future<void> updateAppList() async {
@@ -304,15 +312,6 @@ class DesktopService {
       
       // Use BrowserExtensionService to get installed browsers
       List<String> browsersToBlock = await browserExtensionService.getInstalledSupportedBrowsers();
-      
-      // Fallback if no browsers were found
-      if (browsersToBlock.isEmpty) {
-        browsersToBlock = ['Firefox']; 
-        debugPrint('No browsers detected, using fallback: $browsersToBlock');
-      } else {
-        debugPrint('Detected browsers to block: $browsersToBlock');
-      }
-      
       final List<String> appsToBlock = List.from(_cachedApps);
       
       bool changed = false;
@@ -511,9 +510,6 @@ class DesktopService {
             }
           }
         }
-
-        // Add common applications that might not be in the registry
-        await _addCommonApplications(installedApps);
       } catch (e) {
         debugPrint('Error getting installed applications: $e');
       }
@@ -581,87 +577,5 @@ class DesktopService {
     }
     
     return installPath;
-  }
-  
-  // Add common applications that might not be in the registry
-  static Future<void> _addCommonApplications(List<InstalledApplication> installedApps) async {
-    // List of common applications to check
-    final List<Map<String, List<String>>> commonApps = [
-      {
-        'name': ['Discord'],
-        'paths': [
-          'C:\\Users\\${Platform.environment['USERNAME']}\\AppData\\Local\\Discord\\',
-        ]
-      },
-      {
-        'name': ['Chrome'],
-        'paths': [
-          'C:\\Program Files\\Google\\Chrome\\Application\\',
-          'C:\\Program Files (x86)\\Google\\Chrome\\Application\\',
-        ]
-      },
-      {
-        'name': ['Firefox'],
-        'paths': [
-          'C:\\Program Files\\Mozilla Firefox\\',
-          'C:\\Program Files (x86)\\Mozilla Firefox\\',
-        ]
-      },
-      {
-        'name': ['Edge'],
-        'paths': [
-          'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\',
-          'C:\\Program Files\\Microsoft\\Edge\\Application\\',
-        ]
-      },
-    ];
-    
-    for (var app in commonApps) {
-      final String appName = app['name']![0];
-      
-      // Skip if we already have this app
-      if (installedApps.any((a) => a.name == appName)) continue;
-      
-      for (var basePath in app['paths']!) {
-        try {
-          final dir = Directory(basePath);
-          if (await dir.exists()) {
-            // For Discord, we need to find the app-X.X.XXXX folder
-            if (appName == 'Discord') {
-              await for (var entity in dir.list()) {
-                if (entity is Directory && entity.path.contains('app-')) {
-                  final exePath = '${entity.path}\\Discord.exe';
-                  final exeFile = File(exePath);
-                  if (await exeFile.exists()) {
-                    installedApps.add(InstalledApplication(
-                      name: appName,
-                      filePath: exePath,
-                    ));
-                    break;
-                  }
-                }
-              }
-            } else {
-              // For other apps, search for .exe files
-              final exeFiles = <FileSystemEntity>[];
-              await for (var entity in dir.list(recursive: false)) {
-                if (entity is File && entity.path.toLowerCase().endsWith('.exe')) {
-                  exeFiles.add(entity);
-                }
-              }
-              
-              if (exeFiles.isNotEmpty) {
-                installedApps.add(InstalledApplication(
-                  name: appName,
-                  filePath: exeFiles.first.path,
-                ));
-              }
-            }
-          }
-        } catch (e) {
-          debugPrint('Error checking common app $appName: $e');
-        }
-      }
-    }
   }
 }

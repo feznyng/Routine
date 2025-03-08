@@ -9,6 +9,7 @@ import 'package:win32/src/constants.dart';
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 import 'dart:typed_data';
+import 'dart:async';
 
 class BrowserExtensionService {
   // Singleton instance
@@ -31,8 +32,11 @@ class BrowserExtensionService {
     'firefox'
   };
   
-  // Callback for when extension connection status changes
-  Function(bool)? onExtensionConnectionChanged;
+  // List of listeners for extension connection status changes
+  final List<Function(bool)> _connectionListeners = [];
+  
+  // Stream controller for extension connection status changes
+  final StreamController<bool> _connectionStreamController = StreamController<bool>.broadcast();
   
   factory BrowserExtensionService() {
     return _instance;
@@ -391,12 +395,30 @@ class BrowserExtensionService {
       _extensionConnected = connected;
       debugPrint('Extension connection status changed: $_extensionConnected');
       
-      // Notify listeners of the connection change
-      if (onExtensionConnectionChanged != null) {
-        onExtensionConnectionChanged!(_extensionConnected);
+      // Notify all listeners of the connection change
+      for (final listener in _connectionListeners) {
+        listener(_extensionConnected);
       }
+      
+      // Also notify through the stream
+      _connectionStreamController.add(_extensionConnected);
     }
   }
+  
+  // Add a listener for extension connection status changes
+  void addConnectionListener(Function(bool) listener) {
+    if (!_connectionListeners.contains(listener)) {
+      _connectionListeners.add(listener);
+    }
+  }
+  
+  // Remove a listener for extension connection status changes
+  void removeConnectionListener(Function(bool) listener) {
+    _connectionListeners.remove(listener);
+  }
+  
+  // Get a stream of extension connection status changes
+  Stream<bool> get connectionStream => _connectionStreamController.stream;
   
   // Check if a given app name is a browser
   bool isBrowser(String appName) {
@@ -407,5 +429,7 @@ class BrowserExtensionService {
   // Clean up resources
   void dispose() {
     _socket?.close();
+    _connectionListeners.clear();
+    _connectionStreamController.close();
   }
 }
