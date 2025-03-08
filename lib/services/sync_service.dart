@@ -142,8 +142,6 @@ class SyncService {
   Future<bool> _sync(bool notifyRemote) async {
     try {
       if (_userId.isEmpty) return true;
-
-      print('starting sync');
       
       final db = getIt<AppDatabase>();
       final currDevice = (await db.getThisDevice())!;
@@ -169,8 +167,6 @@ class SyncService {
             }
           }
 
-          print("remote device change: $device");
-
           final DateTime updatedAt = localDevice != null && localDevice.updatedAt.toIso8601String().compareTo(device['updated_at']) > 0 ? localDevice.updatedAt : DateTime.parse(device['updated_at']);
           final DateTime deviceLastSynced = localDevice?.lastPulledAt != null && localDevice!.lastPulledAt!.toIso8601String().compareTo(device['last_pulled_at']) > 0 ? localDevice.lastPulledAt! : DateTime.parse(device['last_pulled_at']);
 
@@ -181,7 +177,6 @@ class SyncService {
           if (device['deleted'] as bool && (isCurrentDevice || isActiveDevice)) {
             // This is an active device that was mistakenly marked as deleted
             // We need to restore it and any associated groups
-            print('Restoring mistakenly deleted active device: ${device['id']}');
             accidentalDeletion = true;
             
             db.upsertDevice(DevicesCompanion(
@@ -233,7 +228,6 @@ class SyncService {
 
           if (group['deleted'] as bool) {
             if (group['device'] == currDevice.id && accidentalDeletion) {
-              print('Restoring mistakenly deleted active device: ${group['id']}');
               db.upsertGroup(GroupsCompanion(
                 id: Value(group['id']),
                 name: Value(overwriteMap['name'] ?? group['name'] as String?),
@@ -353,7 +347,6 @@ class SyncService {
         }
 
         for (final device in localDevices) {
-          print('remote change: $device');
           madeRemoteChange = true;
 
           await _client
@@ -390,7 +383,6 @@ class SyncService {
         }
 
         for (final group in localGroups) {
-          print('remote change: $group');
           madeRemoteChange = true;
           await _client
           .from('groups')
@@ -426,7 +418,6 @@ class SyncService {
         }
 
         for (final routine in localRoutines) {
-          print('remote change: $routine');
           madeRemoteChange = true;
           await _client
           .from('routines')
@@ -483,8 +474,6 @@ class SyncService {
         await _client.from('devices').delete().lt('updated_at', pulledAt).eq('deleted', true);
       }
       
-      print("made remote change $madeRemoteChange");
-
       if (madeRemoteChange) {
         _notifyPeers();
       }

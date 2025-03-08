@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:io' show Platform, Directory, File, Process;
+import 'dart:io' show Directory, File, Platform, Process, Socket, SocketException;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -8,6 +8,7 @@ import 'package:win32/win32.dart';
 import 'package:win32/src/constants.dart';
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
+import 'dart:typed_data';
 
 class BrowserExtensionService {
   // Singleton instance
@@ -16,6 +17,23 @@ class BrowserExtensionService {
   // Platform channel for native methods
   static const MethodChannel _channel = MethodChannel('com.routine.applist');
   
+  // Socket connection to Native Messaging Host
+  Socket? _socket;
+  List<int> _messageBuffer = [];
+  int? _expectedLength;
+  
+  // Flag to track browser extension connection status
+  // Since the extension starts the NMH, this also indicates if NMH is connected
+  bool _extensionConnected = false;
+  
+  // Set of browser names in lowercase for O(1) lookup
+  final Set<String> _browserNames = {
+    'firefox'
+  };
+  
+  // Callback for when extension connection status changes
+  Function(bool)? onExtensionConnectionChanged;
+  
   factory BrowserExtensionService() {
     return _instance;
   }
@@ -23,6 +41,10 @@ class BrowserExtensionService {
   BrowserExtensionService._internal();
   
   static BrowserExtensionService get instance => _instance;
+  
+  // Get current extension connection status
+  // Since the extension starts the NMH, this also indicates if NMH is connected
+  bool get isExtensionConnected => _extensionConnected;
   
   // Key for storing setup status in SharedPreferences
   static const String _setupCompletedKey = 'browser_extension_setup_completed';
@@ -43,6 +65,12 @@ class BrowserExtensionService {
   Future<void> resetSetupStatus() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_setupCompletedKey, false);
+  }
+  
+  // Launch the browser extension onboarding process
+  Future<void> launchOnboardingProcess() async {
+    await resetSetupStatus();
+    await connectToNMH();
   }
   
   // Get a list of installed browsers that are supported
@@ -259,5 +287,125 @@ class BrowserExtensionService {
       debugPrint('Error installing browser extension: $e');
       return false;
     }
+  }
+  
+  // Initialize the browser extension service
+  Future<void> init() async {
+    await connectToNMH();
+  }
+  
+  // Connect to the Native Messaging Host
+  Future<void> connectToNMH() async {
+    try {
+      _socket = await Socket.connect('127.0.0.1', 54322);
+      debugPrint('Connected to NMH TCP server');
+
+      setExtensionConnected(true);
+
+      _socket?.listen(
+        (List<int> data) {
+          _messageBuffer.addAll(data);
+          
+          while (_messageBuffer.isNotEmpty) {
+            if (_expectedLength == null) {
+              if (_messageBuffer.length >= 4) {
+                // Read length prefix using Uint8List and ByteData
+                final lengthBytes = Uint8List.fromList(_messageBuffer.take(4).toList());
+                _expectedLength = ByteData.view(lengthBytes.buffer).getUint32(0, Endian.little);
+                _messageBuffer = _messageBuffer.sublist(4);
+              } else {
+                break;
+              }
+            }
+
+            if (_expectedLength != null && _messageBuffer.length >= _expectedLength!) {
+
+              final messageBytes = _messageBuffer.take(_expectedLength!).toList();
+              _messageBuffer = _messageBuffer.sublist(_expectedLength!);
+              _expectedLength = null;
+
+              try {
+                final String message = utf8.decode(messageBytes);
+                final Map<String, dynamic> decoded = json.decode(message);
+                debugPrint('Received from NMH: $decoded');
+              } catch (e) {
+                debugPrint('Error decoding message: $e');
+              }
+            } else {
+              break;
+            }
+          }
+        },
+        onError: (error) {
+          debugPrint('Socket error: $error');
+          setExtensionConnected(false);
+        },
+        onDone: () {
+          debugPrint('Socket closed');
+          setExtensionConnected(false);
+        },
+      );
+    } on SocketException catch (e) {
+      setExtensionConnected(false);
+      if (e.osError?.errorCode == 61) {
+        debugPrint('NMH service is not running. The app will continue without NMH features.');
+      } else {
+        debugPrint('Socket connection error: ${e.message}. The app will continue without NMH features.');
+      }
+    }
+  }
+  
+  // Send a message to the Native Messaging Host
+  Future<void> sendToNMH(String action, Map<String, dynamic> data) async {
+     if (!isExtensionConnected) {
+      await connectToNMH();
+      if (!isExtensionConnected) {
+        debugPrint('Failed to connect to NMH, skipping update');
+        return;
+      }
+    }
+
+    try {
+      final message = {
+        'action': action,
+        'data': data,
+      };
+      
+      final String jsonMessage = json.encode(message);
+      final List<int> messageBytes = utf8.encode(jsonMessage);
+      
+      // Send length prefix followed by message
+      _socket?.add(Uint8List.fromList([
+        ...Uint32List.fromList([messageBytes.length]).buffer.asUint8List(),
+        ...messageBytes,
+      ]));
+      await _socket?.flush();
+    } catch (e) {
+      debugPrint('Failed to send message to NMH: $e');
+    }
+  }
+
+  // Handle extension connection status changes
+  void setExtensionConnected(bool connected) {
+    if (_extensionConnected != connected) {
+      _extensionConnected = connected;
+      debugPrint('Extension connection status changed: $_extensionConnected');
+      
+      // Notify listeners of the connection change
+      if (onExtensionConnectionChanged != null) {
+        onExtensionConnectionChanged!(_extensionConnected);
+      }
+    }
+  }
+  
+  // Check if a given app name is a browser
+  bool isBrowser(String appName) {
+    final lowerAppName = appName.toLowerCase();
+    return _browserNames.any((browser) => lowerAppName.contains(browser));
+  }
+  
+  // Clean up resources
+  void dispose() {
+    _socket?.close();
   }
 }

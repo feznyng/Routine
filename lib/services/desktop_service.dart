@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 import 'dart:convert';
-import 'dart:typed_data';
 import '../models/routine.dart';
 import 'strict_mode_service.dart';
+import 'browser_extension_service.dart';
 import 'package:cron/cron.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -34,27 +34,35 @@ class DesktopService {
   static DesktopService get instance => _instance;
 
   final platform = const MethodChannel('com.routine.applist');
-  Socket? _socket;
-  bool _connected = false;
-  List<int> _messageBuffer = [];
-  int? _expectedLength;
-
   // Cache fields for blocked items
   List<String> _cachedSites = [];
   List<String> _cachedApps = [];
   List<String> _cachedCategories = [];
   bool _isAllowList = false;
-  
-  // Flag to track extension connection status
-  bool _extensionConnected = false;
-
-  // Set of browser names in lowercase for O(1) lookup
-  final Set<String> _browserNames = {
-    'firefox'
-  };
 
   Future<void> init() async {
-    await _connectToNMH();
+    // Initialize browser extension service
+    final browserExtensionService = BrowserExtensionService.instance;
+    await browserExtensionService.init();
+    
+    // Set up callback for extension connection status changes
+    browserExtensionService.onExtensionConnectionChanged = (connected) {
+      if (connected) {
+        // Extension is now connected
+        // End grace period if it was active
+        StrictModeService.instance.endExtensionGracePeriod();
+        
+        // Unblock all browsers since extension is now connected
+        if (StrictModeService.instance.blockBrowsersWithoutExtension) {
+          unblockAllBrowsers();
+        }
+      } else {
+        // Extension is now disconnected
+        // Start blocking browsers if needed
+        // Use unawaited to avoid blocking the callback
+        _blockBrowsersIfNeeded(); // This is now async but we don't need to await it
+      }
+    };
 
     // Set up platform channel method handler
     platform.setMethodCallHandler((call) async {
@@ -62,9 +70,8 @@ class DesktopService {
         case 'activeApplication':
           final appName = call.arguments as String;
 
-          // Check if the active application is a browser using O(1) lookup
-          final lowerAppName = appName.toLowerCase();
-          if (_browserNames.any((browser) => lowerAppName.contains(browser))) {
+          // Check if the active application is a browser
+          if (browserExtensionService.isBrowser(appName)) {
             updateBlockedSites();
             
             // Check if we need to block browsers without extension
@@ -170,97 +177,8 @@ class DesktopService {
   }
 
   void dispose() {
-    _socket?.close();
-  }
-
-  Future<void> _connectToNMH() async {
-    try {
-      _socket = await Socket.connect('127.0.0.1', 54322);
-      debugPrint('Connected to NMH TCP server');
-      _connected = true;
-
-      _socket?.listen(
-        (List<int> data) {
-          _messageBuffer.addAll(data);
-          
-          while (_messageBuffer.isNotEmpty) {
-            if (_expectedLength == null) {
-              if (_messageBuffer.length >= 4) {
-                // Read length prefix using Uint8List and ByteData
-                final lengthBytes = Uint8List.fromList(_messageBuffer.take(4).toList());
-                _expectedLength = ByteData.view(lengthBytes.buffer).getUint32(0, Endian.little);
-                _messageBuffer = _messageBuffer.sublist(4);
-              } else {
-                break;
-              }
-            }
-
-            if (_expectedLength != null && _messageBuffer.length >= _expectedLength!) {
-              // We have a complete message
-              final messageBytes = _messageBuffer.take(_expectedLength!).toList();
-              _messageBuffer = _messageBuffer.sublist(_expectedLength!);
-              _expectedLength = null;
-
-              try {
-                final String message = utf8.decode(messageBytes);
-                final Map<String, dynamic> decoded = json.decode(message);
-                debugPrint('Received from NMH: $decoded');
-              } catch (e) {
-                debugPrint('Error decoding message: $e');
-              }
-            } else {
-              break;
-            }
-          }
-        },
-        onError: (error) {
-          debugPrint('Socket error: $error');
-          _connected = false;
-          _setExtensionConnected(false);
-          _blockBrowsersIfNeeded();
-        },
-        onDone: () {
-          debugPrint('Socket closed');
-          _connected = false;
-          _setExtensionConnected(false);
-          _blockBrowsersIfNeeded();
-        },
-      );
-    } on SocketException catch (e) {
-      _connected = false;
-      if (e.osError?.errorCode == 61) {
-        debugPrint('NMH service is not running. The app will continue without NMH features.');
-      } else {
-        debugPrint('Socket connection error: ${e.message}. The app will continue without NMH features.');
-      }
-    }
-  }
-
-  void _sendToNMH(String action, Map<String, dynamic> data) {
-    if (!_connected) {
-      debugPrint('Cannot send to NMH: not connected');
-      _setExtensionConnected(false);
-      return;
-    }
-
-    try {
-      final message = {
-        'action': action,
-        'data': data,
-      };
-      
-      final String jsonMessage = json.encode(message);
-      final List<int> messageBytes = utf8.encode(jsonMessage);
-      
-      // Send length prefix followed by message
-      _socket?.add(Uint8List.fromList([
-        ...Uint32List.fromList([messageBytes.length]).buffer.asUint8List(),
-        ...messageBytes,
-      ]));
-      _socket?.flush();
-    } catch (e) {
-      debugPrint('Failed to send message to NMH: $e');
-    }
+    // Clean up resources
+    BrowserExtensionService.instance.dispose();
   }
 
   Future<void> updateAppList() async {
@@ -276,14 +194,15 @@ class DesktopService {
   void unblockAllBrowsers() {
     debugPrint('Grace period started, unblocking all browsers');
     
+    final browserExtensionService = BrowserExtensionService.instance;
+    
     // Create a copy of the current apps list
     final List<String> appsToBlock = List.from(_cachedApps);
     
     // Remove any browsers from the list
     bool removed = false;
     appsToBlock.removeWhere((app) {
-      final lowerAppName = app.toLowerCase();
-      final isBrowser = _browserNames.any((browser) => lowerAppName.contains(browser));
+      final isBrowser = browserExtensionService.isBrowser(app);
       if (isBrowser) {
         removed = true;
       }
@@ -305,11 +224,12 @@ class DesktopService {
   // Check if we need to block browsers when extension isn't connected
   void _checkAndBlockBrowsersIfNeeded(String appName) async {
     final strictModeService = StrictModeService.instance;
+    final browserExtensionService = BrowserExtensionService.instance;
     
     // If the setting to block browsers without extension is enabled
     if (strictModeService.effectiveBlockBrowsersWithoutExtension) {
       // If extension is not connected
-      if (!_extensionConnected) {
+      if (!browserExtensionService.isExtensionConnected) {
         debugPrint('Browser detected without extension connected: $appName');
         
         // Check if we're in grace period - don't block during grace period
@@ -359,100 +279,42 @@ class DesktopService {
             'allowList': _isAllowList,
           });
         }
-      } else {
-        // Extension is connected
-        // This is handled in _setExtensionConnected
       }
     }
   }
-
+  
+  // Update blocked sites in the browser extension
   Future<void> updateBlockedSites() async {
-    if (!_connected) {
-      debugPrint('Not connected to NMH, attempting connection...');
-      await _connectToNMH();
-      if (!_connected) {
-        debugPrint('Failed to connect to NMH, skipping update');
-        _setExtensionConnected(false);
-        return;
-      }
-    }
-
-    // Send update to NMH to forward to browser extension
-    _sendToNMH('updateBlockedSites', {
+    await BrowserExtensionService.instance.sendToNMH('updateBlockedSites', {
       'sites': _cachedSites,
       'allowList': _isAllowList,
     });
-    
-    // Set extension connected to true when we successfully send an update
-    _setExtensionConnected(true);
-  }
-  
-  // Handle extension connection status changes
-  void _setExtensionConnected(bool connected) {
-    if (_extensionConnected != connected) {
-      _extensionConnected = connected;
-      debugPrint('Extension connection status changed: $_extensionConnected');
-      
-      if (_extensionConnected) {
-        // Extension is now connected
-        // End grace period if it was active
-        StrictModeService.instance.endExtensionGracePeriod();
-        
-        // Unblock all browsers since extension is now connected
-        if (StrictModeService.instance.blockBrowsersWithoutExtension) {
-          unblockAllBrowsers();
-        }
-      } else {
-        // Extension is now disconnected
-        // Start blocking browsers if needed
-        _blockBrowsersIfNeeded();
-      }
-    }
   }
   
   // Block all browsers when extension disconnects (if setting is enabled)
-  void _blockBrowsersIfNeeded() {
+  Future<void> _blockBrowsersIfNeeded() async {
     final strictModeService = StrictModeService.instance;
+    final browserExtensionService = BrowserExtensionService.instance;
     
     // Only block browsers if the setting is enabled and not in grace period
-    if (strictModeService.effectiveBlockBrowsersWithoutExtension && 
+    if (strictModeService.inStrictMode && 
+        strictModeService.effectiveBlockBrowsersWithoutExtension && 
         !strictModeService.isInExtensionGracePeriod) {
       debugPrint('Extension disconnected, blocking all browsers');
       
-      // Get list of browsers to block
-      List<String> browsersToBlock = [];
+      // Use BrowserExtensionService to get installed browsers
+      List<String> browsersToBlock = await browserExtensionService.getInstalledSupportedBrowsers();
       
-      // Try to get a list of installed browsers
-      try {
-        // On macOS, we can look in the Applications folder
-        if (Platform.isMacOS) {
-          final Directory appDir = Directory('/Applications');
-          if (appDir.existsSync()) {
-            for (var entity in appDir.listSync(recursive: false)) {
-              if (entity is Directory && entity.path.endsWith('.app')) {
-                final String appName = entity.path.split('/').last.replaceAll('.app', '');
-                final String lowerAppName = appName.toLowerCase();
-                
-                if (_browserNames.any((browser) => lowerAppName.contains(browser))) {
-                  browsersToBlock.add(appName);
-                }
-              }
-            }
-          }
-        }
-      } catch (e) {
-        debugPrint('Error getting browser list: $e');
-      }
-      
-      // If we couldn't get specific browsers, use generic browser names
+      // Fallback if no browsers were found
       if (browsersToBlock.isEmpty) {
-        browsersToBlock = _browserNames.toList();
+        browsersToBlock = ['Firefox']; 
+        debugPrint('No browsers detected, using fallback: $browsersToBlock');
+      } else {
+        debugPrint('Detected browsers to block: $browsersToBlock');
       }
       
-      // Create a copy of the current apps list
       final List<String> appsToBlock = List.from(_cachedApps);
       
-      // Add all browsers to the block list if not already there
       bool changed = false;
       for (final String browser in browsersToBlock) {
         if (!appsToBlock.any((app) => app.toLowerCase() == browser.toLowerCase())) {
@@ -461,10 +323,8 @@ class DesktopService {
         }
       }
       
-      // Only update if we actually added browsers
       if (changed) {
         debugPrint('Added browsers to blocked apps list: $browsersToBlock');
-        // Update the platform with the modified list
         platform.invokeMethod('updateAppList', {
           'apps': appsToBlock,
           'categories': _cachedCategories,
