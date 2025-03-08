@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 import 'dart:convert';
+import 'dart:async';
 import '../models/routine.dart';
 import 'strict_mode_service.dart';
 import 'browser_extension_service.dart';
@@ -162,7 +163,7 @@ class DesktopService {
     updateAppList();
     updateBlockedSites();
   }
-
+  
   void dispose() {
     // Clean up resources
     final browserExtensionService = BrowserExtensionService.instance;
@@ -188,7 +189,7 @@ class DesktopService {
       _blockBrowsersIfNeeded(); // This is now async but we don't need to await it
     }
   }
-
+  
   Future<void> updateAppList() async {
     // Update platform channel
     platform.invokeMethod('updateAppList', {
