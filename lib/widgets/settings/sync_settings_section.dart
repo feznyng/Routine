@@ -11,7 +11,7 @@ class SyncSettingsSection extends StatelessWidget {
         title: const Text('Sync'),
         leading: const Icon(Icons.sync),
         subtitle: const Text('Perform a full synchronization with the server'),
-        trailing: ElevatedButton(
+        trailing: TextButton(
           onPressed: () {
             // Schedule a full sync job
             SyncService().addJob(SyncJob(remote: false, full: true));
