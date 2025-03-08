@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/routine.dart';
-import 'desktop_service.dart';
 
 class StrictModeService with ChangeNotifier {
   static final StrictModeService _instance = StrictModeService._internal();
@@ -121,11 +120,6 @@ class StrictModeService with ChangeNotifier {
     
     // Set cooldown end time
     _extensionCooldownEnd = DateTime.now().add(Duration(minutes: _extensionCooldownMinutes));
-    
-    // Unblock all browsers immediately
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      DesktopService.instance.unblockAllBrowsers();
-    }
     
     notifyListeners();
   }

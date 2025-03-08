@@ -181,56 +181,7 @@ class _StrictModeSectionState extends State<StrictModeSection> {
                     setState(() {});
                   }
                 },
-            ),
-            if (_strictModeService.blockBrowsersWithoutExtension) ...[  
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Grace period button
-                    ElevatedButton(
-                      onPressed: _strictModeService.isInExtensionGracePeriod || _strictModeService.isInExtensionCooldown
-                        ? null // Disable during grace period or cooldown
-                        : () {
-                          _strictModeService.startExtensionGracePeriod();
-                        },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _strictModeService.isInExtensionGracePeriod ? Colors.green : null,
-                        foregroundColor: _strictModeService.isInExtensionGracePeriod ? Colors.white : null,
-                      ),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12.0),
-                          child: Column(
-                            children: [
-                              Text(
-                                _strictModeService.isInExtensionGracePeriod
-                                  ? 'Grace period active: ${_strictModeService.remainingGracePeriodSeconds}s remaining'
-                                  : _strictModeService.isInExtensionCooldown
-                                    ? 'Cooldown: ${_strictModeService.remainingCooldownMinutes} min remaining'
-                                    : 'Allow 30s to install extension',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              if (!_strictModeService.isInExtensionGracePeriod && !_strictModeService.isInExtensionCooldown) ...[  
-                                const SizedBox(height: 4),
-                                const Text(
-                                  '10 minute cooldown between uses',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 12),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            )
           ],
           
           // iOS strict mode options

@@ -42,34 +42,6 @@ class DesktopService {
   bool _isAllowList = false;
 
   Future<void> init() async {
-    // Initialize browser extension service
-    final browserExtensionService = BrowserExtensionService.instance;
-    await browserExtensionService.init();
-    
-    // Set up listener for extension connection status changes
-    browserExtensionService.addConnectionListener(_handleExtensionConnectionChange);
-    
-    // Also listen to the stream for future integrations
-    browserExtensionService.connectionStream.listen(_handleExtensionConnectionChange);
-
-    // Set up platform channel method handler
-    platform.setMethodCallHandler((call) async {
-      switch (call.method) {
-        case 'activeApplication':
-          final appName = call.arguments as String;
-
-          // Check if the active application is a browser
-          if (browserExtensionService.isBrowser(appName)) {
-            updateBlockedSites();
-            
-            // Check if we need to block browsers without extension
-            _checkAndBlockBrowsersIfNeeded(appName);
-          }
-          break;
-      }
-    });
-
-    // Signal to native code that Flutter is ready to receive messages
     try {
       await platform.invokeMethod('engineReady');
     } catch (e) {
@@ -164,32 +136,6 @@ class DesktopService {
     updateBlockedSites();
   }
   
-  void dispose() {
-    // Clean up resources
-    final browserExtensionService = BrowserExtensionService.instance;
-    browserExtensionService.removeConnectionListener(_handleExtensionConnectionChange);
-    browserExtensionService.dispose();
-  }
-  
-  // Handle extension connection status changes
-  void _handleExtensionConnectionChange(bool connected) {
-    if (connected) {
-      // Extension is now connected
-      // End grace period if it was active
-      StrictModeService.instance.endExtensionGracePeriod();
-      
-      // Unblock all browsers since extension is now connected
-      if (StrictModeService.instance.blockBrowsersWithoutExtension) {
-        unblockAllBrowsers();
-      }
-    } else {
-      // Extension is now disconnected
-      // Start blocking browsers if needed
-      // Use unawaited to avoid blocking the callback
-      _blockBrowsersIfNeeded(); // This is now async but we don't need to await it
-    }
-  }
-  
   Future<void> updateAppList() async {
     // Update platform channel
     platform.invokeMethod('updateAppList', {
@@ -199,139 +145,12 @@ class DesktopService {
     });
   }
   
-  // Unblock all browsers when grace period starts
-  void unblockAllBrowsers() {
-    debugPrint('Grace period started, unblocking all browsers');
-    
-    final browserExtensionService = BrowserExtensionService.instance;
-    
-    // Create a copy of the current apps list
-    final List<String> appsToBlock = List.from(_cachedApps);
-    
-    // Remove any browsers from the list
-    bool removed = false;
-    appsToBlock.removeWhere((app) {
-      final isBrowser = browserExtensionService.isBrowser(app);
-      if (isBrowser) {
-        removed = true;
-      }
-      return isBrowser;
-    });
-    
-    // Only update if we actually removed browsers
-    if (removed) {
-      debugPrint('Removed browsers from blocked apps list');
-      // Update the platform with the modified list
-      platform.invokeMethod('updateAppList', {
-        'apps': appsToBlock,
-        'categories': _cachedCategories,
-        'allowList': _isAllowList,
-      });
-    }
-  }
-  
-  // Check if we need to block browsers when extension isn't connected
-  void _checkAndBlockBrowsersIfNeeded(String appName) async {
-    final strictModeService = StrictModeService.instance;
-    final browserExtensionService = BrowserExtensionService.instance;
-    
-    // If the setting to block browsers without extension is enabled
-    if (strictModeService.effectiveBlockBrowsersWithoutExtension) {
-      // If extension is not connected
-      if (!browserExtensionService.isExtensionConnected) {
-        debugPrint('Browser detected without extension connected: $appName');
-        
-        // Check if we're in grace period - don't block during grace period
-        if (strictModeService.isInExtensionGracePeriod) {
-          debugPrint('In extension grace period, not blocking browser');
-          
-          // Create a temporary list of apps to block (excluding this browser)
-          final List<String> appsToBlock = List.from(_cachedApps);
-          final lowerAppName = appName.toLowerCase();
-          
-          // Remove this browser from the blocked apps list if it exists
-          appsToBlock.removeWhere((app) => app.toLowerCase() == lowerAppName);
-          
-          // Update the platform with the list excluding this browser
-          platform.invokeMethod('updateAppList', {
-            'apps': appsToBlock,
-            'categories': _cachedCategories,
-            'allowList': _isAllowList,
-          });
-          
-          return;
-        }
-        
-        // Create a temporary list of apps to block
-        final List<String> appsToBlock = List.from(_cachedApps);
-        
-        // Check if the browser is already in the list
-        final lowerAppName = appName.toLowerCase();
-        bool browserAlreadyBlocked = false;
-        
-        for (final app in appsToBlock) {
-          if (app.toLowerCase() == lowerAppName) {
-            browserAlreadyBlocked = true;
-            break;
-          }
-        }
-        
-        // If browser is not already blocked, add it to the list
-        if (!browserAlreadyBlocked) {
-          debugPrint('Adding browser to blocked apps: $appName');
-          appsToBlock.add(appName);
-          
-          // Update the platform with the temporary list including the browser
-          platform.invokeMethod('updateAppList', {
-            'apps': appsToBlock,
-            'categories': _cachedCategories,
-            'allowList': _isAllowList,
-          });
-        }
-      }
-    }
-  }
-  
   // Update blocked sites in the browser extension
   Future<void> updateBlockedSites() async {
     await BrowserExtensionService.instance.sendToNMH('updateBlockedSites', {
       'sites': _cachedSites,
       'allowList': _isAllowList,
     });
-  }
-  
-  // Block all browsers when extension disconnects (if setting is enabled)
-  Future<void> _blockBrowsersIfNeeded() async {
-    final strictModeService = StrictModeService.instance;
-    final browserExtensionService = BrowserExtensionService.instance;
-    
-    // Only block browsers if the setting is enabled and not in grace period
-    if (strictModeService.inStrictMode && 
-        strictModeService.effectiveBlockBrowsersWithoutExtension && 
-        !strictModeService.isInExtensionGracePeriod) {
-      debugPrint('Extension disconnected, blocking all browsers');
-      
-      // Use BrowserExtensionService to get installed browsers
-      List<String> browsersToBlock = await browserExtensionService.getInstalledSupportedBrowsers();
-      final List<String> appsToBlock = List.from(_cachedApps);
-      
-      bool changed = false;
-      for (final String browser in browsersToBlock) {
-        if (!appsToBlock.any((app) => app.toLowerCase() == browser.toLowerCase())) {
-          appsToBlock.add(browser);
-          changed = true;
-        }
-      }
-      
-      if (changed) {
-        debugPrint('Added browsers to blocked apps list: $browsersToBlock');
-        platform.invokeMethod('updateAppList', {
-          'apps': appsToBlock,
-          'categories': _cachedCategories,
-          'allowList': _isAllowList,
-        });
-      }
-    }
   }
 
   Future<void> setStartOnLogin(bool enabled) async {
