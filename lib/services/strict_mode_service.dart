@@ -16,11 +16,17 @@ class StrictModeService with ChangeNotifier {
   // Grace period for extension reinstallation
   DateTime? _extensionGracePeriodEnd;
   DateTime? _extensionCooldownEnd;
-  static const int _extensionGracePeriodSeconds = 30;
+  static const int _extensionGracePeriodSeconds = 60; // Changed to 60 seconds as per requirements
   static const int _extensionCooldownMinutes = 10;
+  
+  // Timer for grace period expiration
+  Timer? _gracePeriodTimer;
   
   // List of listeners for effective settings changes
   final List<Function(Map<String, bool>)> _effectiveSettingsListeners = [];
+  
+  // List of listeners specifically for grace period expiration
+  final List<Function()> _gracePeriodExpirationListeners = [];
   
   // Stream controller for effective settings changes
   final StreamController<Map<String, bool>> _effectiveSettingsStreamController = StreamController<Map<String, bool>>.broadcast();
@@ -125,11 +131,29 @@ class StrictModeService with ChangeNotifier {
       return;
     }
     
+    // Cancel any existing timer
+    _gracePeriodTimer?.cancel();
+    
     // Set grace period end time
     _extensionGracePeriodEnd = DateTime.now().add(Duration(seconds: _extensionGracePeriodSeconds));
     
     // Set cooldown end time
     _extensionCooldownEnd = DateTime.now().add(Duration(minutes: _extensionCooldownMinutes));
+    
+    // Set up a timer to handle grace period expiration
+    _gracePeriodTimer = Timer(Duration(seconds: _extensionGracePeriodSeconds), () {
+      // Grace period has expired
+      _extensionGracePeriodEnd = null;
+      
+      // Notify general listeners
+      notifyListeners();
+      
+      // Notify effective settings listeners
+      _notifyEffectiveSettingsChanged();
+      
+      // Notify grace period expiration listeners
+      _notifyGracePeriodExpired();
+    });
     
     notifyListeners();
     
@@ -139,11 +163,36 @@ class StrictModeService with ChangeNotifier {
   
   // End the grace period early
   void endExtensionGracePeriod() {
+    // Cancel the grace period timer
+    _gracePeriodTimer?.cancel();
+    _gracePeriodTimer = null;
+    
     _extensionGracePeriodEnd = null;
     notifyListeners();
     
     // Grace period affects effective settings
     _notifyEffectiveSettingsChanged();
+  }
+  
+  // Cancel the grace period and go directly to cooldown
+  void cancelGracePeriodWithCooldown() {
+    // Cancel the grace period timer
+    _gracePeriodTimer?.cancel();
+    _gracePeriodTimer = null;
+    
+    // End grace period
+    _extensionGracePeriodEnd = null;
+    
+    // Ensure cooldown is set
+    if (_extensionCooldownEnd == null) {
+      _extensionCooldownEnd = DateTime.now().add(Duration(minutes: _extensionCooldownMinutes));
+    }
+    
+    notifyListeners();
+    
+    // Notify listeners about the changes
+    _notifyEffectiveSettingsChanged();
+    _notifyGracePeriodExpired();
   }
   
   // Initialize the service by loading saved preferences
@@ -527,6 +576,13 @@ class StrictModeService with ChangeNotifier {
     _effectiveSettingsStreamController.add(effectiveSettings);
   }
   
+  // Notify all grace period expiration listeners
+  void _notifyGracePeriodExpired() {
+    for (final listener in _gracePeriodExpirationListeners) {
+      listener();
+    }
+  }
+  
   // Add a listener for effective settings changes
   void addEffectiveSettingsListener(Function(Map<String, bool>) listener) {
     if (!_effectiveSettingsListeners.contains(listener)) {
@@ -540,6 +596,18 @@ class StrictModeService with ChangeNotifier {
   // Remove a listener for effective settings changes
   void removeEffectiveSettingsListener(Function(Map<String, bool>) listener) {
     _effectiveSettingsListeners.remove(listener);
+  }
+  
+  // Add a listener for grace period expiration
+  void addGracePeriodExpirationListener(Function() listener) {
+    if (!_gracePeriodExpirationListeners.contains(listener)) {
+      _gracePeriodExpirationListeners.add(listener);
+    }
+  }
+  
+  // Remove a listener for grace period expiration
+  void removeGracePeriodExpirationListener(Function() listener) {
+    _gracePeriodExpirationListeners.remove(listener);
   }
   
   // Get a stream of effective settings changes

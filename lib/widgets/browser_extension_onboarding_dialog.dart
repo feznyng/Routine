@@ -1,18 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
 import '../services/desktop_service.dart';
 import '../services/browser_extension_service.dart';
+import '../services/strict_mode_service.dart';
 
 class BrowserExtensionOnboardingDialog extends StatefulWidget {
   final List<String> selectedSites;
   final Function(List<String>) onComplete;
   final VoidCallback onSkip;
+  final bool inGracePeriod;
 
   const BrowserExtensionOnboardingDialog({
     super.key,
     required this.selectedSites,
     required this.onComplete,
     required this.onSkip,
+    this.inGracePeriod = false,
   });
 
   @override
@@ -31,15 +36,33 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
   bool _isInstallingExtension = false;
   String? _extensionInstallError;
   
+  // Subscription for extension connection status
+  StreamSubscription<bool>? _connectionSubscription;
+  
+  // Timer for periodically trying to connect to NMH
+  Timer? _connectionAttemptTimer;
+  
   @override
   void initState() {
     super.initState();
     _detectInstalledBrowsers();
+    
+    // Subscribe to extension connection status changes
+    _connectionSubscription = BrowserExtensionService.instance.connectionStream.listen((isConnected) {
+      if (mounted) {
+        setState(() {
+          // Update extension installed status based on connection status
+          _extensionInstalled = isConnected;
+        });
+      }
+    });
   }
   
   @override
   void dispose() {
     _pageController.dispose();
+    _connectionSubscription?.cancel();
+    _connectionAttemptTimer?.cancel();
     super.dispose();
   }
   
@@ -109,11 +132,15 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
       final success = await browserExtensionService.installBrowserExtension(browserName);
       
       setState(() {
-        _extensionInstalled = success;
+        // Don't set _extensionInstalled to true here
+        // It will be set by the connection listener when the extension actually connects
         _isInstallingExtension = false;
         
         if (!success) {
           _extensionInstallError = 'Failed to install browser extension. Please try again or install it manually.';
+        } else {
+          // Start periodic connection attempts
+          _startPeriodicConnectionAttempts();
         }
       });
     } catch (e) {
@@ -122,6 +149,37 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
         _extensionInstalled = false;
         _extensionInstallError = 'Error: ${e.toString()}';
       });
+    }
+  }
+  
+  // Start periodic attempts to connect to the Native Messaging Host
+  void _startPeriodicConnectionAttempts() {
+    // Cancel any existing timer
+    _connectionAttemptTimer?.cancel();
+    
+    // Try to connect immediately
+    _attemptConnection();
+    
+    // Set up a timer to try connecting every 2 seconds
+    _connectionAttemptTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      // Check if the extension is already connected
+      if (BrowserExtensionService.instance.isExtensionConnected) {
+        // If connected, cancel the timer
+        timer.cancel();
+        _connectionAttemptTimer = null;
+        return;
+      }
+      
+      // Try to connect
+      _attemptConnection();
+    });
+  }
+  
+  // Attempt to connect to the Native Messaging Host
+  Future<void> _attemptConnection() async {
+    if (!BrowserExtensionService.instance.isExtensionConnected) {
+      debugPrint('Attempting to connect to Native Messaging Host...');
+      await BrowserExtensionService.instance.connectToNMH();
     }
   }
   
@@ -135,6 +193,11 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
+      
+      // If moving to the extension installation step, start periodic connection attempts
+      if (_currentStep == 2) { // Extension installation step
+        _startPeriodicConnectionAttempts();
+      }
     } else {
       // Complete the onboarding
       widget.onComplete(widget.selectedSites);
@@ -290,6 +353,9 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
   }
   
   Widget _buildInstallExtensionStep() {
+    // Get the actual connection status from the service
+    final isExtensionConnected = BrowserExtensionService.instance.isExtensionConnected;
+    
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -323,7 +389,7 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
             ),
           ),
         const SizedBox(height: 8),
-        if (!_extensionInstalled)
+        if (!isExtensionConnected) // Use actual connection status
           _isInstallingExtension
               ? const Column(
                   children: [
@@ -333,16 +399,34 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
                   ],
                 )
               : Column(
-                  children: _detectedBrowsers.map((browser) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16.0),
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.extension),
-                        label: Text('Install for $browser'),
-                        onPressed: () => _installBrowserExtension(browser),
+                  children: [
+                    // Browser installation buttons
+                    ..._detectedBrowsers.map((browser) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.extension),
+                          label: Text('Install for $browser'),
+                          onPressed: () => _installBrowserExtension(browser),
+                        ),
+                      );
+                    }).toList(),
+                    
+                    // Add a waiting message if installation was initiated but not connected yet
+                    if (_isInstallingExtension == false && _extensionInstallError == null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16.0),
+                        child: Column(
+                          children: const [
+                            CircularProgressIndicator(strokeWidth: 2),
+                            SizedBox(height: 8),
+                            Text(
+                              'Waiting for extension to connect...',
+                            ),
+                          ],
+                        ),
                       ),
-                    );
-                  }).toList(),
+                  ],
                 )
         else
           const Row(
@@ -350,7 +434,7 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
             children: [
               Icon(Icons.check_circle, color: Colors.green),
               SizedBox(width: 8),
-              Text('Browser extension installed successfully!'),
+              Text('Browser extension connected successfully!'),
             ],
           ),
       ],
@@ -381,7 +465,13 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
-                    onPressed: widget.onSkip,
+                    onPressed: () {
+                      // If in grace period, cancel it and go to cooldown
+                      if (widget.inGracePeriod) {
+                        StrictModeService.instance.cancelGracePeriodWithCooldown();
+                      }
+                      widget.onSkip();
+                    },
                   ),
                 ],
               ),
@@ -423,7 +513,13 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   TextButton(
-                    onPressed: widget.onSkip,
+                    onPressed: () {
+                      // If in grace period, cancel it and go to cooldown
+                      if (widget.inGracePeriod) {
+                        StrictModeService.instance.cancelGracePeriodWithCooldown();
+                      }
+                      widget.onSkip();
+                    },
                     child: const Text('Skip Setup'),
                   ),
                   Row(
@@ -534,7 +630,8 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
       case 1:
         return _manifestInstalled;
       case 2:
-        return _extensionInstalled;
+        // Use the actual connection status from the service
+        return BrowserExtensionService.instance.isExtensionConnected;
       default:
         return true;
     }

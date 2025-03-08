@@ -59,9 +59,17 @@ class DesktopService {
 
     StrictModeService.instance.addEffectiveSettingsListener((settings) {
       print('Effective settings changed: $settings');
-      if (settings.keys.contains('blockBrowsersWithoutExtension')) {
+      if (settings.keys.contains('blockBrowsersWithoutExtension') || 
+          settings.keys.contains('isInExtensionGracePeriod') || 
+          settings.keys.contains('isInExtensionCooldown')) {
         updateAppList();
       }
+    });
+    
+    // Subscribe to grace period expiration events
+    StrictModeService.instance.addGracePeriodExpirationListener(() {
+      print('Grace period expired, updating app list');
+      updateAppList();
     });
   }
 
@@ -153,7 +161,13 @@ class DesktopService {
     // Update platform channel
     final apps = List<String>.from(_cachedApps);
 
-    if (StrictModeService.instance.effectiveBlockBrowsersWithoutExtension && !BrowserExtensionService.instance.isExtensionConnected) {
+    // Check if we should block browsers:
+    // 1. Strict mode setting is enabled AND
+    // 2. Extension is not connected AND
+    // 3. Not in grace period
+    if (StrictModeService.instance.effectiveBlockBrowsersWithoutExtension && 
+        !BrowserExtensionService.instance.isExtensionConnected && 
+        !StrictModeService.instance.isInExtensionGracePeriod) {
       final browsers = await BrowserExtensionService.instance.getInstalledSupportedBrowsers();
       print("Blocking $browsers");
       apps.addAll(browsers);
