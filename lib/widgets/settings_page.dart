@@ -10,6 +10,7 @@ import 'settings/device_management_section.dart';
 import 'settings/auth_section.dart';
 import 'settings/browser_extension_section.dart';
 import 'settings/device_options_bottom_sheet.dart';
+import 'settings/sync_settings_section.dart';
 import '../models/device.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -87,6 +88,10 @@ class _SettingsPageState extends State<SettingsPage> {
           BrowserExtensionSection(
             onRestartOnboarding: _restartBrowserExtensionOnboarding,
           ),
+          const SizedBox(height: 16),
+          
+          // Sync settings section
+          const SyncSettingsSection(),
           const SizedBox(height: 16),
           
           // Authentication section

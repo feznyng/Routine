@@ -9,8 +9,9 @@ import 'package:drift/drift.dart';
 
 class SyncJob {
   bool remote;
+  bool full;
 
-  SyncJob({required this.remote});
+  SyncJob({required this.remote, this.full = false});
 }
 
 class TableChanges {
@@ -119,7 +120,9 @@ class SyncService {
       _pendingJobs.clear();
       
       if (batchJobs.isNotEmpty) {
-        await _sync(batchJobs.any((job) => !job.remote));
+        final shouldNotifyRemote = batchJobs.any((job) => !job.remote);
+        final isFullSync = batchJobs.any((job) => job.full);
+        await _sync(shouldNotifyRemote, full: isFullSync);
       }
     } finally {
       _isProcessing = false;
@@ -139,13 +142,14 @@ class SyncService {
   String get _userId => _client.auth.currentUser?.id ?? '';
 
   // order matters: devices, groups, routines
-  Future<bool> _sync(bool notifyRemote) async {
+  Future<bool> _sync(bool notifyRemote, {bool full = false}) async {
     try {
       if (_userId.isEmpty) return true;
       
       final db = getIt<AppDatabase>();
       final currDevice = (await db.getThisDevice())!;
-      final lastPulledAt = currDevice.lastPulledAt ?? DateTime.fromMicrosecondsSinceEpoch(0);
+      // If full sync is requested, pretend lastPulledAt is null by using epoch time
+      final lastPulledAt = full ? DateTime.fromMicrosecondsSinceEpoch(0) : (currDevice.lastPulledAt ?? DateTime.fromMicrosecondsSinceEpoch(0));
       final pulledAt = DateTime.now();
 
       bool madeRemoteChange = false;
