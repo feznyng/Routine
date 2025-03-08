@@ -94,12 +94,12 @@ class StrictModeService with ChangeNotifier {
   }
   
   // Enhanced getters that consider if any active routine is in strict mode
-  bool get effectiveBlockAppExit => _blockAppExit || _inStrictMode;
-  bool get effectiveBlockDisablingSystemStartup => _blockDisablingSystemStartup || _inStrictMode;
-  bool get effectiveBlockBrowsersWithoutExtension => _blockBrowsersWithoutExtension || _inStrictMode;
-  bool get effectiveBlockChangingTimeSettings => _blockChangingTimeSettings || _inStrictMode;
-  bool get effectiveBlockUninstallingApps => _blockUninstallingApps || _inStrictMode;
-  bool get effectiveBlockInstallingApps => _blockInstallingApps || _inStrictMode;
+  bool get effectiveBlockAppExit => _blockAppExit && _inStrictMode;
+  bool get effectiveBlockDisablingSystemStartup => _blockDisablingSystemStartup && _inStrictMode;
+  bool get effectiveBlockBrowsersWithoutExtension => _blockBrowsersWithoutExtension && _inStrictMode;
+  bool get effectiveBlockChangingTimeSettings => _blockChangingTimeSettings && _inStrictMode;
+  bool get effectiveBlockUninstallingApps => _blockUninstallingApps && _inStrictMode;
+  bool get effectiveBlockInstallingApps => _blockInstallingApps && _inStrictMode;
   
   // Shared preferences keys
   static const String _blockAppExitKey = 'block_app_exit';

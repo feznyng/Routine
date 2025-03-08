@@ -131,11 +131,8 @@ class _RoutinePageState extends State<RoutinePage> {
 
   @override
   Widget build(BuildContext context) {
-    // Check if the routine is active and strict mode is enabled
-    final bool isActiveAndStrictMode = _routine.isActive && _routine.strictMode;
-    // Allow saving if the routine is changing from non-strict to strict mode
-    final bool allowSaveForStrictModeChange = !_originalStrictMode && _routine.strictMode;
-    
+    final bool isActiveAndStrictMode = _routine.isActive && _originalStrictMode;
+
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 80,
@@ -226,31 +223,31 @@ class _RoutinePageState extends State<RoutinePage> {
                 routine: _routine,
                 devices: _devices,
                 onChanged: _validateRoutine,
-                enabled: !isActiveAndStrictMode || allowSaveForStrictModeChange,
+                enabled: !isActiveAndStrictMode,
               ),
               const SizedBox(height: 16),
               TimeSection(
                 routine: _routine,
                 onChanged: _validateRoutine,
-                enabled: !isActiveAndStrictMode || allowSaveForStrictModeChange,
+                enabled: !isActiveAndStrictMode,
               ),
               const SizedBox(height: 16),
               ConditionSection(
                 routine: _routine,
                 onChanged: _validateRoutine,
-                enabled: !isActiveAndStrictMode || allowSaveForStrictModeChange,
+                enabled: !isActiveAndStrictMode,
               ),
               const SizedBox(height: 16),
               BreakConfigSection(
                 routine: _routine,
                 onChanged: _validateRoutine,
-                enabled: !isActiveAndStrictMode || allowSaveForStrictModeChange,
+                enabled: !isActiveAndStrictMode,
               ),
               const SizedBox(height: 16),
               StrictModeSection(
                 routine: _routine,
                 onChanged: _validateRoutine,
-                enabled: !isActiveAndStrictMode || allowSaveForStrictModeChange,
+                enabled: !isActiveAndStrictMode,
               ),
               const SizedBox(height: 32),
               if (_routine.saved) ...[
