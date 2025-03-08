@@ -63,6 +63,8 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
   
   @override
   Widget build(BuildContext context) {
+    final isExtensionSetup = _isSetupCompleted && BrowserExtensionService.instance.isExtensionConnected;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -88,16 +90,16 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
             Row(
               children: [
                 Icon(
-                  _isSetupCompleted ? Icons.check_circle : Icons.error,
-                  color: _isSetupCompleted ? Colors.green : Colors.orange,
+                  isExtensionSetup ? Icons.check_circle : Icons.error,
+                  color: isExtensionSetup ? Colors.green : Colors.orange,
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  _isSetupCompleted
+                  isExtensionSetup
                       ? 'Browser extension is set up'
                       : 'Browser extension setup required',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: _isSetupCompleted ? Colors.green : Colors.orange,
+                        color: isExtensionSetup ? Colors.green : Colors.orange,
                       ),
                 ),
               ],
@@ -111,7 +113,7 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
                 await _showOnboardingDialog();
               },
               child: Text(_isSetupCompleted
-                  ? 'Reconfigure Browser Extension'
+                  ? 'Configure Browser Extension'
                   : 'Set Up Browser Extension'),
             ),
           ],

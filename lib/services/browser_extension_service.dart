@@ -89,7 +89,7 @@ class BrowserExtensionService {
           final entities = await appDir.list().toList();
           for (var entity in entities) {
             if (entity is Directory && entity.path.toLowerCase().contains('firefox') && entity.path.endsWith('.app')) {
-              supportedBrowsers.add('Firefox');
+              supportedBrowsers.add(entity.path);
               break;
             }
           }
@@ -104,7 +104,7 @@ class BrowserExtensionService {
         for (var path in possiblePaths) {
           final dir = Directory(path);
           if (await dir.exists()) {
-            supportedBrowsers.add('Firefox');
+            supportedBrowsers.add(path);
             break;
           }
         }
@@ -112,7 +112,7 @@ class BrowserExtensionService {
         // Check if Firefox is installed using 'which'
         final result = await Process.run('which', ['firefox']);
         if (result.exitCode == 0 && result.stdout.toString().trim().isNotEmpty) {
-          supportedBrowsers.add('Firefox');
+          supportedBrowsers.add(result.stdout.toString().trim());
         }
       }
     } catch (e) {

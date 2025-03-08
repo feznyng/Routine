@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 import '../models/routine.dart';
 
 class StrictModeService with ChangeNotifier {
@@ -17,6 +18,12 @@ class StrictModeService with ChangeNotifier {
   DateTime? _extensionCooldownEnd;
   static const int _extensionGracePeriodSeconds = 30;
   static const int _extensionCooldownMinutes = 10;
+  
+  // List of listeners for effective settings changes
+  final List<Function(Map<String, bool>)> _effectiveSettingsListeners = [];
+  
+  // Stream controller for effective settings changes
+  final StreamController<Map<String, bool>> _effectiveSettingsStreamController = StreamController<Map<String, bool>>.broadcast();
   
   // Private constructor
   StrictModeService._internal() {
@@ -39,7 +46,7 @@ class StrictModeService with ChangeNotifier {
   bool _blockInstallingApps = false;
   
   // Evaluate if any active routines are in strict mode
-  void _evaluateStrictMode(List<Routine> routines) {
+  void evaluateStrictMode(List<Routine> routines) {
     // Filter for active, not paused routines
     final activeRoutines = routines.where((r) => r.isActive && !r.isPaused).toList();
     
@@ -55,6 +62,9 @@ class StrictModeService with ChangeNotifier {
       if (Platform.isIOS) {
         _updateIOSStrictModeSettings();
       }
+      
+      // Notify effective settings listeners since effective settings depend on _inStrictMode
+      _notifyEffectiveSettingsChanged();
     }
   }
   
@@ -122,12 +132,18 @@ class StrictModeService with ChangeNotifier {
     _extensionCooldownEnd = DateTime.now().add(Duration(minutes: _extensionCooldownMinutes));
     
     notifyListeners();
+    
+    // Grace period affects effective settings
+    _notifyEffectiveSettingsChanged();
   }
   
   // End the grace period early
   void endExtensionGracePeriod() {
     _extensionGracePeriodEnd = null;
     notifyListeners();
+    
+    // Grace period affects effective settings
+    _notifyEffectiveSettingsChanged();
   }
   
   // Initialize the service by loading saved preferences
@@ -148,10 +164,10 @@ class StrictModeService with ChangeNotifier {
     
     _initialized = true;
     
-    // Listen for routine changes to update strict mode status
-    Routine.watchAll().listen(_evaluateStrictMode);
-    
     notifyListeners();
+    
+    // Initial notification of effective settings
+    _notifyEffectiveSettingsChanged();
   }
   
   // Set desktop settings
@@ -162,6 +178,9 @@ class StrictModeService with ChangeNotifier {
     await prefs.setBool(_blockAppExitKey, value);
     _blockAppExit = value;
     notifyListeners();
+    
+    // Notify effective settings listeners
+    _notifyEffectiveSettingsChanged();
   }
   
   Future<void> setBlockDisablingSystemStartup(bool value) async {
@@ -171,6 +190,9 @@ class StrictModeService with ChangeNotifier {
     await prefs.setBool(_blockDisablingSystemStartupKey, value);
     _blockDisablingSystemStartup = value;
     notifyListeners();
+    
+    // Notify effective settings listeners
+    _notifyEffectiveSettingsChanged();
   }
   
   Future<void> setBlockBrowsersWithoutExtension(bool value) async {
@@ -180,6 +202,9 @@ class StrictModeService with ChangeNotifier {
     await prefs.setBool(_blockBrowsersWithoutExtensionKey, value);
     _blockBrowsersWithoutExtension = value;
     notifyListeners();
+    
+    // Notify effective settings listeners
+    _notifyEffectiveSettingsChanged();
   }
   
   // Set iOS settings
@@ -195,6 +220,9 @@ class StrictModeService with ChangeNotifier {
     if (Platform.isIOS) {
       _updateIOSStrictModeSettings();
     }
+    
+    // Notify effective settings listeners
+    _notifyEffectiveSettingsChanged();
   }
   
   Future<void> setBlockUninstallingApps(bool value) async {
@@ -209,6 +237,9 @@ class StrictModeService with ChangeNotifier {
     if (Platform.isIOS) {
       _updateIOSStrictModeSettings();
     }
+    
+    // Notify effective settings listeners
+    _notifyEffectiveSettingsChanged();
   }
   
   Future<void> setBlockInstallingApps(bool value) async {
@@ -223,6 +254,9 @@ class StrictModeService with ChangeNotifier {
     if (Platform.isIOS) {
       _updateIOSStrictModeSettings();
     }
+    
+    // Notify effective settings listeners
+    _notifyEffectiveSettingsChanged();
   }
   
   // Helper method to update iOS strict mode settings
@@ -463,5 +497,59 @@ class StrictModeService with ChangeNotifier {
       return true;
     }
     return isStrictModeEnabled;
+  }
+  
+  // Get the current effective settings as a map
+  Map<String, bool> getCurrentEffectiveSettings() {
+    return {
+      'blockAppExit': effectiveBlockAppExit,
+      'blockDisablingSystemStartup': effectiveBlockDisablingSystemStartup,
+      'blockBrowsersWithoutExtension': effectiveBlockBrowsersWithoutExtension,
+      'blockChangingTimeSettings': effectiveBlockChangingTimeSettings,
+      'blockUninstallingApps': effectiveBlockUninstallingApps,
+      'blockInstallingApps': effectiveBlockInstallingApps,
+      'inStrictMode': inStrictMode,
+      'isInExtensionGracePeriod': isInExtensionGracePeriod,
+      'isInExtensionCooldown': isInExtensionCooldown,
+    };
+  }
+  
+  // Notify all effective settings listeners of changes
+  void _notifyEffectiveSettingsChanged() {
+    final effectiveSettings = getCurrentEffectiveSettings();
+    
+    // Notify all listeners of the effective settings change
+    for (final listener in _effectiveSettingsListeners) {
+      listener(effectiveSettings);
+    }
+    
+    // Also notify through the stream
+    _effectiveSettingsStreamController.add(effectiveSettings);
+  }
+  
+  // Add a listener for effective settings changes
+  void addEffectiveSettingsListener(Function(Map<String, bool>) listener) {
+    if (!_effectiveSettingsListeners.contains(listener)) {
+      _effectiveSettingsListeners.add(listener);
+      
+      // Immediately notify the new listener of current settings
+      listener(getCurrentEffectiveSettings());
+    }
+  }
+  
+  // Remove a listener for effective settings changes
+  void removeEffectiveSettingsListener(Function(Map<String, bool>) listener) {
+    _effectiveSettingsListeners.remove(listener);
+  }
+  
+  // Get a stream of effective settings changes
+  Stream<Map<String, bool>> get effectiveSettingsStream => _effectiveSettingsStreamController.stream;
+  
+  // Clean up resources when the service is disposed
+  @override
+  void dispose() {
+    _effectiveSettingsListeners.clear();
+    _effectiveSettingsStreamController.close();
+    super.dispose();
   }
 }

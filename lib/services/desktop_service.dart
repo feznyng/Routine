@@ -51,6 +51,18 @@ class DesktopService {
     Routine.watchAll().listen((routines) {
       onRoutinesUpdated(routines);
     });
+
+    BrowserExtensionService.instance.addConnectionListener((strictMode) {
+      print('Browser extension connection changed: $strictMode');
+      updateAppList();
+    });
+
+    StrictModeService.instance.addEffectiveSettingsListener((settings) {
+      print('Effective settings changed: $settings');
+      if (settings.keys.contains('blockBrowsersWithoutExtension')) {
+        updateAppList();
+      }
+    });
   }
 
   void onRoutinesUpdated(List<Routine> routines) async {
@@ -134,12 +146,23 @@ class DesktopService {
     // Update both apps and sites
     updateAppList();
     updateBlockedSites();
+    StrictModeService.instance.evaluateStrictMode(routines);
   }
   
   Future<void> updateAppList() async {
     // Update platform channel
+    final apps = List<String>.from(_cachedApps);
+
+    if (StrictModeService.instance.effectiveBlockBrowsersWithoutExtension && !BrowserExtensionService.instance.isExtensionConnected) {
+      final browsers = await BrowserExtensionService.instance.getInstalledSupportedBrowsers();
+      print("Blocking $browsers");
+      apps.addAll(browsers);
+    } else {
+      print("Not blocking browsers");
+    }
+
     platform.invokeMethod('updateAppList', {
-      'apps': _cachedApps,
+      'apps': apps,
       'categories': _cachedCategories,
       'allowList': _isAllowList,
     });
