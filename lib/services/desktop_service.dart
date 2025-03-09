@@ -91,7 +91,7 @@ class DesktopService {
 
     for (final Schedule time in evaluationTimes) {
       ScheduledTask task = cron.schedule(time, () async {
-        _evaluate(routines);
+        evaluate(routines);
       });
       _scheduledTasks.add(task);
     }
@@ -105,10 +105,10 @@ class DesktopService {
       );
     }
     
-    _evaluate(routines);
+    evaluate(routines);
   }
 
-  void _evaluate(List<Routine> routines) {
+  void evaluate(List<Routine> routines) {
     // Filter for active, not paused, and conditions not met routines
     routines = routines.where((r) => r.isActive && !r.isPaused && !r.areConditionsMet).toList();
 
@@ -184,6 +184,7 @@ class DesktopService {
   
   // Update blocked sites in the browser extension
   Future<void> updateBlockedSites() async {
+    print('updateBlockedSites called $_cachedSites');
     await BrowserExtensionService.instance.sendToNMH('updateBlockedSites', {
       'sites': _cachedSites,
       'allowList': _isAllowList,

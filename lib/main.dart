@@ -9,6 +9,7 @@ import 'setup.dart';
 import 'services/sync_service.dart';
 import 'services/theme_provider.dart';
 import 'services/strict_mode_service.dart';
+import './models/routine.dart';
 
 // Desktop-specific imports
 import 'package:window_manager/window_manager.dart' if (dart.library.html) '';
@@ -155,6 +156,9 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
     if (state == AppLifecycleState.resumed) {
       // Notify the auth service that the app has resumed
       AuthService().notifyAppResumed();
+      Routine.getAll().then((routines) {
+        _desktopService?.evaluate(routines);
+      });
       
       // Trigger a sync job when the app resumes
       if (!_isDesktop) {

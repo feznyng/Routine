@@ -163,6 +163,37 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  Future<List<RoutineWithGroups>> getRoutines() async {
+    final referencedItems = routines.groups.jsonEach(this);
+
+    final routineWithGroups = select(routines).join(
+      [
+        innerJoin(referencedItems, const Constant(true), useColumns: false),
+        innerJoin(
+          groups,
+          groups.id.equalsExp(referencedItems.value.cast()) & groups.deleted.equals(false),
+        ),
+      ],
+    )..where(routines.deleted.equals(false));
+
+    final routinesWithGroups = await routineWithGroups.get();
+    final groupsByRoutine = <String, List<GroupEntry>>{};
+    final routinesById = <String, RoutineEntry>{};
+
+    for (final row in routinesWithGroups) {
+      final routine = row.readTable(routines);
+      final group = row.readTable(groups);
+
+      groupsByRoutine.putIfAbsent(routine.id, () => []).add(group);
+      routinesById[routine.id] = routine;
+    }
+
+    return [
+      for (final entry in groupsByRoutine.entries)
+        (routine: routinesById[entry.key]!, groups: entry.value)
+    ];
+  }
+
   Stream<List<GroupEntry>> getNamedGroups(String deviceId) {
     return (select(groups)..where((t) => t.device.equals(deviceId) & t.name.isNotNull() & t.deleted.equals(false))).watch();
   }

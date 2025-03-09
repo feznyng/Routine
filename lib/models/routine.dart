@@ -46,6 +46,11 @@ class Routine implements Syncable {
       .toList());
   }
 
+  static Future<List<Routine>> getAll() async {
+    final routines =  await getIt<AppDatabase>().getRoutines();
+    return routines.map((e) => Routine.fromEntry(e.routine, e.groups)).toList();
+  }
+
   Routine() :
     _id = Uuid().v4(),
     _name = 'Routine',
