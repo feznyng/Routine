@@ -51,14 +51,12 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
         builder: (context) => BrowserExtensionOnboardingDialog(
           selectedSites: const [], // No pre-selected sites
           onComplete: (sites) {
-            print('completed');
             setState(() {});
             Navigator.of(context).pop(sites);
           },
           onSkip: () {
-            print('skipped');
-            Navigator.of(context).pop();
             setState(() {});
+            Navigator.of(context).pop();
           },
         ),
       );
@@ -74,24 +72,26 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
     final remainingCooldownMinutes = _strictModeService.remainingCooldownMinutes;
     final isBlockingBrowsers = _strictModeService.effectiveBlockBrowsersWithoutExtension;
   
-    print('re-rendering');
-
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.extension),
-                const SizedBox(width: 8),
-                Text(
-                  'Browser Extension',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Text(
+              'Browser Extension',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
+          ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
             const SizedBox(height: 16),
             Text(
               'The browser extension allows Routine to block distracting websites during focus sessions.',
@@ -171,8 +171,10 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
                     ? 'Wait ${_strictModeService.remainingCooldownMinutes}m to try again'
                     : 'Set Up Browser Extension'),
               ),
-          ],
-        ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

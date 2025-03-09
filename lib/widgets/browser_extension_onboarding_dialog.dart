@@ -69,7 +69,6 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
   // Start a timer to update the grace period countdown
   void _startGracePeriodCountdown() {
     if (!StrictModeService.instance.effectiveBlockBrowsersWithoutExtension) {
-      print("avoiding grace period");
       return;
     }
 
@@ -232,8 +231,6 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
-
-      print('Current step: ${_currentStep}');
       
       // If moving to the extension installation step, start periodic connection attempts
       if (_currentStep == 2) { // Extension installation step
