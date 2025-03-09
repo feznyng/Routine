@@ -138,6 +138,9 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
     
     try {
       final browserExtensionService = BrowserExtensionService.instance;
+      
+      // Always install the native messaging host and manifest during onboarding
+      // to ensure they're properly configured
       final success = await browserExtensionService.installNativeMessagingHost();
       
       setState(() {

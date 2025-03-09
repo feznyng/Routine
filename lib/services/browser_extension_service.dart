@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:io' show Directory, File, Platform, Process, Socket, SocketException;
+import 'dart:io' show Directory, File, Platform, Process, ProcessResult, Socket, SocketException;
 import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
 import 'package:win32/win32.dart';
@@ -99,33 +99,138 @@ class BrowserExtensionService {
     return supportedBrowsers;
   }
   
+  // Check if the native messaging host binary is installed
+  Future<bool> isNativeMessagingHostBinaryInstalled() async {
+    try {
+      final Directory appDir = await getApplicationSupportDirectory();
+      String nmhPath;
+      
+      if (Platform.isMacOS) {
+        nmhPath = '${appDir.path}/routine-nmh';
+      } else if (Platform.isWindows) {
+        nmhPath = '${appDir.path}\\routine-nmh.exe';
+      } else if (Platform.isLinux) {
+        nmhPath = '${appDir.path}/routine-nmh';
+      } else {
+        return false;
+      }
+      
+      final File nmhFile = File(nmhPath);
+      return await nmhFile.exists();
+    } catch (e) {
+      debugPrint('Error checking if NMH binary is installed: $e');
+      return false;
+    }
+  }
+  
+  // Install the native messaging host binary from assets
+  Future<bool> installNativeMessagingHostBinary() async {
+    try {
+      // Get the application support directory
+      final Directory appDir = await getApplicationSupportDirectory();
+      String assetPath;
+      String targetPath;
+      
+      debugPrint('Application support directory: ${appDir.path}');
+      
+      if (Platform.isMacOS) {
+        // Determine which binary to use based on architecture
+        final ProcessResult result = await Process.run('uname', ['-m']);
+        final String arch = result.stdout.toString().trim();
+        debugPrint('Detected architecture: $arch');
+        
+        if (arch == 'arm64') {
+          assetPath = 'assets/extension/native_macos_arm64';
+        } else {
+          assetPath = 'assets/extension/native_macos_x86_64';
+        }
+        
+        targetPath = '${appDir.path}/routine-nmh';
+      } else if (Platform.isWindows) {
+        // Windows binary would be here
+        assetPath = 'assets/extension/native_windows.exe';
+        targetPath = '${appDir.path}\\routine-nmh.exe';
+        return false; // Not implemented yet
+      } else if (Platform.isLinux) {
+        // Linux binary would be here
+        assetPath = 'assets/extension/native_linux';
+        targetPath = '${appDir.path}/routine-nmh';
+        return false; // Not implemented yet
+      } else {
+        return false;
+      }
+      
+      debugPrint('Using asset: $assetPath');
+      debugPrint('Installing binary to: $targetPath');
+      
+      // Load the binary from assets
+      final ByteData data = await rootBundle.load(assetPath);
+      final List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+      debugPrint('Binary size: ${bytes.length} bytes');
+      
+      // Write the binary to the target path
+      final File targetFile = File(targetPath);
+      await targetFile.writeAsBytes(bytes);
+      
+      // Make the binary executable
+      if (Platform.isMacOS || Platform.isLinux) {
+        await Process.run('chmod', ['+x', targetPath]);
+        debugPrint('Made binary executable with chmod +x');
+      }
+      
+      final bool exists = await targetFile.exists();
+      debugPrint('Binary installation ${exists ? "successful" : "failed"}');
+      return exists;
+    } catch (e) {
+      debugPrint('Error installing NMH binary: $e');
+      return false;
+    }
+  }
+
   // Install native messaging host manifest
   Future<bool> installNativeMessagingHost() async {
     try {
+      // Always install the native messaging host binary during onboarding
+      // to ensure it's the correct version
+      final bool installResult = await installNativeMessagingHostBinary();
+      if (!installResult) {
+        debugPrint('Failed to install native messaging host binary');
+        return false;
+      }
+      
       // Create the manifest file with the correct path to the native messaging host
       // and install it in the correct location based on the platform
       
       if (Platform.isMacOS) {
+        // Get the path to the native messaging host executable
+        final Directory appDir = await getApplicationSupportDirectory();
+        final String nmhPath = '${appDir.path}/routine-nmh';
+        debugPrint('Native messaging host binary path: $nmhPath');
+        
         // On macOS, we need to use NSOpenPanel to save the file due to sandbox restrictions
         // Create the manifest content
         final Map<String, dynamic> manifest = {
           'name': 'com.routine.native_messaging',
           'description': 'Routine Native Messaging Host',
-          'path': '/Users/ajan/Projects/routine/target/debug/native',
+          'path': nmhPath,
           'type': 'stdio',
           'allowed_extensions': ['blocker@routine-blocker.com']
         };
         
         final String manifestJson = json.encode(manifest);
+        debugPrint('Manifest content: $manifestJson');
         
         try {
           // Call the platform method to show NSOpenPanel and save the file
+          debugPrint('Showing NSOpenPanel to save manifest file');
           final bool result = await _channel.invokeMethod('saveNativeMessagingHostManifest', {
             'content': manifestJson,
           });
           
+          debugPrint('Manifest installation ${result ? "successful" : "failed"}');
           return result;
         } catch (e) {
+          debugPrint('Error saving manifest: $e');
           return false;
         }
       } else if (Platform.isWindows) {
@@ -135,6 +240,7 @@ class BrowserExtensionService {
         // Get the path to the native messaging host executable
         final Directory appDir = await getApplicationSupportDirectory();
         final String nmhPath = '${appDir.path}\\routine-nmh.exe';
+        debugPrint('Native messaging host binary path: $nmhPath');
         
         // Create the manifest content
         final Map<String, dynamic> manifest = {
@@ -147,16 +253,19 @@ class BrowserExtensionService {
         
         // Convert manifest to JSON string
         final String manifestJson = json.encode(manifest);
+        debugPrint('Manifest content: $manifestJson');
         
         // Registry paths for Firefox
         const String mozillaRegistryPath = 
             'SOFTWARE\\Mozilla\\NativeMessagingHosts\\com.routine.nmh';
+        debugPrint('Registry path: $mozillaRegistryPath');
             
         // Open the registry key (create if it doesn't exist)
         final Pointer<HKEY> hKey = calloc<HKEY>();
         
         try {
           // Create or open the key
+          debugPrint('Creating registry key...');
           final int result = RegCreateKeyEx(
             HKEY_CURRENT_USER,
             TEXT(mozillaRegistryPath),
@@ -170,6 +279,7 @@ class BrowserExtensionService {
           );
           
           if (result != ERROR_SUCCESS) {
+            debugPrint('Failed to create registry key, error code: $result');
             return false;
           }
           
@@ -177,6 +287,7 @@ class BrowserExtensionService {
           // First, create a temporary file with the manifest
           final tempDir = await getTemporaryDirectory();
           final manifestFile = File('${tempDir.path}\\routine_manifest.json');
+          debugPrint('Creating manifest file at: ${manifestFile.path}');
           
           await manifestFile.writeAsString(manifestJson);
           
@@ -185,6 +296,7 @@ class BrowserExtensionService {
             // Set the default value to the path of the manifest file
             final manifestPath = manifestFile.path;
             final Pointer<Utf16> manifestPathUtf16 = TEXT(manifestPath);
+            debugPrint('Setting registry value to manifest path: $manifestPath');
             
             final int setValueResult = RegSetValueEx(
               hKey.value,
@@ -196,13 +308,16 @@ class BrowserExtensionService {
             );
             
             if (setValueResult != ERROR_SUCCESS) {
+              debugPrint('Failed to set registry value, error code: $setValueResult');
               return false;
             }
             
             // Close the registry key
             RegCloseKey(hKey.value);
+            debugPrint('Windows manifest installation successful');
             return true;
           } else {
+            debugPrint('Failed to create manifest file');
             return false;
           }
         } finally {
@@ -213,32 +328,48 @@ class BrowserExtensionService {
         // On Linux, the manifest goes in ~/.mozilla/native-messaging-hosts/
         final String homeDir = Platform.environment['HOME'] ?? '';
         final String manifestDir = '$homeDir/.mozilla/native-messaging-hosts';
+        debugPrint('Linux manifest directory: $manifestDir');
+        
+        // Get the path to the native messaging host executable
+        final Directory appDir = await getApplicationSupportDirectory();
+        final String nmhPath = '${appDir.path}/routine-nmh';
+        debugPrint('Native messaging host binary path: $nmhPath');
         
         // Create directories if they don't exist
         final Directory dir = Directory(manifestDir);
         if (!await dir.exists()) {
+          debugPrint('Creating manifest directory: $manifestDir');
           await dir.create(recursive: true);
+        } else {
+          debugPrint('Manifest directory already exists');
         }
         
         // Create the manifest file
         final File manifestFile = File('$manifestDir/com.routine.native_messaging.json');
+        debugPrint('Creating manifest file at: ${manifestFile.path}');
         
         // Example manifest content
         final Map<String, dynamic> manifest = {
           'name': 'com.routine.nmh',
           'description': 'Routine Native Messaging Host',
-          'path': '/usr/local/bin/routine-nmh',
+          'path': nmhPath,
           'type': 'stdio',
           'allowed_extensions': ['routine@example.com']
         };
         
-        await manifestFile.writeAsString(json.encode(manifest));
+        final String manifestJson = json.encode(manifest);
+        debugPrint('Manifest content: $manifestJson');
         
-        return true;
+        await manifestFile.writeAsString(manifestJson);
+        
+        final bool exists = await manifestFile.exists();
+        debugPrint('Linux manifest installation ${exists ? "successful" : "failed"}');
+        return exists;
       }
       
       return false;
     } catch (e) {
+      debugPrint('Error installing native messaging host: $e');
       return false;
     }
   }
