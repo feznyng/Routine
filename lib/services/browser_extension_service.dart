@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io' show Directory, File, Platform, Process, Socket, SocketException;
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:win32/win32.dart';
 import 'package:win32/src/constants.dart';
@@ -50,30 +49,8 @@ class BrowserExtensionService {
   // Since the extension starts the NMH, this also indicates if NMH is connected
   bool get isExtensionConnected => _extensionConnected;
   
-  // Key for storing setup status in SharedPreferences
-  static const String _setupCompletedKey = 'browser_extension_setup_completed';
-  
-  // Check if the browser extension setup has been completed
-  Future<bool> isSetupCompleted() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_setupCompletedKey) ?? false;
-  }
-  
-  // Mark the browser extension setup as completed
-  Future<void> markSetupCompleted() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_setupCompletedKey, true);
-  }
-  
-  // Reset the setup status (for testing or if the user needs to redo the setup)
-  Future<void> resetSetupStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_setupCompletedKey, false);
-  }
-  
   // Launch the browser extension onboarding process
   Future<void> launchOnboardingProcess() async {
-    await resetSetupStatus();
     await connectToNMH();
   }
   
@@ -389,30 +366,24 @@ class BrowserExtensionService {
     }
   }
 
-  // Handle extension connection status changes
   void setExtensionConnected(bool connected) {
     if (_extensionConnected != connected) {
       _extensionConnected = connected;
-      debugPrint('Extension connection status changed: $_extensionConnected');
       
-      // Notify all listeners of the connection change
       for (final listener in _connectionListeners) {
         listener(_extensionConnected);
       }
       
-      // Also notify through the stream
       _connectionStreamController.add(_extensionConnected);
     }
   }
   
-  // Add a listener for extension connection status changes
   void addConnectionListener(Function(bool) listener) {
     if (!_connectionListeners.contains(listener)) {
       _connectionListeners.add(listener);
     }
   }
   
-  // Remove a listener for extension connection status changes
   void removeConnectionListener(Function(bool) listener) {
     _connectionListeners.remove(listener);
   }

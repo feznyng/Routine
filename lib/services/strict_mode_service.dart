@@ -176,6 +176,7 @@ class StrictModeService with ChangeNotifier {
   
   // Cancel the grace period and go directly to cooldown
   void cancelGracePeriodWithCooldown() {
+    print("canceling grace period with cooldown");
     // Cancel the grace period timer
     _gracePeriodTimer?.cancel();
     _gracePeriodTimer = null;
@@ -184,9 +185,7 @@ class StrictModeService with ChangeNotifier {
     _extensionGracePeriodEnd = null;
     
     // Ensure cooldown is set
-    if (_extensionCooldownEnd == null) {
-      _extensionCooldownEnd = DateTime.now().add(Duration(minutes: _extensionCooldownMinutes));
-    }
+    _extensionCooldownEnd ??= DateTime.now().add(Duration(minutes: _extensionCooldownMinutes));
     
     notifyListeners();
     

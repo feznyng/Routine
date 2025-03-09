@@ -44,22 +44,21 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
   }
 
   Future<void> _showOnboardingDialog() async {
-    if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
-      final isInGracePeriod = _strictModeService.isInExtensionGracePeriod;
-      
+    if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {      
       await showDialog<List<String>>(
         context: context,
         barrierDismissible: false,
         builder: (context) => BrowserExtensionOnboardingDialog(
           selectedSites: const [], // No pre-selected sites
-          inGracePeriod: isInGracePeriod, // Pass the grace period flag
           onComplete: (sites) {
-            // Mark setup as completed
-            _browserExtensionService.markSetupCompleted();
+            print('completed');
+            setState(() {});
             Navigator.of(context).pop(sites);
           },
           onSkip: () {
+            print('skipped');
             Navigator.of(context).pop();
+            setState(() {});
           },
         ),
       );
@@ -74,6 +73,8 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
     final remainingGraceSeconds = _strictModeService.remainingGracePeriodSeconds;
     final remainingCooldownMinutes = _strictModeService.remainingCooldownMinutes;
     final isBlockingBrowsers = _strictModeService.effectiveBlockBrowsersWithoutExtension;
+  
+    print('re-rendering');
 
     return Card(
       child: Padding(
@@ -162,26 +163,6 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
             if (!isExtensionConnected)
               ElevatedButton(
                 onPressed: isInCooldown ? null : () async {
-                  // Start the grace period
-                  _strictModeService.startExtensionGracePeriod();
-                  
-                  // Set up a timer to update the UI during grace period
-                  _gracePeriodTimer?.cancel();
-                  _gracePeriodTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-                    if (mounted) {
-                      setState(() {});
-                    }
-                    
-                    // Check if extension is connected or grace period ended
-                    if (BrowserExtensionService.instance.isExtensionConnected) {
-                      _strictModeService.endExtensionGracePeriod();
-                      timer.cancel();
-                    } else if (!_strictModeService.isInExtensionGracePeriod) {
-                      timer.cancel();
-                    }
-                  });
-                  
-                  // First reset the setup status
                   await widget.onRestartOnboarding();
                   // Then show the onboarding dialog
                   await _showOnboardingDialog();

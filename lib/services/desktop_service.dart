@@ -53,12 +53,10 @@ class DesktopService {
     });
 
     BrowserExtensionService.instance.addConnectionListener((strictMode) {
-      print('Browser extension connection changed: $strictMode');
       updateAppList();
     });
 
     StrictModeService.instance.addEffectiveSettingsListener((settings) {
-      print('Effective settings changed: $settings');
       if (settings.keys.contains('blockBrowsersWithoutExtension') || 
           settings.keys.contains('isInExtensionGracePeriod') || 
           settings.keys.contains('isInExtensionCooldown')) {
@@ -169,12 +167,8 @@ class DesktopService {
         !BrowserExtensionService.instance.isExtensionConnected && 
         !StrictModeService.instance.isInExtensionGracePeriod) {
       final browsers = await BrowserExtensionService.instance.getInstalledSupportedBrowsers();
-      print("Blocking $browsers");
       apps.addAll(browsers);
-    } else {
-      print("Not blocking browsers");
     }
-
     platform.invokeMethod('updateAppList', {
       'apps': apps,
       'categories': _cachedCategories,
@@ -184,7 +178,6 @@ class DesktopService {
   
   // Update blocked sites in the browser extension
   Future<void> updateBlockedSites() async {
-    print('updateBlockedSites called $_cachedSites');
     await BrowserExtensionService.instance.sendToNMH('updateBlockedSites', {
       'sites': _cachedSites,
       'allowList': _isAllowList,

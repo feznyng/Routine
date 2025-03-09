@@ -65,10 +65,8 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
 
   Future<void> _openSitesDialog() async {
     // Check if browser extension setup has been completed
-    final browserExtensionService = BrowserExtensionService.instance;
-    final isSetupCompleted = await browserExtensionService.isSetupCompleted();
-    
-    if (!isSetupCompleted && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
+    final browserExtensionService = BrowserExtensionService.instance;    
+    if (!browserExtensionService.isExtensionConnected && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
       // Show onboarding dialog if setup is not completed
       final result = await showDialog<List<String>>(
         context: context,
@@ -76,8 +74,6 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
         builder: (context) => BrowserExtensionOnboardingDialog(
           selectedSites: _selectedSites,
           onComplete: (sites) {
-            // Mark setup as completed
-            browserExtensionService.markSetupCompleted();
             Navigator.of(context).pop(sites);
           },
           onSkip: () {

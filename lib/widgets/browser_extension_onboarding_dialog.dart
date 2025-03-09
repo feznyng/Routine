@@ -10,14 +10,12 @@ class BrowserExtensionOnboardingDialog extends StatefulWidget {
   final List<String> selectedSites;
   final Function(List<String>) onComplete;
   final VoidCallback onSkip;
-  final bool inGracePeriod;
 
   const BrowserExtensionOnboardingDialog({
     super.key,
     required this.selectedSites,
     required this.onComplete,
     required this.onSkip,
-    this.inGracePeriod = false,
   });
 
   @override
@@ -32,12 +30,11 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
   bool _manifestInstalled = false;
   bool _isInstallingManifest = false;
   String? _manifestInstallError;
-  bool _extensionInstalled = false;
   bool _isInstallingExtension = false;
   String? _extensionInstallError;
   
   // Grace period tracking
-  bool _inGracePeriod = false;
+  bool _startedGracePeriod = false;
   int _remainingGracePeriodSeconds = 0;
   Timer? _gracePeriodCountdownTimer;
   
@@ -51,26 +48,7 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
   void initState() {
     super.initState();
     _detectInstalledBrowsers();
-    
-    // Initialize grace period state
-    _inGracePeriod = widget.inGracePeriod;
-    if (_inGracePeriod) {
-      _remainingGracePeriodSeconds = StrictModeService.instance.remainingGracePeriodSeconds;
-      _startGracePeriodCountdown();
-      
-      // Add listener for grace period expiration
-      StrictModeService.instance.addGracePeriodExpirationListener(_onGracePeriodExpired);
-    }
-    
-    // Subscribe to extension connection status changes
-    _connectionSubscription = BrowserExtensionService.instance.connectionStream.listen((isConnected) {
-      if (mounted) {
-        setState(() {
-          // Update extension installed status based on connection status
-          _extensionInstalled = isConnected;
-        });
-      }
-    });
+    _startedGracePeriod = false;
   }
   
   @override
@@ -81,7 +59,7 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
     _gracePeriodCountdownTimer?.cancel();
     
     // Remove grace period expiration listener
-    if (_inGracePeriod) {
+    if (_startedGracePeriod) {
       StrictModeService.instance.removeGracePeriodExpirationListener(_onGracePeriodExpired);
     }
     
@@ -90,7 +68,18 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
   
   // Start a timer to update the grace period countdown
   void _startGracePeriodCountdown() {
-    _gracePeriodCountdownTimer?.cancel();
+    if (!StrictModeService.instance.effectiveBlockBrowsersWithoutExtension) {
+      print("avoiding grace period");
+      return;
+    }
+
+    setState(() {
+      _startedGracePeriod = true;
+    });
+
+    StrictModeService.instance.addGracePeriodExpirationListener(_onGracePeriodExpired);
+    StrictModeService.instance.startExtensionGracePeriod();
+
     _gracePeriodCountdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
         setState(() {
@@ -110,7 +99,7 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
   void _onGracePeriodExpired() {
     if (mounted) {
       // Close the dialog when grace period expires
-      Navigator.of(context).pop();
+      widget.onSkip();
     }
   }
   
@@ -194,7 +183,6 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
     } catch (e) {
       setState(() {
         _isInstallingExtension = false;
-        _extensionInstalled = false;
         _extensionInstallError = 'Error: ${e.toString()}';
       });
     }
@@ -212,6 +200,9 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
     _connectionAttemptTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       // Check if the extension is already connected
       if (BrowserExtensionService.instance.isExtensionConnected) {
+        setState(() {
+          _isInstallingExtension = false;
+        });
         // If connected, cancel the timer
         timer.cancel();
         _connectionAttemptTimer = null;
@@ -241,9 +232,12 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
+
+      print('Current step: ${_currentStep}');
       
       // If moving to the extension installation step, start periodic connection attempts
       if (_currentStep == 2) { // Extension installation step
+        _startGracePeriodCountdown();
         _startPeriodicConnectionAttempts();
       }
     } else {
@@ -426,8 +420,7 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
           style: TextStyle(fontStyle: FontStyle.italic, fontSize: 13),
         ),
         const SizedBox(height: 16),
-        // Display grace period countdown if in grace period
-        if (_inGracePeriod && _remainingGracePeriodSeconds > 0)
+        if (!isExtensionConnected && _startedGracePeriod && _remainingGracePeriodSeconds > 0)
           Container(
             padding: const EdgeInsets.all(12.0),
             margin: const EdgeInsets.only(bottom: 16.0),
@@ -558,10 +551,11 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
                     icon: const Icon(Icons.close),
                     onPressed: () {
                       // If in grace period, cancel it and go to cooldown
-                      if (widget.inGracePeriod) {
+                      if (_startedGracePeriod) {
                         StrictModeService.instance.cancelGracePeriodWithCooldown();
+                      } else {
+                        widget.onSkip();
                       }
-                      widget.onSkip();
                     },
                   ),
                 ],
@@ -606,10 +600,11 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
                   TextButton(
                     onPressed: () {
                       // If in grace period, cancel it and go to cooldown
-                      if (widget.inGracePeriod) {
+                      if (_startedGracePeriod) {
                         StrictModeService.instance.cancelGracePeriodWithCooldown();
+                      } else {
+                        widget.onSkip();
                       }
-                      widget.onSkip();
                     },
                     child: const Text('Skip Setup'),
                   ),
