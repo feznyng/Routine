@@ -22,6 +22,7 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
   final StrictModeService _strictModeService = StrictModeService();
   StreamSubscription<bool>? _connectionSubscription;
   Timer? _gracePeriodTimer;
+  Timer? _cooldownTimer;
 
   @override
   void initState() {
@@ -33,6 +34,9 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
         setState(() {});
       }
     });
+    
+    // Start a timer to update the cooldown time display
+    _startCooldownTimer();
   }
 
   @override
@@ -40,7 +44,22 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
     // Cancel the subscription when the widget is disposed
     _connectionSubscription?.cancel();
     _gracePeriodTimer?.cancel();
+    _cooldownTimer?.cancel();
     super.dispose();
+  }
+  
+  void _startCooldownTimer() {
+    // Cancel any existing timer
+    _cooldownTimer?.cancel();
+    
+    // Create a new timer that fires every second
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          // This will trigger a rebuild with the updated cooldown time
+        });
+      }
+    });
   }
 
   Future<void> _showOnboardingDialog() async {
@@ -168,7 +187,7 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
                   await _showOnboardingDialog();
                 },
                 child: Text(isInCooldown
-                    ? 'Wait ${_strictModeService.remainingCooldownMinutes}m to try again'
+                    ? 'Wait ${remainingCooldownMinutes}m to try again'
                     : 'Set Up Browser Extension'),
               ),
               ],
