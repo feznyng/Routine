@@ -150,11 +150,13 @@ class BrowserExtensionService {
         // Windows binary would be here
         assetPath = 'assets/extension/native_windows.exe';
         targetPath = '${appDir.path}\\routine-nmh.exe';
+        debugPrint('Native messaging host binary path: $targetPath');
         return false; // Not implemented yet
       } else if (Platform.isLinux) {
         // Linux binary would be here
         assetPath = 'assets/extension/native_linux';
         targetPath = '${appDir.path}/routine-nmh';
+        debugPrint('Native messaging host binary path: $targetPath');
         return false; // Not implemented yet
       } else {
         return false;
@@ -179,7 +181,10 @@ class BrowserExtensionService {
       }
       
       final bool exists = await targetFile.exists();
-      debugPrint('Binary installation ${exists ? "successful" : "failed"}');
+      debugPrint('Binary installation in app directory ${exists ? "successful" : "failed"}');
+      
+      // Note: For macOS, the binary will be copied to the same directory as the manifest
+      // during the manifest installation process via platform method
       return exists;
     } catch (e) {
       debugPrint('Error installing NMH binary: $e');
@@ -190,47 +195,78 @@ class BrowserExtensionService {
   // Install native messaging host manifest
   Future<bool> installNativeMessagingHost() async {
     try {
-      // Always install the native messaging host binary during onboarding
-      // to ensure it's the correct version
-      final bool installResult = await installNativeMessagingHostBinary();
-      if (!installResult) {
-        debugPrint('Failed to install native messaging host binary');
-        return false;
-      }
-      
       // Create the manifest file with the correct path to the native messaging host
       // and install it in the correct location based on the platform
       
       if (Platform.isMacOS) {
-        // Get the path to the native messaging host executable
-        final Directory appDir = await getApplicationSupportDirectory();
-        final String nmhPath = '${appDir.path}/routine-nmh';
-        debugPrint('Native messaging host binary path: $nmhPath');
+        // Determine which binary to use based on architecture
+        String assetPath;
+        final ProcessResult result = await Process.run('uname', ['-m']);
+        final String arch = result.stdout.toString().trim();
+        debugPrint('Detected architecture: $arch');
         
-        // On macOS, we need to use NSOpenPanel to save the file due to sandbox restrictions
-        // Create the manifest content
+        if (arch == 'arm64') {
+          assetPath = 'assets/extension/native_macos_arm64';
+        } else {
+          assetPath = 'assets/extension/native_macos_x86_64';
+        }
+        
+        // Load the binary directly from assets
+        debugPrint('Loading binary from asset: $assetPath');
+        final ByteData data = await rootBundle.load(assetPath);
+        final List<int> binaryBytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+        debugPrint('Read binary from assets, size: ${binaryBytes.length} bytes');
+        
+        // For macOS, the binary needs to be in the same directory as the manifest
+        // which is outside the sandbox. The path in the manifest will be updated by
+        // the platform method to point to the correct location.
+        
+        // Create the manifest content with a placeholder path that will be updated
+        // by the platform method
         final Map<String, dynamic> manifest = {
           'name': 'com.routine.native_messaging',
           'description': 'Routine Native Messaging Host',
-          'path': nmhPath,
+          'path': 'PLACEHOLDER_PATH', // This will be updated by the platform method
           'type': 'stdio',
           'allowed_extensions': ['blocker@routine-blocker.com']
         };
         
         final String manifestJson = json.encode(manifest);
-        debugPrint('Manifest content: $manifestJson');
+        debugPrint('Manifest content (with placeholder path): $manifestJson');
         
         try {
-          // Call the platform method to show NSOpenPanel and save the file
-          debugPrint('Showing NSOpenPanel to save manifest file');
+          // Call the platform method to show NSOpenPanel, save the manifest file,
+          // and copy the binary to the same directory
+          debugPrint('Showing NSOpenPanel to save manifest and binary');
+          // Wrap the binary data in Uint8List to ensure proper serialization
+          final Uint8List binaryData = Uint8List.fromList(binaryBytes);
+          debugPrint('Sending binary data to platform method: ${binaryData.length} bytes');
+          
           final bool result = await _channel.invokeMethod('saveNativeMessagingHostManifest', {
             'content': manifestJson,
+            'binary': binaryData,
+            'binaryFilename': 'routine-nmh',
           });
           
-          debugPrint('Manifest installation ${result ? "successful" : "failed"}');
-          return result;
+          if (result) {
+            debugPrint('Manifest and binary installation successful');
+            // Try to connect to the Native Messaging Host after installation
+            // This will trigger the extension connection flow
+            Timer(const Duration(seconds: 2), () {
+              connectToNMH();
+            });
+            return true;
+          } else {
+            debugPrint('Manifest and binary installation failed');
+            // Log additional guidance for macOS security restrictions
+            debugPrint('Note: If macOS security blocks the binary, the user may need to:');
+            debugPrint('1. Open System Preferences > Security & Privacy');
+            debugPrint('2. Look for a message about "routine-nmh" being blocked');
+            debugPrint('3. Click "Allow Anyway" or "Open Anyway"');
+            return false;
+          }
         } catch (e) {
-          debugPrint('Error saving manifest: $e');
+          debugPrint('Error saving manifest and binary: $e');
           return false;
         }
       } else if (Platform.isWindows) {

@@ -64,7 +64,26 @@ class MainFlutterWindow: NSWindow {
       case "saveNativeMessagingHostManifest":
         if let args = call.arguments as? [String: Any],
            let manifestContent = args["content"] as? String {
-          saveNativeMessagingHostManifest(content: manifestContent) { success, error in
+          
+          // Extract binary data and filename if provided
+          var binary: Data? = nil
+          let binaryFilename = args["binaryFilename"] as? String
+          
+          // Check if binary data is provided and convert it to Data
+          if let binaryList = args["binary"] as? [UInt8] {
+            binary = Data(binaryList)
+            NSLog("Received binary data: %d bytes", binary!.count)
+          } else if let binaryData = args["binary"] as? FlutterStandardTypedData {
+            binary = binaryData.data
+            NSLog("Received binary data as FlutterStandardTypedData: %d bytes", binary!.count)
+          }
+          
+          NSLog("Saving manifest with binary: %@", binary != nil ? "Yes" : "No")
+          if let filename = binaryFilename {
+            NSLog("Binary filename: %@", filename)
+          }
+          
+          saveNativeMessagingHostManifest(content: manifestContent, binary: binary, binaryFilename: binaryFilename) { success, error in
             if success {
               result(true)
             } else {
@@ -228,7 +247,7 @@ class MainFlutterWindow: NSWindow {
     }
   }
   
-  private func saveNativeMessagingHostManifest(content: String, completion: @escaping (Bool, String) -> Void) {
+  private func saveNativeMessagingHostManifest(content: String, binary: Data? = nil, binaryFilename: String? = nil, completion: @escaping (Bool, String) -> Void) {
     // Create an NSOpenPanel for selecting the save location
     let savePanel = NSOpenPanel()
     savePanel.title = "Browser Extension Setup"
@@ -262,12 +281,98 @@ class MainFlutterWindow: NSWindow {
     // Show the save panel
     savePanel.begin { response in
       if response == .OK, let selectedURL = savePanel.url {
-        // Create the file URL
+        // If binary data is provided, also copy the binary to the same directory
+        var binaryPath = ""
+        
+        if let binaryData = binary, let filename = binaryFilename {
+          let binaryURL = selectedURL.appendingPathComponent(filename)
+          binaryPath = binaryURL.path
+          NSLog("Installing binary to: %@", binaryPath)
+          
+          do {
+            // Check if binary already exists
+            let fileExists = fileManager.fileExists(atPath: binaryURL.path)
+            if fileExists {
+              // If it exists, try to remove it first to avoid permission issues
+              NSLog("Binary already exists, attempting to replace it")
+              try fileManager.removeItem(at: binaryURL)
+              NSLog("Successfully removed existing binary")
+            }
+            
+            // Write the binary to the selected directory
+            try binaryData.write(to: binaryURL)
+            NSLog("Binary written to: %@, size: %d bytes", binaryURL.path, binaryData.count)
+            
+            // Make the binary executable
+            let chmodProcess = Process()
+            chmodProcess.executableURL = URL(fileURLWithPath: "/bin/chmod")
+            chmodProcess.arguments = ["+x", binaryURL.path]
+            try chmodProcess.run()
+            chmodProcess.waitUntilExit()
+            NSLog("Made binary executable with chmod +x")
+            
+            // Remove quarantine attribute to prevent Gatekeeper blocking
+            do {
+              // First check if the quarantine attribute exists
+              let checkProcess = Process()
+              checkProcess.executableURL = URL(fileURLWithPath: "/usr/bin/xattr")
+              checkProcess.arguments = ["-l", binaryURL.path]
+              
+              let checkPipe = Pipe()
+              checkProcess.standardOutput = checkPipe
+              try checkProcess.run()
+              checkProcess.waitUntilExit()
+              
+              let checkData = checkPipe.fileHandleForReading.readDataToEndOfFile()
+              let output = String(data: checkData, encoding: .utf8) ?? ""
+              
+              if output.contains("com.apple.quarantine") {
+                let xattrProcess = Process()
+                xattrProcess.executableURL = URL(fileURLWithPath: "/usr/bin/xattr")
+                xattrProcess.arguments = ["-d", "com.apple.quarantine", binaryURL.path]
+                try xattrProcess.run()
+                xattrProcess.waitUntilExit()
+                NSLog("Removed quarantine attribute from binary")
+              } else {
+                NSLog("No quarantine attribute found on binary")
+              }
+            } catch {
+              NSLog("Error handling quarantine attribute: %@", error.localizedDescription)
+              // Continue anyway, as this is not critical
+            }
+            
+            // Check if the binary was created successfully
+            if !fileManager.fileExists(atPath: binaryURL.path) {
+              NSLog("Failed to verify binary was created at: %@", binaryURL.path)
+              completion(false, "Failed to install binary")
+              return
+            }
+            
+            NSLog("Binary installed successfully at: %@", binaryURL.path)
+          } catch {
+            NSLog("Error installing binary: %@", error.localizedDescription)
+            completion(false, "Failed to install binary: \(error.localizedDescription)")
+            return
+          }
+        }
+        
+        // Create the file URL for the manifest
         let fileURL = selectedURL.appendingPathComponent("com.routine.native_messaging.json")
         
         do {
+          // If we have a binary, update the manifest content with the correct path
+          var updatedContent = content
+          if !binaryPath.isEmpty {
+            // Replace the placeholder path with the actual binary path
+            NSLog("Updating manifest with binary path: %@", binaryPath)
+            let placeholder = "\"path\": \"PLACEHOLDER_PATH\""
+            let replacement = "\"path\": \"" + binaryPath + "\""
+            updatedContent = content.replacingOccurrences(of: placeholder, with: replacement)
+          }
+          
           // Write the content to the file
-          try content.write(to: fileURL, atomically: true, encoding: .utf8)
+          try updatedContent.write(to: fileURL, atomically: true, encoding: .utf8)
+          NSLog("Manifest written to: %@", fileURL.path)
           
           // Verify file was created
           let fileManager = FileManager.default
@@ -277,13 +382,19 @@ class MainFlutterWindow: NSWindow {
           let notificationCenter = UNUserNotificationCenter.current()
           let notificationContent = UNMutableNotificationContent()
           notificationContent.title = "Browser Extension Setup Complete"
-          notificationContent.body = "The browser extension has been successfully configured. You can now use Routine with your browser."
+          notificationContent.body = "The browser extension has been successfully configured. You can now use Routine with your browser.\n\nNote: If you see a security warning about 'routine-nmh', you may need to go to System Preferences > Security & Privacy and click 'Allow Anyway'."
           
           // Create a request with the notification content
           let request = UNNotificationRequest(identifier: UUID().uuidString, content: notificationContent, trigger: nil)
           
           // Add the request to the notification center
           notificationCenter.add(request) { error in }
+          
+          // Also log instructions for handling security warnings
+          NSLog("IMPORTANT: If macOS blocks the binary due to security restrictions, the user may need to:")
+          NSLog("1. Open System Preferences > Security & Privacy")
+          NSLog("2. Look for a message about 'routine-nmh' being blocked")
+          NSLog("3. Click 'Allow Anyway' or 'Open Anyway'")
           
             completion(true, "")
           } else {
