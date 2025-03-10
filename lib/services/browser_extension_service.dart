@@ -151,13 +151,11 @@ class BrowserExtensionService {
         assetPath = 'assets/extension/native_windows.exe';
         targetPath = '${appDir.path}\\routine-nmh.exe';
         debugPrint('Native messaging host binary path: $targetPath');
-        return false; // Not implemented yet
       } else if (Platform.isLinux) {
         // Linux binary would be here
         assetPath = 'assets/extension/native_linux';
         targetPath = '${appDir.path}/routine-nmh';
         debugPrint('Native messaging host binary path: $targetPath');
-        return false; // Not implemented yet
       } else {
         return false;
       }
@@ -272,6 +270,7 @@ class BrowserExtensionService {
       } else if (Platform.isWindows) {
         // On Windows, the manifest goes in the registry
         // Use win32 package to write to the registry
+        await installNativeMessagingHostBinary();
         
         // Get the path to the native messaging host executable
         final Directory appDir = await getApplicationSupportDirectory();
@@ -280,11 +279,11 @@ class BrowserExtensionService {
         
         // Create the manifest content
         final Map<String, dynamic> manifest = {
-          'name': 'com.routine.nmh',
+          'name': 'com.routine.native_messaging',
           'description': 'Routine Native Messaging Host',
           'path': nmhPath,
           'type': 'stdio',
-          'allowed_extensions': ['routine@example.com']
+          'allowed_extensions': ['blocker@routine-blocker.com']
         };
         
         // Convert manifest to JSON string
@@ -293,7 +292,7 @@ class BrowserExtensionService {
         
         // Registry paths for Firefox
         const String mozillaRegistryPath = 
-            'SOFTWARE\\Mozilla\\NativeMessagingHosts\\com.routine.nmh';
+            'SOFTWARE\\Mozilla\\NativeMessagingHosts\\com.routine.native_messaging';
         debugPrint('Registry path: $mozillaRegistryPath');
             
         // Open the registry key (create if it doesn't exist)
@@ -386,7 +385,7 @@ class BrowserExtensionService {
         
         // Example manifest content
         final Map<String, dynamic> manifest = {
-          'name': 'com.routine.nmh',
+          'name': 'com.routine.native_messaging',
           'description': 'Routine Native Messaging Host',
           'path': nmhPath,
           'type': 'stdio',
