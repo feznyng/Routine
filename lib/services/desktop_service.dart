@@ -54,6 +54,7 @@ class DesktopService {
 
     BrowserExtensionService.instance.addConnectionListener((strictMode) {
       updateAppList();
+      updateBlockedSites();
     });
 
     StrictModeService.instance.addEffectiveSettingsListener((settings) {

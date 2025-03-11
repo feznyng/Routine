@@ -282,93 +282,89 @@ class MainFlutterWindow: NSWindow {
     savePanel.begin { response in
       if response == .OK, let selectedURL = savePanel.url {
         // If binary data is provided, also copy the binary to the same directory
-        var binaryPath = ""
+        // var binaryPath = ""
         
-        if let binaryData = binary, let filename = binaryFilename {
-          let binaryURL = selectedURL.appendingPathComponent(filename)
-          binaryPath = binaryURL.path
-          NSLog("Installing binary to: %@", binaryPath)
+        // if let binaryData = binary, let filename = binaryFilename {
+        //   let binaryURL = selectedURL.appendingPathComponent(filename)
+        //   binaryPath = binaryURL.path
+        //   NSLog("Installing binary to: %@", binaryPath)
           
-          do {
-            // Check if binary already exists
-            let fileExists = fileManager.fileExists(atPath: binaryURL.path)
-            if fileExists {
-              // If it exists, try to remove it first to avoid permission issues
-              NSLog("Binary already exists, attempting to replace it")
-              try fileManager.removeItem(at: binaryURL)
-              NSLog("Successfully removed existing binary")
-            }
+        //   do {
+        //     // Check if binary already exists
+        //     let fileExists = fileManager.fileExists(atPath: binaryURL.path)
+        //     if fileExists {
+        //       // If it exists, try to remove it first to avoid permission issues
+        //       NSLog("Binary already exists, attempting to replace it")
+        //       try fileManager.removeItem(at: binaryURL)
+        //       NSLog("Successfully removed existing binary")
+        //     }
             
-            // Write the binary to the selected directory
-            try binaryData.write(to: binaryURL)
-            NSLog("Binary written to: %@, size: %d bytes", binaryURL.path, binaryData.count)
+        //     // Write the binary to the selected directory
+        //     try binaryData.write(to: binaryURL)
+        //     NSLog("Binary written to: %@, size: %d bytes", binaryURL.path, binaryData.count)
             
-            // Make the binary executable
-            let chmodProcess = Process()
-            chmodProcess.executableURL = URL(fileURLWithPath: "/bin/chmod")
-            chmodProcess.arguments = ["+x", binaryURL.path]
-            try chmodProcess.run()
-            chmodProcess.waitUntilExit()
-            NSLog("Made binary executable with chmod +x")
+        //     // Make the binary executable
+        //     let chmodProcess = Process()
+        //     chmodProcess.executableURL = URL(fileURLWithPath: "/bin/chmod")
+        //     chmodProcess.arguments = ["+x", binaryURL.path]
+        //     try chmodProcess.run()
+        //     chmodProcess.waitUntilExit()
+        //     NSLog("Made binary executable with chmod +x")
             
-            // Remove quarantine attribute to prevent Gatekeeper blocking
-            do {
-              // First check if the quarantine attribute exists
-              let checkProcess = Process()
-              checkProcess.executableURL = URL(fileURLWithPath: "/usr/bin/xattr")
-              checkProcess.arguments = ["-l", binaryURL.path]
+        //     // Remove quarantine attribute to prevent Gatekeeper blocking
+        //     do {
+        //       // First check if the quarantine attribute exists
+        //       let checkProcess = Process()
+        //       checkProcess.executableURL = URL(fileURLWithPath: "/usr/bin/xattr")
+        //       checkProcess.arguments = ["-l", binaryURL.path]
               
-              let checkPipe = Pipe()
-              checkProcess.standardOutput = checkPipe
-              try checkProcess.run()
-              checkProcess.waitUntilExit()
+        //       let checkPipe = Pipe()
+        //       checkProcess.standardOutput = checkPipe
+        //       try checkProcess.run()
+        //       checkProcess.waitUntilExit()
               
-              let checkData = checkPipe.fileHandleForReading.readDataToEndOfFile()
-              let output = String(data: checkData, encoding: .utf8) ?? ""
+        //       let checkData = checkPipe.fileHandleForReading.readDataToEndOfFile()
+        //       let output = String(data: checkData, encoding: .utf8) ?? ""
               
-              if output.contains("com.apple.quarantine") {
-                let xattrProcess = Process()
-                xattrProcess.executableURL = URL(fileURLWithPath: "/usr/bin/xattr")
-                xattrProcess.arguments = ["-d", "com.apple.quarantine", binaryURL.path]
-                try xattrProcess.run()
-                xattrProcess.waitUntilExit()
-                NSLog("Removed quarantine attribute from binary")
-              } else {
-                NSLog("No quarantine attribute found on binary")
-              }
-            } catch {
-              NSLog("Error handling quarantine attribute: %@", error.localizedDescription)
-              // Continue anyway, as this is not critical
-            }
+        //       if output.contains("com.apple.quarantine") {
+        //         let xattrProcess = Process()
+        //         xattrProcess.executableURL = URL(fileURLWithPath: "/usr/bin/xattr")
+        //         xattrProcess.arguments = ["-d", "com.apple.quarantine", binaryURL.path]
+        //         try xattrProcess.run()
+        //         xattrProcess.waitUntilExit()
+        //         NSLog("Removed quarantine attribute from binary")
+        //       } else {
+        //         NSLog("No quarantine attribute found on binary")
+        //       }
+        //     } catch {
+        //       NSLog("Error handling quarantine attribute: %@", error.localizedDescription)
+        //       // Continue anyway, as this is not critical
+        //     }
             
-            // Check if the binary was created successfully
-            if !fileManager.fileExists(atPath: binaryURL.path) {
-              NSLog("Failed to verify binary was created at: %@", binaryURL.path)
-              completion(false, "Failed to install binary")
-              return
-            }
+        //     // Check if the binary was created successfully
+        //     if !fileManager.fileExists(atPath: binaryURL.path) {
+        //       NSLog("Failed to verify binary was created at: %@", binaryURL.path)
+        //       completion(false, "Failed to install binary")
+        //       return
+        //     }
             
-            NSLog("Binary installed successfully at: %@", binaryURL.path)
-          } catch {
-            NSLog("Error installing binary: %@", error.localizedDescription)
-            completion(false, "Failed to install binary: \(error.localizedDescription)")
-            return
-          }
-        }
+        //     NSLog("Binary installed successfully at: %@", binaryURL.path)
+        //   } catch {
+        //     NSLog("Error installing binary: %@", error.localizedDescription)
+        //     completion(false, "Failed to install binary: \(error.localizedDescription)")
+        //     return
+        //   }
+        // }
         
         // Create the file URL for the manifest
+        let binaryUrl = selectedURL.appendingPathComponent("routine-nmh")
         let fileURL = selectedURL.appendingPathComponent("com.routine.native_messaging.json")
         
         do {
           // If we have a binary, update the manifest content with the correct path
           var updatedContent = content
-          if !binaryPath.isEmpty {
-            // Replace the placeholder path with the actual binary path
-            NSLog("Updating manifest with binary path: %@", binaryPath)
-            let placeholder = "\"path\": \"PLACEHOLDER_PATH\""
-            let replacement = "\"path\": \"" + binaryPath + "\""
-            updatedContent = content.replacingOccurrences(of: placeholder, with: replacement)
-          }
+          NSLog("Updating manifest with binary path: %@", binaryUrl.path)
+          updatedContent = content.replacingOccurrences(of: "PLACEHOLDER_PATH", with: binaryUrl.path)
           
           // Write the content to the file
           try updatedContent.write(to: fileURL, atomically: true, encoding: .utf8)
