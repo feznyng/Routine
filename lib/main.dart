@@ -232,14 +232,7 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
 
   @override
   Future<void> onWindowClose() async {
-    // Check if app exit is blocked in strict mode
-    final strictModeService = Provider.of<StrictModeService>(context, listen: false);
-    if (strictModeService.effectiveBlockAppExit) {
-      // Prevent window from closing
-      await windowManager.minimize();
-    } else {
-      await windowManager.destroy();
-    }
+    await windowManager.minimize();
   }
 
   @override
