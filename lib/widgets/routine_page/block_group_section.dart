@@ -19,6 +19,18 @@ class BlockGroupSection extends StatelessWidget {
     required this.onChanged,
     this.enabled = true,
   });
+  
+  IconData _getDeviceIcon(DeviceType type) {
+    switch (type) {
+      case DeviceType.windows:
+      case DeviceType.linux:
+      case DeviceType.macos:
+        return Icons.computer;
+      case DeviceType.ios:
+      case DeviceType.android:
+        return Icons.smartphone;
+    }
+  }
 
   String _buildGroupSummary(Group? group) {
     if (group == null) {
@@ -95,6 +107,7 @@ class BlockGroupSection extends StatelessWidget {
           final group = entry.value;
           return Card(
             child: ListTile(
+              leading: Icon(_getDeviceIcon(devices[deviceId]?.type != null ? DeviceType.values.byName(devices[deviceId]!.type) : DeviceType.macos)),
               title: Text('${devices[deviceId]?.name}${deviceId == currentDeviceId ? ' (This Device)' : ''}'),
               subtitle: Text(_buildGroupSummary(group)),
               trailing: enabled ? const Icon(Icons.chevron_right) : null,
