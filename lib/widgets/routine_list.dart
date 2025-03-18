@@ -18,6 +18,7 @@ class _RoutineListState extends State<RoutineList> {
   late StreamSubscription<List<Routine>> _routineSubscription;
   bool _activeRoutinesExpanded = true;
   bool _inactiveRoutinesExpanded = true;
+  bool _snoozedRoutinesExpanded = true;
 
   @override
   void initState() {
@@ -41,9 +42,10 @@ class _RoutineListState extends State<RoutineList> {
 
   @override
   Widget build(BuildContext context) {
-    // Split routines into active and inactive
-    final activeRoutines = _routines.where((routine) => routine.isActive).toList();
-    final inactiveRoutines = _routines.where((routine) => !routine.isActive).toList();
+    // Split routines into active, inactive, and snoozed
+    final snoozedRoutines = _routines.where((routine) => routine.isSnoozed).toList();
+    final activeRoutines = _routines.where((routine) => routine.isActive && !routine.isSnoozed).toList();
+    final inactiveRoutines = _routines.where((routine) => !routine.isActive && !routine.isSnoozed).toList();
     
     return Scaffold(
       body: Center(
@@ -63,6 +65,21 @@ class _RoutineListState extends State<RoutineList> {
               ...activeRoutines.map((routine) => _buildRoutineCard(context, routine)),
           ],
           
+          // Add padding between sections
+          const SizedBox(height: 24),
+          
+          // Snoozed routines section
+          if (snoozedRoutines.isNotEmpty) ...[  
+            _buildSectionHeader(
+              context, 
+              'Snoozed', 
+              _snoozedRoutinesExpanded, 
+              () => setState(() => _snoozedRoutinesExpanded = !_snoozedRoutinesExpanded)
+            ),
+            if (_snoozedRoutinesExpanded)
+              ...snoozedRoutines.map((routine) => _buildRoutineCard(context, routine)),
+          ],
+
           // Add padding between sections
           const SizedBox(height: 24),
           
@@ -117,14 +134,33 @@ class _RoutineListState extends State<RoutineList> {
   Widget _buildRoutineCard(BuildContext context, Routine routine) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: ListTile(
-        title: Text(routine.name),
-        subtitle: _buildRoutineSubtitle(context, routine),
-        isThreeLine: true,
-        trailing: routine.isActive ? _buildBreakButton(context, routine) : null,
-        onTap: () {
-          _showRoutinePage(context, routine);
-        },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ListTile(
+            title: Row(
+              children: [
+                Expanded(
+                  child: Text(routine.name),
+                ),
+                if (routine.isSnoozed && routine.snoozedUntil != null) ...[  
+                  const Icon(Icons.snooze, color: Colors.orange, size: 16),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Snoozed until ${_formatSnoozeDate(routine.snoozedUntil!)}',
+                    style: const TextStyle(fontSize: 12, color: Colors.orange),
+                  ),
+                ],
+              ],
+            ),
+            subtitle: _buildRoutineSubtitle(context, routine),
+            isThreeLine: true,
+            trailing: routine.isActive ? _buildBreakButton(context, routine) : null,
+            onTap: () {
+              _showRoutinePage(context, routine);
+            },
+          ),
+        ],
       ),
     );
   }
@@ -214,6 +250,8 @@ class _RoutineListState extends State<RoutineList> {
       chipTexts.add('Strict');
     }
     
+    // We don't add a chip for snoozed status anymore
+    
     // Always add breaks chip
     chipTexts.add('${routine.breaksLeftText} ${routine.breaksLeftText == "Unlimited" ? "breaks" : routine.isActive ? "break${routine.numBreaksLeft == 1 ? '' : 's'} left" : "break${routine.numBreaksLeft == 1 ? '' : 's'}"}');
 
@@ -232,6 +270,7 @@ class _RoutineListState extends State<RoutineList> {
           padding: const EdgeInsets.symmetric(horizontal: 4),
         );
       }
+      // No special styling for snoozed status anymore
       return _buildStyledChip(text);
     }).toList();
     
@@ -511,5 +550,27 @@ class _RoutineListState extends State<RoutineList> {
         ],
       ),
     );
+  }
+  
+  String _formatSnoozeDate(DateTime dateTime) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final dateToCheck = DateTime(dateTime.year, dateTime.month, dateTime.day);
+    
+    String dateStr;
+    if (dateToCheck.isAtSameMomentAs(today)) {
+      dateStr = 'today';
+    } else if (dateToCheck.isAtSameMomentAs(tomorrow)) {
+      dateStr = 'tomorrow';
+    } else {
+      dateStr = '${dateTime.month}/${dateTime.day}';
+    }
+    
+    final hour = dateTime.hour > 12 ? dateTime.hour - 12 : (dateTime.hour == 0 ? 12 : dateTime.hour);
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    final period = dateTime.hour >= 12 ? 'PM' : 'AM';
+    
+    return '$dateStr $hour:$minute $period';
   }
 }

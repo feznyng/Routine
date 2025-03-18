@@ -93,6 +93,28 @@ class _RoutinePageState extends State<RoutinePage> {
       _hasChanges = _routine.modified;
     });
   }
+  
+  String _formatDateTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final dateToCheck = DateTime(dateTime.year, dateTime.month, dateTime.day);
+    
+    String dateStr;
+    if (dateToCheck.isAtSameMomentAs(today)) {
+      dateStr = 'Today';
+    } else if (dateToCheck.isAtSameMomentAs(tomorrow)) {
+      dateStr = 'Tomorrow';
+    } else {
+      dateStr = '${dateTime.month}/${dateTime.day}/${dateTime.year}';
+    }
+    
+    final hour = dateTime.hour > 12 ? dateTime.hour - 12 : (dateTime.hour == 0 ? 12 : dateTime.hour);
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    final period = dateTime.hour >= 12 ? 'PM' : 'AM';
+    
+    return '$dateStr at $hour:$minute $period';
+  }
 
   Future<void> _saveRoutine() async {
     // If strict mode is being enabled, show a confirmation dialog
@@ -250,6 +272,90 @@ class _RoutinePageState extends State<RoutinePage> {
               ),
               const SizedBox(height: 32),
               if (_routine.saved) ...[
+                // Snooze Button
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton.icon(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    ),
+                    icon: Icon(
+                      _routine.isSnoozed ? Icons.alarm_off : Icons.snooze,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    label: Text(
+                      _routine.isSnoozed 
+                        ? 'Unsnooze Routine (Snoozed until ${_formatDateTime(_routine.snoozedUntil!)})'
+                        : 'Snooze Routine',
+                      style: TextStyle(color: Theme.of(context).colorScheme.primary),
+                    ),
+                    onPressed: _routine.isActive ? null : () async {
+                      if (_routine.isSnoozed) {
+                        // Unsnooze the routine
+                        final bool? confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              title: const Text('Unsnooze Routine'),
+                              content: const Text('Are you sure you want to unsnooze this routine?'),
+                              actions: <Widget>[
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(false),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(true),
+                                  child: const Text('Unsnooze'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                        
+                        if (confirm == true) {
+                          await _routine.unsnooze();
+                          setState(() {
+                            _validateRoutine();
+                          });
+                        }
+                      } else {
+                        // Show date picker to snooze the routine
+                        final DateTime? selectedDate = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now().add(const Duration(days: 1)),
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                        );
+                        
+                        if (selectedDate != null) {
+                          // Show time picker
+                          final TimeOfDay? selectedTime = await showTimePicker(
+                            context: context,
+                            initialTime: TimeOfDay.now(),
+                          );
+                          
+                          if (selectedTime != null) {
+                            // Combine date and time
+                            final DateTime snoozeUntil = DateTime(
+                              selectedDate.year,
+                              selectedDate.month,
+                              selectedDate.day,
+                              selectedTime.hour,
+                              selectedTime.minute,
+                            );
+                            
+                            await _routine.snooze(snoozeUntil);
+                            setState(() {
+                              _validateRoutine();
+                            });
+                          }
+                        }
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Delete Button
                 SizedBox(
                   width: double.infinity,
                   child: TextButton.icon(

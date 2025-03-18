@@ -37,8 +37,7 @@ class Routine implements Syncable {
   late final Map<String, Group> _groups;
 
   late RoutineEntry? _entry;
-
-
+  
   static Stream<List<Routine>> watchAll() {
     return getIt<AppDatabase>()
       .watchRoutines()
@@ -170,6 +169,21 @@ class Routine implements Syncable {
   }
   DateTime? get snoozedUntil => _snoozedUntil;
 
+  bool get isSnoozed {
+    if (_snoozedUntil == null) return false;
+    return DateTime.now().isBefore(_snoozedUntil!);
+  }
+
+  Future<void> snooze(DateTime until) async {
+    _snoozedUntil = until;
+    await save();
+  }
+
+  Future<void> unsnooze() async {
+    _snoozedUntil = null;
+    await save();
+  }
+
   @override
   Future<void> delete() async {
     await getIt<AppDatabase>().tempDeleteRoutine(_id);
@@ -264,11 +278,7 @@ class Routine implements Syncable {
     if (_entry!.frictionLen != _frictionLen) {
       changes.add('frictionLen');
     }
-
-    if (_entry!.snoozedUntil != _snoozedUntil) {
-      changes.add('snoozedUntil');
-    }
-
+    
     return changes;
   }
 
@@ -325,6 +335,11 @@ class Routine implements Syncable {
   }
 
   bool get isActive { 
+    // If snoozed, routine is not active
+    if (isSnoozed) {
+      return false;
+    }
+
     final DateTime now = DateTime.now();
     final int dayOfWeek = now.weekday - 1;
 
