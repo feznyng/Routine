@@ -131,7 +131,6 @@ class _RoutinePageState extends State<RoutinePage> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isActiveAndStrictMode = _routine.isActive && _originalStrictMode;
 
     return Scaffold(
       appBar: AppBar(
@@ -183,7 +182,7 @@ class _RoutinePageState extends State<RoutinePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (isActiveAndStrictMode) ...[
+              if (_originalStrictMode) ...[
                 Container(
                   margin: const EdgeInsets.only(bottom: 16),
                   padding: const EdgeInsets.all(16),
@@ -223,31 +222,31 @@ class _RoutinePageState extends State<RoutinePage> {
                 routine: _routine,
                 devices: _devices,
                 onChanged: _validateRoutine,
-                enabled: !isActiveAndStrictMode,
+                enabled: !_originalStrictMode,
               ),
               const SizedBox(height: 16),
               TimeSection(
                 routine: _routine,
                 onChanged: _validateRoutine,
-                enabled: !isActiveAndStrictMode,
+                enabled: !_originalStrictMode,
               ),
               const SizedBox(height: 16),
               ConditionSection(
                 routine: _routine,
                 onChanged: _validateRoutine,
-                enabled: !isActiveAndStrictMode,
+                enabled: !_originalStrictMode,
               ),
               const SizedBox(height: 16),
               BreakConfigSection(
                 routine: _routine,
                 onChanged: _validateRoutine,
-                enabled: !isActiveAndStrictMode,
+                enabled: !_originalStrictMode,
               ),
               const SizedBox(height: 16),
               StrictModeSection(
                 routine: _routine,
                 onChanged: _validateRoutine,
-                enabled: !isActiveAndStrictMode,
+                enabled: !_originalStrictMode,
               ),
               const SizedBox(height: 32),
               if (_routine.saved) ...[
