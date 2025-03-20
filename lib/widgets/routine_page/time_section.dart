@@ -39,7 +39,18 @@ class TimeSection extends StatelessWidget {
           ),
           if (!routine.allDay) ...[
             ListTile(
-              title: const Text('Start Time'),
+              title: Row(
+                children: [
+                  const Text('Start Time'),
+                  if (routine.endTime < routine.startTime) ...[  
+                    const SizedBox(width: 8),
+                    Tooltip(
+                      message: 'This routine spans into the next day',
+                      child: const Icon(Icons.nightlight, size: 16, color: Colors.indigo),
+                    ),
+                  ],
+                ],
+              ),
               trailing: TextButton.icon(
                 icon: const Icon(Icons.access_time),
                 label: Text(startTime.format(context)),
@@ -54,22 +65,17 @@ class TimeSection extends StatelessWidget {
                     
                     // Check if new start time is after end time
                     if (newStartTime >= currentEndTime) {
-                      // Calculate new end time (start time + 60 minutes)
-                      final newEndTime = newStartTime + 60;
+                      // This is allowed now - it means the routine spans midnight into the next day
+                      routine.startTime = newStartTime;
+                      onChanged();
                       
-                      // Check if new end time is valid (not exceeding 24 hours)
-                      if (newEndTime <= 1440) {
-                        routine.startTime = newStartTime;
-                        routine.endTime = newEndTime;
-                        onChanged();
-                      } else {
-                        // Show warning if new end time would exceed 24 hours
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Cannot set start time: would cause end time to exceed midnight'),
-                          ),
-                        );
-                      }
+                      // Show informative message about spanning to next day
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Routine will span from today into tomorrow'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
                     } else if (currentEndTime - newStartTime < 15) {
                       // Check if duration would be less than 15 minutes
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -87,7 +93,18 @@ class TimeSection extends StatelessWidget {
               ),
             ),
             ListTile(
-              title: const Text('End Time'),
+              title: Row(
+                children: [
+                  const Text('End Time'),
+                  if (routine.endTime < routine.startTime) ...[  
+                    const SizedBox(width: 8),
+                    Tooltip(
+                      message: 'This routine spans into the next day',
+                      child: const Icon(Icons.nightlight, size: 16, color: Colors.indigo),
+                    ),
+                  ],
+                ],
+              ),
               trailing: TextButton.icon(
                 icon: const Icon(Icons.access_time),
                 label: Text(endTime.format(context)),
@@ -100,24 +117,19 @@ class TimeSection extends StatelessWidget {
                     final newEndTime = time.hour * 60 + time.minute;
                     final currentStartTime = routine.startTime;
                     
-                    // Check if new end time is before start time
+                    // Check if new end time is before start time - this is now allowed (spans to next day)
                     if (newEndTime <= currentStartTime) {
-                      // Calculate new start time (end time - 60 minutes)
-                      final newStartTime = newEndTime - 60;
+                      // Allow end time to be before start time (spans to next day)
+                      routine.endTime = newEndTime;
+                      onChanged();
                       
-                      // Check if new start time is valid (not negative)
-                      if (newStartTime >= 0) {
-                        routine.startTime = newStartTime;
-                        routine.endTime = newEndTime;
-                        onChanged();
-                      } else {
-                        // Show warning if new start time would be negative
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Cannot set end time: would cause start time to be before midnight'),
-                          ),
-                        );
-                      }
+                      // Show informative message about spanning to next day
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Routine will span from today into tomorrow'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
                     } else if (newEndTime - currentStartTime < 15) {
                       // Check if duration would be less than 15 minutes
                       ScaffoldMessenger.of(context).showSnackBar(

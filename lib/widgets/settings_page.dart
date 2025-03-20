@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import '../services/auth_service.dart';
-import '../services/browser_extension_service.dart';
 import 'auth_page.dart';
 import 'settings/theme_settings_section.dart';
 import 'settings/startup_settings_section.dart';
@@ -22,7 +21,6 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final _authService = AuthService();
-  final _browserExtensionService = BrowserExtensionService();
 
   @override
   void initState() {

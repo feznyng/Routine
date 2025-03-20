@@ -40,12 +40,98 @@ class _RoutineListState extends State<RoutineList> {
     super.dispose();
   }
 
+  // Calculate when a routine will be active next
+  DateTime _getNextActiveTime(Routine routine) {
+    final now = DateTime.now();
+    final currentDayOfWeek = now.weekday - 1; // 0-based day of week (0 = Monday)
+    final currentTimeMinutes = now.hour * 60 + now.minute;
+    
+    // If routine is all day, we only care about the day
+    if (routine.allDay) {
+      // Check if routine is active today
+      if (routine.days[currentDayOfWeek]) {
+        // If it's today, return current time
+        return now;
+      }
+      
+      // Find the next day when the routine will be active
+      for (int i = 1; i <= 7; i++) {
+        final nextDayIndex = (currentDayOfWeek + i) % 7;
+        if (routine.days[nextDayIndex]) {
+          // Return the start of that day
+          return now.add(Duration(days: i)).copyWith(hour: 0, minute: 0, second: 0, millisecond: 0);
+        }
+      }
+    } else {
+      // Routine has specific start and end times
+      final startTime = routine.startTime;
+      final endTime = routine.endTime;
+      
+      // Check if routine is active today
+      if (routine.days[currentDayOfWeek]) {
+        // If current time is before start time, routine will be active later today
+        if (currentTimeMinutes < startTime) {
+          return now.copyWith(
+            hour: routine.startHour,
+            minute: routine.startMinute,
+            second: 0,
+            millisecond: 0
+          );
+        }
+        
+        // If routine spans midnight and we're after start time, it's active now
+        if (endTime < startTime && currentTimeMinutes >= startTime) {
+          return now;
+        }
+        
+        // If we're between start and end time, routine is active now
+        if (currentTimeMinutes >= startTime && currentTimeMinutes < endTime) {
+          return now;
+        }
+      }
+      
+      // Find the next day when the routine will be active
+      for (int i = 1; i <= 7; i++) {
+        final nextDayIndex = (currentDayOfWeek + i) % 7;
+        if (routine.days[nextDayIndex]) {
+          // Return the start time on that day
+          return now.add(Duration(days: i)).copyWith(
+            hour: routine.startHour,
+            minute: routine.startMinute,
+            second: 0,
+            millisecond: 0
+          );
+        }
+      }
+    }
+    
+    // If no active days found (shouldn't happen if routine is valid)
+    return DateTime(9999); // Far future date
+  }
+  
   @override
   Widget build(BuildContext context) {
-    // Split routines into active, inactive, and snoozed
-    final snoozedRoutines = _routines.where((routine) => routine.isSnoozed).toList();
-    final activeRoutines = _routines.where((routine) => routine.isActive && !routine.isSnoozed).toList();
-    final inactiveRoutines = _routines.where((routine) => !routine.isActive && !routine.isSnoozed).toList();
+    // Sort all routines by next active time
+    final sortedRoutines = List<Routine>.from(_routines);
+    sortedRoutines.sort((a, b) {
+      // Handle snoozed routines - sort by when they'll be unsnoozed
+      if (a.isSnoozed && b.isSnoozed) {
+        return a.snoozedUntil!.compareTo(b.snoozedUntil!);
+      }
+      if (a.isSnoozed) return 1; // Snoozed routines come after active ones
+      if (b.isSnoozed) return -1;
+      
+      // Calculate next active time for both routines
+      final aNextActive = _getNextActiveTime(a);
+      final bNextActive = _getNextActiveTime(b);
+      
+      return aNextActive.compareTo(bNextActive);
+    });
+    
+    // Split sorted routines into active, inactive, and snoozed
+    final snoozedRoutines = sortedRoutines.where((routine) => routine.isSnoozed).toList();
+    final activeRoutines = sortedRoutines.where((routine) => routine.isActive && !routine.isSnoozed).toList();
+    final inactiveRoutines = sortedRoutines.where((routine) => !routine.isActive && !routine.isSnoozed).toList();
     
     return Scaffold(
       body: Center(

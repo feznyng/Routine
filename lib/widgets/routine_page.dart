@@ -26,6 +26,7 @@ class _RoutinePageState extends State<RoutinePage> {
   bool _isValid = false;
   bool _hasChanges = false;
   bool _originalStrictMode = false;
+  bool _originalIsActive = false;
 
   late Map<String, DeviceEntry> _devices = {};
 
@@ -40,6 +41,7 @@ class _RoutinePageState extends State<RoutinePage> {
   void _initializeRoutine() {
     _routine = Routine.from(widget.routine);
     _originalStrictMode = _routine.strictMode;
+    _originalIsActive = _routine.isActive;
     _nameController = TextEditingController(text: _routine.name);
     _nameController.addListener(_validateRoutine);
     _validateRoutine();
@@ -54,6 +56,7 @@ class _RoutinePageState extends State<RoutinePage> {
         setState(() {
           _routine = Routine.fromEntry(routine, groups);
           _originalStrictMode = _routine.strictMode;
+          _originalIsActive = _routine.isActive;
           _nameController.text = _routine.name;
           _validateRoutine();
         });
@@ -148,11 +151,13 @@ class _RoutinePageState extends State<RoutinePage> {
     
     _routine.save();
     _originalStrictMode = _routine.strictMode;
+    _originalIsActive = _routine.isActive;
     widget.onSave(_routine);
   }
 
   @override
   Widget build(BuildContext context) {
+    final inLockdown = _originalIsActive && _originalStrictMode;
 
     return Scaffold(
       appBar: AppBar(
@@ -204,7 +209,7 @@ class _RoutinePageState extends State<RoutinePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (_originalStrictMode) ...[
+              if (inLockdown) ...[
                 Container(
                   margin: const EdgeInsets.only(bottom: 16),
                   padding: const EdgeInsets.all(16),
@@ -244,31 +249,31 @@ class _RoutinePageState extends State<RoutinePage> {
                 routine: _routine,
                 devices: _devices,
                 onChanged: _validateRoutine,
-                enabled: !_originalStrictMode,
+                enabled: !inLockdown,
               ),
               const SizedBox(height: 16),
               TimeSection(
                 routine: _routine,
                 onChanged: _validateRoutine,
-                enabled: !_originalStrictMode,
+                enabled: !inLockdown,
               ),
               const SizedBox(height: 16),
               ConditionSection(
                 routine: _routine,
                 onChanged: _validateRoutine,
-                enabled: !_originalStrictMode,
+                enabled: !inLockdown,
               ),
               const SizedBox(height: 16),
               BreakConfigSection(
                 routine: _routine,
                 onChanged: _validateRoutine,
-                enabled: !_originalStrictMode,
+                enabled: !inLockdown,
               ),
               const SizedBox(height: 16),
               StrictModeSection(
                 routine: _routine,
                 onChanged: _validateRoutine,
-                enabled: !_originalStrictMode,
+                enabled: !inLockdown,
               ),
               const SizedBox(height: 32),
               if (_routine.saved) ...[
