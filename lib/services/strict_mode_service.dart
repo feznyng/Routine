@@ -22,9 +22,6 @@ class StrictModeService with ChangeNotifier {
   // Timer for grace period expiration
   Timer? _gracePeriodTimer;
   
-  // List of listeners for effective settings changes
-  final List<Function(Map<String, bool>)> _effectiveSettingsListeners = [];
-  
   // List of listeners specifically for grace period expiration
   final List<Function()> _gracePeriodExpirationListeners = [];
   
@@ -566,13 +563,11 @@ class StrictModeService with ChangeNotifier {
   void _notifyEffectiveSettingsChanged() {
     final effectiveSettings = getCurrentEffectiveSettings();
     
-    // Notify all listeners of the effective settings change
-    for (final listener in _effectiveSettingsListeners) {
-      listener(effectiveSettings);
-    }
-    
-    // Also notify through the stream
+    // Notify through the stream
     _effectiveSettingsStreamController.add(effectiveSettings);
+    
+    // Notify ChangeNotifier listeners
+    notifyListeners();
   }
   
   // Notify all grace period expiration listeners
@@ -582,19 +577,20 @@ class StrictModeService with ChangeNotifier {
     }
   }
   
+  // The following methods are maintained for backward compatibility
+  // but now use the ChangeNotifier mechanism internally
+  
   // Add a listener for effective settings changes
   void addEffectiveSettingsListener(Function(Map<String, bool>) listener) {
-    if (!_effectiveSettingsListeners.contains(listener)) {
-      _effectiveSettingsListeners.add(listener);
-      
-      // Immediately notify the new listener of current settings
-      listener(getCurrentEffectiveSettings());
-    }
+    // This is now handled by ChangeNotifier
+    // Just call the listener with current settings for immediate update
+    listener(getCurrentEffectiveSettings());
   }
   
   // Remove a listener for effective settings changes
   void removeEffectiveSettingsListener(Function(Map<String, bool>) listener) {
-    _effectiveSettingsListeners.remove(listener);
+    // This is now handled by ChangeNotifier
+    // No need to do anything here
   }
   
   // Add a listener for grace period expiration
@@ -615,7 +611,7 @@ class StrictModeService with ChangeNotifier {
   // Clean up resources when the service is disposed
   @override
   void dispose() {
-    _effectiveSettingsListeners.clear();
+    _gracePeriodExpirationListeners.clear();
     _effectiveSettingsStreamController.close();
     super.dispose();
   }

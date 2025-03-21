@@ -24,10 +24,8 @@ class IOSService {
     });
     
     // Check for FamilyControls authorization on initialization
-    if (Platform.isIOS) {
-      checkAndRequestFamilyControlsAuthorization();
-      _sendStrictModeSettingsToIOS();
-    }
+    checkAndRequestFamilyControlsAuthorization();
+    _sendStrictModeSettingsToIOS();
   }
   
   void stopWatchingRoutines() {
@@ -36,8 +34,6 @@ class IOSService {
   }
   
   Future<void> _sendStrictModeSettingsToIOS() async {
-    if (!Platform.isIOS) return;
-    
     try {
       final strictModeService = StrictModeService.instance;
       
@@ -51,7 +47,6 @@ class IOSService {
       
       // Send settings to iOS via platform channel
       await _channel.invokeMethod('updateStrictModeSettings', settings);
-      print('Sent strict mode settings to iOS');
     } catch (e) {
       print('Error sending strict mode settings to iOS: $e');
     }
