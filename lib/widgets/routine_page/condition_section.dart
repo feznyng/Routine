@@ -345,7 +345,7 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
                 labelText: 'Latitude',
                 hintText: 'Enter latitude',
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true),
               onChanged: (value) {
                 if (value.isNotEmpty) {
                   try {
@@ -365,7 +365,7 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
                 labelText: 'Longitude',
                 hintText: 'Enter longitude',
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true),
               onChanged: (value) {
                 if (value.isNotEmpty) {
                   try {
