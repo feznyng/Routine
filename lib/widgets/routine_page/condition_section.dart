@@ -48,7 +48,9 @@ class ConditionSection extends StatelessWidget {
   String _getConditionSummary(Condition condition) {
     // If the condition has a name, use it as the summary for any condition type
     if (condition.name != null && condition.name!.isNotEmpty) {
-      return '${condition.name!} (${condition.proximity!.toInt()} m)';
+      // Safely handle the proximity which might be null
+      final proximityText = condition.proximity != null ? ' (${condition.proximity!.toInt()} m)' : '';
+      return '${condition.name!}$proximityText';
     }
     
     // Otherwise, use the default summary based on condition type

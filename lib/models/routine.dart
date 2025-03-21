@@ -26,10 +26,10 @@ class Routine implements Syncable {
   int? _numBreaksTaken;
   DateTime? _lastBreakAt;
   DateTime? _pausedUntil;
-  int? _maxBreaks;
+  int? maxBreaks;
   int _maxBreakDuration;
-  FrictionType _friction;
-  int? _frictionLen;
+  FrictionType friction;
+  int? frictionLen;
   DateTime? _snoozedUntil;
   bool strictMode = false;
   List<Condition> conditions = [];
@@ -59,10 +59,10 @@ class Routine implements Syncable {
     _numBreaksTaken = null,
     _lastBreakAt = null,
     _pausedUntil = null,
-    _maxBreaks = null,
+    maxBreaks = null,
     _maxBreakDuration = 15,
-    _friction = FrictionType.delay,
-    _frictionLen = null,
+    friction = FrictionType.delay,
+    frictionLen = null,
     _snoozedUntil = null,
     strictMode = false,
     conditions = [],
@@ -81,11 +81,11 @@ class Routine implements Syncable {
     _numBreaksTaken = entry.numBreaksTaken,
     _lastBreakAt = entry.lastBreakAt,
     _pausedUntil = entry.pausedUntil,
-    _maxBreaks = entry.maxBreaks,
+    maxBreaks = entry.maxBreaks,
     _maxBreakDuration = entry.maxBreakDuration,
-    _friction = entry.friction,
+    friction = entry.friction,
     conditions = List.from(entry.conditions),
-    _frictionLen = entry.frictionLen,
+    frictionLen = entry.frictionLen,
     _snoozedUntil = entry.snoozedUntil,
     strictMode = entry.strictMode {
       _entry = entry;
@@ -104,10 +104,10 @@ class Routine implements Syncable {
     _numBreaksTaken = other._numBreaksTaken,
     _lastBreakAt = other._lastBreakAt,
     _pausedUntil = other._pausedUntil,
-    _maxBreaks = other._maxBreaks,
+    maxBreaks = other.maxBreaks,
     _maxBreakDuration = other._maxBreakDuration,
-    _friction = other._friction,
-    _frictionLen = other._frictionLen,
+    friction = other.friction,
+    frictionLen = other.frictionLen,
     _snoozedUntil = other._snoozedUntil,
     conditions = other.conditions,
     strictMode = other.strictMode,
@@ -144,10 +144,10 @@ class Routine implements Syncable {
       numBreaksTaken: Value(_numBreaksTaken),
       lastBreakAt: Value(_lastBreakAt),
       pausedUntil: Value(_pausedUntil),
-      maxBreaks: Value(_maxBreaks),
+      maxBreaks: Value(maxBreaks),
       maxBreakDuration: Value(_maxBreakDuration),
-      friction: Value(_friction),
-      frictionLen: Value(_frictionLen),
+      friction: Value(friction),
+      frictionLen: Value(frictionLen),
       snoozedUntil: Value(_snoozedUntil),
       updatedAt: Value(DateTime.now()),
       recurring: Value(true),
@@ -263,7 +263,7 @@ class Routine implements Syncable {
       changes.add('pausedUntil');
     }
 
-    if (_entry!.maxBreaks != _maxBreaks) {
+    if (_entry!.maxBreaks != maxBreaks) {
       changes.add('maxBreaks');
     }
 
@@ -271,11 +271,11 @@ class Routine implements Syncable {
       changes.add('maxBreakDuration');
     }
 
-    if (_entry!.friction != _friction) {
+    if (_entry!.friction != friction) {
       changes.add('friction');
     }
 
-    if (_entry!.frictionLen != _frictionLen) {
+    if (_entry!.frictionLen != frictionLen) {
       changes.add('frictionLen');
     }
     
@@ -369,15 +369,15 @@ class Routine implements Syncable {
 
   bool get canBreak {
     // If maxBreaks is 0, breaks are disabled
-    if (_maxBreaks == 0) {
+    if (maxBreaks == 0) {
       return false;
     }
     
-    if (_maxBreaks == null || _numBreaksTaken == null || _numBreaksTaken! < _maxBreaks!) {
+    if (maxBreaks == null || numBreaksTaken == null || numBreaksTaken! < maxBreaks!) {
       return true;
     }
 
-    if (_lastBreakAt == null && (_maxBreaks == null || _maxBreaks! > 0)) {
+    if (_lastBreakAt == null && (maxBreaks == null || maxBreaks! > 0)) {
       return true;
     }
 
@@ -431,12 +431,6 @@ class Routine implements Syncable {
   List<String> get categories => getGroup()?.categories ?? const [];
   bool get allow => getGroup()?.allow ?? false;
 
-  // Break configuration getters
-  int? get maxBreaks => _maxBreaks;
-  set maxBreaks(int? value) {
-    _maxBreaks = value;
-  }
-
   int get maxBreakDuration => _maxBreakDuration;
   set maxBreakDuration(int value) {
     if (value < 1) throw Exception('Break duration must be at least 1 minute');
@@ -461,7 +455,7 @@ class Routine implements Syncable {
     return _numBreaksTaken;
   }
 
-  int? get numBreaksLeft => _maxBreaks != null ? _maxBreaks! - (numBreaksTaken ?? 0) : null;
+  int? get numBreaksLeft => maxBreaks != null ? maxBreaks! - (numBreaksTaken ?? 0) : null;
 
   String get breaksLeftText {
     int? breaksLeft = numBreaksLeft;
@@ -477,23 +471,13 @@ class Routine implements Syncable {
     return breaksLeft.toString();
   }
 
-  FrictionType get friction => _friction;
-  set friction(FrictionType value) {
-    _friction = value;
-  }
-
-  int? get frictionLen => _frictionLen;
-  set frictionLen(int? value) {
-    _frictionLen = value;
-  }
-
   int calculateDelay() {
-    if (_frictionLen != null) return _frictionLen!;
+    if (frictionLen != null) return frictionLen!;
     return (_numBreaksTaken ?? 0) * 30; // 30 seconds per break taken
   }
 
   int calculateCodeLength() {
-    if (_frictionLen != null) return _frictionLen!;
+    if (frictionLen != null) return frictionLen!;
     return (_numBreaksTaken ?? 0) * 2 + 4; // Base 4 chars + 2 per break taken
   }
 
