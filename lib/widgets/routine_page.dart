@@ -294,7 +294,7 @@ class _RoutinePageState extends State<RoutinePage> {
                         : 'Snooze Routine',
                       style: TextStyle(color: Theme.of(context).colorScheme.primary),
                     ),
-                    onPressed: _routine.isActive ? null : () async {
+                    onPressed: _originalStrictMode ? null : () async {
                       if (_routine.isSnoozed) {
                         // Unsnooze the routine
                         final bool? confirm = await showDialog<bool>(
