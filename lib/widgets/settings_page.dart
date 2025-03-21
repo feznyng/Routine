@@ -57,10 +57,18 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isMobile = Platform.isAndroid || Platform.isIOS;
+    
     return Scaffold(
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
+          // Authentication section (moved to top)
+          AuthSection(
+            onSignInTap: _showAuthPage,
+          ),
+          const SizedBox(height: 16),
+          
           // Theme Settings
           const ThemeSettingsSection(),
           const SizedBox(height: 16),
@@ -79,20 +87,16 @@ class _SettingsPageState extends State<SettingsPage> {
           DeviceManagementSection(onDeviceOptionsTap: _showDeviceOptions),
           const SizedBox(height: 16),
           
-          // Browser Extension section
-          BrowserExtensionSection(
-            onRestartOnboarding: _restartBrowserExtensionOnboarding,
-          ),
-          const SizedBox(height: 16),
+          // Browser Extension section (hidden on mobile)
+          if (!isMobile) ...[  
+            BrowserExtensionSection(
+              onRestartOnboarding: _restartBrowserExtensionOnboarding,
+            ),
+            const SizedBox(height: 16),
+          ],
           
           // Sync settings section
           const SyncSettingsSection(),
-          const SizedBox(height: 16),
-          
-          // Authentication section
-          AuthSection(
-            onSignInTap: _showAuthPage,
-          ),
         ],
       ),
     );

@@ -443,22 +443,38 @@ class Routine implements Syncable {
     _maxBreakDuration = value;
   }
   
-  int? get numBreaksTaken => _numBreaksTaken;
+  int? get numBreaksTaken {
+    // Return 0 if routine is inactive or if _lastBreakAt is before the start of the routine
+    if (!isActive || _lastBreakAt == null) {
+      return 0;
+    }
+    
+    // Check if _lastBreakAt is before the start time of the routine
+    final startTimeHours = _startTime ~/ 60;
+    final startTimeMinutes = _startTime % 60;
+    final routineStartTime = DateTime(_lastBreakAt!.year, _lastBreakAt!.month, _lastBreakAt!.day, startTimeHours, startTimeMinutes);
+    
+    if (_lastBreakAt!.isBefore(routineStartTime)) {
+      return 0;
+    }
+    
+    return _numBreaksTaken;
+  }
 
-  int? get numBreaksLeft => _maxBreaks! - (_numBreaksTaken ?? 0);
+  int? get numBreaksLeft => _maxBreaks != null ? _maxBreaks! - (numBreaksTaken ?? 0) : null;
 
   String get breaksLeftText {
-    if (_maxBreaks == null) {
+    int? breaksLeft = numBreaksLeft;
+
+    if (breaksLeft == null) {
       return 'Unlimited';
     }
 
-    if (numBreaksLeft == 0) {
+    if (breaksLeft == 0) {
       return 'No';
     }
     
-    final taken = _numBreaksTaken ?? 0;
-    final left = _maxBreaks! - taken;
-    return left <= 0 ? 'No' : left.toString();
+    return breaksLeft.toString();
   }
 
   FrictionType get friction => _friction;
