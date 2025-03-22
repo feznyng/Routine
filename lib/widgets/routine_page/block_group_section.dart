@@ -63,7 +63,7 @@ class BlockGroupSection extends StatelessWidget {
     
     // If creating a new group, set a default name for this device
     if (group == null) {
-      final newGroup = Group(name: 'Custom');
+      final newGroup = Group();
       Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (context) => BlockGroupPage(
