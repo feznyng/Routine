@@ -96,6 +96,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
     
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: 80,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {

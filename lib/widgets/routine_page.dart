@@ -187,6 +187,7 @@ class _RoutinePageState extends State<RoutinePage> {
                     hintText: _routine.name.isEmpty ? 'New Routine' : 'Routine Name',
                     border: InputBorder.none,
                     isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
                     suffixIcon: const Icon(Icons.edit, size: 18),
                   ),
                   style: Theme.of(context).textTheme.titleLarge,
