@@ -296,6 +296,7 @@ class DesktopService {
 
     if (Platform.isWindows) {
       try {
+        print("getting 64 bit apps");
         final process64 = await Process.run('powershell.exe', [
           '-Command',
           'Get-ItemProperty HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | ' +
@@ -303,7 +304,7 @@ class DesktopService {
           'Select-Object DisplayName, InstallLocation, UninstallString | ' +
           'ConvertTo-Json'
         ]);
-
+        print("finished getting 64 bit apps"); 
         if (process64.exitCode == 0 && process64.stdout.toString().trim().isNotEmpty) {
           final List<dynamic> apps64 = json.decode(process64.stdout.toString());
           for (var app in apps64) {
@@ -330,6 +331,7 @@ class DesktopService {
           }
         }
 
+        print("getting 32 bit apps");
         // Then check the 32-bit applications on 64-bit Windows
         final process32 = await Process.run('powershell.exe', [
           '-Command',
@@ -339,6 +341,7 @@ class DesktopService {
           'ConvertTo-Json'
         ]);
 
+        print("finished getting 32 bit apps"); 
         if (process32.exitCode == 0 && process32.stdout.toString().trim().isNotEmpty) {
           final List<dynamic> apps32 = json.decode(process32.stdout.toString());
           for (var app in apps32) {
@@ -365,6 +368,7 @@ class DesktopService {
           }
         }
         
+        print("getting user apps"); 
         // Also check user-specific installed applications
         final processUser = await Process.run('powershell.exe', [
           '-Command',
@@ -373,6 +377,7 @@ class DesktopService {
           'Select-Object DisplayName, InstallLocation, UninstallString | ' +
           'ConvertTo-Json'
         ]);
+        print("finished getting user apps"); 
 
         if (processUser.exitCode == 0 && processUser.stdout.toString().trim().isNotEmpty) {
           final dynamic userApps = json.decode(processUser.stdout.toString());
