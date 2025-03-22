@@ -117,17 +117,22 @@ class DesktopService {
     final routines = await Routine.getAll();
     onRoutinesUpdated(routines);
   }
-
-  void onRoutinesUpdated(List<Routine> routines) async {
+  
+  Set<Schedule> getEvaluationTimes(List<Routine> routines) {
     Set<Schedule> evaluationTimes = {};
     for (final Routine routine in routines) {
-      evaluationTimes.add(Schedule(hours: routine.startHour, minutes: routine.startMinute));
-      evaluationTimes.add(Schedule(hours: routine.endHour, minutes: routine.endMinute));
+      evaluationTimes.add(Schedule(hours: routine.startHour, minutes: routine.startMinute, seconds: 10));
+      evaluationTimes.add(Schedule(hours: routine.endHour, minutes: routine.endMinute, seconds: 10));
 
       if (routine.pausedUntil != null && routine.pausedUntil!.isAfter(DateTime.now())) {
         evaluationTimes.add(Schedule(hours: routine.pausedUntil!.hour, minutes: routine.pausedUntil!.minute));
       }
     }
+    return evaluationTimes;
+  }
+  
+  void onRoutinesUpdated(List<Routine> routines) async {
+    final Set<Schedule> evaluationTimes = getEvaluationTimes(routines);
 
     for (final ScheduledTask task in _scheduledTasks) {
       task.cancel();
