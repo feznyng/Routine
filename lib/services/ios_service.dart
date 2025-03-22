@@ -14,23 +14,36 @@ class IOSService {
   final MethodChannel _channel = const MethodChannel('com.routine.ios_channel');
   
   StreamSubscription? _routineSubscription;
+  StreamSubscription? _strictModeSubscription;
   
   void init() {
+    // Cancel any existing subscriptions
     _routineSubscription?.cancel();
+    _strictModeSubscription?.cancel();
     
+    // Listen for routine changes
     _routineSubscription = Routine.watchAll().listen((routines) {
       _sendRoutinesToIOS(routines);
       _sendStrictModeSettingsToIOS();
     });
     
+    // Listen for strict mode configuration changes
+    _strictModeSubscription = StrictModeService.instance.effectiveSettingsStream.listen((_) {
+      _sendStrictModeSettingsToIOS();
+    });
+    
     // Check for FamilyControls authorization on initialization
     checkAndRequestFamilyControlsAuthorization();
+    
+    // Send initial strict mode settings
     _sendStrictModeSettingsToIOS();
   }
   
   void stopWatchingRoutines() {
     _routineSubscription?.cancel();
     _routineSubscription = null;
+    _strictModeSubscription?.cancel();
+    _strictModeSubscription = null;
   }
   
   Future<void> _sendStrictModeSettingsToIOS() async {
