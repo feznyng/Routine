@@ -185,6 +185,46 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     case WM_FONTCHANGE:
       flutter_controller_->engine()->ReloadSystemFonts();
       break;
+      
+    case WM_POWERBROADCAST:
+      if (wparam == PBT_APMRESUMEAUTOMATIC || wparam == PBT_APMRESUMESUSPEND) {
+        // System is waking up from sleep or hibernation
+        LogToFile(L"[Routine] System wake event detected in Windows");
+        
+        // Get current timestamp for logging
+        time_t now = time(0);
+        tm localTime;
+        char timestamp[64];
+        localtime_s(&localTime, &now);
+        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &localTime);
+        
+        std::wstringstream wss;
+        wss << L"[Routine] System wake at: " << timestamp;
+        LogToFile(wss.str());
+        
+        // Create arguments with timestamp
+        flutter::EncodableMap arguments;
+        arguments[flutter::EncodableValue("timestamp")] = flutter::EncodableValue(timestamp);
+        
+        // Notify Flutter that the system woke from sleep
+        if (flutter_controller_ && flutter_controller_->engine()) {
+          LogToFile(L"[Routine] Sending systemWake event to Flutter");
+          flutter::MethodChannel<> channel(
+              flutter_controller_->engine()->messenger(), "com.routine.applist",
+              &flutter::StandardMethodCodec::GetInstance());
+          channel.InvokeMethod("systemWake", std::make_unique<flutter::EncodableValue>(arguments),
+              [](const flutter::MethodResult<flutter::EncodableValue>& result) {
+                if (result.error().has_value()) {
+                  LogToFile(L"[Routine] Error sending systemWake event to Flutter");
+                } else {
+                  LogToFile(L"[Routine] Successfully sent systemWake event to Flutter");
+                }
+              });
+        } else {
+          LogToFile(L"[Routine] Flutter controller not ready, cannot send systemWake event");
+        }
+      }
+      break;
   }
 
   return Win32Window::MessageHandler(hwnd, message, wparam, lparam);

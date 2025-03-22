@@ -157,6 +157,14 @@ class MainFlutterWindow: NSWindow {
       name: NSWorkspace.didLaunchApplicationNotification,
       object: nil
     )
+    
+    // Monitor for system wake
+    NSWorkspace.shared.notificationCenter.addObserver(
+      self,
+      selector: #selector(systemDidWake),
+      name: NSWorkspace.didWakeNotification,
+      object: nil
+    )
 
     // Start periodic check
     Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
@@ -185,6 +193,32 @@ class MainFlutterWindow: NSWindow {
   @objc private func appDidLaunch(_ notification: Notification) {
     if let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication {
       checkActiveApplication(app)
+    }
+  }
+  
+  @objc private func systemDidWake(_ notification: Notification) {
+    NSLog("[Routine] System wake event detected in macOS")
+    
+    // Get current timestamp for logging
+    let dateFormatter = DateFormatter()
+    dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+    let timestamp = dateFormatter.string(from: Date())
+    NSLog("[Routine] System wake at: %@", timestamp)
+    
+    // Notify Flutter that the system woke from sleep
+    if isFlutterReady, let channel = methodChannel {
+      NSLog("[Routine] Sending systemWake event to Flutter")
+      channel.invokeMethod("systemWake", arguments: ["timestamp": timestamp]) { result in
+        if let error = result as? FlutterError {
+          NSLog("[Routine] Error sending systemWake event: %@", error.message ?? "Unknown error")
+        } else {
+          NSLog("[Routine] Successfully sent systemWake event to Flutter")
+        }
+      }
+    } else {
+      // Queue the message if Flutter is not ready yet
+      NSLog("[Routine] Flutter not ready, queueing systemWake event")
+      pendingMessages.append(("systemWake", ["timestamp": timestamp]))
     }
   }
 
@@ -235,14 +269,6 @@ class MainFlutterWindow: NSWindow {
           app.hide()
           self?.isHiding = false
         }
-      }
-
-      // Queue or send the message depending on Flutter readiness
-      let message = (method: "activeApplication", arguments: appPath as Any)
-      if isFlutterReady, let channel = methodChannel {
-        channel.invokeMethod(message.method, arguments: message.arguments)
-      } else {
-        pendingMessages.append(message)
       }
     }
   }

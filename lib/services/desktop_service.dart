@@ -6,6 +6,7 @@ import 'dart:async';
 import '../models/routine.dart';
 import 'strict_mode_service.dart';
 import 'browser_extension_service.dart';
+import 'sync_service.dart';
 import 'package:cron/cron.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -65,11 +66,57 @@ class DesktopService {
       }
     });
     
-    // Subscribe to grace period expiration events
     StrictModeService.instance.addGracePeriodExpirationListener(() {
-      print('Grace period expired, updating app list');
       updateAppList();
     });
+    
+    // Setup platform method channel handler for system wake events
+    platform.setMethodCallHandler((call) async {
+      switch (call.method) {
+        case 'systemWake':
+          final timestamp = call.arguments is Map ? call.arguments['timestamp'] : 'unknown';
+          debugPrint('=== SYSTEM WAKE EVENT ===');
+          debugPrint('System wake event received at: $timestamp');
+          debugPrint('Current time: ${DateTime.now().toIso8601String()}');
+          
+          // Log the current state before updating
+          final routinesBefore = await Routine.getAll();
+          debugPrint('Number of routines before update: ${routinesBefore.length}');
+          final activeRoutines = routinesBefore.where((r) => r.isActive && !r.isPaused).length;
+          debugPrint('Active routines before update: $activeRoutines');
+          
+          // Update routines
+          debugPrint('Calling updateRoutines()...');
+          updateRoutines();
+          
+          // Trigger a sync job to ensure database is up-to-date after wake
+          debugPrint('Triggering database sync after system wake...');
+          SyncService().addJob(SyncJob(remote: false, full: true));
+          debugPrint('Sync job added to queue');
+          
+          // Log after update
+          Future.delayed(const Duration(milliseconds: 500), () async {
+            final routinesAfter = await Routine.getAll();
+            debugPrint('Number of routines after update: ${routinesAfter.length}');
+            final activeRoutinesAfter = routinesAfter.where((r) => r.isActive && !r.isPaused).length;
+            debugPrint('Active routines after update: $activeRoutinesAfter');
+            debugPrint('=== SYSTEM WAKE EVENT PROCESSING COMPLETE ===');
+          });
+          
+          return null;
+        default:
+          debugPrint('Unknown method call: ${call.method}');
+          throw PlatformException(
+            code: 'Unimplemented',
+            message: "Method ${call.method} not implemented",
+          );
+      }
+    });
+  }
+
+  void updateRoutines() async {
+    final routines = await Routine.getAll();
+    onRoutinesUpdated(routines);
   }
 
   void onRoutinesUpdated(List<Routine> routines) async {
@@ -157,13 +204,8 @@ class DesktopService {
   }
   
   Future<void> updateAppList() async {
-    // Update platform channel
     final apps = List<String>.from(_cachedApps);
 
-    // Check if we should block browsers:
-    // 1. Strict mode setting is enabled AND
-    // 2. Extension is not connected AND
-    // 3. Not in grace period
     if (StrictModeService.instance.effectiveBlockBrowsersWithoutExtension && 
         !BrowserExtensionService.instance.isExtensionConnected && 
         !StrictModeService.instance.isInExtensionGracePeriod) {
@@ -254,8 +296,6 @@ class DesktopService {
 
     if (Platform.isWindows) {
       try {
-        // Get installed applications from Windows registry
-        // First, check the 64-bit applications
         final process64 = await Process.run('powershell.exe', [
           '-Command',
           'Get-ItemProperty HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | ' +
