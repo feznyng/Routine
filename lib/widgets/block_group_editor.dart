@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
-import 'block_apps_dialog.dart';
-import 'block_sites_dialog.dart';
+import 'block_apps_page.dart';
+import 'block_sites_page.dart';
 import 'app_site_selector.dart';
 import 'browser_extension_onboarding_dialog.dart';
 import '../services/browser_extension_service.dart';
@@ -46,11 +46,20 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
   }
 
   Future<void> _openAppsDialog() async {
-    final result = await showDialog<Map<String, List<String>>>(
-      context: context,
-      builder: (context) => BlockAppsDialog(
-        selectedApps: _selectedApps,
-        selectedCategories: _selectedCategories ?? [],
+    final result = await Navigator.of(context).push<Map<String, List<String>>>(
+      MaterialPageRoute(
+        builder: (context) => BlockAppsPage(
+          selectedApps: _selectedApps,
+          selectedCategories: _selectedCategories ?? [],
+          onSave: (result) {
+            setState(() {
+              _selectedApps = result['apps'] ?? [];
+              _selectedCategories = result['categories'] ?? [];
+            });
+            widget.onSave(_selectedApps, _selectedSites, _selectedCategories);
+            Navigator.of(context).pop(result);
+          },
+        ),
       ),
     );
 
@@ -89,10 +98,20 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
         widget.onSave(_selectedApps, _selectedSites, _selectedCategories);
       }
     } else {
-      // Show regular sites dialog if setup is completed
-      final result = await showDialog<List<String>>(
-        context: context,
-        builder: (context) => BlockSitesDialog(selectedSites: _selectedSites),
+      // Show regular sites page if setup is completed
+      final result = await Navigator.of(context).push<List<String>>(
+        MaterialPageRoute(
+          builder: (context) => BlockSitesPage(
+            selectedSites: _selectedSites,
+            onSave: (sites) {
+              setState(() {
+                _selectedSites = sites;
+              });
+              widget.onSave(_selectedApps, _selectedSites, _selectedCategories);
+              Navigator.of(context).pop(sites);
+            },
+          ),
+        ),
       );
 
       if (result != null) {
