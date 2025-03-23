@@ -152,8 +152,77 @@ class _BlockAppsDialogState extends State<BlockAppsDialog> with SingleTickerProv
   }
 
   Widget _buildApplicationsTab() {
+    // Create two lists: one for selected apps and one for unselected apps
+    List<InstalledApplication> selectedAppObjects = [];
+    List<InstalledApplication> unselectedAppObjects = [];
+    
+    // Create a set of available app paths for quick lookup
+    final Set<String> availableAppPaths = _availableApps.map((app) => app.filePath).toSet();
+    
+    // First, handle all selected apps (including those not in _availableApps)
+    for (final appPath in _selectedApps) {
+      // Check if this app is in the available apps list
+      final existingApp = _availableApps.firstWhere(
+        (app) => app.filePath == appPath,
+        orElse: () => InstalledApplication(
+          name: appPath.split('\\').last.replaceAll('.exe', ''),
+          filePath: appPath,
+          displayName: null,
+        ),
+      );
+      selectedAppObjects.add(existingApp);
+    }
+    
+    // Then, add all unselected available apps
+    for (final app in _availableApps) {
+      if (!_selectedApps.contains(app.filePath)) {
+        unselectedAppObjects.add(app);
+      }
+    }
+    
+    // Sort both lists by name
+    selectedAppObjects.sort((a, b) => (a.displayName ?? a.name).compareTo(b.displayName ?? b.name));
+    unselectedAppObjects.sort((a, b) => (a.displayName ?? a.name).compareTo(b.displayName ?? b.name));
+    
     return Column(
       children: [
+        // Info message with refresh button - only on Windows
+        if (Platform.isWindows)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border.all(color: Theme.of(context).dividerColor),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Only running applications are shown. Launch the application you want to block, click Refresh, and then select it.',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: _isLoadingApps ? null : _loadApplications,
+                  icon: _isLoadingApps 
+                    ? const SizedBox(
+                        width: 16, 
+                        height: 16, 
+                        child: CircularProgressIndicator(strokeWidth: 2)
+                      )
+                    : const Icon(Icons.refresh, size: 16),
+                  label: const Text('Refresh'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    textStyle: const TextStyle(fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (Platform.isWindows)
+          const SizedBox(height: 16),
         TextField(
           controller: _appSearchController,
           decoration: const InputDecoration(
@@ -170,7 +239,7 @@ class _BlockAppsDialogState extends State<BlockAppsDialog> with SingleTickerProv
         const SizedBox(height: 16),
         if (_isLoadingApps)
           const Center(child: CircularProgressIndicator())
-        else if (_availableApps.isEmpty)
+        else if (_availableApps.isEmpty && _selectedApps.isEmpty)
           const Padding(
             padding: EdgeInsets.all(8.0),
             child: Text('No applications found', 
@@ -178,38 +247,129 @@ class _BlockAppsDialogState extends State<BlockAppsDialog> with SingleTickerProv
           )
         else
           Expanded(
-            child: ListView.builder(
+            child: ListView(
               padding: const EdgeInsets.all(4),
               shrinkWrap: true,
-              itemCount: _availableApps.length,
-              itemBuilder: (context, index) {
-                final app = _availableApps[index];
-                final appName = app.name;
-                if (_appSearchQuery.isNotEmpty && 
-                    !appName.toLowerCase().contains(_appSearchQuery.toLowerCase())) {
-                  return const SizedBox.shrink();
-                }
-                return CheckboxListTile(
-                  title: Text(appName),
-                  subtitle: Text(app.filePath, 
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).textTheme.bodySmall?.color,
+              children: [
+                // Display selected apps section if there are any selected apps
+                if (selectedAppObjects.isNotEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                    child: Text(
+                      'Selected Applications',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
-                  value: _selectedApps.contains(app.filePath),
-                  onChanged: (bool? value) {
-                    setState(() {
-                      if (value == true) {
-                        _selectedApps.add(app.filePath);
-                      } else {
-                        _selectedApps.remove(app.filePath);
-                      }
-                    });
-                  },
-                );
-              },
+                  ...selectedAppObjects.map((app) {
+                    final appName = app.displayName ?? app.name;
+                    final isStaleEntry = !availableAppPaths.contains(app.filePath);
+                    
+                    if (_appSearchQuery.isNotEmpty && 
+                        !appName.toLowerCase().contains(_appSearchQuery.toLowerCase()) &&
+                        !app.filePath.toLowerCase().contains(_appSearchQuery.toLowerCase())) {
+                      return const SizedBox.shrink();
+                    }
+                    
+                    return CheckboxListTile(
+                      title: Row(
+                        children: [
+                          Expanded(child: Text(appName)),
+                          if (isStaleEntry)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.orange),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'Not Running',
+                                style: TextStyle(
+                                  fontSize: 12, 
+                                  color: Theme.of(context).textTheme.bodyMedium?.color,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      subtitle: Text(app.filePath, 
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).textTheme.bodySmall?.color,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      value: true,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          if (value == false) {
+                            _selectedApps.remove(app.filePath);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                  
+                  if (unselectedAppObjects.isNotEmpty) ...[
+                    const Divider(thickness: 1.5),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                      child: Text(
+                        'Available Applications',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                    ),
+                  ],
+                ],
+                
+                // Display unselected apps
+                if (selectedAppObjects.isEmpty && unselectedAppObjects.isNotEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                    child: Text(
+                      'Available Applications',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                  ),
+                
+                ...unselectedAppObjects.map((app) {
+                  final appName = app.displayName ?? app.name;
+                  if (_appSearchQuery.isNotEmpty && 
+                      !appName.toLowerCase().contains(_appSearchQuery.toLowerCase()) &&
+                      !app.filePath.toLowerCase().contains(_appSearchQuery.toLowerCase())) {
+                    return const SizedBox.shrink();
+                  }
+                  return CheckboxListTile(
+                    title: Text(appName),
+                    subtitle: Text(app.filePath, 
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).textTheme.bodySmall?.color,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    value: false,
+                    onChanged: (bool? value) {
+                      setState(() {
+                        if (value == true) {
+                          _selectedApps.add(app.filePath);
+                        }
+                      });
+                    },
+                  );
+                }).toList(),
+                
+                // Show message when no apps are available but search is active
+                if (unselectedAppObjects.isEmpty && _appSearchQuery.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Center(
+                      child: Text(
+                        'No applications match "${_appSearchQuery}"',
+                        style: const TextStyle(fontStyle: FontStyle.italic),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
       ],
