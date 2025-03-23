@@ -212,14 +212,7 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
           flutter::MethodChannel<> channel(
               flutter_controller_->engine()->messenger(), "com.routine.applist",
               &flutter::StandardMethodCodec::GetInstance());
-          channel.InvokeMethod("systemWake", std::make_unique<flutter::EncodableValue>(arguments),
-              [](const flutter::MethodResult<flutter::EncodableValue>& result) {
-                if (result.error().has_value()) {
-                  LogToFile(L"[Routine] Error sending systemWake event to Flutter");
-                } else {
-                  LogToFile(L"[Routine] Successfully sent systemWake event to Flutter");
-                }
-              });
+          channel.InvokeMethod("systemWake", std::make_unique<flutter::EncodableValue>(arguments));
         } else {
           LogToFile(L"[Routine] Flutter controller not ready, cannot send systemWake event");
         }
