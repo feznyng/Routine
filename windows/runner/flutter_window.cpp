@@ -15,6 +15,7 @@
 #include <optional>
 #include <TlHelp32.h>
 #include <psapi.h>
+#include <unordered_set>
 
 // Add pragma comment to link with version.lib
 #pragma comment(lib, "version.lib")
@@ -124,49 +125,49 @@ std::string GetFileVersionInfoString(const wchar_t* filePath, const wchar_t* str
     return "";
 }
 
-// Helper function to check if a process has a visible window
-bool HasVisibleWindow(DWORD processId) {
-    struct WindowInfo {
-        DWORD processId;
-        bool hasVisibleWindow;
-    };
+// Helper function to get all processes with visible windows
+std::unordered_set<DWORD> GetProcessesWithVisibleWindows() {
+    std::unordered_set<DWORD> processesWithWindows;
     
-    WindowInfo info = {processId, false};
-    
-    // Enumerate all top-level windows and check if any belong to our process
+    // Enumerate all top-level windows once
     EnumWindows([](HWND hwnd, LPARAM lParam) -> BOOL {
-        WindowInfo* info = reinterpret_cast<WindowInfo*>(lParam);
+        auto* processSet = reinterpret_cast<std::unordered_set<DWORD>*>(lParam);
         
         // Skip invisible windows
         if (!IsWindowVisible(hwnd)) {
             return TRUE; // Continue enumeration
         }
         
-        // Check if this window belongs to our process
-        DWORD windowProcessId;
-        GetWindowThreadProcessId(hwnd, &windowProcessId);
-        
-        if (windowProcessId == info->processId) {
-            // Check if it's a real application window (not a tool window)
-            LONG style = GetWindowLong(hwnd, GWL_EXSTYLE);
-            if (!(style & WS_EX_TOOLWINDOW)) {
-                // Get window title to further filter out non-application windows
-                char title[256];
-                if (GetWindowTextA(hwnd, title, sizeof(title)) > 0) {
-                    info->hasVisibleWindow = true;
-                    return FALSE; // Stop enumeration, we found a window
-                }
-            }
+        // Check if it's a real application window (not a tool window)
+        LONG style = GetWindowLong(hwnd, GWL_EXSTYLE);
+        if (style & WS_EX_TOOLWINDOW) {
+            return TRUE; // Continue enumeration
         }
         
+        // Get window title to further filter out non-application windows
+        char title[256];
+        if (GetWindowTextA(hwnd, title, sizeof(title)) <= 0) {
+            return TRUE; // Continue enumeration
+        }
+        
+        // Get the process ID for this window
+        DWORD processId;
+        GetWindowThreadProcessId(hwnd, &processId);
+        
+        // Add this process ID to our set
+        processSet->insert(processId);
+        
         return TRUE; // Continue enumeration
-    }, reinterpret_cast<LPARAM>(&info));
+    }, reinterpret_cast<LPARAM>(&processesWithWindows));
     
-    return info.hasVisibleWindow;
+    return processesWithWindows;
 }
 
 flutter::EncodableList GetRunningApplications() {
     flutter::EncodableList result;
+    
+    // Get all processes with visible windows first
+    std::unordered_set<DWORD> processesWithWindows = GetProcessesWithVisibleWindows();
     
     // Create a snapshot of all processes
     HANDLE hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -190,8 +191,8 @@ flutter::EncodableList GetRunningApplications() {
             continue;
         }
         
-        // Check if the process has a visible window
-        if (!HasVisibleWindow(pe32.th32ProcessID)) {
+        // Check if the process has a visible window using our pre-built map
+        if (processesWithWindows.find(pe32.th32ProcessID) == processesWithWindows.end()) {
             continue; // Skip background processes
         }
         
