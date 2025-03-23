@@ -124,6 +124,47 @@ std::string GetFileVersionInfoString(const wchar_t* filePath, const wchar_t* str
     return "";
 }
 
+// Helper function to check if a process has a visible window
+bool HasVisibleWindow(DWORD processId) {
+    struct WindowInfo {
+        DWORD processId;
+        bool hasVisibleWindow;
+    };
+    
+    WindowInfo info = {processId, false};
+    
+    // Enumerate all top-level windows and check if any belong to our process
+    EnumWindows([](HWND hwnd, LPARAM lParam) -> BOOL {
+        WindowInfo* info = reinterpret_cast<WindowInfo*>(lParam);
+        
+        // Skip invisible windows
+        if (!IsWindowVisible(hwnd)) {
+            return TRUE; // Continue enumeration
+        }
+        
+        // Check if this window belongs to our process
+        DWORD windowProcessId;
+        GetWindowThreadProcessId(hwnd, &windowProcessId);
+        
+        if (windowProcessId == info->processId) {
+            // Check if it's a real application window (not a tool window)
+            LONG style = GetWindowLong(hwnd, GWL_EXSTYLE);
+            if (!(style & WS_EX_TOOLWINDOW)) {
+                // Get window title to further filter out non-application windows
+                char title[256];
+                if (GetWindowTextA(hwnd, title, sizeof(title)) > 0) {
+                    info->hasVisibleWindow = true;
+                    return FALSE; // Stop enumeration, we found a window
+                }
+            }
+        }
+        
+        return TRUE; // Continue enumeration
+    }, reinterpret_cast<LPARAM>(&info));
+    
+    return info.hasVisibleWindow;
+}
+
 flutter::EncodableList GetRunningApplications() {
     flutter::EncodableList result;
     
@@ -144,6 +185,16 @@ flutter::EncodableList GetRunningApplications() {
     
     // Iterate through all processes
     do {
+        // Skip system processes
+        if (pe32.th32ProcessID == 0 || pe32.th32ProcessID == 4) {
+            continue;
+        }
+        
+        // Check if the process has a visible window
+        if (!HasVisibleWindow(pe32.th32ProcessID)) {
+            continue; // Skip background processes
+        }
+        
         HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pe32.th32ProcessID);
         if (hProcess != NULL) {
             wchar_t processPath[MAX_PATH];
