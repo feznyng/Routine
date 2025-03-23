@@ -11,9 +11,13 @@
 #include <sstream>
 #include <algorithm>
 #include <string>
-
 #include <memory>
 #include <optional>
+#include <TlHelp32.h>
+#include <psapi.h>
+
+// Add pragma comment to link with version.lib
+#pragma comment(lib, "version.lib")
 
 #include "flutter/generated_plugin_registrant.h"
 
@@ -74,6 +78,130 @@ std::vector<std::string> ConvertFlutterListToVector(const std::vector<flutter::E
     return items;
 }
 
+// Helper function to get file version info string
+std::string GetFileVersionInfoString(const wchar_t* filePath, const wchar_t* stringName) {
+    DWORD handle;
+    DWORD size = GetFileVersionInfoSizeW(filePath, &handle);
+    if (size == 0) {
+        return "";
+    }
+
+    std::vector<BYTE> data(size);
+    if (!GetFileVersionInfoW(filePath, handle, size, data.data())) {
+        return "";
+    }
+
+    struct LANGANDCODEPAGE {
+        WORD language;
+        WORD codePage;
+    } *translations;
+    
+    UINT translationsLength;
+    if (!VerQueryValueW(data.data(), L"\\VarFileInfo\\Translation", (LPVOID*)&translations, &translationsLength)) {
+        return "";
+    }
+
+    // Try to get the string for each language/codepage
+    for (UINT i = 0; i < translationsLength / sizeof(LANGANDCODEPAGE); i++) {
+        wchar_t subBlock[128];
+        swprintf_s(subBlock, L"\\StringFileInfo\\%04x%04x\\%s", 
+            translations[i].language, translations[i].codePage, stringName);
+        
+        LPVOID valuePtr;
+        UINT valueLength;
+        if (VerQueryValueW(data.data(), subBlock, &valuePtr, &valueLength) && valueLength > 0) {
+            // Convert wide string to UTF-8
+            int bufferSize = WideCharToMultiByte(CP_UTF8, 0, (wchar_t*)valuePtr, -1, nullptr, 0, nullptr, nullptr);
+            if (bufferSize > 0) {
+                std::string result(bufferSize, 0);
+                WideCharToMultiByte(CP_UTF8, 0, (wchar_t*)valuePtr, -1, &result[0], bufferSize, nullptr, nullptr);
+                result.resize(bufferSize - 1);  // Remove null terminator
+                return result;
+            }
+        }
+    }
+
+    return "";
+}
+
+flutter::EncodableList GetRunningApplications() {
+    flutter::EncodableList result;
+    
+    // Create a snapshot of all processes
+    HANDLE hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (hProcessSnap == INVALID_HANDLE_VALUE) {
+        return result;
+    }
+    
+    PROCESSENTRY32 pe32;
+    pe32.dwSize = sizeof(PROCESSENTRY32);
+    
+    // Get the first process
+    if (!Process32First(hProcessSnap, &pe32)) {
+        CloseHandle(hProcessSnap);
+        return result;
+    }
+    
+    // Iterate through all processes
+    do {
+        HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pe32.th32ProcessID);
+        if (hProcess != NULL) {
+            wchar_t processPath[MAX_PATH];
+            DWORD size = MAX_PATH;
+            
+            if (QueryFullProcessImageNameW(hProcess, 0, processPath, &size)) {
+                // Convert wide string to UTF-8 string properly
+                int bufferSize = WideCharToMultiByte(CP_UTF8, 0, processPath, -1, nullptr, 0, nullptr, nullptr);
+                if (bufferSize > 0) {
+                    std::string processPathStr(bufferSize, 0);
+                    WideCharToMultiByte(CP_UTF8, 0, processPath, -1, &processPathStr[0], bufferSize, nullptr, nullptr);
+                    // Remove null terminator that WideCharToMultiByte includes
+                    processPathStr.resize(bufferSize - 1);
+                    
+                    // Extract the file name from the path
+                    std::string fileName = processPathStr;
+                    size_t lastSlash = fileName.find_last_of("\\");
+                    if (lastSlash != std::string::npos) {
+                        fileName = fileName.substr(lastSlash + 1);
+                    }
+                    
+                    // Remove .exe extension if present
+                    size_t dotPos = fileName.find_last_of(".");
+                    if (dotPos != std::string::npos) {
+                        fileName = fileName.substr(0, dotPos);
+                    }
+                    
+                    // Try to get the display name from version info
+                    std::string displayName = GetFileVersionInfoString(processPath, L"ProductName");
+                    if (displayName.empty()) {
+                        // Try FileDescription if ProductName is not available
+                        displayName = GetFileVersionInfoString(processPath, L"FileDescription");
+                    }
+                    
+                    // If we still don't have a display name, use the file name
+                    if (displayName.empty()) {
+                        displayName = fileName;
+                    }
+                    
+                    // Create a map with name, display name, and path
+                    flutter::EncodableMap appInfo;
+                    appInfo[flutter::EncodableValue("name")] = flutter::EncodableValue(fileName);
+                    appInfo[flutter::EncodableValue("displayName")] = flutter::EncodableValue(displayName);
+                    appInfo[flutter::EncodableValue("path")] = flutter::EncodableValue(processPathStr);
+                    
+                    // Add to result list
+                    result.push_back(flutter::EncodableValue(appInfo));
+                }
+            }
+            
+            CloseHandle(hProcess);
+        }
+    } while (Process32Next(hProcessSnap, &pe32));
+    
+    CloseHandle(hProcessSnap);
+    return result;
+}
+
 bool FlutterWindow::OnCreate() {
   if (!Win32Window::OnCreate()) {
     return false;
@@ -130,6 +258,10 @@ bool FlutterWindow::OnCreate() {
           else if (methodType == "getStartOnLogin") {
               LogToFile(L"Received getStartOnLogin");
               result->Success(false);
+          }
+          else if (methodType == "getRunningApplications") {
+              LogToFile(L"Received getRunningApplications");
+              result->Success(GetRunningApplications());
           }
       });
 

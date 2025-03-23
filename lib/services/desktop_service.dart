@@ -14,14 +14,16 @@ import 'dart:convert';
 class InstalledApplication {
   final String name;
   final String filePath;
+  final String? displayName;
 
   InstalledApplication({
     required this.name,
     required this.filePath,
+    this.displayName,
   });
 
   @override
-  String toString() => 'InstalledApplication(name: $name, filePath: $filePath)';
+  String toString() => 'InstalledApplication(name: $name, displayName: $displayName, filePath: $filePath)';
 }
 
 class DesktopService {
@@ -302,119 +304,34 @@ class DesktopService {
 
     if (Platform.isWindows) {
       try {
-        print("getting 64 bit apps");
-        final process64 = await Process.run('powershell.exe', [
-          '-Command',
-          'Get-ItemProperty HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | ' +
-          'Where-Object { \$_.DisplayName -ne \$null } | ' +
-          'Select-Object DisplayName, InstallLocation, UninstallString | ' +
-          'ConvertTo-Json'
-        ]);
-        print("finished getting 64 bit apps"); 
-        if (process64.exitCode == 0 && process64.stdout.toString().trim().isNotEmpty) {
-          final List<dynamic> apps64 = json.decode(process64.stdout.toString());
-          for (var app in apps64) {
-            String name = app['DisplayName'] ?? '';
-            String filePath = app['InstallLocation'] ?? '';
-            
-            // If InstallLocation is empty, try to extract from UninstallString
-            if (filePath.isEmpty && app['UninstallString'] != null) {
-              final uninstallString = app['UninstallString'].toString();
-              final match = RegExp(r'"([^"]+)\\').firstMatch(uninstallString);
-              if (match != null) {
-                filePath = match.group(1) ?? '';
-              }
-            }
-            
-            if (name.isNotEmpty && !installedApps.any((a) => a.name == name)) {
-              // Find the executable file in the installation directory
-              String exePath = await _findExecutableForApp(name, filePath);
-              installedApps.add(InstalledApplication(
-                name: name,
-                filePath: exePath.isNotEmpty ? exePath : filePath,
-              ));
-            }
-          }
-        }
-
-        print("getting 32 bit apps");
-        // Then check the 32-bit applications on 64-bit Windows
-        final process32 = await Process.run('powershell.exe', [
-          '-Command',
-          'Get-ItemProperty HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | ' +
-          'Where-Object { \$_.DisplayName -ne \$null } | ' +
-          'Select-Object DisplayName, InstallLocation, UninstallString | ' +
-          'ConvertTo-Json'
-        ]);
-
-        print("finished getting 32 bit apps"); 
-        if (process32.exitCode == 0 && process32.stdout.toString().trim().isNotEmpty) {
-          final List<dynamic> apps32 = json.decode(process32.stdout.toString());
-          for (var app in apps32) {
-            String name = app['DisplayName'] ?? '';
-            String filePath = app['InstallLocation'] ?? '';
-            
-            // If InstallLocation is empty, try to extract from UninstallString
-            if (filePath.isEmpty && app['UninstallString'] != null) {
-              final uninstallString = app['UninstallString'].toString();
-              final match = RegExp(r'"([^"]+)\\').firstMatch(uninstallString);
-              if (match != null) {
-                filePath = match.group(1) ?? '';
-              }
-            }
-            
-            if (name.isNotEmpty && !installedApps.any((a) => a.name == name)) {
-              // Find the executable file in the installation directory
-              String exePath = await _findExecutableForApp(name, filePath);
-              installedApps.add(InstalledApplication(
-                name: name,
-                filePath: exePath.isNotEmpty ? exePath : filePath,
-              ));
-            }
-          }
-        }
+        // Call the native method to get running applications
+        final MethodChannel platform = const MethodChannel('com.routine.applist');
+        final List<dynamic> runningApps = await platform.invokeMethod('getRunningApplications');
         
-        print("getting user apps"); 
-        // Also check user-specific installed applications
-        final processUser = await Process.run('powershell.exe', [
-          '-Command',
-          'Get-ItemProperty HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | ' +
-          'Where-Object { \$_.DisplayName -ne \$null } | ' +
-          'Select-Object DisplayName, InstallLocation, UninstallString | ' +
-          'ConvertTo-Json'
-        ]);
-        print("finished getting user apps"); 
-
-        if (processUser.exitCode == 0 && processUser.stdout.toString().trim().isNotEmpty) {
-          final dynamic userApps = json.decode(processUser.stdout.toString());
-          // Handle both single object and array responses
-          final List<dynamic> apps = userApps is List ? userApps : [userApps];
+        // Convert the result to InstalledApplication objects
+        for (final app in runningApps) {
+          final String name = app['name'];
+          final String path = app['path'];
+          final String? displayName = app['displayName'];
           
-          for (var app in apps) {
-            String name = app['DisplayName'] ?? '';
-            String filePath = app['InstallLocation'] ?? '';
-            
-            // If InstallLocation is empty, try to extract from UninstallString
-            if (filePath.isEmpty && app['UninstallString'] != null) {
-              final uninstallString = app['UninstallString'].toString();
-              final match = RegExp(r'"([^"]+)\\').firstMatch(uninstallString);
-              if (match != null) {
-                filePath = match.group(1) ?? '';
-              }
-            }
-            
-            if (name.isNotEmpty && !installedApps.any((a) => a.name == name)) {
-              // Find the executable file in the installation directory
-              String exePath = await _findExecutableForApp(name, filePath);
-              installedApps.add(InstalledApplication(
-                name: name,
-                filePath: exePath.isNotEmpty ? exePath : filePath,
-              ));
-            }
+          // Skip system processes and empty names
+          if (name.isEmpty || 
+              path.toLowerCase().contains('\\windows\\system32\\') ||
+              path.toLowerCase().contains('\\windows\\syswow64\\')) {
+            continue;
+          }
+          
+          // Add to the list if not already present
+          if (!installedApps.any((existingApp) => existingApp.filePath == path)) {
+            installedApps.add(InstalledApplication(
+              name: name,
+              filePath: path,
+              displayName: displayName,
+            ));
           }
         }
       } catch (e) {
-        debugPrint('Error getting installed applications: $e');
+        debugPrint('Error getting running applications: $e');
       }
     } else if (Platform.isMacOS) {  
       Directory appDir = Directory('/Applications');
@@ -433,7 +350,7 @@ class DesktopService {
       }
     }
 
-    installedApps.sort((a, b) => a.name.compareTo(b.name));
+    installedApps.sort((a, b) => (a.displayName ?? a.name).compareTo(b.displayName ?? b.name));
     return installedApps;
   }
 
