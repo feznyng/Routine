@@ -9,7 +9,6 @@ import 'sync_service.dart';
 import 'package:cron/cron.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'dart:convert';
 
 class InstalledApplication {
   final String name;
@@ -352,50 +351,5 @@ class DesktopService {
 
     installedApps.sort((a, b) => (a.displayName ?? a.name).compareTo(b.displayName ?? b.name));
     return installedApps;
-  }
-
-  // Helper method to find executable files for an application
-  static Future<String> _findExecutableForApp(String appName, String installPath) async {
-    if (installPath.isEmpty) return '';
-    
-    try {
-      // First, try to find an executable with the same name as the app
-      final sanitizedAppName = appName.replaceAll(RegExp(r'[^\w\s]'), '').trim();
-      final possibleExeNames = [
-        '$sanitizedAppName.exe',
-        '${sanitizedAppName.replaceAll(' ', '')}.exe',
-        sanitizedAppName.split(' ').first + '.exe',
-      ];
-      
-      // Check if the directory exists
-      final dir = Directory(installPath);
-      if (!await dir.exists()) return installPath;
-      
-      // First, try to find the executable directly in the install path
-      for (var exeName in possibleExeNames) {
-        final exePath = '$installPath\\$exeName';
-        final exeFile = File(exePath);
-        if (await exeFile.exists()) {
-          return exePath;
-        }
-      }
-      
-      // If not found, search recursively for any .exe files
-      final exeFiles = <FileSystemEntity>[];
-      await for (var entity in dir.list(recursive: true, followLinks: false)) {
-        if (entity is File && entity.path.toLowerCase().endsWith('.exe')) {
-          exeFiles.add(entity);
-        }
-      }
-      
-      // If we found any .exe files, return the first one
-      if (exeFiles.isNotEmpty) {
-        return exeFiles.first.path;
-      }
-    } catch (e) {
-      debugPrint('Error finding executable for $appName at $installPath: $e');
-    }
-    
-    return installPath;
   }
 }
