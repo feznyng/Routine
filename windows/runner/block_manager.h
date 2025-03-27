@@ -14,12 +14,22 @@ public:
         _cache.clear();
         _cache.insert({ L"C:\\Windows\\explorer.exe", false });
 
+        WCHAR path[MAX_PATH];
+        GetModuleFileNameW(NULL, path, MAX_PATH);
+
+        _cache.insert({ std::wstring{ path }, false });
+
 		_appList.clear();
         for (const auto& app : a_apps) {
             _appList.insert(std::wstring{ app.begin(), app.end() });
         }
 
         _dirList.clear();
+
+        if (a_allow) {
+            _dirList.emplace_back(std::wstring{ L"C:\\Windows\\SystemApps" });
+        }
+        
         for (const auto& dir : a_dirs) {
             _dirList.emplace_back(std::wstring{ dir.begin(), dir.end() });
         }
