@@ -197,8 +197,8 @@ class Routine: Codable {
             return false
         }
         
-        // Return true if conditionsLastMet is before today's start time
-        return lastMet.compare(todayAtStartTime) == .orderedAscending
+        // Return true if conditionsLastMet is after today's start time (completed during routine)
+        return todayAtStartTime.compare(lastMet) == .orderedAscending
     }
 }
 

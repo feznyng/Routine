@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/extensions/json1.dart';
+import 'package:drift/native.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 import 'string_list_converter.dart';
 import '../models/condition.dart';
@@ -106,10 +109,20 @@ class AppDatabase extends _$AppDatabase {
   int get schemaVersion => 1;
 
   static QueryExecutor _openConnection() {
-    return driftDatabase(
-      name: 'routine_db',
-      native: const DriftNativeOptions(),
-    );
+    if (Platform.isWindows) {
+      // On Windows, store the database in the same directory as the executable
+      final executableDir = File(Platform.resolvedExecutable).parent.path;
+      final dbPath = p.join(executableDir, 'routine_db.sqlite');
+      return LazyDatabase(() async {
+        return NativeDatabase(File(dbPath));
+      });
+    } else {
+      // On other platforms, use the default location
+      return driftDatabase(
+        name: 'routine_db',
+        native: const DriftNativeOptions(),
+      );
+    }
   }
 
   Future<void> initialize() async {

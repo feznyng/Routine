@@ -32,7 +32,11 @@ class BlockGroupSection extends StatelessWidget {
     }
   }
 
-  String _buildGroupSummary(Group? group) {
+  String _buildGroupSummary(Group? group, bool currDevice) {
+    if (!currDevice) {
+      return group?.name ?? 'Custom';
+    }
+
     if (group == null) {
       return 'No block group configured';
     } else if (group.name != null) {
@@ -105,11 +109,12 @@ class BlockGroupSection extends StatelessWidget {
         ...routine.groups.entries.map((entry) {
           final deviceId = entry.key;
           final group = entry.value;
+          final currDevice = deviceId == currentDeviceId;
           return Card(
             child: ListTile(
               leading: Icon(_getDeviceIcon(devices[deviceId]?.type != null ? DeviceType.values.byName(devices[deviceId]!.type) : DeviceType.macos)),
-              title: Text('${devices[deviceId]?.name}${deviceId == currentDeviceId ? ' (This Device)' : ''}'),
-              subtitle: Text(_buildGroupSummary(group)),
+              title: Text('${devices[deviceId]?.name}${currDevice ? ' (Current Device)' : ''}'),
+              subtitle: Text(_buildGroupSummary(group, currDevice)),
               trailing: enabled ? const Icon(Icons.chevron_right) : null,
               onTap: enabled ? () {
                 if (deviceId == currentDeviceId) {

@@ -165,7 +165,7 @@ class _RoutineListState extends State<RoutineList> {
           if (activeRoutines.isNotEmpty) ...[  
             _buildSectionHeader(
               context, 
-              'Active', 
+              'Current', 
               _activeRoutinesExpanded, 
               () => setState(() => _activeRoutinesExpanded = !_activeRoutinesExpanded)
             ),
@@ -175,6 +175,19 @@ class _RoutineListState extends State<RoutineList> {
           
           // Add padding between sections
           const SizedBox(height: 24),
+          
+          // Inactive routines section
+          if (inactiveRoutines.isNotEmpty) ...[
+            _buildSectionHeader(
+              context, 
+              'Upcoming', 
+              _inactiveRoutinesExpanded, 
+              () => setState(() => _inactiveRoutinesExpanded = !_inactiveRoutinesExpanded)
+            ),
+            if (_inactiveRoutinesExpanded)
+              ...inactiveRoutines.map((routine) => _buildRoutineCard(context, routine)),
+          ],
+
           
           // Snoozed routines section
           if (snoozedRoutines.isNotEmpty) ...[  
@@ -190,18 +203,6 @@ class _RoutineListState extends State<RoutineList> {
 
           // Add padding between sections
           const SizedBox(height: 24),
-          
-          // Inactive routines section
-          if (inactiveRoutines.isNotEmpty) ...[  
-            _buildSectionHeader(
-              context, 
-              'Inactive', 
-              _inactiveRoutinesExpanded, 
-              () => setState(() => _inactiveRoutinesExpanded = !_inactiveRoutinesExpanded)
-            ),
-            if (_inactiveRoutinesExpanded)
-              ...inactiveRoutines.map((routine) => _buildRoutineCard(context, routine)),
-          ],
             ],
           ),
         ),
@@ -255,7 +256,7 @@ class _RoutineListState extends State<RoutineList> {
                   const Icon(Icons.snooze, color: Colors.orange, size: 16),
                   const SizedBox(width: 4),
                   Text(
-                    'Snoozed until ${_formatSnoozeDate(routine.snoozedUntil!)}',
+                    _formatSnoozeDate(routine.snoozedUntil!),
                     style: const TextStyle(fontSize: 12, color: Colors.orange),
                   ),
                 ],
@@ -357,9 +358,7 @@ class _RoutineListState extends State<RoutineList> {
     if (routine.strictMode) {
       chipTexts.add('Strict');
     }
-    
-    // We don't add a chip for snoozed status anymore
-    
+        
     // Always add breaks chip
     chipTexts.add('${routine.breaksLeftText} ${routine.breaksLeftText == "Unlimited" ? "breaks" : routine.isActive ? "break${routine.numBreaksLeft == 1 ? '' : 's'} left" : "break${routine.numBreaksLeft == 1 ? '' : 's'}"}');
 

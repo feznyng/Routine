@@ -41,7 +41,7 @@ class StrictModeSection extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'When strict mode is enabled, this routine cannot be paused or deleted, and breaks cannot be taken outside of the configured limits.',
+              'When strict mode is enabled, this routine cannot be paused, deleted, or snoozed, and breaks cannot be taken outside of the configured limits.',
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey,

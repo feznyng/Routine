@@ -9,6 +9,7 @@ import '../services/sync_service.dart';
 import '../util.dart';
 import 'condition.dart';
 import 'syncable.dart';
+import 'dart:math';
 
 class Routine implements Syncable {
   final String _id;
@@ -455,7 +456,7 @@ class Routine implements Syncable {
     return _numBreaksTaken;
   }
 
-  int? get numBreaksLeft => maxBreaks != null ? maxBreaks! - (numBreaksTaken ?? 0) : null;
+  int? get numBreaksLeft => maxBreaks != null ? max(0, maxBreaks! - (numBreaksTaken ?? 0)) : null; // null means unlimited
 
   String get breaksLeftText {
     int? breaksLeft = numBreaksLeft;
