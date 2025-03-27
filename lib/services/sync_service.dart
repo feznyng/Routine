@@ -155,6 +155,8 @@ class SyncService {
       bool madeRemoteChange = false;
       bool accidentalDeletion = false;
 
+      print("Syncing...");
+
       // Pull and apply remote device changes
       {
         final remoteDevices = await _client.from('devices').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
@@ -350,8 +352,10 @@ class SyncService {
           }
         }
 
+        bool updatedCurrDevice = false;
         for (final device in localDevices) {
           madeRemoteChange = true;
+          updatedCurrDevice = updatedCurrDevice || device.id == currDevice.id;
 
           await _client
           .from('devices')
@@ -365,6 +369,17 @@ class SyncService {
             'deleted': device.deleted,
           })
           .eq('id', device.id);
+        }
+
+        // if we didn't do so already also let update
+
+        if (!updatedCurrDevice) {
+          await _client
+          .from('devices')
+          .update({
+            'last_pulled_at': pulledAt.toUtc().toIso8601String(),
+          })
+          .eq('id', currDevice.id);
         }
       }
 

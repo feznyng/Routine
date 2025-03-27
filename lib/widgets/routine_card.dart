@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'dart:async';
 import '../models/routine.dart';
 import '../models/condition.dart';
 import 'routine_page.dart';
 import 'break_dialog.dart';
 
-class RoutineCard extends StatelessWidget {
+class RoutineCard extends StatefulWidget {
   final Routine routine;
   final VoidCallback? onRoutineUpdated;
 
@@ -14,6 +15,83 @@ class RoutineCard extends StatelessWidget {
     required this.routine,
     this.onRoutineUpdated,
   });
+
+  @override
+  State<RoutineCard> createState() => _RoutineCardState();
+}
+
+class _RoutineCardState extends State<RoutineCard> {
+  Timer? _timer;
+  String _timeLeftText = '';
+  
+  @override
+  void initState() {
+    super.initState();
+    _updateTimeLeft();
+    // Start timer if routine is on a break
+    if (widget.routine.isPaused && widget.routine.pausedUntil != null) {
+      _startTimer();
+    }
+  }
+  
+  @override
+  void didUpdateWidget(RoutineCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // Check if break status changed
+    final wasOnBreak = oldWidget.routine.isPaused && oldWidget.routine.pausedUntil != null;
+    final isOnBreak = widget.routine.isPaused && widget.routine.pausedUntil != null;
+    
+    if (!wasOnBreak && isOnBreak) {
+      // Break started
+      _updateTimeLeft();
+      _startTimer();
+    } else if (wasOnBreak && !isOnBreak) {
+      // Break ended
+      _stopTimer();
+    }
+  }
+  
+  @override
+  void dispose() {
+    _stopTimer();
+    super.dispose();
+  }
+  
+  void _startTimer() {
+    _stopTimer(); // Ensure no duplicate timers
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _updateTimeLeft();
+    });
+  }
+  
+  void _stopTimer() {
+    _timer?.cancel();
+    _timer = null;
+  }
+  
+  void _updateTimeLeft() {
+    if (widget.routine.isPaused && widget.routine.pausedUntil != null) {
+      final now = DateTime.now().toUtc();
+      final timeLeft = widget.routine.pausedUntil!.difference(now);
+      
+      // Ensure we don't show negative time
+      if (timeLeft.isNegative) {
+        setState(() {
+          _timeLeftText = '0:00';
+        });
+        return;
+      }
+      
+      // Format time left as minutes:seconds
+      final minutes = timeLeft.inMinutes;
+      final seconds = timeLeft.inSeconds % 60;
+      
+      setState(() {
+        _timeLeftText = '$minutes:${seconds.toString().padLeft(2, '0')}';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,13 +104,13 @@ class RoutineCard extends StatelessWidget {
             title: Row(
               children: [
                 Expanded(
-                  child: Text(routine.name),
+                  child: Text(widget.routine.name),
                 ),
-                if (routine.isSnoozed && routine.snoozedUntil != null) ...[  
+                if (widget.routine.isSnoozed && widget.routine.snoozedUntil != null) ...[  
                   const Icon(Icons.snooze, color: Colors.orange, size: 16),
                   const SizedBox(width: 4),
                   Text(
-                    _formatSnoozeDate(routine.snoozedUntil!),
+                    _formatSnoozeDate(widget.routine.snoozedUntil!),
                     style: const TextStyle(fontSize: 12, color: Colors.orange),
                   ),
                 ],
@@ -40,7 +118,7 @@ class RoutineCard extends StatelessWidget {
             ),
             subtitle: _buildRoutineSubtitle(context),
             isThreeLine: true,
-            trailing: routine.isActive ? _buildBreakButton(context) : null,
+            trailing: widget.routine.isActive ? _buildBreakButton(context) : null,
             onTap: () {
               _showRoutinePage(context);
             },
@@ -54,11 +132,11 @@ class RoutineCard extends StatelessWidget {
     String timeText;
     
     // Add time information
-    if (routine.startTime == -1 && routine.endTime == -1) {
+    if (widget.routine.startTime == -1 && widget.routine.endTime == -1) {
       timeText = 'All day';
     } else {
-      final startTimeOfDay = TimeOfDay(hour: routine.startHour, minute: routine.startMinute);
-      final endTimeOfDay = TimeOfDay(hour: routine.endHour, minute: routine.endMinute);
+      final startTimeOfDay = TimeOfDay(hour: widget.routine.startHour, minute: widget.routine.startMinute);
+      final endTimeOfDay = TimeOfDay(hour: widget.routine.endHour, minute: widget.routine.endMinute);
       timeText = '${startTimeOfDay.format(context)} - ${endTimeOfDay.format(context)}';
     }
 
@@ -68,7 +146,7 @@ class RoutineCard extends StatelessWidget {
         Text(timeText),
         const SizedBox(height: 4),
         _buildBlockedChips(),
-        if (routine.isActive && routine.conditions.isNotEmpty) ...[  
+        if (widget.routine.isActive && widget.routine.conditions.isNotEmpty) ...[  
           const SizedBox(height: 8),
           _buildConditionsList(context),
         ],
@@ -90,7 +168,7 @@ class RoutineCard extends StatelessWidget {
   }
 
   Widget _buildBlockedChips() {
-    final group = routine.getGroup();
+    final group = widget.routine.getGroup();
     List<String> chipTexts = [];
     
     // Collect all chip texts first
@@ -131,12 +209,12 @@ class RoutineCard extends StatelessWidget {
     }
     
     // Add strict mode chip if enabled
-    if (routine.strictMode) {
+    if (widget.routine.strictMode) {
       chipTexts.add('Strict');
     }
         
     // Always add breaks chip
-    chipTexts.add('${routine.breaksLeftText} ${routine.breaksLeftText == "Unlimited" ? "breaks" : routine.isActive ? "break${routine.numBreaksLeft == 1 ? '' : 's'} left" : "break${routine.numBreaksLeft == 1 ? '' : 's'}"}');
+    chipTexts.add('${widget.routine.breaksLeftText} ${widget.routine.breaksLeftText == "Unlimited" ? "breaks" : widget.routine.isActive ? "break${widget.routine.numBreaksLeft == 1 ? '' : 's'} left" : "break${widget.routine.numBreaksLeft == 1 ? '' : 's'}"}');
 
     // Transform all texts to styled chips
     final chips = chipTexts.map((text) {
@@ -165,15 +243,15 @@ class RoutineCard extends StatelessWidget {
   }
 
   Widget _buildBreakButton(BuildContext context) {
-    if (routine.isPaused) {
+    if (widget.routine.isPaused && widget.routine.pausedUntil != null) {
       return TextButton.icon(
         onPressed: () => _showEndBreakDialog(context),
         icon: const Icon(Icons.timer),
-        label: const Text('End Break'),
+        label: Text('End Break ($_timeLeftText)'),
       );
     }
 
-    final canBreak = routine.canBreak;
+    final canBreak = widget.routine.canBreak;
     return TextButton.icon(
       onPressed: canBreak ? () => _showBreakDialog(context) : null,
       icon: const Icon(Icons.coffee),
@@ -194,9 +272,9 @@ class RoutineCard extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
-              routine.endBreak();
-              if (onRoutineUpdated != null) {
-                onRoutineUpdated!();
+              widget.routine.endBreak();
+              if (widget.onRoutineUpdated != null) {
+                widget.onRoutineUpdated!();
               }
               Navigator.of(context).pop();
             },
@@ -210,7 +288,7 @@ class RoutineCard extends StatelessWidget {
   void _showBreakDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => BreakDialog(routine: routine),
+      builder: (context) => BreakDialog(routine: widget.routine),
       barrierDismissible: false,
     );
   }
@@ -219,16 +297,16 @@ class RoutineCard extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => RoutinePage(
-          routine: routine,
+          routine: widget.routine,
           onSave: (updatedRoutine) {
-            if (onRoutineUpdated != null) {
-              onRoutineUpdated!();
+            if (widget.onRoutineUpdated != null) {
+              widget.onRoutineUpdated!();
             }
             Navigator.of(context).pop();
           },
           onDelete: () {
-            if (onRoutineUpdated != null) {
-              onRoutineUpdated!();
+            if (widget.onRoutineUpdated != null) {
+              widget.onRoutineUpdated!();
             }
             Navigator.of(context).pop();
           },
@@ -242,13 +320,13 @@ class RoutineCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 4),
-        ...routine.conditions.map((condition) => _buildConditionItem(context, condition)),
+        ...widget.routine.conditions.map((condition) => _buildConditionItem(context, condition)),
       ],
     );
   }
   
   Widget _buildConditionItem(BuildContext context, Condition condition) {
-    final isMet = routine.isConditionMet(condition);
+    final isMet = widget.routine.isConditionMet(condition);
     
     // Get the appropriate icon based on condition type
     IconData getConditionIcon() {
@@ -315,7 +393,7 @@ class RoutineCard extends StatelessWidget {
   }
   
   void _handleConditionTap(BuildContext context, Condition condition) {
-    final isMet = routine.isConditionMet(condition);
+    final isMet = widget.routine.isConditionMet(condition);
     
     // If the condition is already completed, show a confirmation dialog
     if (isMet) {
@@ -327,9 +405,9 @@ class RoutineCard extends StatelessWidget {
     switch (condition.type) {
       case ConditionType.todo:
         // Todo conditions can be completed directly
-        routine.completeCondition(condition);
-        if (onRoutineUpdated != null) {
-          onRoutineUpdated!();
+        widget.routine.completeCondition(condition);
+        if (widget.onRoutineUpdated != null) {
+          widget.onRoutineUpdated!();
         }
         break;
         
@@ -407,9 +485,9 @@ class RoutineCard extends StatelessWidget {
       
       if (distance <= proximity) {
         // User is within the proximity radius
-        routine.completeCondition(condition);
-        if (onRoutineUpdated != null) {
-          onRoutineUpdated!();
+        widget.routine.completeCondition(condition);
+        if (widget.onRoutineUpdated != null) {
+          widget.onRoutineUpdated!();
         }
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Location condition completed!')),
@@ -440,9 +518,9 @@ class RoutineCard extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
-              routine.completeCondition(condition, complete: false);
-              if (onRoutineUpdated != null) {
-                onRoutineUpdated!();
+              widget.routine.completeCondition(condition, complete: false);
+              if (widget.onRoutineUpdated != null) {
+                widget.onRoutineUpdated!();
               }
               Navigator.of(context).pop();
             },
