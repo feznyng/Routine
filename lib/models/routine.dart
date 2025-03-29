@@ -6,7 +6,6 @@ import 'device.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import '../services/sync_service.dart';
-import '../util.dart';
 import 'condition.dart';
 import 'syncable.dart';
 import 'dart:math';
@@ -188,7 +187,6 @@ class Routine implements Syncable {
   @override
   Future<void> delete() async {
     await getIt<AppDatabase>().tempDeleteRoutine(_id);
-    print('routine delete sync');
     scheduleSyncJob();
   }
 
@@ -336,7 +334,6 @@ class Routine implements Syncable {
   }
 
   bool get isActive { 
-    // If snoozed, routine is not active
     if (isSnoozed) {
       return false;
     }
@@ -369,30 +366,7 @@ class Routine implements Syncable {
   }
 
   bool get canBreak {
-    // If maxBreaks is 0, breaks are disabled
-    if (maxBreaks == 0) {
-      return false;
-    }
-    
-    if (maxBreaks == null || numBreaksTaken == null || numBreaksTaken! < maxBreaks!) {
-      return true;
-    }
-
-    if (_lastBreakAt == null && (maxBreaks == null || maxBreaks! > 0)) {
-      return true;
-    }
-
-    print("canBreak: $_lastBreakAt = ${Util.isBeforeToday(_lastBreakAt!)}");
-
-    final lastBreakTimeOfDay = _lastBreakAt!.hour * 60 + _lastBreakAt!.minute;
-
-    if (Util.isBeforeToday(_lastBreakAt!) || lastBreakTimeOfDay < _startTime) {
-      // Last break was before start time today, reset counter
-      _numBreaksTaken = null;
-      return true;
-    }
-
-    return false;
+    return (numBreaksLeft ?? 1) > 0;
   }
 
   DateTime? get pausedUntil => _pausedUntil;
@@ -405,7 +379,7 @@ class Routine implements Syncable {
     
     _lastBreakAt = now;
     _pausedUntil = now.add(Duration(minutes: duration));
-    _numBreaksTaken = (_numBreaksTaken ?? 0) + 1;
+    _numBreaksTaken = (numBreaksTaken ?? 0) + 1;
     
     await save();
   }
@@ -439,12 +413,10 @@ class Routine implements Syncable {
   }
   
   int? get numBreaksTaken {
-    // Return 0 if routine is inactive or if _lastBreakAt is before the start of the routine
     if (!isActive || _lastBreakAt == null) {
       return 0;
     }
     
-    // Check if _lastBreakAt is before the start time of the routine
     final startTimeHours = _startTime ~/ 60;
     final startTimeMinutes = _startTime % 60;
     final routineStartTime = DateTime(_lastBreakAt!.year, _lastBreakAt!.month, _lastBreakAt!.day, startTimeHours, startTimeMinutes);
@@ -456,7 +428,7 @@ class Routine implements Syncable {
     return _numBreaksTaken;
   }
 
-  int? get numBreaksLeft => maxBreaks != null ? max(0, maxBreaks! - (numBreaksTaken ?? 0)) : null; // null means unlimited
+  int? get numBreaksLeft => maxBreaks != null ? max(0, maxBreaks! - (numBreaksTaken ?? 0)) : null;
 
   String get breaksLeftText {
     int? breaksLeft = numBreaksLeft;

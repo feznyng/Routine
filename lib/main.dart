@@ -156,12 +156,14 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
     if (state == AppLifecycleState.resumed) {
       // Notify the auth service that the app has resumed
       AuthService().notifyAppResumed();
-      Routine.getAll().then((routines) {
-        _desktopService?.evaluate(routines);
-      });
+      
       
       // Trigger a sync job when the app resumes
-      if (!_isDesktop) {
+      if (_isDesktop) {
+        Routine.getAll().then((routines) {
+          _desktopService?.evaluate(routines);
+        });
+      } else {
         SyncService().addJob(SyncJob(remote: false));
       }
     }
