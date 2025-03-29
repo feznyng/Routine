@@ -46,6 +46,9 @@ class _RoutineCardState extends State<RoutineCard> {
       // Break started
       _updateTimeLeft();
       _startTimer();
+      
+      // Ensure the widget is rebuilt to reflect the new time left
+      setState(() {});
     } else if (wasOnBreak && !isOnBreak) {
       // Break ended
       _stopTimer();
@@ -68,6 +71,10 @@ class _RoutineCardState extends State<RoutineCard> {
   void _stopTimer() {
     _timer?.cancel();
     _timer = null;
+    // Reset time left text when stopping the timer
+    setState(() {
+      _timeLeftText = '';
+    });
   }
   
   void _updateTimeLeft() {
@@ -78,7 +85,7 @@ class _RoutineCardState extends State<RoutineCard> {
       // Ensure we don't show negative time
       if (timeLeft.isNegative) {
         setState(() {
-          _timeLeftText = '0:00';
+          _timeLeftText = '(0:00)';
         });
         return;
       }
@@ -88,7 +95,12 @@ class _RoutineCardState extends State<RoutineCard> {
       final seconds = timeLeft.inSeconds % 60;
       
       setState(() {
-        _timeLeftText = '$minutes:${seconds.toString().padLeft(2, '0')}';
+        _timeLeftText = '($minutes:${seconds.toString().padLeft(2, '0')})';
+      });
+    } else {
+      // Reset time left text if not on break
+      setState(() {
+        _timeLeftText = '';
       });
     }
   }
@@ -247,7 +259,7 @@ class _RoutineCardState extends State<RoutineCard> {
       return TextButton.icon(
         onPressed: () => _showEndBreakDialog(context),
         icon: const Icon(Icons.timer),
-        label: Text('End Break ($_timeLeftText)'),
+        label: Text('End Break $_timeLeftText'),
       );
     }
 
@@ -539,9 +551,9 @@ class _RoutineCardState extends State<RoutineCard> {
     
     String dateStr;
     if (dateToCheck.isAtSameMomentAs(today)) {
-      dateStr = 'today';
+      dateStr = 'Today';
     } else if (dateToCheck.isAtSameMomentAs(tomorrow)) {
-      dateStr = 'tomorrow';
+      dateStr = 'Tomorrow';
     } else {
       dateStr = '${dateTime.month}/${dateTime.day}';
     }

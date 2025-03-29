@@ -155,8 +155,6 @@ class SyncService {
       bool madeRemoteChange = false;
       bool accidentalDeletion = false;
 
-      print("Syncing...");
-
       // Pull and apply remote device changes
       {
         final remoteDevices = await _client.from('devices').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());

@@ -127,34 +127,44 @@ class Routine implements Syncable {
       group.save();
     }
 
-    await getIt<AppDatabase>().upsertRoutine(RoutinesCompanion(
-      id: Value(_id), 
-      name: Value(_name),
-      monday: Value(_days[0]), 
-      tuesday: Value(_days[1]), 
-      wednesday: Value(_days[2]), 
-      thursday: Value(_days[3]), 
-      friday: Value(_days[4]), 
-      saturday: Value(_days[5]), 
-      sunday: Value(_days[6]), 
-      startTime: Value(_startTime), 
-      endTime: Value(_endTime),
-      groups: Value(_groups.values.map<String>((g) => g.id).toList()),
-      changes: Value(changes),
-      numBreaksTaken: Value(_numBreaksTaken),
-      lastBreakAt: Value(_lastBreakAt),
-      pausedUntil: Value(_pausedUntil),
-      maxBreaks: Value(maxBreaks),
-      maxBreakDuration: Value(_maxBreakDuration),
-      friction: Value(friction),
-      frictionLen: Value(frictionLen),
-      snoozedUntil: Value(_snoozedUntil),
-      updatedAt: Value(DateTime.now()),
-      recurring: Value(true),
-      conditions: Value(conditions),
-      strictMode: Value(strictMode)
-    ));
-    scheduleSyncJob();
+    if (changes.isNotEmpty) {
+      if (changes.contains('startTime') || changes.contains('endTime')) {
+        _lastBreakAt = null;
+        _pausedUntil = null;
+        _numBreaksTaken = 0;
+      }
+
+      await getIt<AppDatabase>().upsertRoutine(RoutinesCompanion(
+        id: Value(_id), 
+        name: Value(_name),
+        monday: Value(_days[0]), 
+        tuesday: Value(_days[1]), 
+        wednesday: Value(_days[2]), 
+        thursday: Value(_days[3]), 
+        friday: Value(_days[4]), 
+        saturday: Value(_days[5]), 
+        sunday: Value(_days[6]), 
+        startTime: Value(_startTime), 
+        endTime: Value(_endTime),
+        groups: Value(_groups.values.map<String>((g) => g.id).toList()),
+        changes: Value(changes),
+        numBreaksTaken: Value(_numBreaksTaken),
+        lastBreakAt: Value(_lastBreakAt),
+        pausedUntil: Value(_pausedUntil),
+        maxBreaks: Value(maxBreaks),
+        maxBreakDuration: Value(_maxBreakDuration),
+        friction: Value(friction),
+        frictionLen: Value(frictionLen),
+        snoozedUntil: Value(_snoozedUntil),
+        updatedAt: Value(DateTime.now()),
+        recurring: Value(true),
+        conditions: Value(conditions),
+        strictMode: Value(strictMode)
+      ));
+      scheduleSyncJob();
+    }
+
+   
   }
 
   @override
