@@ -21,102 +21,19 @@ class RoutineCard extends StatefulWidget {
 }
 
 class _RoutineCardState extends State<RoutineCard> {
-  Timer? _timer;
-  String _timeLeftText = '';
-  
   @override
   void initState() {
     super.initState();
-    _updateTimeLeft();
-    // Start timer if routine is on a break
-    if (widget.routine.isPaused && widget.routine.pausedUntil != null) {
-      _startTimer();
-    }
   }
   
   @override
   void didUpdateWidget(RoutineCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
-    // Check if break status changed
-    final wasOnBreak = oldWidget.routine.isPaused && oldWidget.routine.pausedUntil != null;
-    final isOnBreak = widget.routine.isPaused && widget.routine.pausedUntil != null;
-    
-    if (!wasOnBreak && isOnBreak) {
-      // Break started
-      _updateTimeLeft();
-      _startTimer();
-      
-      // Ensure the widget is rebuilt to reflect the new time left
-      if (mounted) {
-        setState(() {});
-      }
-    } else if (wasOnBreak && !isOnBreak) {
-      // Break ended
-      _stopTimer();
-    }
   }
   
   @override
   void dispose() {
-    // Just cancel the timer without calling _stopTimer to avoid setState
-    if (_timer != null) {
-      _timer!.cancel();
-      _timer = null;
-    }
     super.dispose();
-  }
-  
-  void _startTimer() {
-    _stopTimer(); // Ensure no duplicate timers
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      _updateTimeLeft();
-    });
-  }
-  
-  void _stopTimer() {
-    _timer?.cancel();
-    _timer = null;
-    // Only update state if the widget is still mounted
-    if (mounted) {
-      setState(() {
-        _timeLeftText = '';
-      });
-    }
-  }
-  
-  void _updateTimeLeft() {
-    if (widget.routine.isPaused && widget.routine.pausedUntil != null) {
-      final now = DateTime.now().toUtc();
-      final timeLeft = widget.routine.pausedUntil!.difference(now);
-      
-      // Ensure we don't show negative time
-      if (timeLeft.isNegative) {
-        if (mounted) {
-          setState(() {
-            _timeLeftText = '(0:00)';
-          });
-        }
-        return;
-      }
-      
-      // Format time left as minutes:seconds
-      final minutes = timeLeft.inMinutes;
-      final seconds = timeLeft.inSeconds % 60;
-      
-      if (mounted) {
-        setState(() {
-          _timeLeftText = '($minutes:${seconds.toString().padLeft(2, '0')})';
-        });
-      }
-    } else {
-      // Reset time left text if not on break
-      if (mounted) {
-        setState(() {
-          _timeLeftText = '';
-        });
-      }
-    }
   }
 
   @override
@@ -279,7 +196,7 @@ class _RoutineCardState extends State<RoutineCard> {
       return TextButton.icon(
         onPressed: () => _showEndBreakDialog(context),
         icon: const Icon(Icons.timer),
-        label: Text('End Break $_timeLeftText'),
+        label: const Text('End Break'),
       );
     }
 
