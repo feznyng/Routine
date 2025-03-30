@@ -21,18 +21,27 @@ class RoutineCard extends StatefulWidget {
 }
 
 class _RoutineCardState extends State<RoutineCard> {
+  Timer? _breakTimer;
+  String _remainingBreakTime = "";
+
   @override
   void initState() {
     super.initState();
+    _startBreakTimerIfNeeded();
   }
   
   @override
   void didUpdateWidget(RoutineCard oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Check if break status changed
+    if (oldWidget.routine.isPaused != widget.routine.isPaused) {
+      _startBreakTimerIfNeeded();
+    }
   }
   
   @override
   void dispose() {
+    _breakTimer?.cancel();
     super.dispose();
   }
 
@@ -191,12 +200,64 @@ class _RoutineCardState extends State<RoutineCard> {
     );
   }
 
+  void _startBreakTimerIfNeeded() {
+    _breakTimer?.cancel();
+    _breakTimer = null;
+    
+    if (widget.routine.isPaused && widget.routine.pausedUntil != null) {
+      // Update immediately
+      _updateRemainingBreakTime();
+      
+      // Then set up a timer to update every second
+      _breakTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        _updateRemainingBreakTime();
+      });
+    }
+  }
+
+  void _updateRemainingBreakTime() {
+    if (widget.routine.pausedUntil == null) {
+      setState(() {
+        _remainingBreakTime = "";
+      });
+      return;
+    }
+
+    final now = DateTime.now();
+    final pausedUntil = widget.routine.pausedUntil!;
+    
+    if (now.isAfter(pausedUntil)) {
+      setState(() {
+        _remainingBreakTime = "(00:00)";
+      });
+      _breakTimer?.cancel();
+      _breakTimer = null;
+      return;
+    }
+    
+    final remaining = pausedUntil.difference(now);
+    final minutes = remaining.inMinutes.toString().padLeft(2, '0');
+    final seconds = (remaining.inSeconds % 60).toString().padLeft(2, '0');
+    
+    setState(() {
+      _remainingBreakTime = "($minutes:$seconds)";
+    });
+  }
+
   Widget _buildBreakButton(BuildContext context) {
     if (widget.routine.isPaused && widget.routine.pausedUntil != null) {
-      return TextButton.icon(
-        onPressed: () => _showEndBreakDialog(context),
-        icon: const Icon(Icons.timer),
-        label: const Text('End Break'),
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _remainingBreakTime,
+            style: TextStyle(color: Theme.of(context).colorScheme.secondary),
+          ),
+          TextButton.icon(
+            onPressed: () => _showEndBreakDialog(context),
+            label: const Text('End Break'),
+          ),
+        ],
       );
     }
 
