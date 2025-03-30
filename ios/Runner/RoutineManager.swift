@@ -67,12 +67,14 @@ class RoutineManager {
         let uniqueId = "\(activityType)_\(routine.id)"
         let name = DeviceActivityName(uniqueId)
         
+        let delayedStartDate = startDate.addingTimeInterval(30)
+        
         // Calculate end date (15 minutes after start date)
-        let endDate = startDate.addingTimeInterval(15 * 60) // 15 minutes in seconds
+        let endDate = delayedStartDate.addingTimeInterval(15 * 60) // 15 minutes in seconds
         
         // Create date components for start and end dates
         let calendar = Calendar.current
-        let startComponents = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: startDate)
+        let startComponents = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: delayedStartDate)
         let endComponents = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: endDate)
         
         // Create non-repeating schedule
@@ -94,6 +96,7 @@ class RoutineManager {
         var dateComponents = DateComponents()
         dateComponents.hour = minutes / 60
         dateComponents.minute = minutes % 60
+        dateComponents.second = 30
         return dateComponents
     }
 }
