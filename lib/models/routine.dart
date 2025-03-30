@@ -315,8 +315,8 @@ class Routine implements Syncable {
       _days[index] = value;
     }
   }
-  int get startTime => _startTime < 0 ? 0 : _startTime;
-  int get endTime => _endTime < 0 ? 1440 : _endTime;
+  int get startTime => _startTime;
+  int get endTime => _endTime;
   set startTime(int value) {
     if (value < 0 || value > 1440) { 
       throw Exception("Start time must be between 0 and 1440");
