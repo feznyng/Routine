@@ -71,10 +71,12 @@ class _RoutineCardState extends State<RoutineCard> {
   void _stopTimer() {
     _timer?.cancel();
     _timer = null;
-    // Reset time left text when stopping the timer
-    setState(() {
-      _timeLeftText = '';
-    });
+    // Only update state if the widget is still mounted
+    if (mounted) {
+      setState(() {
+        _timeLeftText = '';
+      });
+    }
   }
   
   void _updateTimeLeft() {

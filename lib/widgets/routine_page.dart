@@ -102,6 +102,8 @@ class _RoutinePageState extends State<RoutinePage> {
     final today = DateTime(now.year, now.month, now.day);
     final tomorrow = today.add(const Duration(days: 1));
     final dateToCheck = DateTime(dateTime.year, dateTime.month, dateTime.day);
+
+    print("Snoozed Until: ${_routine.snoozedUntil}");
     
     String dateStr;
     if (dateToCheck.isAtSameMomentAs(today)) {
