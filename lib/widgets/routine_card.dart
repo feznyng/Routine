@@ -564,7 +564,10 @@ class _RoutineCardState extends State<RoutineCard> {
   }
   
   String _formatSnoozeDate(DateTime dateTime) {
-    print("Snoozed Until (Card): ${dateTime}");
+    // Convert to local time if in UTC
+    if (dateTime.isUtc) {
+      dateTime = dateTime.toLocal();
+    }
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
