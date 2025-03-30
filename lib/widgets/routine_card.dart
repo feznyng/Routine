@@ -564,6 +564,8 @@ class _RoutineCardState extends State<RoutineCard> {
   }
   
   String _formatSnoozeDate(DateTime dateTime) {
+    print("Snoozed Until (Card): ${dateTime}");
+
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final tomorrow = today.add(const Duration(days: 1));

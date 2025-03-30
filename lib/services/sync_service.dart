@@ -322,6 +322,9 @@ class SyncService {
               strictMode: Value((overwriteMap['strictMode'] ?? routine['strict_mode']) ?? false),
               conditions: Value(conditions),
             ));
+
+            print("Snoozed Until (Sync): ${DateTime.parse(routine['snoozed_until'])}");
+
           }
         }
       }
