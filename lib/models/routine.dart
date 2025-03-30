@@ -93,7 +93,7 @@ class Routine implements Syncable {
       for (final group in groups) {
         _groups[group.device] = Group.fromEntry(group);
       }
-
+      
       if (!isActive || _lastBreakAt == null) {
         _numBreaksTaken = 0;
       } else {
