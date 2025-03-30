@@ -226,7 +226,13 @@ class _RoutineCardState extends State<RoutineCard> {
     }
         
     // Always add breaks chip
-    chipTexts.add('${widget.routine.breaksLeftText} ${widget.routine.breaksLeftText == "Unlimited" ? "breaks" : widget.routine.isActive ? "break${widget.routine.numBreaksLeft == 1 ? '' : 's'} left" : "break${widget.routine.numBreaksLeft == 1 ? '' : 's'}"}');
+    final breaksLeftText = widget.routine.breaksLeftText;
+    final numBreaksLeft = widget.routine.numBreaksLeft;
+    final isUnlimited = breaksLeftText == "Unlimited";
+    final breakWord = numBreaksLeft == 1 ? 'break' : 'breaks';
+    final suffix = widget.routine.isActive && !isUnlimited ? ' left' : '';
+    
+    chipTexts.add('$breaksLeftText ${isUnlimited ? "breaks" : "$breakWord$suffix"}');
 
     // Transform all texts to styled chips
     final chips = chipTexts.map((text) {
