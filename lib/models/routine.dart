@@ -93,6 +93,20 @@ class Routine implements Syncable {
       for (final group in groups) {
         _groups[group.device] = Group.fromEntry(group);
       }
+
+      if (!isActive || _lastBreakAt == null) {
+        _numBreaksTaken = 0;
+      } else {
+        final startTimeHours = startTime ~/ 60;
+        final startTimeMinutes = startTime % 60;
+
+        final now = DateTime.now();
+        final routineStartTime = DateTime(now.year, now.month, now.day, startTimeHours, startTimeMinutes);
+        
+        if (_lastBreakAt!.isBefore(routineStartTime)) {
+          _numBreaksTaken = 0;
+        }
+      }
   }
 
   Routine.from(Routine other) :
@@ -321,10 +335,11 @@ class Routine implements Syncable {
     _endTime = value;
   }
   bool get allDay => _startTime == -1 && _endTime == -1;
+
   set allDay(bool value) {
     if (value) {
-      _startTime = -1;
-      _endTime = -1;
+      _startTime = 0;
+      _endTime = 1440;
     } else {
       _startTime = 540;
       _endTime = 1020;
@@ -389,7 +404,7 @@ class Routine implements Syncable {
     
     _lastBreakAt = now;
     _pausedUntil = now.add(Duration(minutes: duration));
-    _numBreaksTaken = (numBreaksTaken ?? 0) + 1;
+    _numBreaksTaken = (_numBreaksTaken ?? 0) + 1;
     
     await save();
   }
@@ -422,21 +437,7 @@ class Routine implements Syncable {
     _maxBreakDuration = value;
   }
   
-  int? get numBreaksTaken {
-    if (!isActive || _lastBreakAt == null) {
-      return 0;
-    }
-    
-    final startTimeHours = _startTime ~/ 60;
-    final startTimeMinutes = _startTime % 60;
-    final routineStartTime = DateTime(_lastBreakAt!.year, _lastBreakAt!.month, _lastBreakAt!.day, startTimeHours, startTimeMinutes);
-    
-    if (_lastBreakAt!.isBefore(routineStartTime)) {
-      return 0;
-    }
-    
-    return _numBreaksTaken;
-  }
+  int? get numBreaksTaken => _numBreaksTaken;
 
   int? get numBreaksLeft => maxBreaks != null ? max(0, maxBreaks! - (numBreaksTaken ?? 0)) : null;
 
