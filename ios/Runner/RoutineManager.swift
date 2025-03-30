@@ -94,6 +94,7 @@ class RoutineManager {
         var dateComponents = DateComponents()
         dateComponents.hour = minutes / 60
         dateComponents.minute = minutes % 60
+        dateComponents.second = 15
         return dateComponents
     }
 }
