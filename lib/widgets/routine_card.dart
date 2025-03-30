@@ -48,7 +48,9 @@ class _RoutineCardState extends State<RoutineCard> {
       _startTimer();
       
       // Ensure the widget is rebuilt to reflect the new time left
-      setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     } else if (wasOnBreak && !isOnBreak) {
       // Break ended
       _stopTimer();
@@ -57,7 +59,11 @@ class _RoutineCardState extends State<RoutineCard> {
   
   @override
   void dispose() {
-    _stopTimer();
+    // Just cancel the timer without calling _stopTimer to avoid setState
+    if (_timer != null) {
+      _timer!.cancel();
+      _timer = null;
+    }
     super.dispose();
   }
   
@@ -86,9 +92,11 @@ class _RoutineCardState extends State<RoutineCard> {
       
       // Ensure we don't show negative time
       if (timeLeft.isNegative) {
-        setState(() {
-          _timeLeftText = '(0:00)';
-        });
+        if (mounted) {
+          setState(() {
+            _timeLeftText = '(0:00)';
+          });
+        }
         return;
       }
       
@@ -96,14 +104,18 @@ class _RoutineCardState extends State<RoutineCard> {
       final minutes = timeLeft.inMinutes;
       final seconds = timeLeft.inSeconds % 60;
       
-      setState(() {
-        _timeLeftText = '($minutes:${seconds.toString().padLeft(2, '0')})';
-      });
+      if (mounted) {
+        setState(() {
+          _timeLeftText = '($minutes:${seconds.toString().padLeft(2, '0')})';
+        });
+      }
     } else {
       // Reset time left text if not on break
-      setState(() {
-        _timeLeftText = '';
-      });
+      if (mounted) {
+        setState(() {
+          _timeLeftText = '';
+        });
+      }
     }
   }
 
