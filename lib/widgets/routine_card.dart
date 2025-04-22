@@ -50,9 +50,7 @@ class _RoutineCardState extends State<RoutineCard> {
     final pausedUntilChanged = oldWidget.routine.pausedUntil != widget.routine.pausedUntil;
     
     // If pause status or pausedUntil time changed, update timer
-    if (wasPaused != isPaused || pausedUntilChanged) {
-      print("Widget updated for ${widget.routine.name}: isPaused=$isPaused, pausedUntil=${widget.routine.pausedUntil}");
-      
+    if (wasPaused != isPaused || pausedUntilChanged) {      
       if (isPaused && widget.routine.pausedUntil != null) {
         _updateRemainingBreakTime();
         _startBreakTimer();
