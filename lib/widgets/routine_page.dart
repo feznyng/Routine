@@ -292,15 +292,23 @@ class _RoutinePageState extends State<RoutinePage> {
                     ),
                     icon: Icon(
                       _routine.isSnoozed ? Icons.alarm_off : Icons.snooze,
-                      color: Theme.of(context).colorScheme.primary,
+                      color: (!_routine.isSnoozed && _originalStrictMode)
+                          ? Theme.of(context).colorScheme.primary.withValues(alpha: 128)
+                          : Theme.of(context).colorScheme.primary,
                     ),
                     label: Text(
                       _routine.isSnoozed 
                         ? 'Unsnooze Routine (Snoozed until ${_formatDateTime(_routine.snoozedUntil!)})'
                         : 'Snooze Routine',
-                      style: TextStyle(color: Theme.of(context).colorScheme.primary),
+                      style: TextStyle(
+                        color: (!_routine.isSnoozed && _originalStrictMode)
+                            ? Theme.of(context).colorScheme.primary.withValues(alpha: 128)
+                            : Theme.of(context).colorScheme.primary,
+                      ),
                     ),
-                    onPressed: _originalStrictMode ? null : () async {
+                    onPressed: (!_routine.isSnoozed && _originalStrictMode)
+                        ? null
+                        : () async {
                       if (_routine.isSnoozed) {
                         // Unsnooze the routine
                         final bool? confirm = await showDialog<bool>(
@@ -373,9 +381,9 @@ class _RoutinePageState extends State<RoutinePage> {
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                     ),
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    label: const Text('Delete Routine', style: TextStyle(color: Colors.red)),
-                    onPressed: (_routine.strictMode) ? null : () async {
+                    icon: Icon(Icons.delete_outline, color: _originalStrictMode ? Colors.red.withValues(alpha: 128) : Colors.red),
+                    label: Text('Delete Routine', style: TextStyle(color: _originalStrictMode ? Colors.red.withValues(alpha: 128) : Colors.red)),
+                    onPressed: _originalStrictMode ? null : () async {
                       final BuildContext dialogContext = context;
                       final bool? confirm = await showDialog<bool>(
                         context: dialogContext,
