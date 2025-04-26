@@ -292,7 +292,7 @@ class _RoutinePageState extends State<RoutinePage> {
                     ),
                     icon: Icon(
                       _routine.isSnoozed ? Icons.alarm_off : Icons.snooze,
-                      color: (!_routine.isSnoozed && _originalStrictMode)
+                      color: (!_routine.isSnoozed && inLockdown)
                           ? Theme.of(context).colorScheme.primary.withValues(alpha: 128)
                           : Theme.of(context).colorScheme.primary,
                     ),
@@ -301,12 +301,12 @@ class _RoutinePageState extends State<RoutinePage> {
                         ? 'Unsnooze Routine (Snoozed until ${_formatDateTime(_routine.snoozedUntil!)})'
                         : 'Snooze Routine',
                       style: TextStyle(
-                        color: (!_routine.isSnoozed && _originalStrictMode)
+                        color: (!_routine.isSnoozed && inLockdown)
                             ? Theme.of(context).colorScheme.primary.withValues(alpha: 128)
                             : Theme.of(context).colorScheme.primary,
                       ),
                     ),
-                    onPressed: (!_routine.isSnoozed && _originalStrictMode)
+                    onPressed: (!_routine.isSnoozed && inLockdown)
                         ? null
                         : () async {
                       if (_routine.isSnoozed) {
@@ -381,9 +381,9 @@ class _RoutinePageState extends State<RoutinePage> {
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                     ),
-                    icon: Icon(Icons.delete_outline, color: _originalStrictMode ? Colors.red.withValues(alpha: 128) : Colors.red),
-                    label: Text('Delete Routine', style: TextStyle(color: _originalStrictMode ? Colors.red.withValues(alpha: 128) : Colors.red)),
-                    onPressed: _originalStrictMode ? null : () async {
+                    icon: Icon(Icons.delete_outline, color: inLockdown ? Colors.red.withValues(alpha: 128) : Colors.red),
+                    label: Text('Delete Routine', style: TextStyle(color: inLockdown ? Colors.red.withValues(alpha: 128) : Colors.red)),
+                    onPressed: inLockdown ? null : () async {
                       final BuildContext dialogContext = context;
                       final bool? confirm = await showDialog<bool>(
                         context: dialogContext,
