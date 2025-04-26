@@ -168,33 +168,15 @@ class DesktopService {
     Set<String> sites = {};
     Set<String> categories = {};
     bool allowList = routines.any((r) => r.allow);
-    
+
     if (allowList) {
-      Map<String, int> appCounts = {};
-      Map<String, int> siteCounts = {};
-      Map<String, int> categoryCounts = {};
+      routines = routines.where((r) => r.allow).toList();  
+    }
 
-      for (final Routine routine in routines) {
-        for (final String app in routine.apps) {
-          appCounts[app] = (appCounts[app] ?? 0) + 1;
-        }
-        for (final String site in routine.sites) {
-          siteCounts[site] = (siteCounts[site] ?? 0) + 1;
-        }
-        for (final String category in routine.categories) {
-          categoryCounts[category] = (categoryCounts[category] ?? 0) + 1;
-        }
-      }
-
-      apps.addAll(appCounts.keys.where((app) => appCounts[app] == routines.length));
-      sites.addAll(siteCounts.keys.where((site) => siteCounts[site] == routines.length));
-      categories.addAll(categoryCounts.keys.where((category) => categoryCounts[category] == routines.length));
-    } else {
-      for (final Routine routine in routines) {
-        apps.addAll(routine.apps);
-        sites.addAll(routine.sites);
-        categories.addAll(routine.categories);
-      }
+    for (final Routine routine in routines) {
+      apps.addAll(routine.apps);
+      sites.addAll(routine.sites);
+      categories.addAll(routine.categories);
     }
     
     // Update cached values

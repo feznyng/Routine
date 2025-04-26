@@ -61,74 +61,42 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
         os_log("DeviceActivityMonitorExtension: filtered routine count = %d", routines.count)
 
         let allow = routines.contains(where: { $0.allow })
+        if allow {
+            routines = routines.filter { $0.allow }
+        }
+        
+        var apps = Set<ApplicationToken>();
+        var sites = Set<WebDomainToken>();
+        var domains = Set<String>();
+        var categories = Set<ActivityCategoryToken>();
+        
+        for routine in routines {
+            apps.formUnion(routine.apps)
+            sites.formUnion(routine.sites)
+            domains.formUnion(routine.domains)
+            categories.formUnion(routine.categories)
+        }
+        
+        var webDomains: Set<WebDomain> = []
+        
+        for tok in sites {
+            webDomains.insert(WebDomain(token: tok))
+        }
+        
+        for domain in domains {
+            webDomains.insert(WebDomain(domain: domain))
+        }
         
         if (allow) {
-            var apps = [ApplicationToken: Int]()
-            var sites = [WebDomainToken: Int]()
-            var domains = [String: Int]()
-            var categories = [ActivityCategoryToken: Int]()
-            
-            for routine in routines {
-                for app in routine.apps {
-                    apps[app, default: 0] += 1
-                }
-                for site in routine.sites {
-                    sites[site, default: 0] += 1
-                }
-                for domain in routine.domains {
-                    domains[domain, default: 0] += 1
-                }
-                for category in routine.categories {
-                    categories[category, default: 0] += 1
-                }
-            }
-            
-            for (tok, cnt) in apps {
-                if routines.count != cnt {
-                    apps.removeValue(forKey: tok)
-                }
-            }
-            
-            for (tok, cnt) in categories {
-                if routines.count != cnt {
-                    categories.removeValue(forKey: tok)
-                }
-            }
-            
-            var webDomains: Set<WebDomain> = []
-            
-            for (tok, cnt) in sites {
-                if routines.count == cnt {
-                    webDomains.insert(WebDomain(token: tok))
-                }
-            }
-            
-            for (domain, cnt) in domains {
-                if routines.count == cnt {
-                    webDomains.insert(WebDomain(domain: domain))
-                }
-            }
-                        
-            store.shield.applicationCategories = .all(except: Set(apps.map { $0.0 }))
-            store.shield.webDomainCategories = .all(except: Set(sites.map { $0.0 }))
+            store.shield.applications = nil
+            store.shield.applicationCategories = .all(except: Set(apps))
+            store.shield.webDomainCategories = .all(except: Set(sites))
             store.webContent.blockedByFilter = .all(except: webDomains)
         } else {
-            var apps: [ApplicationToken] = []
-            var sites: [WebDomain] = []
-            var categories: [ActivityCategoryToken] = []
-            
-            for routine in routines {
-                apps.append(contentsOf: routine.apps)
-                sites.append(contentsOf: routine.sites.map { WebDomain(token: $0) })
-                sites.append(contentsOf: routine.domains.map { WebDomain(domain: $0) })
-                categories.append(contentsOf: routine.categories)
-            }
-            
-            os_log("DeviceActivityMonitorExtension: Blocking \(apps.count) apps, \(sites.count) sites, \(categories.count) categories")
-            
-            store.shield.applications = Set(apps)
-            store.shield.applicationCategories = .specific(Set(categories))
-            store.webContent.blockedByFilter = .specific(Set(sites.map { $0 }))
+            store.shield.applications = apps
+            store.shield.applicationCategories = .specific(categories)
+            store.shield.webDomainCategories = nil
+            store.webContent.blockedByFilter = .specific(webDomains)
         }
 
         let strictMode = routines.contains(where: { $0.strictMode ?? false })
