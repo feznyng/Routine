@@ -16,9 +16,11 @@
 #include <TlHelp32.h>
 #include <psapi.h>
 #include <unordered_set>
+#include <ShlObj.h>
 
 // Add pragma comment to link with version.lib
 #pragma comment(lib, "version.lib")
+#pragma comment(lib, "shell32.lib")
 
 #include "flutter/generated_plugin_registrant.h"
 
@@ -31,10 +33,36 @@ FlutterWindow::FlutterWindow(const flutter::DartProject& project)
 
 FlutterWindow::~FlutterWindow() {}
 
+std::wstring GetAppDataPath() {
+    wchar_t* appDataPath = nullptr;
+    std::wstring result;
+    
+    // Get the AppData\Roaming path
+    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr, &appDataPath))) {
+        result = appDataPath;
+        // Append company and app name to create our app-specific directory
+        result += L"\\Routine";
+        
+        // Create the directory if it doesn't exist
+        CreateDirectoryW(result.c_str(), nullptr);
+        
+        CoTaskMemFree(appDataPath);
+    }
+    
+    return result;
+}
+
 void LogToFile(const std::wstring& message) {
     static std::wofstream logFile;
     if (!logFile.is_open()) {
-        logFile.open("routine_app.log", std::ios::app);
+        std::wstring appDataPath = GetAppDataPath();
+        if (!appDataPath.empty()) {
+            std::wstring logFilePath = appDataPath + L"\\routine_app.log";
+            logFile.open(logFilePath, std::ios::app);
+        } else {
+            // Fallback to current directory if app data path couldn't be retrieved
+            logFile.open("routine_app.log", std::ios::app);
+        }
     }
     
     logFile << message << std::endl;
