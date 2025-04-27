@@ -127,7 +127,7 @@ class DesktopService {
       evaluationTimes.add(Schedule(hours: routine.endHour, minutes: routine.endMinute, seconds: 10));
 
       if (routine.pausedUntil != null && routine.pausedUntil!.isAfter(DateTime.now())) {
-        evaluationTimes.add(Schedule(hours: routine.pausedUntil!.hour, minutes: routine.pausedUntil!.minute));
+        evaluationTimes.add(Schedule(hours: routine.pausedUntil!.hour, minutes: routine.pausedUntil!.minute, seconds: routine.pausedUntil!.second + 5));
       }
     }
     return evaluationTimes;
@@ -162,6 +162,12 @@ class DesktopService {
 
   void evaluate(List<Routine> routines) {
     // Filter for active, not paused, and conditions not met routines
+    final now = DateTime.now();
+
+    print("evaluating $now");
+
+    print("paused routines: ${routines.where((r) => r.isPaused).toList()}");
+
     routines = routines.where((r) => r.isActive && !r.isPaused && !r.areConditionsMet).toList();
 
     Set<String> apps = {}; 
@@ -184,6 +190,8 @@ class DesktopService {
     _cachedApps = apps.toList();
     _cachedCategories = categories.toList();
     _isAllowList = allowList;
+
+    print("eval result $now: apps = $apps, sites = $sites, categories = $categories");
 
     // Update both apps and sites
     updateAppList();
