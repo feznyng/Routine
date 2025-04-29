@@ -67,7 +67,7 @@ class RoutineManager {
         let uniqueId = "\(activityType)_\(routine.id)"
         let name = DeviceActivityName(uniqueId)
         
-        let delayedStartDate = startDate.addingTimeInterval(30)
+        let delayedStartDate = startDate.addingTimeInterval(45)
         
         // Calculate end date (15 minutes after start date)
         let endDate = delayedStartDate.addingTimeInterval(15 * 60) // 15 minutes in seconds
@@ -96,7 +96,6 @@ class RoutineManager {
         var dateComponents = DateComponents()
         dateComponents.hour = minutes / 60
         dateComponents.minute = minutes % 60
-        dateComponents.second = 30
         return dateComponents
     }
 }
