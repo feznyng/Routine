@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+import 'package:windows_single_instance/windows_single_instance.dart';
 import 'widgets/routine_list.dart';
 import 'widgets/settings_page.dart';
 import 'services/auth_service.dart';
@@ -44,6 +45,10 @@ void main() async {
       await windowManager.show();
       await windowManager.focus();
     });
+  }
+
+  if (Platform.isWindows) {
+    await WindowsSingleInstance.ensureSingleInstance([], "routine");
   }
 
   setup();
