@@ -1,4 +1,5 @@
 import 'package:Routine/services/platform_service.dart';
+import 'package:Routine/util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
@@ -123,25 +124,8 @@ class DesktopService extends PlatformService {
     onRoutinesUpdated(routines);
   }
   
-  static Set<Schedule> getEvaluationTimes(List<Routine> routines) {
-    Set<Schedule> evaluationTimes = {};
-    for (final Routine routine in routines) {
-      evaluationTimes.add(Schedule(hours: routine.startHour, minutes: routine.startMinute, seconds: 10));
-      evaluationTimes.add(Schedule(hours: routine.endHour, minutes: routine.endMinute, seconds: 10));
-
-      if (routine.pausedUntil != null && routine.pausedUntil!.isAfter(DateTime.now())) {
-        evaluationTimes.add(Schedule(hours: routine.pausedUntil!.hour, minutes: routine.pausedUntil!.minute, seconds: routine.pausedUntil!.second + 5));
-      }
-
-      if (routine.snoozedUntil != null && routine.snoozedUntil!.isAfter(DateTime.now())) {
-        evaluationTimes.add(Schedule(hours: routine.snoozedUntil!.hour, minutes: routine.snoozedUntil!.minute, seconds: routine.snoozedUntil!.second + 5));
-      }
-    }
-    return evaluationTimes;
-  }
-  
   void onRoutinesUpdated(List<Routine> routines) async {
-    final Set<Schedule> evaluationTimes = getEvaluationTimes(routines);
+    final Set<Schedule> evaluationTimes = Util.getEvaluationTimes(routines);
 
     for (final ScheduledTask task in _scheduledTasks) {
       task.cancel();

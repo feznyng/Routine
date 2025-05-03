@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:Routine/models/routine.dart';
+import 'package:cron/cron.dart';
 import 'package:geolocator/geolocator.dart';
 
 class Util {
@@ -93,5 +95,22 @@ class Util {
     // When we reach here, permissions are granted and we can
     // continue accessing the position of the device.
     return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+  }
+
+  static Set<Schedule> getEvaluationTimes(List<Routine> routines) {
+    Set<Schedule> evaluationTimes = {};
+    for (final Routine routine in routines) {
+      evaluationTimes.add(Schedule(hours: routine.startHour, minutes: routine.startMinute, seconds: 10));
+      evaluationTimes.add(Schedule(hours: routine.endHour, minutes: routine.endMinute, seconds: 10));
+
+      if (routine.pausedUntil != null && routine.pausedUntil!.isAfter(DateTime.now())) {
+        evaluationTimes.add(Schedule(hours: routine.pausedUntil!.hour, minutes: routine.pausedUntil!.minute, seconds: routine.pausedUntil!.second + 5));
+      }
+
+      if (routine.snoozedUntil != null && routine.snoozedUntil!.isAfter(DateTime.now())) {
+        evaluationTimes.add(Schedule(hours: routine.snoozedUntil!.hour, minutes: routine.snoozedUntil!.minute, seconds: routine.snoozedUntil!.second + 5));
+      }
+    }
+    return evaluationTimes;
   }
 }

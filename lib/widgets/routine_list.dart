@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:Routine/services/desktop_service.dart';
+import 'package:Routine/util.dart';
 import 'package:cron/cron.dart';
 import 'package:flutter/material.dart';
 import '../models/routine.dart';
@@ -37,7 +37,7 @@ class _RoutineListState extends State<RoutineList> {
           task.cancel();
         }
 
-        final evaluationTimes = DesktopService.getEvaluationTimes(routines);
+        final evaluationTimes = Util.getEvaluationTimes(routines);
         for (final Schedule time in evaluationTimes) {
           ScheduledTask task = cron.schedule(time, () async {
             setState(() {
