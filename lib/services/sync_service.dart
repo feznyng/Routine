@@ -55,6 +55,7 @@ class SyncService {
         .onBroadcast( 
           event: 'sync', 
           callback: (payload, [_]) {
+            print('received remote sync request from ${payload['source']}');
             addJob(SyncJob(remote: true));
           }
         )
@@ -66,12 +67,14 @@ class SyncService {
   }
 
   Future<void> _notifyPeers() async {
+    final currDevice = await Device.getCurrent();
+
     try {
       final channel = _syncChannel;
       if (channel != null) {
         await channel.sendBroadcastMessage(
           event: 'sync',
-          payload: { 'timestamp': DateTime.now().toIso8601String() },
+          payload: { 'timestamp': DateTime.now().toIso8601String(), 'source': currDevice.id },
         );
       }
     } catch (e) {
@@ -80,7 +83,6 @@ class SyncService {
     }
 
     try {
-      final currDevice = await Device.getCurrent();
       _client.functions.invoke('push', body: {'content': 'sample message', 'source_id': currDevice.id});
     } catch (e) {
       print('Error sending fcm message: $e');
@@ -154,6 +156,8 @@ class SyncService {
   Future<bool> sync(bool notifyRemote, {bool full = false}) async {
     try {
       if (_userId.isEmpty) return true;
+
+      print("syncing...");
       
       final db = getIt<AppDatabase>();
       final currDevice = (await db.getThisDevice())!;
@@ -394,6 +398,8 @@ class SyncService {
       bool updatedCurrDevice = false;
       for (final device in localDevices) {
         madeRemoteChange = true;
+        print("syncing device ${device.changes}");
+
         updatedCurrDevice = updatedCurrDevice || device.id == currDevice.id;          
 
         final Map<String, dynamic> data = {
@@ -423,6 +429,7 @@ class SyncService {
 
       // persist groups
       for (final group in localGroups) {
+        print("syncing group ${group.changes}");
         madeRemoteChange = true;
         await _client
         .from('groups')
@@ -439,7 +446,9 @@ class SyncService {
       }
 
       // persist routines
-      for (final routine in localRoutines) {
+      for (final routine in localRoutines) {       
+        print("syncing routine ${routine.changes}");
+
         madeRemoteChange = true;
         await _client
         .from('routines')

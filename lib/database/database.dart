@@ -329,7 +329,7 @@ class AppDatabase extends _$AppDatabase {
   Future<List<RoutineEntry>> getRoutineChanges(DateTime? since) {
     var query = select(routines);
     if (since != null) {
-      query.where((t) => t.updatedAt.isBiggerThanValue(since.toUtc()));
+      query.where((t) => t.updatedAt.isBiggerThanValue(since.toUtc()) & (t.changes.isNull() | t.changes.isNotValue('[]')));
     }
     return query.get();
   }
@@ -337,7 +337,7 @@ class AppDatabase extends _$AppDatabase {
   Future<List<GroupEntry>> getGroupChanges(DateTime? since) {
     var query = select(groups);
     if (since != null) {
-      query.where((t) => t.updatedAt.isBiggerThanValue(since.toUtc()));
+      query.where((t) => t.updatedAt.isBiggerThanValue(since.toUtc()) & (t.changes.isNull() | t.changes.isNotValue('[]')));
     }
     return query.get();
   }
