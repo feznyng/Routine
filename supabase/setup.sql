@@ -52,3 +52,74 @@ CREATE TABLE groups (
     updated_at TIMESTAMPTZ NOT NULL,
     user_id uuid not null references auth.users on delete cascade
 );
+
+-- Enable Row Level Security for all tables
+ALTER TABLE devices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE routines ENABLE ROW LEVEL SECURITY;
+ALTER TABLE groups ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS policies for devices table
+-- Policy for selecting devices (read)
+CREATE POLICY devices_select_policy ON devices
+    FOR SELECT
+    USING (auth.uid() = user_id);
+
+-- Policy for inserting devices
+CREATE POLICY devices_insert_policy ON devices
+    FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+-- Policy for updating devices
+CREATE POLICY devices_update_policy ON devices
+    FOR UPDATE
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+-- Policy for deleting devices
+CREATE POLICY devices_delete_policy ON devices
+    FOR DELETE
+    USING (auth.uid() = user_id);
+
+-- Create RLS policies for routines table
+-- Policy for selecting routines (read)
+CREATE POLICY routines_select_policy ON routines
+    FOR SELECT
+    USING (auth.uid() = user_id);
+
+-- Policy for inserting routines
+CREATE POLICY routines_insert_policy ON routines
+    FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+-- Policy for updating routines
+CREATE POLICY routines_update_policy ON routines
+    FOR UPDATE
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+-- Policy for deleting routines
+CREATE POLICY routines_delete_policy ON routines
+    FOR DELETE
+    USING (auth.uid() = user_id);
+
+-- Create RLS policies for groups table
+-- Policy for selecting groups (read)
+CREATE POLICY groups_select_policy ON groups
+    FOR SELECT
+    USING (auth.uid() = user_id);
+
+-- Policy for inserting groups
+CREATE POLICY groups_insert_policy ON groups
+    FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+-- Policy for updating groups
+CREATE POLICY groups_update_policy ON groups
+    FOR UPDATE
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+-- Policy for deleting groups
+CREATE POLICY groups_delete_policy ON groups
+    FOR DELETE
+    USING (auth.uid() = user_id);
