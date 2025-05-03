@@ -120,6 +120,7 @@ class DesktopService extends PlatformService {
 
   @override
   Future<void> refresh() async {
+    SyncService().setupRealtimeSync();
     final routines = await Routine.getAll();
     onRoutinesUpdated(routines);
   }
