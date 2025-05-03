@@ -136,7 +136,6 @@ class _StrictModeSectionState extends State<StrictModeSection> {
           if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) ...[
             SwitchListTile(
               title: const Text('Block app exit'),
-              subtitle: const Text('Prevent closing the app'),
               value: _strictModeService.blockAppExit,
               onChanged: (_strictModeService.inStrictMode && _strictModeService.blockAppExit)
                 ? null // Disable the switch when trying to turn it off in strict mode
@@ -152,7 +151,6 @@ class _StrictModeSectionState extends State<StrictModeSection> {
             ),
             SwitchListTile(
               title: const Text('Block disabling system startup'),
-              subtitle: const Text('Prevent turning off startup with system'),
               value: _strictModeService.blockDisablingSystemStartup,
               onChanged: (_strictModeService.inStrictMode && _strictModeService.blockDisablingSystemStartup)
                 ? null // Disable the switch when trying to turn it off in strict mode
@@ -168,7 +166,6 @@ class _StrictModeSectionState extends State<StrictModeSection> {
             ),
             SwitchListTile(
               title: const Text('Block browsers without extension'),
-              subtitle: const Text('Block browsers when extension is not installed or connected'),
               value: _strictModeService.blockBrowsersWithoutExtension,
               onChanged: (_strictModeService.inStrictMode && _strictModeService.blockBrowsersWithoutExtension)
                 ? null // Disable the switch when trying to turn it off in strict mode
@@ -188,7 +185,6 @@ class _StrictModeSectionState extends State<StrictModeSection> {
           if (Platform.isIOS) ...[
             SwitchListTile(
               title: const Text('Block changing time settings'),
-              subtitle: const Text('Prevent changing system time'),
               value: _strictModeService.blockChangingTimeSettings,
               onChanged: (_strictModeService.inStrictMode && _strictModeService.blockChangingTimeSettings)
                 ? null // Disable the switch when trying to turn it off in strict mode
@@ -204,7 +200,6 @@ class _StrictModeSectionState extends State<StrictModeSection> {
             ),
             SwitchListTile(
               title: const Text('Block uninstalling apps'),
-              subtitle: const Text('Prevent uninstalling apps'),
               value: _strictModeService.blockUninstallingApps,
               onChanged: (_strictModeService.inStrictMode && _strictModeService.blockUninstallingApps)
                 ? null // Disable the switch when trying to turn it off in strict mode
@@ -220,7 +215,6 @@ class _StrictModeSectionState extends State<StrictModeSection> {
             ),
             SwitchListTile(
               title: const Text('Block installing apps'),
-              subtitle: const Text('Prevent installing new apps'),
               value: _strictModeService.blockInstallingApps,
               onChanged: (_strictModeService.inStrictMode && _strictModeService.blockInstallingApps)
                 ? null // Disable the switch when trying to turn it off in strict mode
