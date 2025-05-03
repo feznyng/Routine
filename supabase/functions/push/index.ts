@@ -26,27 +26,18 @@ Deno.serve(async (req) => {
     })
   }
 
-  console.log('user is syncing mobile devices', user, payload)
-
-  const { data: deviceData } = await supabase
+  const { data: devices } = await supabase
     .from('devices')
-    .select('fcm_token, id, deleted')
+    .select('fcm_token, id')
     .eq('user_id', user.id)
+    .neq('id', payload.source_id)
+    .or('deleted.is.null,deleted.eq.false')
+    .not('fcm_token', 'is', null)
 
-  const devices = deviceData ?? [];
-
-  console.log('user has devices', devices)
-
-  for (let i = 0; i < devices.length; i++) {
-    const device = devices[i];
-
-    if (device.id == payload.source_id || device.deleted) {
-      continue;
-    }
-
-    const fcmToken = device!.fcm_token as string;
-
-    if (fcmToken) {
+  if (devices) {
+    for (let i = 0; i < devices.length; i++) {
+      const device = devices[i];
+      const fcmToken = device.fcm_token as string;
       const accessToken = await getAccessToken({
         clientEmail: serviceAccount.client_email,
         privateKey: serviceAccount.private_key,
@@ -65,9 +56,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             message: {
               token: fcmToken,
-              data: {
-                key: 'value'
-              },
+              data: {},
               apns: {
                 headers: {
                   'apns-priority': '10',
