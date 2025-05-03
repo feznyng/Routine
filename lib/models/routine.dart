@@ -365,22 +365,29 @@ class Routine implements Syncable {
 
     final DateTime now = DateTime.now();
     final int dayOfWeek = now.weekday - 1;
-
-    if (!_days[dayOfWeek]) {
-      return false;
-    }
-    
     final int currMins = now.hour * 60 + now.minute;
     
     if (_startTime == -1 && _endTime == -1) {
       return _days[dayOfWeek];
     }
     
+    // Handle overnight routines (ending on the next day)
     if (_endTime < _startTime) {
-      return (currMins >= _startTime || currMins < _endTime);
+      if (currMins >= _startTime) {
+        // Current time is after start time but before midnight
+        // Only need to check if current day is enabled
+        return _days[dayOfWeek];
+      } else if (currMins < _endTime) {
+        // Current time is after midnight but before end time
+        // Check if yesterday was enabled (routine started yesterday)
+        final int yesterdayOfWeek = (dayOfWeek + 6) % 7; // Previous day, wrapping from 0 back to 6
+        return _days[yesterdayOfWeek];
+      }
+      return false;
     }
     
-    return (currMins >= _startTime && currMins < _endTime);
+    // Regular same-day routine
+    return _days[dayOfWeek] && (currMins >= _startTime && currMins < _endTime);
   }
 
   bool get isPaused {

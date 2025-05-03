@@ -120,11 +120,6 @@ class Routine: Codable {
         var dayOfWeek = calendar.component(.weekday, from: now) - 1 // 1-7 (Sunday is 1) -> 0-6
         dayOfWeek = (dayOfWeek + 6) % 7 // Convert to 0-6 where 0 is Monday
         
-        // Check if routine is active on current day
-        if dayOfWeek < days.count && !days[dayOfWeek] {
-            return false
-        }
-        
         // Check if routine is snoozed
         if let snoozedUntil = snoozedUntil, now < snoozedUntil {
             return false
@@ -163,11 +158,21 @@ class Routine: Codable {
         
         // If start time is after end time (crosses midnight)
         if end < start {
-            return (currMins >= start || currMins < end)
+            if currMins >= start {
+                // Current time is after start time but before midnight
+                // Only need to check if current day is enabled
+                return dayOfWeek < days.count && days[dayOfWeek]
+            } else if currMins < end {
+                // Current time is after midnight but before end time
+                // Check if yesterday was enabled (routine started yesterday)
+                let yesterdayOfWeek = (dayOfWeek + 6) % 7 // Previous day, wrapping from 0 back to 6
+                return yesterdayOfWeek < days.count && days[yesterdayOfWeek]
+            }
+            return false
         }
         
         // Normal case: start time is before end time
-        return (currMins >= start && currMins < end)
+        return dayOfWeek < days.count && days[dayOfWeek] && (currMins >= start && currMins < end)
     }
     
     func areConditionsMet() -> Bool {
