@@ -34,48 +34,58 @@ Deno.serve(async (req) => {
     .or('deleted.is.null,deleted.eq.false')
     .not('fcm_token', 'is', null)
 
-  if (devices) {
-    for (let i = 0; i < devices.length; i++) {
-      const device = devices[i];
-      const fcmToken = device.fcm_token as string;
-      const accessToken = await getAccessToken({
-        clientEmail: serviceAccount.client_email,
-        privateKey: serviceAccount.private_key,
-      })
-
-      console.log('sending notification to', device.id)
-      
-      const res = await fetch(
-        `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            message: {
-              token: fcmToken,
-              data: {},
-              apns: {
-                headers: {
-                  'apns-priority': '10',
-                  'apns-push-type': 'background'
-                },
-                payload: {
-                  aps: {
-                    'content-available': 1
+  if (devices && devices.length > 0) {
+    // Get access token once for all notifications
+    const accessToken = await getAccessToken({
+      clientEmail: serviceAccount.client_email,
+      privateKey: serviceAccount.private_key,
+    })
+    
+    // Process notifications for all devices in parallel
+    const notificationResults = await Promise.allSettled(
+      devices.map(async (device) => {
+        const fcmToken = device.fcm_token as string;
+        
+        try {
+          const res = await fetch(
+            `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({
+                message: {
+                  token: fcmToken,
+                  data: {},
+                  apns: {
+                    headers: {
+                      'apns-priority': '10',
+                      'apns-push-type': 'background'
+                    },
+                    payload: {
+                      aps: {
+                        'content-available': 1
+                      }
+                    }
                   }
-                }
-              }
-            },
-          }),
+                },
+              }),
+            }
+          );
+          
+          const resData = await res.json()
+          console.log('message status for device', device.id, ':', res.status, resData);
+          return { deviceId: device.id, status: res.status, data: resData };
+        } catch (error) {
+          console.error('Error sending notification to device', device.id, ':', error);
+          return { deviceId: device.id, error };
         }
-      );
-
-      const resData = await res.json()
-      console.log('message status:', res.status, resData);
-    }
+      })
+    );
+    
+    console.log(`Sent notifications to ${notificationResults.length} devices`);
   }
 
   return new Response(JSON.stringify({message: 'successful'}), {
