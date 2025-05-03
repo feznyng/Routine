@@ -109,7 +109,9 @@ class ConditionSection extends StatelessWidget {
           title: const Text('Select Condition Type'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
-            children: ConditionType.values.map((type) {
+            children: ConditionType.values
+              .where((v) => ![ConditionType.health].contains(v))
+              .map((type) {
               return ListTile(
                 leading: Icon(_getConditionTypeIcon(type)),
                 title: Text(_getConditionTypeLabel(type)),
