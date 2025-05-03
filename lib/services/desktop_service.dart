@@ -123,7 +123,7 @@ class DesktopService extends PlatformService {
     onRoutinesUpdated(routines);
   }
   
-  Set<Schedule> getEvaluationTimes(List<Routine> routines) {
+  static Set<Schedule> getEvaluationTimes(List<Routine> routines) {
     Set<Schedule> evaluationTimes = {};
     for (final Routine routine in routines) {
       evaluationTimes.add(Schedule(hours: routine.startHour, minutes: routine.startMinute, seconds: 10));

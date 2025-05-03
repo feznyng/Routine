@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:Routine/services/desktop_service.dart';
 import 'package:cron/cron.dart';
 import 'package:flutter/material.dart';
@@ -34,22 +33,20 @@ class _RoutineListState extends State<RoutineList> {
           _routines = routines;
         });
     
-        if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
-          for (final task in _scheduledTasks) {
-            task.cancel();
-          }
-
-          final desktopService = DesktopService();
-          final evaluationTimes = desktopService.getEvaluationTimes(routines);
-          for (final Schedule time in evaluationTimes) {
-            ScheduledTask task = cron.schedule(time, () async {
-              setState(() {
-                _routines = routines;
-              });
-            });
-            _scheduledTasks.add(task);
-          }
+        for (final task in _scheduledTasks) {
+          task.cancel();
         }
+
+        final evaluationTimes = DesktopService.getEvaluationTimes(routines);
+        for (final Schedule time in evaluationTimes) {
+          ScheduledTask task = cron.schedule(time, () async {
+            setState(() {
+              _routines = routines;
+            });
+          });
+          _scheduledTasks.add(task);
+        }
+      
       }
     });
   }
