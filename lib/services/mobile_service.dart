@@ -25,17 +25,17 @@ class MobileService extends PlatformService {
     checkAndRequestFamilyControlsAuthorization();
     
     _routineSubscription = Routine.watchAll().listen((routines) {
-      _sendRoutinesToIOS(routines);
+      _sendRoutines(routines);
 
-      // we need to evaluate strict mode in case a strict routine is active
-      _sendStrictModeSettingsToIOS();
+      // we need to evaluate strict mode in case a strict routine is active after changes
+      _sendStrictModeSettings();
     });
     
     _strictModeSubscription = StrictModeService.instance.effectiveSettingsStream.listen((_) {
-      _sendStrictModeSettingsToIOS();
+      _sendStrictModeSettings();
     });
     
-    _sendStrictModeSettingsToIOS();
+    _sendStrictModeSettings();
   }
 
   @override
@@ -53,7 +53,7 @@ class MobileService extends PlatformService {
     _strictModeSubscription = null;
   }
   
-  Future<void> _sendStrictModeSettingsToIOS() async {
+  Future<void> _sendStrictModeSettings() async {
     try {
       final strictModeService = StrictModeService.instance;
       
@@ -72,10 +72,10 @@ class MobileService extends PlatformService {
 
   Future<void> updateRoutines() async {
     final routines = await Routine.getAll();
-    _sendRoutinesToIOS(routines);
+    _sendRoutines(routines);
   }
   
-  Future<void> _sendRoutinesToIOS(List<Routine> routines) async {
+  Future<void> _sendRoutines(List<Routine> routines) async {
     try {
       final List<Map<String, dynamic>> routineMaps = routines.where((routine) => routine.getGroup() != null).map((routine) {
         DateTime? conditionsLastMet;
