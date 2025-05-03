@@ -13,7 +13,9 @@ class DeviceOptionsBottomSheet extends StatefulWidget {
 class _DeviceOptionsBottomSheetState extends State<DeviceOptionsBottomSheet> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
+  late String _originalName;
   bool _isLoading = false;
+  bool _hasNameChanged = false;
   
   IconData _getDeviceIcon(DeviceType type) {
     switch (type) {
@@ -27,14 +29,28 @@ class _DeviceOptionsBottomSheetState extends State<DeviceOptionsBottomSheet> {
     }
   }
   
+  void _onNameChanged() {
+    final newName = _nameController.text.trim();
+    final hasChanged = newName != _originalName;
+    
+    if (hasChanged != _hasNameChanged) {
+      setState(() {
+        _hasNameChanged = hasChanged;
+      });
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.device.name);
+    _originalName = widget.device.name;
+    _nameController = TextEditingController(text: _originalName);
+    _nameController.addListener(_onNameChanged);
   }
   
   @override
   void dispose() {
+    _nameController.removeListener(_onNameChanged);
     _nameController.dispose();
     super.dispose();
   }
@@ -187,7 +203,9 @@ class _DeviceOptionsBottomSheetState extends State<DeviceOptionsBottomSheet> {
           ),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: _isLoading ? null : _updateDeviceName,
+            onPressed: (_isLoading || !_hasNameChanged) 
+                ? null 
+                : _updateDeviceName,
             child: _isLoading
                 ? const SizedBox(
                     height: 20,

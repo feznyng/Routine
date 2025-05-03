@@ -36,7 +36,6 @@ class RoutineManager {
                     
                     do {
                         try center.startMonitoring(name, during: schedule)
-                        print("scheduled \(routine.name) for \(schedule.nextInterval!)")
                         
                         seenTimes.insert(startTime)
                         seenTimes.insert(endTime)
@@ -58,8 +57,6 @@ class RoutineManager {
         }
 
         self.routines = routines
-        
-        print("Center Activities: \(center.activities)")
     }
     
     private func scheduleOneTimeActivity(for routine: Routine, startDate: Date, activityType: String) {
@@ -86,7 +83,6 @@ class RoutineManager {
         
         do {
             try center.startMonitoring(name, during: schedule)
-            print("scheduled one-time \(activityType) activity for \(routine.name) at \(startDate) until \(endDate)")
         } catch {
             print("failed to register one-time \(activityType) activity: \(error.localizedDescription)")
         }

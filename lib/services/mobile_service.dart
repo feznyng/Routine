@@ -1,45 +1,52 @@
 import 'dart:async';
 import 'dart:io' show Platform;
+import 'package:Routine/services/platform_service.dart';
+import 'package:Routine/services/sync_service.dart';
 import 'package:flutter/services.dart';
 import '../models/routine.dart';
 import 'strict_mode_service.dart';
 
-class IOSService {
-  static final IOSService _instance = IOSService._internal();
+class MobileService extends PlatformService {
+  static final MobileService _instance = MobileService._internal();
   
-  factory IOSService() => _instance;
+  factory MobileService() => _instance;
   
-  IOSService._internal();
+  MobileService._internal();
   
   final MethodChannel _channel = const MethodChannel('com.routine.ios_channel');
   
   StreamSubscription? _routineSubscription;
   StreamSubscription? _strictModeSubscription;
   
-  void init() {
-    // Cancel any existing subscriptions
-    _routineSubscription?.cancel();
-    _strictModeSubscription?.cancel();
+  @override
+  Future<void> init() async {
+    stopWatching();
     
-    // Listen for routine changes
+    checkAndRequestFamilyControlsAuthorization();
+    
     _routineSubscription = Routine.watchAll().listen((routines) {
       _sendRoutinesToIOS(routines);
+
+      // we need to evaluate strict mode in case a strict routine is active
       _sendStrictModeSettingsToIOS();
     });
     
-    // Listen for strict mode configuration changes
     _strictModeSubscription = StrictModeService.instance.effectiveSettingsStream.listen((_) {
       _sendStrictModeSettingsToIOS();
     });
     
-    // Check for FamilyControls authorization on initialization
-    checkAndRequestFamilyControlsAuthorization();
-    
-    // Send initial strict mode settings
     _sendStrictModeSettingsToIOS();
   }
+
+  @override
+  Future<void> refresh() async {
+    init();
+
+    // we need to manually refresh on mobile since we don't have sockets/consistent notifications
+    SyncService().addJob(SyncJob(remote: false));
+  }
   
-  void stopWatchingRoutines() {
+  void stopWatching() {
     _routineSubscription?.cancel();
     _routineSubscription = null;
     _strictModeSubscription?.cancel();
@@ -50,7 +57,6 @@ class IOSService {
     try {
       final strictModeService = StrictModeService.instance;
       
-      // Use the underlying settings, not the effective ones
       final Map<String, dynamic> settings = {
         'blockChangingTimeSettings': strictModeService.blockChangingTimeSettings,
         'blockUninstallingApps': strictModeService.blockUninstallingApps,
@@ -58,24 +64,25 @@ class IOSService {
         'inStrictMode': strictModeService.inStrictMode,
       };
       
-      // Send settings to iOS via platform channel
       await _channel.invokeMethod('updateStrictModeSettings', settings);
     } catch (e) {
       print('Error sending strict mode settings to iOS: $e');
     }
   }
+
+  Future<void> updateRoutines() async {
+    final routines = await Routine.getAll();
+    _sendRoutinesToIOS(routines);
+  }
   
   Future<void> _sendRoutinesToIOS(List<Routine> routines) async {
     try {
       final List<Map<String, dynamic>> routineMaps = routines.where((routine) => routine.getGroup() != null).map((routine) {
-        // Calculate conditionsLastMet based on the specified logic
         DateTime? conditionsLastMet;
         if (routine.conditions.isNotEmpty) {
-          // Check if any condition has lastCompletedAt set to null
           if (routine.conditions.any((condition) => condition.lastCompletedAt == null)) {
             conditionsLastMet = null;
           } else {
-            // Find the earliest lastCompletedAt date among all conditions
             conditionsLastMet = routine.conditions
                 .map((condition) => condition.lastCompletedAt!)
                 .reduce((earliest, date) => earliest.isBefore(date) ? earliest : date);
@@ -107,9 +114,8 @@ class IOSService {
     }
   }
   
-  static IOSService get instance => _instance;
+  static MobileService get instance => _instance;
   
-  /// Checks if the app has FamilyControls authorization
   Future<bool> checkFamilyControlsAuthorization() async {
     if (!Platform.isIOS) return false;
     
@@ -122,7 +128,6 @@ class IOSService {
     }
   }
   
-  /// Requests FamilyControls authorization from the user
   Future<bool> requestFamilyControlsAuthorization() async {
     if (!Platform.isIOS) return false;
     
@@ -135,7 +140,6 @@ class IOSService {
     }
   }
   
-  /// Checks current authorization status and requests if not authorized
   Future<bool> checkAndRequestFamilyControlsAuthorization() async {
     if (!Platform.isIOS) return false;
     

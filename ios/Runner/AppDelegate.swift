@@ -3,6 +3,7 @@ import UIKit
 import Foundation
 import FamilyControls
 import ManagedSettings
+import os.log
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -23,13 +24,11 @@ import ManagedSettings
         let routineChannel = FlutterMethodChannel(name: "com.routine.ios_channel",
                                                   binaryMessenger: controller.binaryMessenger)
         routineChannel.setMethodCallHandler { [weak self] (call, result) in
+            os_log("AppDelegate: %{public}s", call.method)
             switch call.method {
             case "updateRoutines":
-                
                 if let args = call.arguments as? [String: Any],
                    let routinesJson = args["routines"] as? [[String: Any]] {
-                    print("Received routines from Dart:")
-                    print(routinesJson)
                     
                     do {
                         let jsonData = try JSONSerialization.data(withJSONObject: routinesJson)
@@ -38,18 +37,12 @@ import ManagedSettings
                         if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker") {
                             sharedDefaults.set(jsonString, forKey: "routinesData")
                             sharedDefaults.synchronize()
-                            print("Saved routines data to shared UserDefaults")
                         } else {
                             print("Failed to access shared UserDefaults")
                         }
                         
                         let decoder = JSONDecoder()
                         let routines = try decoder.decode([Routine].self, from: jsonString.data(using: .utf8)!)
-                        
-                        print("Created Routines: ")
-                        for routine in routines {
-                            print("Routine: \(routine.id) \(routine.name) \(routine.apps.count) \(routine.sites.count) \(routine.categories.count)")
-                        }
                         
                         self?.manager.update(routines: routines)
                     } catch {
@@ -102,9 +95,6 @@ import ManagedSettings
                 
             case "updateStrictModeSettings":
                 if let args = call.arguments as? [String: Any] {
-                    print("Received strict mode settings from Dart:")
-                    print(args)
-                    
                     do {
                         let jsonData = try JSONSerialization.data(withJSONObject: args)
                         let jsonString = String(data: jsonData, encoding: .utf8)!
@@ -112,7 +102,6 @@ import ManagedSettings
                         if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker") {
                             sharedDefaults.set(jsonString, forKey: "strictModeData")
                             sharedDefaults.synchronize()
-                            print("Saved strict mode data to shared UserDefaults")
                         } else {
                             print("Failed to access shared UserDefaults")
                         }
@@ -120,9 +109,7 @@ import ManagedSettings
                         // Get routines from the manager to check if any active routine has strict mode enabled
                         let manager = (UIApplication.shared.delegate as! AppDelegate).manager
                         let strictMode = manager.routines.contains(where: { $0.isActive() && $0.strictMode ?? false })
-                        
-                        print("Strict mode: \(strictMode)")
-                        
+                                                
                         // Apply settings to managed settings store immediately
                         let store = ManagedSettingsStore(named: ManagedSettingsStore.Name("routineBlockerRestrictions"))
                         
@@ -130,7 +117,6 @@ import ManagedSettings
                         if strictMode || (args["inStrictMode"] as? Bool == true) {
                             // Block installing apps if setting is enabled
                             if let blockInstallingApps = args["blockInstallingApps"] as? Bool, blockInstallingApps {
-                                print("Blocking app installation")
                                 store.application.denyAppInstallation = true
                             } else {
                                 store.application.denyAppInstallation = false
@@ -138,7 +124,6 @@ import ManagedSettings
                             
                             // Block uninstalling apps if setting is enabled
                             if let blockUninstallingApps = args["blockUninstallingApps"] as? Bool, blockUninstallingApps {
-                                print("Blocking app removal")
                                 store.application.denyAppRemoval = true
                             } else {
                                 store.application.denyAppRemoval = false
@@ -146,7 +131,6 @@ import ManagedSettings
                             
                             // Block changing time settings if setting is enabled
                             if let blockChangingTimeSettings = args["blockChangingTimeSettings"] as? Bool, blockChangingTimeSettings {
-                                print("Requiring automatic date and time")
                                 store.dateAndTime.requireAutomaticDateAndTime = true
                             } else {
                                 store.dateAndTime.requireAutomaticDateAndTime = false
@@ -156,7 +140,6 @@ import ManagedSettings
                             store.application.denyAppInstallation = false
                             store.application.denyAppRemoval = false
                             store.dateAndTime.requireAutomaticDateAndTime = false
-                            print("Strict mode disabled, removing restrictions")
                         }
 
                         result(true)

@@ -157,61 +157,62 @@ class _RoutineListState extends State<RoutineList> {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
-          child: ListView(
-            children: [
-          // Active routines section
-          if (activeRoutines.isNotEmpty) ...[  
-            _buildSectionHeader(
-              context, 
-              'Current', 
-              _activeRoutinesExpanded, 
-              () => setState(() => _activeRoutinesExpanded = !_activeRoutinesExpanded)
-            ),
-            if (_activeRoutinesExpanded)
-              ...activeRoutines.map((routine) => RoutineCard(
-                routine: routine,
-                onRoutineUpdated: () => setState(() {}),
-              )),
-          ],
-          
-          // Add padding between sections
-          const SizedBox(height: 24),
-          
-          // Inactive routines section
-          if (inactiveRoutines.isNotEmpty) ...[
-            _buildSectionHeader(
-              context, 
-              'Upcoming', 
-              _inactiveRoutinesExpanded, 
-              () => setState(() => _inactiveRoutinesExpanded = !_inactiveRoutinesExpanded)
-            ),
-            if (_inactiveRoutinesExpanded)
-              ...inactiveRoutines.map((routine) => RoutineCard(
-                routine: routine,
-                onRoutineUpdated: () => setState(() {}),
-              )),
-          ],
+          child: _routines.isEmpty
+              ? _buildEmptyState(context)
+              : ListView(
+                  children: [
+                    // Active routines section
+                    if (activeRoutines.isNotEmpty) ...[  
+                      _buildSectionHeader(
+                        context, 
+                        'Current', 
+                        _activeRoutinesExpanded, 
+                        () => setState(() => _activeRoutinesExpanded = !_activeRoutinesExpanded)
+                      ),
+                      if (_activeRoutinesExpanded)
+                        ...activeRoutines.map((routine) => RoutineCard(
+                          routine: routine,
+                          onRoutineUpdated: () => setState(() {}),
+                        )),
+                    ],
+                    
+                    // Add padding between sections
+                    const SizedBox(height: 24),
+                    
+                    // Inactive routines section
+                    if (inactiveRoutines.isNotEmpty) ...[
+                      _buildSectionHeader(
+                        context, 
+                        'Upcoming', 
+                        _inactiveRoutinesExpanded, 
+                        () => setState(() => _inactiveRoutinesExpanded = !_inactiveRoutinesExpanded)
+                      ),
+                      if (_inactiveRoutinesExpanded)
+                        ...inactiveRoutines.map((routine) => RoutineCard(
+                          routine: routine,
+                          onRoutineUpdated: () => setState(() {}),
+                        )),
+                    ],
+                    
+                    // Snoozed routines section
+                    if (snoozedRoutines.isNotEmpty) ...[  
+                      _buildSectionHeader(
+                        context, 
+                        'Snoozed', 
+                        _snoozedRoutinesExpanded, 
+                        () => setState(() => _snoozedRoutinesExpanded = !_snoozedRoutinesExpanded)
+                      ),
+                      if (_snoozedRoutinesExpanded)
+                        ...snoozedRoutines.map((routine) => RoutineCard(
+                          routine: routine,
+                          onRoutineUpdated: () => setState(() {}),
+                        )),
+                    ],
 
-          
-          // Snoozed routines section
-          if (snoozedRoutines.isNotEmpty) ...[  
-            _buildSectionHeader(
-              context, 
-              'Snoozed', 
-              _snoozedRoutinesExpanded, 
-              () => setState(() => _snoozedRoutinesExpanded = !_snoozedRoutinesExpanded)
-            ),
-            if (_snoozedRoutinesExpanded)
-              ...snoozedRoutines.map((routine) => RoutineCard(
-                routine: routine,
-                onRoutineUpdated: () => setState(() {}),
-              )),
-          ],
-
-          // Add padding between sections
-          const SizedBox(height: 24),
-            ],
-          ),
+                    // Add padding between sections
+                    const SizedBox(height: 24),
+                  ],
+                ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -255,6 +256,32 @@ class _RoutineListState extends State<RoutineList> {
 
 
 
+  Widget _buildEmptyState(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.schedule_outlined,
+          size: 80,
+          color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'No routines yet',
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Tap the + button to create your first routine',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
   void _showRoutinePage(BuildContext context, Routine? routine) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -270,8 +297,4 @@ class _RoutineListState extends State<RoutineList> {
       ),
     );
   }
-  
-
-  
-
 }

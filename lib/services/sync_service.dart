@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:Routine/models/condition.dart';
-
+import 'package:Routine/models/device.dart';
 import '../setup.dart';
 import '../database/database.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -66,19 +66,24 @@ class SyncService {
   }
 
   Future<void> _notifyPeers() async {
-    final channel = _syncChannel;
-    if (channel == null) return;
-
     try {
-      await channel.sendBroadcastMessage(
-        event: 'sync',
-        payload: { 'timestamp': DateTime.now().toIso8601String() },
-      );
+      final channel = _syncChannel;
+      if (channel != null) {
+        await channel.sendBroadcastMessage(
+          event: 'sync',
+          payload: { 'timestamp': DateTime.now().toIso8601String() },
+        );
+      }
     } catch (e) {
       print('Error notifying peers: $e');
-      // If we get an error here, it might be due to an expired token
-      // We'll try to set up the sync again
       setupRealtimeSync();
+    }
+
+    try {
+      final currDevice = await Device.getCurrent();
+      _client.functions.invoke('push', body: {'content': 'sample message', 'source_id': currDevice.id});
+    } catch (e) {
+      print('Error sending fcm message: $e');
     }
   }
   
@@ -87,7 +92,6 @@ class SyncService {
   final List<SyncJob> _pendingJobs = [];
   bool _isProcessing = false;
   final SupabaseClient _client = Supabase.instance.client;
-
   
   void addJob(SyncJob job) {
     _jobController.add(job);
@@ -103,7 +107,7 @@ class SyncService {
   void _scheduleBatchProcessing() {
     _batchTimer?.cancel();
     
-    _batchTimer = Timer(Duration(milliseconds: 100), () {
+    _batchTimer = Timer(Duration(seconds: 1), () {
       if (!_isProcessing) {
         _processJobs();
       }
@@ -116,13 +120,19 @@ class SyncService {
     _isProcessing = true;
     
     try {
+      // Add a short delay to allow more jobs to accumulate
+      await Future.delayed(Duration(milliseconds: 100));
+      
+      // Check if more jobs came in during the delay
+      if (!_isProcessing) return;
+      
       final batchJobs = List<SyncJob>.from(_pendingJobs);
       _pendingJobs.clear();
       
       if (batchJobs.isNotEmpty) {
         final shouldNotifyRemote = batchJobs.any((job) => !job.remote);
         final isFullSync = batchJobs.any((job) => job.full);
-        await _sync(shouldNotifyRemote, full: isFullSync);
+        await sync(shouldNotifyRemote, full: isFullSync);
       }
     } finally {
       _isProcessing = false;
@@ -141,21 +151,20 @@ class SyncService {
 
   String get _userId => _client.auth.currentUser?.id ?? '';
 
-  // order matters: devices, groups, routines
-  Future<bool> _sync(bool notifyRemote, {bool full = false}) async {
+  Future<bool> sync(bool notifyRemote, {bool full = false}) async {
     try {
       if (_userId.isEmpty) return true;
       
       final db = getIt<AppDatabase>();
       final currDevice = (await db.getThisDevice())!;
-      // If full sync is requested, pretend lastPulledAt is null by using epoch time
+
       final lastPulledAt = full ? DateTime.fromMicrosecondsSinceEpoch(0) : (currDevice.lastPulledAt ?? DateTime.fromMicrosecondsSinceEpoch(0));
       final pulledAt = DateTime.now();
 
       bool madeRemoteChange = false;
       bool accidentalDeletion = false;
 
-      // Pull and apply remote device changes
+      // pull devices
       {
         final remoteDevices = await _client.from('devices').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
         final localDevices = await db.getDevicesById(remoteDevices.map((device) => device['id'] as String).toList());
@@ -211,7 +220,7 @@ class SyncService {
         }
       }
 
-      // Pull and apply remote group changes
+      // pull groups
       {
         final remoteGroups = await _client.from('groups').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
         final localGroups = await db.getGroupsById(remoteGroups.map((group) => group['id'] as String).toList());
@@ -259,7 +268,7 @@ class SyncService {
         }
       }
     
-      // Pull and apply remote routine changes
+      // pull routines
       {
         final remoteRoutines = await _client.from('routines').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
         final localRoutines = await db.getRoutinesById(remoteRoutines.map((routine) => routine['id'] as String).toList());
@@ -332,165 +341,163 @@ class SyncService {
         updatedAt: Value(pulledAt),
       ));
 
-      // Push local device changes if no conflicts
-      {
-        final localDevices = await db.getDeviceChanges(lastPulledAt);
+      // push devices
+      final localDevices = await db.getDeviceChanges(lastPulledAt);
+      final remoteDevices = await _client
+        .from('devices')
+        .select()
+        .eq('user_id', _userId)
+        .inFilter('id', localDevices.map((device) => device.id).toList());
 
-        final remoteDevices = await _client
-          .from('devices')
-          .select()
-          .eq('user_id', _userId)
-          .inFilter('id', localDevices.map((device) => device.id).toList());
-
-        final remoteDeviceMap = {for (final device in remoteDevices) device['id']: device};
-        for (final device in localDevices) {
-          final remoteDevice = remoteDeviceMap[device.id];
-          if (remoteDevice != null && remoteDevice['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
-            return false;
-          }
-        }
-
-        bool updatedCurrDevice = false;
-        for (final device in localDevices) {
-          madeRemoteChange = true;
-          updatedCurrDevice = updatedCurrDevice || device.id == currDevice.id;
-
-          await _client
-          .from('devices')
-          .upsert({
-            'id': device.id, 
-            'user_id': _userId,
-            'name': device.name,
-            'type': device.type,
-            'updated_at': device.updatedAt.toUtc().toIso8601String(),
-            'last_pulled_at': pulledAt.toUtc().toIso8601String(),
-            'deleted': device.deleted,
-          })
-          .eq('id', device.id);
-        }
-
-        // if we didn't do so already also let update
-
-        if (!updatedCurrDevice) {
-          await _client
-          .from('devices')
-          .update({
-            'last_pulled_at': pulledAt.toUtc().toIso8601String(),
-          })
-          .eq('id', currDevice.id);
+      final remoteDeviceMap = {for (final device in remoteDevices) device['id']: device};
+      for (final device in localDevices) {
+        final remoteDevice = remoteDeviceMap[device.id];
+        if (remoteDevice != null && remoteDevice['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
+          return false;
         }
       }
 
-      // Push local group changes if no conflicts
-      {
-        final localGroups = await db.getGroupChanges(lastPulledAt);
-        final remoteGroups = await _client
-          .from('groups')
-          .select()
-          .eq('user_id', _userId)
-          .inFilter('id', localGroups.map((group) => group.id).toList());
+      // push groups    
+      final localGroups = await db.getGroupChanges(lastPulledAt);
+      final remoteGroups = await _client
+        .from('groups')
+        .select()
+        .eq('user_id', _userId)
+        .inFilter('id', localGroups.map((group) => group.id).toList());
 
-        final remoteGroupMap = {for (final group in remoteGroups) group['id']: group};
-        
-        for (final group in localGroups) {
-          final remoteGroup = remoteGroupMap[group.id];
-          if (remoteGroup != null && remoteGroup['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
-            return false;
-          }
-        }
-
-        for (final group in localGroups) {
-          madeRemoteChange = true;
-          await _client
-          .from('groups')
-          .upsert({
-            'id': group.id,
-            'user_id': _userId,
-            'name': group.name,
-            'device': group.device,
-            'allow': group.allow,
-            'updated_at': group.updatedAt.toUtc().toIso8601String(),
-            'deleted': group.deleted,
-          })
-          .eq('id', group.id);
+      final remoteGroupMap = {for (final group in remoteGroups) group['id']: group};
+      
+      for (final group in localGroups) {
+        final remoteGroup = remoteGroupMap[group.id];
+        if (remoteGroup != null && remoteGroup['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
+          return false;
         }
       }
 
-      // Push local routine changes if no conflicts
-      {
-        final localRoutines = await db.getRoutineChanges(lastPulledAt);
-
-        final remoteRoutines = await _client
-          .from('routines')
-          .select()
-          .eq('user_id', _userId)
-          .inFilter('id', localRoutines.map((routine) => routine.id).toList());
-        final remoteRoutineMap = {for (final routine in remoteRoutines) routine['id']: routine};
-        
-        for (final routine in localRoutines) {
-          final remoteRoutine = remoteRoutineMap[routine.id];
-          if (remoteRoutine != null && remoteRoutine['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
-            return false;
-          }
-        }
-
-        for (final routine in localRoutines) {
-          madeRemoteChange = true;
-          await _client
-          .from('routines')
-          .upsert({
-            'id': routine.id,
-            'user_id': _userId,
-            'name': routine.name,
-            'monday': routine.monday,
-            'tuesday': routine.tuesday,
-            'wednesday': routine.wednesday,
-            'thursday': routine.thursday,
-            'friday': routine.friday,
-            'saturday': routine.saturday,
-            'sunday': routine.sunday,
-            'start_time': routine.startTime,
-            'end_time': routine.endTime,
-            'recurring': routine.recurring,
-            'groups': routine.groups,
-            'conditions': routine.conditions,
-            'num_breaks_taken': routine.numBreaksTaken,
-            'last_break_at': routine.lastBreakAt?.toUtc().toIso8601String(),
-            'paused_until': routine.pausedUntil?.toUtc().toIso8601String(),
-            'max_breaks': routine.maxBreaks,
-            'max_break_duration': routine.maxBreakDuration,
-            'friction': routine.friction.name,
-            'friction_len': routine.frictionLen,
-            'snoozed_until': routine.snoozedUntil?.toUtc().toIso8601String(),
-            'strict_mode': routine.strictMode,
-            'updated_at': routine.updatedAt.toUtc().toIso8601String(),
-            'deleted': routine.deleted,
-          })
-          .eq('id', routine.id);
+      // push routines
+      final localRoutines = await db.getRoutineChanges(lastPulledAt);
+      final remoteRoutines = await _client
+        .from('routines')
+        .select()
+        .eq('user_id', _userId)
+        .inFilter('id', localRoutines.map((routine) => routine.id).toList());
+      final remoteRoutineMap = {for (final routine in remoteRoutines) routine['id']: routine};
+      
+      for (final routine in localRoutines) {
+        final remoteRoutine = remoteRoutineMap[routine.id];
+        if (remoteRoutine != null && remoteRoutine['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
+          return false;
         }
       }
 
+      // persist devices
+      bool updatedCurrDevice = false;
+      for (final device in localDevices) {
+        madeRemoteChange = true;
+        updatedCurrDevice = updatedCurrDevice || device.id == currDevice.id;          
+
+        final Map<String, dynamic> data = {
+          'id': device.id, 
+          'user_id': _userId,
+          'name': device.name,
+          'type': device.type,
+          'updated_at': device.updatedAt.toUtc().toIso8601String(),
+          'last_pulled_at': pulledAt.toUtc().toIso8601String(),
+          'deleted': device.deleted,
+        };
+
+        await _client
+        .from('devices')
+        .upsert(data)
+        .eq('id', device.id);
+      }
+      
+      if (!updatedCurrDevice) {
+        await _client
+        .from('devices')
+        .update({
+          'last_pulled_at': pulledAt.toUtc().toIso8601String(),
+        })
+        .eq('id', currDevice.id);
+      }
+
+      // persist groups
+      for (final group in localGroups) {
+        madeRemoteChange = true;
+        await _client
+        .from('groups')
+        .upsert({
+          'id': group.id,
+          'user_id': _userId,
+          'name': group.name,
+          'device': group.device,
+          'allow': group.allow,
+          'updated_at': group.updatedAt.toUtc().toIso8601String(),
+          'deleted': group.deleted,
+        })
+        .eq('id', group.id);
+      }
+
+      // persist routines
+      for (final routine in localRoutines) {
+        madeRemoteChange = true;
+        await _client
+        .from('routines')
+        .upsert({
+          'id': routine.id,
+          'user_id': _userId,
+          'name': routine.name,
+          'monday': routine.monday,
+          'tuesday': routine.tuesday,
+          'wednesday': routine.wednesday,
+          'thursday': routine.thursday,
+          'friday': routine.friday,
+          'saturday': routine.saturday,
+          'sunday': routine.sunday,
+          'start_time': routine.startTime,
+          'end_time': routine.endTime,
+          'recurring': routine.recurring,
+          'groups': routine.groups,
+          'conditions': routine.conditions,
+          'num_breaks_taken': routine.numBreaksTaken,
+          'last_break_at': routine.lastBreakAt?.toUtc().toIso8601String(),
+          'paused_until': routine.pausedUntil?.toUtc().toIso8601String(),
+          'max_breaks': routine.maxBreaks,
+          'max_break_duration': routine.maxBreakDuration,
+          'friction': routine.friction.name,
+          'friction_len': routine.frictionLen,
+          'snoozed_until': routine.snoozedUntil?.toUtc().toIso8601String(),
+          'strict_mode': routine.strictMode,
+          'updated_at': routine.updatedAt.toUtc().toIso8601String(),
+          'deleted': routine.deleted,
+        })
+        .eq('id', routine.id);
+      }
+
+      // clean up soft deleted entries
       db.clearChangesSince(pulledAt);
-
-      final remoteDevices = (await _client
+      {
+        final remoteDevices = (await _client
           .from('devices')
           .select('last_pulled_at')
           .eq('user_id', _userId));
 
-      final deviceList = remoteDevices
-          .map<String>((d) => d['last_pulled_at'])
-          .toList();
+        final deviceList = remoteDevices
+            .map<String>((d) => d['last_pulled_at'])
+            .toList();
 
-      deviceList.sort((a, b) => a.compareTo(b));
+        deviceList.sort((a, b) => a.compareTo(b));
 
-      if (deviceList.isNotEmpty) {
-        final pulledAt = deviceList[0];
+        if (deviceList.isNotEmpty) {
+          final pulledAt = deviceList[0];
 
-        await _client.from('routines').delete().lt('updated_at', pulledAt).eq('deleted', true);
-        await _client.from('groups').delete().lt('updated_at', pulledAt).eq('deleted', true);
-        await _client.from('devices').delete().lt('updated_at', pulledAt).eq('deleted', true);
+          await _client.from('routines').delete().lt('updated_at', pulledAt).eq('deleted', true);
+          await _client.from('groups').delete().lt('updated_at', pulledAt).eq('deleted', true);
+          await _client.from('devices').delete().lt('updated_at', pulledAt).eq('deleted', true);
+        }
       }
-      
+    
+      // notify other clients
       if (madeRemoteChange) {
         _notifyPeers();
       }
@@ -498,7 +505,6 @@ class SyncService {
       return true;
     } catch (e) {
       print('Error during sync: $e');
-      // If we encounter an error during sync, we'll try again later
       return false;
     }
   }

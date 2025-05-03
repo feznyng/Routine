@@ -49,3 +49,6 @@ target
 # Environment variables
 .env
 .env.local
+
+# Firebase configuration
+lib/firebase_options.dart

@@ -1,3 +1,4 @@
+import 'package:Routine/services/platform_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
@@ -25,7 +26,7 @@ class InstalledApplication {
   String toString() => 'InstalledApplication(name: $name, displayName: $displayName, filePath: $filePath)';
 }
 
-class DesktopService {
+class DesktopService extends PlatformService {
   // Singleton instance
   static final DesktopService _instance = DesktopService();
 
@@ -43,6 +44,7 @@ class DesktopService {
   List<String> _cachedCategories = [];
   bool _isAllowList = false;
 
+  @override
   Future<void> init() async {
     try {
       await platform.invokeMethod('engineReady');
@@ -87,8 +89,8 @@ class DesktopService {
           debugPrint('Active routines before update: $activeRoutines');
           
           // Update routines
-          debugPrint('Calling updateRoutines()...');
-          updateRoutines();
+          debugPrint('refeshing service...');
+          refresh();
           
           // Trigger a sync job to ensure database is up-to-date after wake
           debugPrint('Triggering database sync after system wake...');
@@ -115,7 +117,8 @@ class DesktopService {
     });
   }
 
-  void updateRoutines() async {
+  @override
+  Future<void> refresh() async {
     final routines = await Routine.getAll();
     onRoutinesUpdated(routines);
   }
@@ -128,6 +131,10 @@ class DesktopService {
 
       if (routine.pausedUntil != null && routine.pausedUntil!.isAfter(DateTime.now())) {
         evaluationTimes.add(Schedule(hours: routine.pausedUntil!.hour, minutes: routine.pausedUntil!.minute, seconds: routine.pausedUntil!.second + 5));
+      }
+
+      if (routine.snoozedUntil != null && routine.snoozedUntil!.isAfter(DateTime.now())) {
+        evaluationTimes.add(Schedule(hours: routine.snoozedUntil!.hour, minutes: routine.snoozedUntil!.minute, seconds: routine.snoozedUntil!.second + 5));
       }
     }
     return evaluationTimes;
@@ -161,13 +168,6 @@ class DesktopService {
   }
 
   void evaluate(List<Routine> routines) {
-    // Filter for active, not paused, and conditions not met routines
-    final now = DateTime.now();
-
-    print("evaluating $now");
-
-    print("paused routines: ${routines.where((r) => r.isPaused).toList()}");
-
     routines = routines.where((r) => r.isActive && !r.isPaused && !r.areConditionsMet).toList();
 
     Set<String> apps = {}; 
@@ -190,8 +190,6 @@ class DesktopService {
     _cachedApps = apps.toList();
     _cachedCategories = categories.toList();
     _isAllowList = allowList;
-
-    print("eval result $now: apps = $apps, sites = $sites, categories = $categories");
 
     // Update both apps and sites
     updateAppList();

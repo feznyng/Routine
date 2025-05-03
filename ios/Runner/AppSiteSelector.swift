@@ -25,14 +25,11 @@ class AppSiteSelectorView: NSObject, FlutterPlatformView {
         selection = FamilyActivitySelection()
         
         if let params = args as? [String: Any] {
-            print("params: \(params)")
             if let apps = params["apps"] as? [String] {
                 print("apps: \(apps)")
                 selection.applicationTokens = Set(apps.compactMap { appId in
                     if let data = appId.data(using: .utf8) {
-                        print("raw data \(data)")
                         if let token = try? JSONDecoder().decode(ApplicationToken.self, from: data) {
-                            print("successfully created token \(data)")
                             return token
                         }
                         print("failed to create token from \(appId)")
@@ -61,8 +58,6 @@ class AppSiteSelectorView: NSObject, FlutterPlatformView {
                 
                 // Set the encoded tokens to the selection
                 selection.webDomainTokens = encodedTokens
-                
-                print("Stored \(self.initialPlainTextSites.count) plaintext domains for later use")
             }
 
             if let categories: [String] = params["categories"] as? [String] {
@@ -103,9 +98,6 @@ class AppSiteSelectorView: NSObject, FlutterPlatformView {
         _view.frame = frame
         _view.backgroundColor = .systemBackground
         
-        // Use the stored plaintext domains
-        print("Using \(self.initialPlainTextSites.count) stored plaintext domains")
-        
         let wrapper = FamilyActivityPickerWrapper(selection: selection, initialPlainTextDomains: self.initialPlainTextSites) { [weak self] newSelection, plainTextDomains in
             self?.handleSelectionChange(newSelection, plainTextDomains: plainTextDomains)
         }
@@ -130,9 +122,7 @@ class AppSiteSelectorView: NSObject, FlutterPlatformView {
         // Try encoding with JSONEncoder
         do {
             let encoded = try encoder.encode(token)
-            print("encoded \(encoded)")
             if let jsonString = String(data: encoded, encoding: .utf8), !jsonString.isEmpty, jsonString != "null" {
-                print("jsonString \(jsonString)")
                 return jsonString
             }
         } catch {

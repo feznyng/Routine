@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:Routine/services/notification_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -128,8 +129,9 @@ class AuthService {
       );
 
       if (response.user != null) {
-        SyncService().addJob(SyncJob(remote: false));
         SyncService().setupRealtimeSync();
+        SyncService().addJob(SyncJob(remote: false));
+        NotificationService().init();
       }
 
       return response.user != null;

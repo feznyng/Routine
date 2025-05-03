@@ -1,6 +1,12 @@
+import 'dart:io';
+
 import 'package:geolocator/geolocator.dart';
 
 class Util {
+  static bool isDesktop() {
+    return Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+  }
+
   static String camelToSnake(String input) {
     if (input.isEmpty) return input;
     

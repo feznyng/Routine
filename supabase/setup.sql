@@ -10,7 +10,7 @@ CREATE TABLE devices (
     updated_at TIMESTAMPTZ NOT NULL,
     last_pulled_at TIMESTAMPTZ,
     user_id uuid not null references auth.users on delete cascade,
-    fcm_token TEXT
+    fcm_token text
 );
 
 -- Create Routines table
