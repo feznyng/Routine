@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../models/routine.dart';
 import '../../models/condition.dart';
 import '../../util.dart';
@@ -62,8 +64,9 @@ class ConditionSection extends StatelessWidget {
         }
         return 'No location set';
       case ConditionType.nfc:
-      case ConditionType.qr:
         return condition.nfcQrCode ?? 'No code set';
+      case ConditionType.qr:
+        return 'Scan QR code to verify';
       case ConditionType.health:
         if (condition.activityType != null && condition.activityAmt != null) {
           return '${condition.activityType}: ${condition.activityAmt}';
@@ -403,16 +406,29 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
           ],
         );
       case ConditionType.nfc:
-      case ConditionType.qr:
         return TextField(
           controller: _nfcQrCodeController,
-          decoration: InputDecoration(
-            labelText: _condition.type == ConditionType.nfc ? 'NFC Tag ID' : 'QR Code',
-            hintText: _condition.type == ConditionType.nfc ? 'Enter NFC tag ID' : 'Enter QR code',
+          decoration: const InputDecoration(
+            labelText: 'NFC Tag ID',
+            hintText: 'Enter NFC tag ID',
           ),
           onChanged: (value) {
             _condition.nfcQrCode = value;
           },
+        );
+      case ConditionType.qr:
+        return Column(
+          children: [
+            const SizedBox(height: 8),
+            Center(
+              child: QrImageView(
+                data: _condition.id,
+                version: QrVersions.auto,
+                size: 200.0,
+                backgroundColor: Colors.white,
+              ),
+            )
+          ],
         );
       case ConditionType.health:
         return Column(
