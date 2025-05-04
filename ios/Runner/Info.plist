@@ -54,5 +54,7 @@
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Allow Routine to scan QR codes for conditions.</string>
+	<key>NFCReaderUsageDescription</key>
+	<string>Allow Routine to read and write NFC tags for conditions.</string>
 </dict>
 </plist>
