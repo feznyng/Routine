@@ -441,33 +441,7 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
                           return;
                         }
 
-                        // Show scanning dialog
-                        if (context.mounted) {
-                          showDialog(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (dialogContext) => AlertDialog(
-                              title: const Text('Scanning'),
-                              content: const Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  CircularProgressIndicator(),
-                                  SizedBox(height: 16),
-                                  Text('Bring your NFC tag close to the device...'),
-                                ],
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.pop(dialogContext);
-                                    NfcManager.instance.stopSession();
-                                  },
-                                  child: const Text('Cancel'),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
+                        // The platform will show its own UI for NFC scanning
 
                         // Start NFC session
                         NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
@@ -494,50 +468,20 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
                                 _nfcTagWritten = writeSuccess;
                               });
                               
-                              // Close the scanning dialog
+                              // Update UI and show feedback
                               if (context.mounted) {
-                                Navigator.of(context, rootNavigator: true).pop();
-                              }
-                              
-                              // Show result dialog
-                              if (context.mounted) {
-                                showDialog(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    title: Text(writeSuccess ? 'Success!' : 'Write Failed'),
-                                    content: Text(writeSuccess
-                                      ? 'NFC tag scanned and condition ID written successfully!'
-                                      : 'NFC tag scanned but could not write data. Please try another tag.'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(context),
-                                        child: const Text('OK'),
-                                      ),
-                                    ],
-                                  ),
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(writeSuccess 
+                                    ? 'NFC tag scanned and condition ID written successfully!' 
+                                    : 'NFC tag scanned but could not write data. Please try another tag.')),
                                 );
                               }
                             }
                           } catch (e) {
-                            // Close the scanning dialog
+                            // Show error message
                             if (context.mounted) {
-                              Navigator.of(context, rootNavigator: true).pop();
-                            }
-                            
-                            // Show error dialog
-                            if (context.mounted) {
-                              showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('Error'),
-                                  content: Text('Error processing NFC tag: $e'),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: const Text('OK'),
-                                    ),
-                                  ],
-                                ),
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error processing NFC tag: $e')),
                               );
                             }
                           } finally {

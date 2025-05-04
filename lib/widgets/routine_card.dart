@@ -635,33 +635,7 @@ class _RoutineCardState extends State<RoutineCard> {
         return;
       }
 
-      // Show scanning dialog
-      if (context.mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (dialogContext) => AlertDialog(
-            title: const Text('Scanning'),
-            content: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Bring your NFC tag close to the device...'),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(dialogContext);
-                  NfcManager.instance.stopSession();
-                },
-                child: const Text('Cancel'),
-              ),
-            ],
-          ),
-        );
-      }
+      // The platform will show its own UI for NFC scanning
 
       // Start NFC session
       NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
@@ -682,8 +656,6 @@ class _RoutineCardState extends State<RoutineCard> {
                     final payload = record.payload;
                     if (payload.length > 1) {
                       final languageCodeLength = payload[0] & 0x3F;
-                      final isUTF16 = (payload[0] & 0x80) != 0;
-                      
                       // Skip language code and get the text
                       final textBytes = payload.sublist(1 + languageCodeLength);
                       tagData = String.fromCharCodes(textBytes);
@@ -695,10 +667,7 @@ class _RoutineCardState extends State<RoutineCard> {
             }
           }
 
-          // Close the scanning dialog
-          if (context.mounted) {
-            Navigator.of(context, rootNavigator: true).pop();
-          }
+          // The platform handles the NFC UI
 
           // Check if we got data from the tag
           if (tagData != null) {
