@@ -130,8 +130,8 @@ class ConditionSection extends StatelessWidget {
                     final condition = routine.conditions[index];
                     return ListTile(
                       leading: Icon(ConditionTypeUtils.getIcon(condition.type)),
-                      title: Text(ConditionTypeUtils.getLabel(condition.type)),
-                      subtitle: Text(_getConditionSummary(condition)),
+                      title: Text(_getConditionSummary(condition)),
+                      subtitle: Text(ConditionTypeUtils.getLabel(condition.type)),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: enabled ? () => _editCondition(context, condition) : null,
                     );
