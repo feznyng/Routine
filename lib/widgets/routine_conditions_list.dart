@@ -238,7 +238,7 @@ class RoutineConditionsList extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               const Text(
-                'NFC scanning is only available on mobile devices.',
+                'NFC scanning is only supported on mobile devices. Please use a mobile device.',
                 textAlign: TextAlign.center,
               ),
             ],

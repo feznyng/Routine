@@ -19,33 +19,7 @@ class ConditionSection extends StatelessWidget {
 
 
   String _getConditionSummary(Condition condition) {
-    // If the condition has a name, use it as the summary for any condition type
-    if (condition.name != null && condition.name!.isNotEmpty) {
-      // Safely handle the proximity which might be null
-      final proximityText = condition.proximity != null ? ' (${condition.proximity!.toInt()} m)' : '';
-      return '${condition.name!}$proximityText';
-    }
-    
-    // Otherwise, use the default summary based on condition type
-    switch (condition.type) {
-      case ConditionType.location:
-        if (condition.latitude != null && condition.longitude != null) {
-          final proximity = condition.proximity != null ? ' (${condition.proximity!.toInt()}m radius)' : '';
-          return 'Location$proximity';
-        }
-        return 'No location set';
-      case ConditionType.nfc:
-        return condition.nfcQrCode ?? 'No code set';
-      case ConditionType.qr:
-        return 'Scan QR code to verify';
-      case ConditionType.health:
-        if (condition.activityType != null && condition.activityAmt != null) {
-          return '${condition.activityType}: ${condition.activityAmt}';
-        }
-        return 'No activity set';
-      case ConditionType.todo:
-        return condition.name ?? 'No task set';
-    }
+    return condition.name ?? '';
   }
 
   void _editCondition(BuildContext context, Condition condition) {
@@ -208,7 +182,6 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
   String? _statusMessage;
   bool _isSuccess = false;
   bool _isError = false;
-  bool _nfcTagWritten = false;
   
   // Show a status message in the UI
   void _showStatusMessage(String message, {bool isSuccess = false, bool isError = false, bool isLoading = false}) {
@@ -332,7 +305,6 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
         return NfcConditionWidget(
           condition: _condition,
           onStatusMessage: _showStatusMessage,
-          onNfcTagWritten: (written) => setState(() => _nfcTagWritten = written),
         );
       case ConditionType.qr:
         return QrConditionEditor(
@@ -407,9 +379,15 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
               ),
               const SizedBox(width: 8),
               ElevatedButton(
-                onPressed: (_condition.type == ConditionType.nfc && !_nfcTagWritten) 
-                  ? null // Disable button if NFC condition and tag not written
-                  : () => widget.onSave(_condition),
+                onPressed: () {
+                  final trimmedName = _nameController.text.trim();
+                  if (trimmedName.isEmpty) {
+                    _showStatusMessage('Please enter a name for this condition', isError: true);
+                    return;
+                  }
+                  _condition.name = trimmedName;
+                  widget.onSave(_condition);
+                },
                 child: const Text('Save'),
               ),
             ],

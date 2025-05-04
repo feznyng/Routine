@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io' show Platform;
 import 'package:nfc_manager/nfc_manager.dart';
 import '../../../models/condition.dart';
 
 class NfcConditionWidget extends StatelessWidget {
   final Condition condition;
   final Function(String, {bool isSuccess, bool isError}) onStatusMessage;
-  final Function(bool) onNfcTagWritten;
 
   const NfcConditionWidget({
     super.key,
     required this.condition,
     required this.onStatusMessage,
-    required this.onNfcTagWritten,
   });
 
   @override
@@ -25,6 +25,15 @@ class NfcConditionWidget extends StatelessWidget {
                 icon: const Icon(Icons.nfc),
                 label: const Text('Scan NFC Tag'),
                 onPressed: () async {
+                  // Check if we're on desktop
+                  if (!kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux)) {
+                    onStatusMessage(
+                      'NFC scanning is only supported on mobile devices. Please use a mobile device.',
+                      isError: true
+                    );
+                    return;
+                  }
+
                   try {
                     bool isAvailable = await NfcManager.instance.isAvailable();
                     if (!isAvailable) {
@@ -63,10 +72,9 @@ class NfcConditionWidget extends StatelessWidget {
                         }
 
                         if (context.mounted) {
-                          onNfcTagWritten(writeSuccess);
                           onStatusMessage(
                             writeSuccess 
-                              ? 'NFC tag scanned and condition ID written successfully!' 
+                              ? 'NFC tag successfully scanned' 
                               : 'NFC tag scanned but could not write data. Please try another tag.',
                             isSuccess: writeSuccess,
                             isError: !writeSuccess
