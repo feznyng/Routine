@@ -182,8 +182,9 @@ class _RoutineListState extends State<RoutineList> {
                         )),
                     ],
 
-                    // Add padding between sections
-                    const SizedBox(height: 24),
+                    // Add padding between sections only if one is expanded
+                    if (_activeRoutinesExpanded || _completedRoutinesExpanded)
+                      const SizedBox(height: 24),
 
                     // Completed routines section
                     if (completedRoutines.isNotEmpty) ...[  
@@ -200,8 +201,9 @@ class _RoutineListState extends State<RoutineList> {
                         )),
                     ],
 
-                    // Add padding between sections
-                    const SizedBox(height: 24),
+                    // Add padding between sections only if one is expanded
+                    if (_completedRoutinesExpanded || _inactiveRoutinesExpanded)
+                      const SizedBox(height: 24),
 
                     // Inactive routines section
                     if (inactiveRoutines.isNotEmpty) ...[
@@ -251,12 +253,12 @@ class _RoutineListState extends State<RoutineList> {
     return InkWell(
       onTap: onToggle,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: isExpanded ? 12 : 8),
         child: Row(
           children: [
             Expanded(
               child: Text(
-                '$title',
+                title,
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurface,
                 ),
