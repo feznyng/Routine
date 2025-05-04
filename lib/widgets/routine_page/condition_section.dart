@@ -392,7 +392,7 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
                 child: const Text('Cancel'),
               ),
               const SizedBox(width: 8),
-              ElevatedButton(
+              TextButton(
                 onPressed: () {
                   final trimmedName = _nameController.text.trim();
                   if (trimmedName.isEmpty) {
