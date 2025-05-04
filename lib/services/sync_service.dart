@@ -134,7 +134,10 @@ class SyncService {
       if (batchJobs.isNotEmpty) {
         final shouldNotifyRemote = batchJobs.any((job) => !job.remote);
         final isFullSync = batchJobs.any((job) => job.full);
-        await sync(shouldNotifyRemote, full: isFullSync);
+        final success = await sync(shouldNotifyRemote, full: isFullSync);
+        if (!success) {
+          addJob(SyncJob(remote: true));
+        }
       }
     } finally {
       _isProcessing = false;
@@ -366,6 +369,7 @@ class SyncService {
       for (final device in localDevices) {
         final remoteDevice = remoteDeviceMap[device.id];
         if (remoteDevice != null && remoteDevice['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
+          print("device conflict detected - cancelling sync");
           return false;
         }
       }
@@ -383,6 +387,7 @@ class SyncService {
       for (final group in localGroups) {
         final remoteGroup = remoteGroupMap[group.id];
         if (remoteGroup != null && remoteGroup['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
+          print("group conflict detected - cancelling sync");
           return false;
         }
       }
@@ -399,6 +404,7 @@ class SyncService {
       for (final routine in localRoutines) {
         final remoteRoutine = remoteRoutineMap[routine.id];
         if (remoteRoutine != null && remoteRoutine['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
+          print("routine conflict detected - cancelling sync");
           return false;
         }
       }
