@@ -58,6 +58,7 @@ class AuthService {
         final response = await _client.auth.refreshSession();
         if (response.session != null) {
           print('Restored session for user: ${response.user?.email}');
+          initNotifications();
         }
       } catch (e) {
         print('Failed to restore session: $e');
@@ -131,7 +132,7 @@ class AuthService {
       if (response.user != null) {
         SyncService().setupRealtimeSync();
         SyncService().addJob(SyncJob(remote: false));
-        NotificationService().init();
+        initNotifications();
       }
 
       return response.user != null;
@@ -190,6 +191,10 @@ class AuthService {
   void notifyAppResumed() {
     _resumeStreamController.add(null);
     _refreshSessionIfNeeded();
+  }
+
+  void initNotifications() {
+    NotificationService().init();
   }
   
   // Method to refresh the session if needed

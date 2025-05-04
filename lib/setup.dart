@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:Routine/services/notification_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:Routine/services/auth_service.dart';
 import 'package:Routine/services/strict_mode_service.dart';
@@ -53,8 +52,5 @@ Future<void> setup() async {
     if (Platform.isWindows) {
       await WindowsSingleInstance.ensureSingleInstance([], "routine");
     }
-
-  } else if (AuthService().isSignedIn) {
-    NotificationService().init();
   }
 }
