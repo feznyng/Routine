@@ -1,14 +1,10 @@
 import 'dart:io';
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:nfc_manager/nfc_manager.dart';
 import 'package:file_selector/file_selector.dart';
 import '../../models/routine.dart';
 import '../../models/condition.dart';
-import '../../util.dart';
+import 'condition_editors/condition_editors.dart';
 
 class ConditionSection extends StatelessWidget {
   final Routine routine;
@@ -488,259 +484,33 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
   Widget _buildConditionFields() {
     switch (_condition.type) {
       case ConditionType.location:
-        return Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.my_location),
-                    label: const Text('Get Current Location'),
-                    onPressed: () async {
-                      try {
-                        // Show loading indicator
-                        _showStatusMessage('Getting your current location...', isLoading: true);
-                        
-                        // Get the current position
-                        final position = await Util.determinePosition();
-                        
-                        // Update the UI
-                        setState(() {
-                          _latitudeController.text = position.latitude.toString();
-                          _longitudeController.text = position.longitude.toString();
-                          _condition.latitude = position.latitude;
-                          _condition.longitude = position.longitude;
-                        });
-                        
-                        // Show success message
-                        _showStatusMessage('Location updated successfully!', isSuccess: true);
-                      } catch (e) {
-                        _showStatusMessage('Error getting location: $e', isError: true);
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _latitudeController,
-              decoration: const InputDecoration(
-                labelText: 'Latitude',
-                hintText: 'Enter latitude',
-              ),
-              keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true),
-              onChanged: (value) {
-                if (value.isNotEmpty) {
-                  try {
-                    _condition.latitude = double.parse(value);
-                  } catch (e) {
-                    // Handle parsing error
-                  }
-                } else {
-                  _condition.latitude = null;
-                }
-              },
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _longitudeController,
-              decoration: const InputDecoration(
-                labelText: 'Longitude',
-                hintText: 'Enter longitude',
-              ),
-              keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true),
-              onChanged: (value) {
-                if (value.isNotEmpty) {
-                  try {
-                    _condition.longitude = double.parse(value);
-                  } catch (e) {
-                    // Handle parsing error
-                  }
-                } else {
-                  _condition.longitude = null;
-                }
-              },
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _proximityController,
-              decoration: const InputDecoration(
-                labelText: 'Proximity (meters)',
-                hintText: 'Enter proximity radius in meters',
-              ),
-              keyboardType: TextInputType.number,
-              onChanged: (value) {
-                if (value.isNotEmpty) {
-                  try {
-                    _condition.proximity = double.parse(value);
-                  } catch (e) {
-                    // Handle parsing error
-                  }
-                } else {
-                  _condition.proximity = 100; // Default to 100 meters
-                }
-              },
-            ),
-          ],
+        return LocationConditionWidget(
+          condition: _condition,
+          latitudeController: _latitudeController,
+          longitudeController: _longitudeController,
+          proximityController: _proximityController,
+          onStatusMessage: (message) => _showStatusMessage(message),
         );
       case ConditionType.nfc:
-        return Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.nfc),
-                    label: const Text('Scan NFC Tag'),
-                    onPressed: () async {
-                      try {
-                        // Check if NFC is available
-                        bool isAvailable = await NfcManager.instance.isAvailable();
-                        if (!isAvailable) {
-                          if (context.mounted) {
-                            showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('NFC Not Available'),
-                                content: const Text('NFC is not available on this device.'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: const Text('OK'),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-                          return;
-                        }
-
-                        // The platform will show its own UI for NFC scanning
-
-                        // Start NFC session
-                        NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
-                          try {
-                            // Write condition ID to tag if possible
-                            bool writeSuccess = false;
-                            if (tag.data.containsKey('ndef')) {
-                              final ndef = Ndef.from(tag);
-                              if (ndef != null && ndef.isWritable) {
-                                // Create NDEF message with condition ID
-                                final message = NdefMessage([
-                                  NdefRecord.createText(_condition.data),
-                                ]);
-                                
-                                // Write to tag
-                                await ndef.write(message);
-                                writeSuccess = true;
-                              }
-                            }
-                            // Update UI
-                            if (context.mounted) {
-                              setState(() {
-                                // Update flag to allow saving
-                                _nfcTagWritten = writeSuccess;
-                              });
-                              
-                              // Update UI and show feedback
-                              if (context.mounted) {
-                                _showStatusMessage(
-                                  writeSuccess 
-                                    ? 'NFC tag scanned and condition ID written successfully!' 
-                                    : 'NFC tag scanned but could not write data. Please try another tag.',
-                                  isSuccess: writeSuccess,
-                                  isError: !writeSuccess
-                                );
-                              }
-                            }
-                          } catch (e) {
-                            // Show error message
-                            if (context.mounted) {
-                              _showStatusMessage('Error processing NFC tag: $e', isError: true);
-                            }
-                          } finally {
-                            // Stop session
-                            NfcManager.instance.stopSession();
-                          }
-                        });
-                      } catch (e) {
-                        if (context.mounted) {
-                          showDialog(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Error'),
-                              content: Text('Error accessing NFC: $e'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text('OK'),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ],
+        return NfcConditionWidget(
+          condition: _condition,
+          onStatusMessage: _showStatusMessage,
+          onNfcTagWritten: (written) => setState(() => _nfcTagWritten = written),
         );
       case ConditionType.qr:
-        return Column(
-          children: [
-            const SizedBox(height: 8),
-            Center(
-              child: QrImageView(
-                data: _condition.data,
-                version: QrVersions.auto,
-                size: 200.0,
-                backgroundColor: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Center(
-              child: ElevatedButton.icon(
-                icon: _isLoading ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.download),
-                label: Text(_isLoading ? 'Processing...' : 'Download QR Code'),
-                onPressed: _isLoading ? null : () => _saveQrCode(_condition.data),
-              ),
-            ),
-
-          ],
+        return QrConditionWidget(
+          condition: _condition,
+          onSaveQrCode: () => _saveQrCode(_condition.data),
+          isLoading: _isLoading,
         );
       case ConditionType.health:
-        return Column(
-          children: [
-            TextField(
-              controller: _activityTypeController,
-              decoration: const InputDecoration(
-                labelText: 'Activity Type',
-                hintText: 'E.g., Steps, Running, etc.',
-              ),
-              onChanged: (value) {
-                _condition.activityType = value;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _activityAmtController,
-              decoration: const InputDecoration(
-                labelText: 'Activity Amount',
-                hintText: 'E.g., 5000 steps, 30 minutes, etc.',
-              ),
-              onChanged: (value) {
-                _condition.activityAmt = value;
-              },
-            ),
-          ],
+        return HealthConditionWidget(
+          condition: _condition,
+          activityTypeController: _activityTypeController,
+          activityAmtController: _activityAmtController,
         );
       case ConditionType.todo:
-        // For todo type, we already have the name field at the top of the form
-        // that serves as both the name and the task description
-        return const SizedBox.shrink();
+        return const TodoConditionWidget();
     }
   }
 
