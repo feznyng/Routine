@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
 import '../models/routine.dart';
@@ -535,31 +537,65 @@ class _RoutineCardState extends State<RoutineCard> {
   }
   
   void _handleQrCondition(BuildContext context, Condition condition) {
-    // Navigate to the QR scanner page
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (context) => QrScannerPage(
-          onCodeScanned: (scannedData) {
-            // Compare scanned data with condition data
-            if (scannedData == condition.data) {
-              // QR code matches, complete the condition
-              widget.routine.completeCondition(condition);
-              if (widget.onRoutineUpdated != null) {
-                widget.onRoutineUpdated!();
+    // Check if running on a mobile device
+    bool isMobileDevice = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+    
+    if (isMobileDevice) {
+      // Navigate to the QR scanner page on mobile devices
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (context) => QrScannerPage(
+            onCodeScanned: (scannedData) {
+              // Compare scanned data with condition data
+              if (scannedData == condition.data) {
+                // QR code matches, complete the condition
+                widget.routine.completeCondition(condition);
+                if (widget.onRoutineUpdated != null) {
+                  widget.onRoutineUpdated!();
+                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('QR code verified! Condition completed.')),
+                );
+              } else {
+                // QR code doesn't match
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Invalid QR code. Please try again with the correct code.')),
+                );
               }
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('QR code verified! Condition completed.')),
-              );
-            } else {
-              // QR code doesn't match
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Invalid QR code. Please try again with the correct code.')),
-              );
-            }
-          },
+            },
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      // Show a dialog on desktop platforms
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Mobile Device Required'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.phone_android,
+                size: 48,
+                color: Colors.blue,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'QR code scanning is only available on mobile devices.',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
   }
   
   void _handleLocationCondition(BuildContext context, Condition condition) async {
