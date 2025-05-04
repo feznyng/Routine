@@ -5,6 +5,7 @@ import '../models/routine.dart';
 import '../models/condition.dart';
 import 'routine_page.dart';
 import 'break_dialog.dart';
+import 'qr_scanner_page.dart';
 
 class RoutineCard extends StatefulWidget {
   final Routine routine;
@@ -493,13 +494,35 @@ class _RoutineCardState extends State<RoutineCard> {
         _handleLocationCondition(context, condition);
         break;
         
+      case ConditionType.qr:
+        // Open QR code scanner for QR conditions
+        _handleQrCondition(context, condition);
+        break;
+        
+      case ConditionType.nfc:
+        // Show a placeholder dialog for NFC conditions
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('NFC Tag Condition'),
+            content: const Text('Scan an NFC tag to complete this condition.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+        break;
+        
       default:
         // Show a placeholder dialog for other condition types
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
             title: Text('Complete ${condition.type.toString().split('.').last} Condition'),
-            content: Text('This condition type is not yet implemented.'),
+            content: const Text('This condition type is not yet implemented.'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
@@ -509,6 +532,34 @@ class _RoutineCardState extends State<RoutineCard> {
           ),
         );
     }
+  }
+  
+  void _handleQrCondition(BuildContext context, Condition condition) {
+    // Navigate to the QR scanner page
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => QrScannerPage(
+          onCodeScanned: (scannedData) {
+            // Compare scanned data with condition data
+            if (scannedData == condition.data) {
+              // QR code matches, complete the condition
+              widget.routine.completeCondition(condition);
+              if (widget.onRoutineUpdated != null) {
+                widget.onRoutineUpdated!();
+              }
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('QR code verified! Condition completed.')),
+              );
+            } else {
+              // QR code doesn't match
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Invalid QR code. Please try again with the correct code.')),
+              );
+            }
+          },
+        ),
+      ),
+    );
   }
   
   void _handleLocationCondition(BuildContext context, Condition condition) async {

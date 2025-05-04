@@ -137,6 +137,8 @@ class Condition {
     'name': name,
     'lastCompletedAt': lastCompletedAt?.toIso8601String(),
   };
+
+  String get data => "condition:$id";
 }
 
 class ConditionConverter extends TypeConverter<List<Condition>, String> with

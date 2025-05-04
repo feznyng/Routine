@@ -422,7 +422,7 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
             const SizedBox(height: 8),
             Center(
               child: QrImageView(
-                data: _condition.id,
+                data: _condition.data,
                 version: QrVersions.auto,
                 size: 200.0,
                 backgroundColor: Colors.white,

@@ -733,6 +733,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.0"
+  mobile_scanner:
+    dependency: "direct main"
+    description:
+      name: mobile_scanner
+      sha256: e301258be23b8aa06ecbf77609e3cba0ad40b19940392206b9f7a4ba9346f09c
+      url: "https://pub.dev"
+    source: hosted
+    version: "7.0.0-beta.8"
   nested:
     dependency: transitive
     description:
