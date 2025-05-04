@@ -1,9 +1,12 @@
 import 'dart:async';
-import 'package:Routine/services/notification_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'sync_service.dart';
+
+// MARK:REMOVE
+import 'package:Routine/services/notification_service.dart';
+
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
@@ -194,6 +197,7 @@ class AuthService {
   }
 
   void initNotifications() {
+    // MARK:REMOVE
     NotificationService().init();
   }
   
