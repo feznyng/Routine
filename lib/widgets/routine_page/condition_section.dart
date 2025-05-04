@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:nfc_manager/nfc_manager.dart';
 import '../../models/routine.dart';
 import '../../models/condition.dart';
 import '../../util.dart';
@@ -232,6 +233,9 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
   late TextEditingController _activityTypeController;
   late TextEditingController _activityAmtController;
   late TextEditingController _nameController;
+  
+  // Flag to track if NFC tag has been successfully written
+  bool _nfcTagWritten = false;
 
   @override
   void initState() {
@@ -406,15 +410,164 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
           ],
         );
       case ConditionType.nfc:
-        return TextField(
-          controller: _nfcQrCodeController,
-          decoration: const InputDecoration(
-            labelText: 'NFC Tag ID',
-            hintText: 'Enter NFC tag ID',
-          ),
-          onChanged: (value) {
-            _condition.nfcQrCode = value;
-          },
+        return Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.nfc),
+                    label: const Text('Scan NFC Tag'),
+                    onPressed: () async {
+                      try {
+                        // Check if NFC is available
+                        bool isAvailable = await NfcManager.instance.isAvailable();
+                        if (!isAvailable) {
+                          if (context.mounted) {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('NFC Not Available'),
+                                content: const Text('NFC is not available on this device.'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('OK'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                          return;
+                        }
+
+                        // Show scanning dialog
+                        if (context.mounted) {
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (dialogContext) => AlertDialog(
+                              title: const Text('Scanning'),
+                              content: const Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircularProgressIndicator(),
+                                  SizedBox(height: 16),
+                                  Text('Bring your NFC tag close to the device...'),
+                                ],
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(dialogContext);
+                                    NfcManager.instance.stopSession();
+                                  },
+                                  child: const Text('Cancel'),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        // Start NFC session
+                        NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
+                          try {
+                            // Write condition ID to tag if possible
+                            bool writeSuccess = false;
+                            if (tag.data.containsKey('ndef')) {
+                              final ndef = Ndef.from(tag);
+                              if (ndef != null && ndef.isWritable) {
+                                // Create NDEF message with condition ID
+                                final message = NdefMessage([
+                                  NdefRecord.createText(_condition.data),
+                                ]);
+                                
+                                // Write to tag
+                                await ndef.write(message);
+                                writeSuccess = true;
+                              }
+                            }
+                            // Update UI
+                            if (context.mounted) {
+                              setState(() {
+                                // Update flag to allow saving
+                                _nfcTagWritten = writeSuccess;
+                              });
+                              
+                              // Close the scanning dialog
+                              if (context.mounted) {
+                                Navigator.of(context, rootNavigator: true).pop();
+                              }
+                              
+                              // Show result dialog
+                              if (context.mounted) {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: Text(writeSuccess ? 'Success!' : 'Write Failed'),
+                                    content: Text(writeSuccess
+                                      ? 'NFC tag scanned and condition ID written successfully!'
+                                      : 'NFC tag scanned but could not write data. Please try another tag.'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text('OK'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            // Close the scanning dialog
+                            if (context.mounted) {
+                              Navigator.of(context, rootNavigator: true).pop();
+                            }
+                            
+                            // Show error dialog
+                            if (context.mounted) {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Error'),
+                                  content: Text('Error processing NFC tag: $e'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('OK'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                          } finally {
+                            // Stop session
+                            NfcManager.instance.stopSession();
+                          }
+                        });
+                      } catch (e) {
+                        if (context.mounted) {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('Error'),
+                              content: Text('Error accessing NFC: $e'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('OK'),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
         );
       case ConditionType.qr:
         return Column(
@@ -518,7 +671,9 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
               ),
               const SizedBox(width: 8),
               ElevatedButton(
-                onPressed: () => widget.onSave(_condition),
+                onPressed: (_condition.type == ConditionType.nfc && !_nfcTagWritten) 
+                  ? null // Disable button if NFC condition and tag not written
+                  : () => widget.onSave(_condition),
                 child: const Text('Save'),
               ),
             ],

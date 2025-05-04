@@ -1,6 +1,7 @@
 import 'package:Routine/models/device.dart';
 import 'package:Routine/services/mobile_service.dart';
 import 'package:Routine/services/sync_service.dart';
+import 'package:Routine/util.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../firebase_options.dart';
@@ -43,6 +44,10 @@ class NotificationService {
   }
 
   Future<void> init() async {
+    if (Util.isDesktop()) {
+      return;
+    }
+
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
