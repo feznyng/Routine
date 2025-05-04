@@ -93,61 +93,69 @@ class _RoutineCardState extends State<RoutineCard> {
     
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ListTile(
-            title: Row(
-              children: [
-                Expanded(
-                  child: Text(widget.routine.name),
-                ),
-                if (widget.routine.isSnoozed && widget.routine.snoozedUntil != null) ...[  
-                  const Icon(Icons.snooze, color: Colors.orange, size: 16),
-                  const SizedBox(width: 4),
-                  Text(
-                    _formatSnoozeDate(widget.routine.snoozedUntil!),
-                    style: const TextStyle(fontSize: 12, color: Colors.orange),
+      child: InkWell(
+        onTap: () => _showRoutinePage(context),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.routine.name,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _buildTimeText(context),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.8),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                  if (widget.routine.isSnoozed && widget.routine.snoozedUntil != null) ...[  
+                    const Icon(Icons.snooze, color: Colors.orange, size: 16),
+                    const SizedBox(width: 4),
+                    Text(
+                      _formatSnoozeDate(widget.routine.snoozedUntil!),
+                      style: const TextStyle(fontSize: 12, color: Colors.orange),
+                    ),
+                  ],
+                  if (widget.routine.isActive) ...[  
+                    const SizedBox(width: 8),
+                    _buildBreakButton(context),
+                  ],
                 ],
-              ],
-            ),
-            subtitle: _buildRoutineSubtitle(context),
-            isThreeLine: true,
-            trailing: widget.routine.isActive ? _buildBreakButton(context) : null,
-            onTap: () {
-              _showRoutinePage(context);
-            },
+              ),
+              const SizedBox(height: 8),
+              _buildBlockedChips(),
+              RoutineConditionsList(
+                routine: widget.routine,
+                onRoutineUpdated: widget.onRoutineUpdated,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildRoutineSubtitle(BuildContext context) {
-    String timeText;
-    
+  String _buildTimeText(BuildContext context) {
     // Add time information
     if (widget.routine.startTime == -1 && widget.routine.endTime == -1) {
-      timeText = 'All day';
+      return 'All day';
     } else {
       final startTimeOfDay = TimeOfDay(hour: widget.routine.startHour, minute: widget.routine.startMinute);
       final endTimeOfDay = TimeOfDay(hour: widget.routine.endHour, minute: widget.routine.endMinute);
-      timeText = '${startTimeOfDay.format(context)} - ${endTimeOfDay.format(context)}';
+      return '${startTimeOfDay.format(context)} - ${endTimeOfDay.format(context)}';
     }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(timeText),
-        const SizedBox(height: 4),
-        _buildBlockedChips(),
-        RoutineConditionsList(
-          routine: widget.routine,
-          onRoutineUpdated: widget.onRoutineUpdated,
-        ),
-      ],
-    );
   }
 
   // Helper method to create consistently styled chips
@@ -230,7 +238,7 @@ class _RoutineCardState extends State<RoutineCard> {
           backgroundColor: Colors.red,
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           visualDensity: VisualDensity.compact,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.only(right: 4),
         );
       }
       // No special styling for snoozed status anymore
@@ -314,7 +322,7 @@ class _RoutineCardState extends State<RoutineCard> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            _remainingBreakTime.isEmpty ? "(calculating...)" : _remainingBreakTime,
+            _remainingBreakTime.isEmpty ? "" : _remainingBreakTime,
             style: TextStyle(color: Theme.of(context).colorScheme.secondary),
           ),
           const SizedBox(width: 4),
