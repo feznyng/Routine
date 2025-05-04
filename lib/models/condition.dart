@@ -51,6 +51,10 @@ class Condition {
   double? get longitude => _longitude;
   double? get proximity => _proximity;
   String? get nfcQrCode => _nfcQrCode;
+  
+  /// Returns the data to be used for QR code generation and NFC tag writing.
+  /// This is based on the condition name.
+  String get data => name != null ? 'condition:$name' : '';
   String? get activityType => _activityType;
   String? get activityAmt => _activityAmt;
   String? get name => _name;
@@ -137,8 +141,6 @@ class Condition {
     'name': name,
     'lastCompletedAt': lastCompletedAt?.toIso8601String(),
   };
-
-  String get data => "condition:$id";
 }
 
 class ConditionConverter extends TypeConverter<List<Condition>, String> with

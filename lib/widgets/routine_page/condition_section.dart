@@ -304,11 +304,13 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
       case ConditionType.nfc:
         return NfcConditionWidget(
           condition: _condition,
+          nameController: _nameController,
           onStatusMessage: _showStatusMessage,
         );
       case ConditionType.qr:
         return QrConditionEditor(
           condition: _condition,
+          nameController: _nameController,
           onStatusMessage: _showStatusMessage,
         );
       case ConditionType.health:
@@ -362,7 +364,19 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
               hintText: 'Enter a name or description for this condition',
             ),
             onChanged: (value) {
-              _condition.name = value.isNotEmpty ? value : null;
+              _condition = Condition(
+                id: _condition.id,
+                type: _condition.type,
+                latitude: _condition.latitude,
+                longitude: _condition.longitude,
+                proximity: _condition.proximity,
+                nfcQrCode: _condition.nfcQrCode,
+                activityType: _condition.activityType,
+                activityAmt: _condition.activityAmt,
+                name: value.isNotEmpty ? value : null,
+                completedAt: _condition.lastCompletedAt
+              );
+              setState(() {});
             },
           ),
           // Display status message if available

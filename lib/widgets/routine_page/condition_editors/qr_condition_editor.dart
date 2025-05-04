@@ -6,11 +6,13 @@ import '../../../models/condition.dart';
 
 class QrConditionEditor extends StatefulWidget {
   final Condition condition;
+  final TextEditingController nameController;
   final Function(String, {bool isSuccess, bool isError, bool isLoading}) onStatusMessage;
 
   const QrConditionEditor({
     super.key,
     required this.condition,
+    required this.nameController,
     required this.onStatusMessage,
   });
 
@@ -19,6 +21,26 @@ class QrConditionEditor extends StatefulWidget {
 }
 
 class _QrConditionEditorState extends State<QrConditionEditor> {
+  String? _name;
+
+  @override
+  void initState() {
+    super.initState();
+    _name = widget.nameController.text;
+    widget.nameController.addListener(_onNameChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.nameController.removeListener(_onNameChanged);
+    super.dispose();
+  }
+
+  void _onNameChanged() {
+    setState(() {
+      _name = widget.nameController.text;
+    });
+  }
   bool _isLoading = false;
 
   /// Checks if the current platform is desktop (macOS, Windows, Linux)
@@ -130,7 +152,14 @@ class _QrConditionEditorState extends State<QrConditionEditor> {
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text(
+            'The name will be encoded in the QR code. You can reuse this QR code in a different condition by entering the same name.',
+          ),
+        ),
         const SizedBox(height: 8),
         Center(
           child: ElevatedButton.icon(
@@ -141,8 +170,9 @@ class _QrConditionEditorState extends State<QrConditionEditor> {
                   child: CircularProgressIndicator(strokeWidth: 2)
                 ) 
               : const Icon(Icons.download),
-            label: Text(_isLoading ? 'Processing...' : 'Download QR Code'),
-            onPressed: _isLoading ? null : _saveQrCode,
+            label: Text(_isLoading ? 'Processing...' : 
+              (_name == null || _name!.isEmpty) ? 'Enter a name first' : 'Download QR Code'),
+            onPressed: _isLoading || _name == null || _name!.isEmpty ? null : _saveQrCode,
           ),
         ),
       ],
