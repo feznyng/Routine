@@ -83,6 +83,10 @@ class Device implements Syncable {
   @override
   Future<void> save() async {
     final changes = this.changes;
+
+    if (_entry == null) {
+      changes.add('new');
+    }
     
     await getIt<AppDatabase>().upsertDevice(DevicesCompanion(
       id: Value(_id),

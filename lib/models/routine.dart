@@ -150,6 +150,10 @@ class Routine implements Syncable {
       _numBreaksTaken = 0;
     }
 
+    if (_entry == null) {
+      changes.add('new');
+    }
+
     await getIt<AppDatabase>().upsertRoutine(RoutinesCompanion(
       id: Value(_id), 
       name: Value(_name),

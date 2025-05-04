@@ -180,6 +180,9 @@ class SyncService {
           if (localDevice != null) {
             final localDeviceData = localDevice.toJson();
             for (final change in localDevice.changes) {
+              if (change == 'new') {
+                continue;
+              }
               overwriteMap[change] = localDeviceData[change];
             }
           }
@@ -237,6 +240,9 @@ class SyncService {
           if (localGroup != null) {
             final localGroupData = localGroup.toJson();
             for (final change in localGroup.changes) {
+              if (change == 'new') {
+                continue;
+              }
               overwriteMap[change] = localGroupData[change];
             }
           }
@@ -285,6 +291,9 @@ class SyncService {
           if (localRoutine != null) {
             final localRoutineData = localRoutine.toJson();
             for (final change in localRoutine.changes) {
+              if (change == 'new') {
+                continue;
+              }
               overwriteMap[change] = localRoutineData[change];
             }
           }

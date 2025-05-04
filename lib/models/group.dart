@@ -53,6 +53,12 @@ class Group implements Syncable {
 
   @override
   Future<void> save() async {
+    final changes = this.changes;
+    
+    if (_entry == null) {
+      changes.add('new');
+    }
+
     await getIt<AppDatabase>().upsertGroup(GroupsCompanion(
       id: Value(_id), 
       name: Value(name), 
