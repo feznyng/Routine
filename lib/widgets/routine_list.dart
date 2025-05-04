@@ -20,6 +20,7 @@ class _RoutineListState extends State<RoutineList> {
   bool _activeRoutinesExpanded = true;
   bool _inactiveRoutinesExpanded = true;
   bool _snoozedRoutinesExpanded = true;
+  bool _completedRoutinesExpanded = true;
   final cron = Cron();
   final List<ScheduledTask> _scheduledTasks = [];
   final _syncService = SyncService();
@@ -147,10 +148,11 @@ class _RoutineListState extends State<RoutineList> {
       return aNextActive.compareTo(bNextActive);
     });
     
-    // Split sorted routines into active, inactive, and snoozed
+    // Split sorted routines into completed, active, inactive, and snoozed
     final snoozedRoutines = sortedRoutines.where((routine) => routine.isSnoozed).toList();
-    final activeRoutines = sortedRoutines.where((routine) => routine.isActive && !routine.isSnoozed).toList();
-    final inactiveRoutines = sortedRoutines.where((routine) => !routine.isActive && !routine.isSnoozed).toList();
+    final completedRoutines = sortedRoutines.where((routine) => !routine.isSnoozed && routine.areConditionsMet).toList();
+    final activeRoutines = sortedRoutines.where((routine) => routine.isActive && !routine.isSnoozed && !routine.areConditionsMet).toList();
+    final inactiveRoutines = sortedRoutines.where((routine) => !routine.isActive && !routine.isSnoozed && !routine.areConditionsMet).toList();
     
     return Scaffold(
       body: Center(
@@ -179,10 +181,28 @@ class _RoutineListState extends State<RoutineList> {
                           onRoutineUpdated: () => setState(() {}),
                         )),
                     ],
-                    
+
                     // Add padding between sections
                     const SizedBox(height: 24),
-                    
+
+                    // Completed routines section
+                    if (completedRoutines.isNotEmpty) ...[  
+                      _buildSectionHeader(
+                        context, 
+                        'Completed', 
+                        _completedRoutinesExpanded, 
+                        () => setState(() => _completedRoutinesExpanded = !_completedRoutinesExpanded)
+                      ),
+                      if (_completedRoutinesExpanded)
+                        ...completedRoutines.map((routine) => RoutineCard(
+                          routine: routine,
+                          onRoutineUpdated: () => setState(() {}),
+                        )),
+                    ],
+
+                    // Add padding between sections
+                    const SizedBox(height: 24),
+
                     // Inactive routines section
                     if (inactiveRoutines.isNotEmpty) ...[
                       _buildSectionHeader(

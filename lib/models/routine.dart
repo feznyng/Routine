@@ -489,21 +489,11 @@ class Routine implements Syncable {
   }
 
   bool isConditionMet(Condition condition) {
-    final startedAt = this.startedAt;
-    
-    if (condition.lastCompletedAt != null && condition.lastCompletedAt!.isAfter(startedAt)) {
-      return true;
-    }
-    
-    return false;
+    return condition.lastCompletedAt != null && condition.lastCompletedAt!.isAfter(startedAt);
   }
 
   bool get areConditionsMet {
-    if (conditions.isEmpty) return false;
-
-    return conditions.every((c) {
-      return isConditionMet(c);
-    });
+    return conditions.isEmpty ? false : conditions.every((c) => isConditionMet(c));
   }
 
   void completeCondition(Condition condition, {bool complete = true}) {
