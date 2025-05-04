@@ -3,6 +3,7 @@ import 'package:Routine/util.dart';
 import 'package:cron/cron.dart';
 import 'package:flutter/material.dart';
 import '../models/routine.dart';
+import '../services/sync_service.dart';
 import 'routine_page.dart';
 import 'routine_card.dart';
 
@@ -21,6 +22,7 @@ class _RoutineListState extends State<RoutineList> {
   bool _snoozedRoutinesExpanded = true;
   final cron = Cron();
   final List<ScheduledTask> _scheduledTasks = [];
+  final _syncService = SyncService();
 
   @override
   void initState() {
@@ -156,7 +158,12 @@ class _RoutineListState extends State<RoutineList> {
           constraints: const BoxConstraints(maxWidth: 800),
           child: _routines.isEmpty
               ? _buildEmptyState(context)
-              : ListView(
+              : RefreshIndicator(
+                onRefresh: () async {
+                  // Trigger a full sync
+                  _syncService.addJob(SyncJob(remote: true, full: true));
+                },
+                child: ListView(
                   children: [
                     // Active routines section
                     if (activeRoutines.isNotEmpty) ...[  
@@ -205,11 +212,12 @@ class _RoutineListState extends State<RoutineList> {
                           onRoutineUpdated: () => setState(() {}),
                         )),
                     ],
-
+                    
                     // Add padding between sections
                     const SizedBox(height: 24),
                   ],
                 ),
+              ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -244,15 +252,7 @@ class _RoutineListState extends State<RoutineList> {
       ),
     );
   }
-
-
-
-
-
-
-
-
-
+  
   Widget _buildEmptyState(BuildContext context) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
