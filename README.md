@@ -1,10 +1,31 @@
 # Routine
 
-App/site blocker for Windows, MacOS, and iOS. Routine is designed to help you both avoid bad habits and encourage good ones via conditioned block lists. 
+App/site blocker for Windows, MacOS, and iOS.
 
-## Getting Started
+## Features
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- **Cross-platform:**: Works across (almost) all your devices and automatically syncs changes. 
+- **Conditions**: Allows you to define special conditions on lists like needing to visit a location or scan an NFC tag/QR Code before unlocking your apps, allowing you to incentivize good habits like going to the gym.
+- **Local-First**: Routine can run entirely offline on your device.
+- **Flexible**: Supports both block and allow lists and multiple active lists at the same time. 
 
+## Development
+
+Routine is a Flutter application. Most business logic and UI is written in Dart with platform-specific blocking logic written in Swift (MacOS, iOS) and C++ (Windows). 
+
+To get started with Routine development, follow the [Flutter Getting Started Docs](https://docs.flutter.dev/get-started/install) for the platforms you'd like to develop for. After you have that set up, you can use the standard commands to run/build/develop Routine. Certain components will require additional setup discussed below. 
+
+### iOS and MacOS
+iOS and MacOS development will require an [Apple Developer account](https://developer.apple.com/programs/enroll/) due to required entitlements (Family Controls, etc.). 
+
+### Windows
+Unfortunately, builds fail on Windows when firebase_core is included, you can use the feature/no-firebase branch to bypass this issue.
+
+### Supabase
+Cross-device sync is performed via Supabase. Credentials for this are provided via a .env file in the root directory, refer to .env.example. If you don't have a Supabase project setup, you can simply duplicate and rename .env.example to .env. Empty values are fine.
+
+### Firebase
+Background mobile device updates are performed via notifications sent through Firebase Cloud Messaging. If you don't have a Firebase project, you can rename the firebase_options.example.dart file to firebase_options.dart for local development. 
+ 
+## Self-Hosted Sync
+WIP.
