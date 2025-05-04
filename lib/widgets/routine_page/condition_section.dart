@@ -1,10 +1,8 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
-import 'package:file_selector/file_selector.dart';
 import '../../models/routine.dart';
 import '../../models/condition.dart';
 import 'condition_editors/condition_editors.dart';
+import 'condition_type_utils.dart';
 
 class ConditionSection extends StatelessWidget {
   final Routine routine;
@@ -18,35 +16,7 @@ class ConditionSection extends StatelessWidget {
     this.enabled = true,
   });
 
-  String _getConditionTypeLabel(ConditionType type) {
-    switch (type) {
-      case ConditionType.location:
-        return 'Location';
-      case ConditionType.nfc:
-        return 'NFC Tag';
-      case ConditionType.qr:
-        return 'QR Code';
-      case ConditionType.health:
-        return 'Health Activity';
-      case ConditionType.todo:
-        return 'To-Do Task';
-    }
-  }
 
-  IconData _getConditionTypeIcon(ConditionType type) {
-    switch (type) {
-      case ConditionType.location:
-        return Icons.location_on;
-      case ConditionType.nfc:
-        return Icons.nfc;
-      case ConditionType.qr:
-        return Icons.qr_code;
-      case ConditionType.health:
-        return Icons.fitness_center;
-      case ConditionType.todo:
-        return Icons.check_circle_outline;
-    }
-  }
 
   String _getConditionSummary(Condition condition) {
     // If the condition has a name, use it as the summary for any condition type
@@ -117,8 +87,8 @@ class ConditionSection extends StatelessWidget {
               .where((v) => ![ConditionType.health].contains(v))
               .map((type) {
               return ListTile(
-                leading: Icon(_getConditionTypeIcon(type)),
-                title: Text(_getConditionTypeLabel(type)),
+                leading: Icon(ConditionTypeUtils.getIcon(type)),
+                title: Text(ConditionTypeUtils.getLabel(type)),
                 onTap: () {
                   Navigator.pop(context);
                   final newCondition = Condition.create(type: type);
@@ -185,8 +155,8 @@ class ConditionSection extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final condition = routine.conditions[index];
                     return ListTile(
-                      leading: Icon(_getConditionTypeIcon(condition.type)),
-                      title: Text(_getConditionTypeLabel(condition.type)),
+                      leading: Icon(ConditionTypeUtils.getIcon(condition.type)),
+                      title: Text(ConditionTypeUtils.getLabel(condition.type)),
                       subtitle: Text(_getConditionSummary(condition)),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: enabled ? () => _editCondition(context, condition) : null,
@@ -234,14 +204,11 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
   late TextEditingController _activityAmtController;
   late TextEditingController _nameController;
   
-  // Flag to track if NFC tag has been successfully written
-  bool _nfcTagWritten = false;
-  
   // Status message for all operations
   String? _statusMessage;
-  bool _isLoading = false;
   bool _isSuccess = false;
   bool _isError = false;
+  bool _nfcTagWritten = false;
   
   // Show a status message in the UI
   void _showStatusMessage(String message, {bool isSuccess = false, bool isError = false, bool isLoading = false}) {
@@ -250,7 +217,6 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
         _statusMessage = message;
         _isSuccess = isSuccess;
         _isError = isError;
-        _isLoading = isLoading;
       });
     }
   }
@@ -262,7 +228,6 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
         _statusMessage = null;
         _isSuccess = false;
         _isError = false;
-        _isLoading = false;
       });
     }
   }
@@ -304,135 +269,7 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
     super.dispose();
   }
   
-  /// Checks if the current platform is desktop (macOS, Windows, Linux)
-  Future<bool> _isDesktopPlatform() async {
-    try {
-      if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-        return true;
-      }
-    } catch (e) {
-      // If Platform is not available, we're probably on web
-      return false;
-    }
-    return false;
-  }
-  
-  /// Gets the downloads directory path for desktop platforms
-  Future<String?> _getDownloadsPath() async {
-    try {
-      if (Platform.isMacOS) {
-        final Directory homeDir = Directory(Platform.environment['HOME'] ?? '');
-        return '${homeDir.path}/Downloads';
-      } else if (Platform.isWindows) {
-        final Directory homeDir = Directory(Platform.environment['USERPROFILE'] ?? '');
-        return '${homeDir.path}\\Downloads';
-      } else if (Platform.isLinux) {
-        final Directory homeDir = Directory(Platform.environment['HOME'] ?? '');
-        return '${homeDir.path}/Downloads';
-      }
-    } catch (e) {
-      // If we can't get the downloads directory, return null
-      return null;
-    }
-    return null;
-  }
-  
-  /// Saves the QR code as a PNG file
-  Future<void> _saveQrCode(String data) async {
-    try {
-      // Create QR painter
-      final painter = QrPainter(
-        data: data,
-        version: QrVersions.auto,
-        gapless: true,
-        errorCorrectionLevel: QrErrorCorrectLevel.L,
-      );
-      
-      _showStatusMessage('Generating QR code...', isLoading: true);
-      
-      // Generate image data
-      final imageData = await painter.toImageData(600.0);
-      if (imageData == null) {
-        if (context.mounted) {
-          _showStatusMessage('Failed to generate QR code image', isError: true);
-        }
-        return;
-      }
-      
-      // Convert to Uint8List
-      final imageBytes = imageData.buffer.asUint8List();
-      const String fileName = 'routine_qr_code.png';
-      
-      // Check if we're on desktop and should use Downloads directory
-      final isDesktop = await _isDesktopPlatform();
-      String? initialDirectory;
-      
-      if (isDesktop) {
-        initialDirectory = await _getDownloadsPath();
-      }
-      
-      // Set up file type and suggested name
-      final saveLocation = await getSaveLocation(
-        suggestedName: fileName,
-        initialDirectory: initialDirectory,
-        acceptedTypeGroups: [
-          const XTypeGroup(
-            label: 'PNG Images',
-            extensions: ['png'],
-          ),
-        ],
-      );
-      
-      if (saveLocation != null) {
-        // Create file and write bytes
-        final file = XFile.fromData(
-          imageBytes,
-          mimeType: 'image/png',
-          name: fileName,
-        );
-        
-        await file.saveTo(saveLocation.path);
-        
-        if (context.mounted) {
-          _showStatusMessage('QR code saved to: ${saveLocation.path}', isSuccess: true);
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        _showStatusMessage('Error saving QR code: $e', isError: true);
-      }
-    }
-  }
 
-  String _getConditionTypeLabel(ConditionType type) {
-    switch (type) {
-      case ConditionType.location:
-        return 'Location';
-      case ConditionType.nfc:
-        return 'NFC Tag';
-      case ConditionType.qr:
-        return 'QR Code';
-      case ConditionType.health:
-        return 'Health Activity';
-      case ConditionType.todo:
-        return 'To-Do Task';
-    }
-  }
-
-  IconData _getConditionTypeIcon(ConditionType type) {
-    switch (type) {
-      case ConditionType.location:
-        return Icons.location_on;
-      case ConditionType.nfc:
-        return Icons.nfc;
-      case ConditionType.qr:
-        return Icons.qr_code;
-      case ConditionType.health:
-        return Icons.fitness_center;
-      case ConditionType.todo:
-        return Icons.check_circle_outline;
-    }
-  }
 
   Widget _buildStatusMessage() {
     if (_statusMessage == null) return const SizedBox.shrink();
@@ -498,10 +335,9 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
           onNfcTagWritten: (written) => setState(() => _nfcTagWritten = written),
         );
       case ConditionType.qr:
-        return QrConditionWidget(
+        return QrConditionEditor(
           condition: _condition,
-          onSaveQrCode: () => _saveQrCode(_condition.data),
-          isLoading: _isLoading,
+          onStatusMessage: _showStatusMessage,
         );
       case ConditionType.health:
         return HealthConditionWidget(
@@ -532,10 +368,10 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
             children: [
               Row(
                 children: [
-                  Icon(_getConditionTypeIcon(_condition.type)),
+                  Icon(ConditionTypeUtils.getIcon(_condition.type)),
                   const SizedBox(width: 8),
                   Text(
-                    'Edit ${_getConditionTypeLabel(_condition.type)}',
+                    'Edit ${ConditionTypeUtils.getLabel(_condition.type)}',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ],
