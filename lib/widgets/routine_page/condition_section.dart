@@ -1,7 +1,11 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:nfc_manager/nfc_manager.dart';
+import 'package:file_selector/file_selector.dart';
 import '../../models/routine.dart';
 import '../../models/condition.dart';
 import '../../util.dart';
@@ -236,6 +240,36 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
   
   // Flag to track if NFC tag has been successfully written
   bool _nfcTagWritten = false;
+  
+  // Status message for all operations
+  String? _statusMessage;
+  bool _isLoading = false;
+  bool _isSuccess = false;
+  bool _isError = false;
+  
+  // Show a status message in the UI
+  void _showStatusMessage(String message, {bool isSuccess = false, bool isError = false, bool isLoading = false}) {
+    if (mounted) {
+      setState(() {
+        _statusMessage = message;
+        _isSuccess = isSuccess;
+        _isError = isError;
+        _isLoading = isLoading;
+      });
+    }
+  }
+  
+  // Clear the status message
+  void _clearStatusMessage() {
+    if (mounted) {
+      setState(() {
+        _statusMessage = null;
+        _isSuccess = false;
+        _isError = false;
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -273,6 +307,106 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
     _nameController.dispose();
     super.dispose();
   }
+  
+  /// Checks if the current platform is desktop (macOS, Windows, Linux)
+  Future<bool> _isDesktopPlatform() async {
+    try {
+      if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+        return true;
+      }
+    } catch (e) {
+      // If Platform is not available, we're probably on web
+      return false;
+    }
+    return false;
+  }
+  
+  /// Gets the downloads directory path for desktop platforms
+  Future<String?> _getDownloadsPath() async {
+    try {
+      if (Platform.isMacOS) {
+        final Directory homeDir = Directory(Platform.environment['HOME'] ?? '');
+        return '${homeDir.path}/Downloads';
+      } else if (Platform.isWindows) {
+        final Directory homeDir = Directory(Platform.environment['USERPROFILE'] ?? '');
+        return '${homeDir.path}\\Downloads';
+      } else if (Platform.isLinux) {
+        final Directory homeDir = Directory(Platform.environment['HOME'] ?? '');
+        return '${homeDir.path}/Downloads';
+      }
+    } catch (e) {
+      // If we can't get the downloads directory, return null
+      return null;
+    }
+    return null;
+  }
+  
+  /// Saves the QR code as a PNG file
+  Future<void> _saveQrCode(String data) async {
+    try {
+      // Create QR painter
+      final painter = QrPainter(
+        data: data,
+        version: QrVersions.auto,
+        gapless: true,
+        errorCorrectionLevel: QrErrorCorrectLevel.L,
+      );
+      
+      _showStatusMessage('Generating QR code...', isLoading: true);
+      
+      // Generate image data
+      final imageData = await painter.toImageData(600.0);
+      if (imageData == null) {
+        if (context.mounted) {
+          _showStatusMessage('Failed to generate QR code image', isError: true);
+        }
+        return;
+      }
+      
+      // Convert to Uint8List
+      final imageBytes = imageData.buffer.asUint8List();
+      const String fileName = 'routine_qr_code.png';
+      
+      // Check if we're on desktop and should use Downloads directory
+      final isDesktop = await _isDesktopPlatform();
+      String? initialDirectory;
+      
+      if (isDesktop) {
+        initialDirectory = await _getDownloadsPath();
+      }
+      
+      // Set up file type and suggested name
+      final saveLocation = await getSaveLocation(
+        suggestedName: fileName,
+        initialDirectory: initialDirectory,
+        acceptedTypeGroups: [
+          const XTypeGroup(
+            label: 'PNG Images',
+            extensions: ['png'],
+          ),
+        ],
+      );
+      
+      if (saveLocation != null) {
+        // Create file and write bytes
+        final file = XFile.fromData(
+          imageBytes,
+          mimeType: 'image/png',
+          name: fileName,
+        );
+        
+        await file.saveTo(saveLocation.path);
+        
+        if (context.mounted) {
+          _showStatusMessage('QR code saved to: ${saveLocation.path}', isSuccess: true);
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        _showStatusMessage('Error saving QR code: $e', isError: true);
+      }
+    }
+  }
 
   String _getConditionTypeLabel(ConditionType type) {
     switch (type) {
@@ -304,6 +438,53 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
     }
   }
 
+  Widget _buildStatusMessage() {
+    if (_statusMessage == null) return const SizedBox.shrink();
+    
+    return Container(
+      margin: const EdgeInsets.only(top: 12, bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _isSuccess ? Colors.green.withOpacity(0.1) : 
+               _isError ? Colors.red.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: _isSuccess ? Colors.green : 
+                 _isError ? Colors.red : Colors.blue,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _isSuccess ? Icons.check_circle : 
+            _isError ? Icons.error : Icons.info,
+            color: _isSuccess ? Colors.green : 
+                   _isError ? Colors.red : Colors.blue,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _statusMessage!,
+              style: TextStyle(
+                color: _isSuccess ? Colors.green.shade800 : 
+                       _isError ? Colors.red.shade800 : Colors.blue.shade800,
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 16),
+            onPressed: _clearStatusMessage,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            splashRadius: 16,
+          ),
+        ],
+      ),
+    );
+  }
+  
   Widget _buildConditionFields() {
     switch (_condition.type) {
       case ConditionType.location:
@@ -318,9 +499,7 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
                     onPressed: () async {
                       try {
                         // Show loading indicator
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Getting your current location...')),
-                        );
+                        _showStatusMessage('Getting your current location...', isLoading: true);
                         
                         // Get the current position
                         final position = await Util.determinePosition();
@@ -334,13 +513,9 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
                         });
                         
                         // Show success message
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Location updated successfully!')),
-                        );
+                        _showStatusMessage('Location updated successfully!', isSuccess: true);
                       } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error getting location: $e')),
-                        );
+                        _showStatusMessage('Error getting location: $e', isError: true);
                       }
                     },
                   ),
@@ -470,19 +645,19 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
                               
                               // Update UI and show feedback
                               if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(writeSuccess 
+                                _showStatusMessage(
+                                  writeSuccess 
                                     ? 'NFC tag scanned and condition ID written successfully!' 
-                                    : 'NFC tag scanned but could not write data. Please try another tag.')),
+                                    : 'NFC tag scanned but could not write data. Please try another tag.',
+                                  isSuccess: writeSuccess,
+                                  isError: !writeSuccess
                                 );
                               }
                             }
                           } catch (e) {
                             // Show error message
                             if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Error processing NFC tag: $e')),
-                              );
+                              _showStatusMessage('Error processing NFC tag: $e', isError: true);
                             }
                           } finally {
                             // Stop session
@@ -524,7 +699,16 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
                 size: 200.0,
                 backgroundColor: Colors.white,
               ),
-            )
+            ),
+            const SizedBox(height: 16),
+            Center(
+              child: ElevatedButton.icon(
+                icon: _isLoading ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.download),
+                label: Text(_isLoading ? 'Processing...' : 'Download QR Code'),
+                onPressed: _isLoading ? null : () => _saveQrCode(_condition.data),
+              ),
+            ),
+
           ],
         );
       case ConditionType.health:
@@ -603,6 +787,8 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
               _condition.name = value.isNotEmpty ? value : null;
             },
           ),
+          // Display status message if available
+          _buildStatusMessage(),
           const SizedBox(height: 16),
           _buildConditionFields(),
           const SizedBox(height: 24),
