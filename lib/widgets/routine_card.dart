@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:geolocator/geolocator.dart';
+import 'package:nfc_manager/nfc_manager.dart';
 import 'dart:async';
 import '../models/routine.dart';
 import '../models/condition.dart';
@@ -502,20 +503,8 @@ class _RoutineCardState extends State<RoutineCard> {
         break;
         
       case ConditionType.nfc:
-        // Show a placeholder dialog for NFC conditions
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('NFC Tag Condition'),
-            content: const Text('Scan an NFC tag to complete this condition.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
+        // Handle NFC condition
+        _handleNfcCondition(context, condition);
         break;
         
       default:
@@ -598,6 +587,171 @@ class _RoutineCardState extends State<RoutineCard> {
     }
   }
   
+  void _handleNfcCondition(BuildContext context, Condition condition) async {
+    // Check if running on a mobile device
+    bool isMobileDevice = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+    
+    if (!isMobileDevice) {
+      // Show a dialog on desktop platforms
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Mobile Device Required'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.phone_android,
+                size: 48,
+                color: Colors.blue,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'NFC scanning is only available on mobile devices.',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    try {
+      // Check if NFC is available
+      bool isAvailable = await NfcManager.instance.isAvailable();
+      if (!isAvailable) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('NFC is not available on this device')),
+          );
+        }
+        return;
+      }
+
+      // Show scanning dialog
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Scanning'),
+            content: const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Bring your NFC tag close to the device...'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext);
+                  NfcManager.instance.stopSession();
+                },
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
+        );
+      }
+
+      // Start NFC session
+      NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
+        try {
+          // Read NDEF message from the tag
+          String? tagData;
+          if (tag.data.containsKey('ndef')) {
+            final ndef = Ndef.from(tag);
+            if (ndef != null) {
+              // Try to read the NDEF message
+              final cachedMessage = ndef.cachedMessage;
+              if (cachedMessage != null) {
+                // Look for text records
+                for (final record in cachedMessage.records) {
+                  if (record.typeNameFormat == NdefTypeNameFormat.nfcWellknown && 
+                      record.type.length == 1 && 
+                      record.type[0] == 0x54) { // 'T' for text record
+                    final payload = record.payload;
+                    if (payload.length > 1) {
+                      final languageCodeLength = payload[0] & 0x3F;
+                      final isUTF16 = (payload[0] & 0x80) != 0;
+                      
+                      // Skip language code and get the text
+                      final textBytes = payload.sublist(1 + languageCodeLength);
+                      tagData = String.fromCharCodes(textBytes);
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          // Close the scanning dialog
+          if (context.mounted) {
+            Navigator.of(context, rootNavigator: true).pop();
+          }
+
+          // Check if we got data from the tag
+          if (tagData != null) {
+            // Compare tag data with condition data
+            if (tagData == condition.data) {
+              // NFC tag matches, complete the condition
+              widget.routine.completeCondition(condition);
+              if (widget.onRoutineUpdated != null) {
+                widget.onRoutineUpdated!();
+              }
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('NFC tag verified! Condition completed.')),
+                );
+              }
+            } else {
+              // NFC tag doesn't match
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Invalid NFC tag. Please try again with the correct tag.')),
+                );
+              }
+            }
+          } else {
+            // No NDEF data found on the tag
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('No data found on this NFC tag. Please use a tag that was set up for this condition.')),
+              );
+            }
+          }
+        } catch (e) {
+          // Close the scanning dialog if open
+          if (context.mounted) {
+            Navigator.of(context, rootNavigator: true).pop();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error reading NFC tag: $e')),
+            );
+          }
+        } finally {
+          // Stop the NFC session
+          NfcManager.instance.stopSession();
+        }
+      });
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error accessing NFC: $e')),
+        );
+      }
+    }
+  }
+
   void _handleLocationCondition(BuildContext context, Condition condition) async {
     if (condition.latitude == null || condition.longitude == null) {
       ScaffoldMessenger.of(context).showSnackBar(
