@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:Routine/widgets/routine_page/condition_type_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:geolocator/geolocator.dart';
@@ -47,7 +48,7 @@ class RoutineConditionsList extends StatelessWidget {
         onTap: () => _handleConditionTap(context, condition),
         child: Row(
           children: [
-            Icon(_getConditionIcon(condition), size: 16),
+            Icon(ConditionTypeUtils.getIcon(condition.type), size: 16),
             const SizedBox(width: 8),
             Checkbox(
               value: isMet,
@@ -65,21 +66,6 @@ class RoutineConditionsList extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  IconData _getConditionIcon(Condition condition) {
-    switch (condition.type) {
-      case ConditionType.location:
-        return Icons.location_on;
-      case ConditionType.nfc:
-        return Icons.nfc;
-      case ConditionType.qr:
-        return Icons.qr_code;
-      case ConditionType.health:
-        return Icons.favorite;
-      case ConditionType.todo:
-        return Icons.assignment_turned_in;
-    }
   }
 
   String _getConditionDescription(Condition condition) {
