@@ -133,15 +133,6 @@ class _QrConditionEditorState extends State<QrConditionEditor> {
       children: [
         const SizedBox(height: 8),
         Center(
-          child: QrImageView(
-            data: widget.condition.data,
-            version: QrVersions.auto,
-            size: 200.0,
-            backgroundColor: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Center(
           child: ElevatedButton.icon(
             icon: _isLoading 
               ? const SizedBox(
