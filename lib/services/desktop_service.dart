@@ -126,7 +126,7 @@ class DesktopService extends PlatformService {
   }
   
   void onRoutinesUpdated(List<Routine> routines) async {
-    final Set<Schedule> evaluationTimes = Util.getEvaluationTimes(routines);
+    final List<Schedule> evaluationTimes = Util.getEvaluationTimes(routines);
 
     for (final ScheduledTask task in _scheduledTasks) {
       task.cancel();

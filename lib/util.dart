@@ -97,20 +97,35 @@ class Util {
     return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
   }
 
-  static Set<Schedule> getEvaluationTimes(List<Routine> routines) {
-    Set<Schedule> evaluationTimes = {};
+  static List<Schedule> getEvaluationTimes(List<Routine> routines) {
+    List<Schedule> evaluationTimes = [];
+    Set<int> seen = {}; // dedupe times (minutes) to avoid redundant evals
+
+    // always evaluate at midnight for all-day routines
+    _addIfUnseen(evaluationTimes, seen, 0, 0, 0);
+
     for (final Routine routine in routines) {
-      evaluationTimes.add(Schedule(hours: routine.startHour, minutes: routine.startMinute, seconds: 10));
-      evaluationTimes.add(Schedule(hours: routine.endHour, minutes: routine.endMinute, seconds: 10));
+      if (routine.allDay) { continue; }
 
-      if (routine.pausedUntil != null && routine.pausedUntil!.isAfter(DateTime.now())) {
-        evaluationTimes.add(Schedule(hours: routine.pausedUntil!.hour, minutes: routine.pausedUntil!.minute, seconds: routine.pausedUntil!.second + 5));
+      _addIfUnseen(evaluationTimes, seen, routine.startHour, routine.startMinute, 0);
+      _addIfUnseen(evaluationTimes, seen, routine.endHour, routine.endMinute, 0);
+
+      if (routine.pausedUntil != null) {
+        _addIfUnseen(evaluationTimes, seen, routine.pausedUntil!.hour, routine.pausedUntil!.minute, routine.pausedUntil!.second);
       }
-
-      if (routine.snoozedUntil != null && routine.snoozedUntil!.isAfter(DateTime.now())) {
-        evaluationTimes.add(Schedule(hours: routine.snoozedUntil!.hour, minutes: routine.snoozedUntil!.minute, seconds: routine.snoozedUntil!.second + 5));
+      if (routine.snoozedUntil != null) {
+        _addIfUnseen(evaluationTimes, seen, routine.snoozedUntil!.hour, routine.snoozedUntil!.minute, routine.snoozedUntil!.second);
       }
     }
+    
     return evaluationTimes;
+  }
+
+  static void _addIfUnseen(List<Schedule> schedules, Set<int> seen, int hour, int minute, int second) {
+    final time = hour * 60 + minute;
+    if (!seen.contains(time)) {
+      seen.add(time);
+      schedules.add(Schedule(hours: hour, minutes: minute, seconds: second + 5)); // add a little delay to avoid timing issues
+    }
   }
 }

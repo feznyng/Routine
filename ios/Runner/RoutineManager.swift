@@ -19,10 +19,24 @@ class RoutineManager {
         
         let now = Date()
         var seenTimes: Set<Int> = []
-        var usedNames: Set<String> = []
+
+        // always schedule for midnight to handle all day routines
+        do {
+            let intervalStart = minutesOfDayToDateComponents(0)
+            let intervalEnd = minutesOfDayToDateComponents(15)
+
+            seenTimes.insert(0)
+            seenTimes.insert(15)
+
+            let name = DeviceActivityName("midnight-eval")
+            let schedule = DeviceActivitySchedule(intervalStart: intervalStart, intervalEnd: intervalEnd, repeats: true)
+
+            try center.startMonitoring(name, during: schedule)
+        } catch {
+            print("failed to register device activity \(error.localizedDescription)")
+        }
         
         for routine in routines {
-
             if routine.startTime != nil && routine.endTime != nil && !routine.allDay {
                 let startTime = routine.startTime!
                 let endTime = routine.endTime!
@@ -39,7 +53,6 @@ class RoutineManager {
                         
                         seenTimes.insert(startTime)
                         seenTimes.insert(endTime)
-                        usedNames.insert(routine.id)
                         
                     } catch {
                         print("failed to register device activity \(error.localizedDescription)")
