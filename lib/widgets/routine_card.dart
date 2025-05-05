@@ -222,7 +222,7 @@ class _RoutineCardState extends State<RoutineCard> {
     final numBreaksLeft = widget.routine.numBreaksLeft;
     final isUnlimited = breaksLeftText == "Unlimited";
     final breakWord = numBreaksLeft == 1 ? 'break' : 'breaks';
-    final suffix = widget.routine.isActive && !isUnlimited ? ' left' : '';
+    final suffix = widget.routine.isActive && !isUnlimited && widget.routine.maxBreaks != 0 ? ' left' : '';
     
     chipTexts.add('$breaksLeftText ${isUnlimited ? "breaks" : "$breakWord$suffix"}');
 
