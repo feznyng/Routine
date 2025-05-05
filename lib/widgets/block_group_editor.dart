@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
+import 'package:app_settings/app_settings.dart';
 import 'block_apps_page.dart';
 import 'block_sites_page.dart';
 import 'app_site_selector.dart';
 import 'browser_extension_onboarding_dialog.dart';
 import '../services/browser_extension_service.dart';
+import '../services/mobile_service.dart';
 
 class BlockGroupEditor extends StatefulWidget {
   final List<String> selectedApps;
@@ -327,6 +329,33 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
             subtitle: _getCombinedSubtitle(),
             icon: Icons.apps,
             onPressed: () async {
+              final hasPermission = await MobileService.instance.checkAndRequestFamilyControlsAuthorization();
+              if (!hasPermission) {
+                if (!mounted) return;
+                await showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Permission Required'),
+                    content: const Text('Screen Time permissions are required to block apps and websites. Please enable them in Settings.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          AppSettings.openAppSettings(type: AppSettingsType.location);
+                        },
+                        child: const Text('Open Settings'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Cancel'),
+                      ),
+                    ],
+                  ),
+                );
+                return;
+              }
+              
+              if (!mounted) return;
               await Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => AppSiteSelectorPage(

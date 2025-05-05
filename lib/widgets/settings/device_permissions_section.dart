@@ -109,7 +109,7 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> {
               title: 'Screen Time Restrictions',
               subtitle: 'Required to block apps and websites',
               isGranted: _familyControlsPermission,
-              onOpenSettings: () => AppSettings.openAppSettings(type: AppSettingsType.notification), // will redirect to same page
+              onOpenSettings: () => AppSettings.openAppSettings(type: AppSettingsType.location), // will redirect to same page
             ),
           ],
         ),
