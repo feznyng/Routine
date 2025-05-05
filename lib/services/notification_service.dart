@@ -57,7 +57,7 @@ class NotificationService {
     NotificationSettings settings = await messaging.requestPermission(
       alert: true,
       announcement: false,
-      badge: true,
+      badge: false,
       carPlay: false,
       criticalAlert: false,
       provisional: false,
@@ -65,6 +65,8 @@ class NotificationService {
     );
 
     print('User granted permission: ${settings.authorizationStatus}');
+
+    // TODO: handle failure gracefully here
 
     await fetchAndUpdateToken();
 
@@ -77,5 +79,11 @@ class NotificationService {
       });
 
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  }
+
+  Future<bool> get granted async {
+    final NotificationSettings settings = await FirebaseMessaging.instance.getNotificationSettings();
+    final status = settings.authorizationStatus;
+    return status == AuthorizationStatus.authorized || status == AuthorizationStatus.provisional;
   }
 }
