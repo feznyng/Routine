@@ -96,9 +96,10 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: 16),
           ],
           
-          // Device Permissions section (iOS only)
-          const DevicePermissionsSection(),
-          const SizedBox(height: 16),
+          if (Platform.isIOS) ...{
+            const DevicePermissionsSection(),
+            const SizedBox(height: 16),
+          },
           
           // Sync settings section
           const SyncSettingsSection(),
