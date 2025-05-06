@@ -167,6 +167,7 @@ struct FamilyActivityPickerWrapper: View {
     @State private var showWebsiteTab: Bool = false
     @State private var websiteInput: String = ""
     @State private var plainTextDomains: [String] = []
+    @State private var showLimitWarning: Bool = false
     var onSelectionChanged: (FamilyActivitySelection, [String]) -> Void
     
     init(selection: FamilyActivitySelection, initialPlainTextDomains: [String] = [], onSelectionChanged: @escaping (FamilyActivitySelection, [String]) -> Void) {
@@ -204,7 +205,7 @@ struct FamilyActivityPickerWrapper: View {
                         Button(action: addWebsite) {
                             Image(systemName: "plus")
                         }
-                        .disabled(websiteInput.isEmpty)
+                        .disabled(websiteInput.isEmpty || plainTextDomains.count >= 50)
                     }
                     .padding(.horizontal)
                     
@@ -253,6 +254,12 @@ struct FamilyActivityPickerWrapper: View {
     }
     
     private func addWebsite() {
+        // Check if we've hit the limit
+        if plainTextDomains.count >= 50 {
+            showLimitWarning = true
+            return
+        }
+        
         var site = websiteInput.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         
         // Basic URL cleanup
@@ -263,6 +270,7 @@ struct FamilyActivityPickerWrapper: View {
         if !site.isEmpty && !plainTextDomains.contains(site) {
             plainTextDomains.append(site)
             websiteInput = ""
+            showLimitWarning = false
             
             // Notify about the change
             onSelectionChanged(selection, plainTextDomains)
