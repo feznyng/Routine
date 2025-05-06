@@ -302,6 +302,25 @@ class _RoutineListState extends State<RoutineList> {
   }
 
   void _showRoutinePage(BuildContext context, Routine? routine) {
+    // If creating a new routine (routine is null) and we already have 20 or more routines,
+    // show a limit reached dialog
+    if (routine == null && _routines.length >= 20) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Routine Limit Reached'),
+          content: const Text('You have reached the maximum limit of 20 routines.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => RoutinePage(
