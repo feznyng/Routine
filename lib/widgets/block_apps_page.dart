@@ -266,6 +266,30 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
     if (result != null && result.files.single.path != null) {
       final filePath = result.files.single.path!;
       
+      // Validate based on platform
+      bool isValidApp = Platform.isWindows 
+        ? filePath.toLowerCase().endsWith('.exe')
+        : Platform.isMacOS 
+          ? filePath.contains('.app/') || filePath.toLowerCase().endsWith('.app')
+          : filePath.toLowerCase().endsWith('.apk') || filePath.toLowerCase().endsWith('.deb'); // For Linux
+      
+      if (!isValidApp) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Invalid Application'),
+            content: Text('Please select a valid app.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+      
       setState(() {
         if (!_selectedApps.contains(filePath)) {
           _selectedApps.add(filePath);
