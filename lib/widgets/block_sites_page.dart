@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants.dart';
 
 class BlockSitesPage extends StatefulWidget {
   final List<String> selectedSites;
@@ -35,8 +36,30 @@ class _BlockSitesPageState extends State<BlockSitesPage> {
     super.dispose();
   }
 
+  void _showLimitDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Selection Limit Reached'),
+        content: Text('You can select a maximum of $kMaxBlockedItems sites. Please remove some sites before adding more.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _addSite(String site) {
     if (site.isEmpty) return;
+    
+    // Check the limit before adding
+    if (_selectedSites.length >= kMaxBlockedItems) {
+      _showLimitDialog();
+      return;
+    }
     
     // Basic URL cleanup
     site = site.toLowerCase().trim();

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:Routine/constants.dart';
 import 'package:Routine/util.dart';
 import 'package:cron/cron.dart';
 import 'package:flutter/material.dart';
@@ -304,12 +305,12 @@ class _RoutineListState extends State<RoutineList> {
   void _showRoutinePage(BuildContext context, Routine? routine) {
     // If creating a new routine (routine is null) and we already have 20 or more routines,
     // show a limit reached dialog
-    if (routine == null && _routines.length >= 20) {
+    if (routine == null && _routines.length >= kMaxRoutines) {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Routine Limit Reached'),
-          content: const Text('You have reached the maximum limit of 20 routines.'),
+          content: const Text('You have reached the maximum limit of $kMaxRoutines routines. Please delete some routines before creating new ones.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),

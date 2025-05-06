@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io' show Platform;
 import '../services/desktop_service.dart';
+import '../constants.dart';
 
 class BlockAppsPage extends StatefulWidget {
   final List<String> selectedApps;
@@ -65,6 +66,11 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
   }
 
   Future<void> _selectFolder() async {
+    if (_selectedCategories.length >= kMaxBlockedItems) {
+      _showLimitDialog('folders');
+      return;
+    }
+
     String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
       dialogTitle: 'Select a folder to block',
     );
@@ -229,7 +235,28 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
     );
   }
 
+  void _showLimitDialog(String type) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Selection Limit Reached'),
+        content: Text('You can select a maximum of $kMaxBlockedItems $type. Please remove some items before adding more.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _pickCustomApp() async {
+    if (_selectedApps.length >= kMaxBlockedItems) {
+      _showLimitDialog('applications');
+      return;
+    }
+
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: Platform.isWindows ? FileType.custom : FileType.any,
       allowedExtensions: Platform.isWindows ? ['exe'] : null,
@@ -325,6 +352,8 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
         setState(() {
           if (isSelected) {
             _selectedApps.remove(app.filePath);
+          } else if (_selectedApps.length >= kMaxBlockedItems) {
+            _showLimitDialog('applications');
           } else {
             _selectedApps.add(app.filePath);
           }
