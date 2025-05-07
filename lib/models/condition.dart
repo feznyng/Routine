@@ -25,10 +25,9 @@ class Condition {
   String? _activityAmt;
   String? _name; // Used as name/description for all condition types
   DateTime? _lastCompletedAt;
+  Map<String, dynamic>? _original;
 
-  bool _modified = false;
-
-  Condition({required this.id, required ConditionType type, double? latitude, double? longitude, double? proximity, String? nfcQrCode, String? activityType, String? activityAmt, String? name, DateTime? completedAt})
+  Condition({required this.id, required ConditionType type, double? latitude, double? longitude, double? proximity, String? nfcQrCode, String? activityType, String? activityAmt, String? name, DateTime? completedAt, Map<String, dynamic>? original})
       : _type = type,
         _latitude = latitude,
         _longitude = longitude,
@@ -37,15 +36,33 @@ class Condition {
         _activityType = activityType,
         _activityAmt = activityAmt,
         _name = name,
-        _lastCompletedAt = completedAt;
+        _lastCompletedAt = completedAt,
+        _original = original;
 
   Condition.create({required ConditionType type, String? name}) 
       : id = Uuid().v4(),
         _type = type,
-        _name = name;
+        _name = name,
+        _original = null;
 
   // Getters
-  bool get modified => _modified;
+  bool get modified {
+    if (_original == null) {
+      return true;
+    }
+
+    final original = Condition.fromJson(_original!);
+
+    return original.type != type ||
+      original.latitude != latitude ||
+      original.longitude != longitude ||
+      original.proximity != proximity ||
+      original.nfcQrCode != nfcQrCode ||
+      original.activityType != activityType ||
+      original.activityAmt != activityAmt ||
+      original.name != name ||
+      original.lastCompletedAt != lastCompletedAt;
+  }
   ConditionType get type => _type;
   double? get latitude => _latitude;
   double? get longitude => _longitude;
@@ -63,47 +80,38 @@ class Condition {
   // Setters
   set type(ConditionType value) {
     _type = value;
-    _modified = true;
   }
 
   set latitude(double? value) {
     _latitude = value;
-    _modified = true;
   }
 
   set longitude(double? value) {
     _longitude = value;
-    _modified = true;
   }
 
   set proximity(double? value) {
     _proximity = value;
-    _modified = true;
   }
 
   set nfcQrCode(String? value) {
     _nfcQrCode = value;
-    _modified = true;
   }
 
   set activityType(String? value) {
     _activityType = value;
-    _modified = true;
   }
 
   set activityAmt(String? value) {
     _activityAmt = value;
-    _modified = true;
   }
 
   set name(String? value) {
     _name = value;
-    _modified = true;
   }
 
   set lastCompletedAt(DateTime? value) {
     _lastCompletedAt = value;
-    _modified = true;
   }
 
   factory Condition.fromJson(Map<String, dynamic> json) {

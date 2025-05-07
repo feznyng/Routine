@@ -290,6 +290,10 @@ class Routine implements Syncable {
       changes.add('pausedUntil');
     }
 
+      if (_entry!.snoozedUntil != _snoozedUntil) {
+      changes.add('snoozedUntil');
+    }
+
     if (_entry!.maxBreaks != maxBreaks) {
       changes.add('maxBreaks');
     }
