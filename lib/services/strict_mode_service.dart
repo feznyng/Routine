@@ -70,6 +70,20 @@ class StrictModeService with ChangeNotifier {
       _notifyEffectiveSettingsChanged();
     }
   }
+
+  Future<bool> isGroupLockedDown(String groupId) async {
+    final routines = await Routine.getAll();
+
+    bool lockedDown = false;
+    for (final routine in routines) {
+      if (routine.isActive && routine.strictMode && routine.groups.containsKey(groupId)) {
+        lockedDown = true;
+        break;
+      }
+    }
+
+    return lockedDown;
+  }
   
   // Getter for strict mode status
   bool get inStrictMode => _inStrictMode;

@@ -275,6 +275,10 @@ class AppDatabase extends _$AppDatabase {
     return (select(groups)..where((t) => t.id.isIn(ids))).get();
   }
 
+  Future<GroupEntry?> getGroupById(String id) {
+    return (select(groups)..where((t) => t.id.equals(id))).getSingleOrNull();
+  }
+
   Future<void> tempDeleteGroup(String id) async {
     await transaction(() async {
       await (update(groups)..where((t) => t.id.equals(id))).write(GroupsCompanion(deleted: Value(true), updatedAt: Value(DateTime.now()), changes: Value(['deleted'])));
