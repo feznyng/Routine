@@ -6,13 +6,11 @@ class EditBlockGroupPage extends StatefulWidget {
   final Group group;
   final Function(Group) onSave;
   final VoidCallback? onDelete;
-  final bool inLockdown;
 
   const EditBlockGroupPage({
     super.key,
     required this.group,
     required this.onSave,
-    required this.inLockdown,
     this.onDelete,
   });
 

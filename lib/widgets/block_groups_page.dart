@@ -1,6 +1,4 @@
 import 'dart:async';
-
-import 'package:Routine/services/strict_mode_service.dart';
 import 'package:flutter/material.dart';
 import '../models/group.dart';
 import 'edit_block_group_page.dart';
@@ -65,13 +63,10 @@ class _BlockGroupsPageState extends State<BlockGroupsPage> {
   }
 
   void _showEditPage(BuildContext context, Group group) async {
-    final inLockdown = await StrictModeService().isGroupLockedDown(group.id);
-
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => EditBlockGroupPage(
           group: group,
-          inLockdown: inLockdown,
           onSave: (updatedGroup) {
             print('Saving group: ${updatedGroup.name}');
             updatedGroup.save();
