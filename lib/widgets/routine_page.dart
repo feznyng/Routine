@@ -255,7 +255,6 @@ class _RoutinePageState extends State<RoutinePage> {
                 routine: _routine,
                 devices: _devices,
                 onChanged: _validateRoutine,
-                enabled: !inLockdown,
               ),
               const SizedBox(height: 16),
               TimeSection(

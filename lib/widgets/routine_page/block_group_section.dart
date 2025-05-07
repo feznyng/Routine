@@ -10,14 +10,12 @@ class BlockGroupSection extends StatelessWidget {
   final Routine routine;
   final Map<String, DeviceEntry> devices;
   final Function() onChanged;
-  final bool enabled;
 
   const BlockGroupSection({
     super.key,
     required this.routine,
     required this.devices,
     required this.onChanged,
-    this.enabled = true,
   });
   
   IconData _getDeviceIcon(DeviceType type) {
@@ -114,31 +112,24 @@ class BlockGroupSection extends StatelessWidget {
             child: ListTile(
               leading: Icon(
                 _getDeviceIcon(devices[deviceId]?.type != null ? DeviceType.values.byName(devices[deviceId]!.type) : DeviceType.macos),
-                color: enabled
-                    ? Theme.of(context).iconTheme.color
-                    : Theme.of(context).iconTheme.color?.withValues(alpha: 128),
+                color: Theme.of(context).iconTheme.color
               ),
               title: Text(
                 '${devices[deviceId]?.name}${currDevice ? ' (Current Device)' : ''}',
                 style: TextStyle(
-                  color: enabled
-                      ? Theme.of(context).textTheme.titleMedium?.color
-                      : Theme.of(context).textTheme.titleMedium?.color?.withValues(alpha: 128),
+                  color: Theme.of(context).textTheme.titleMedium?.color
                 ),
               ),
               subtitle: Text(
                 _buildGroupSummary(group, currDevice),
                 style: TextStyle(
-                  color: enabled
-                      ? Theme.of(context).textTheme.bodyMedium?.color
-                      : Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 128),
+                  color: Theme.of(context).textTheme.bodyMedium?.color
                 ),
               ),
               trailing: currDevice
-                  ? Icon(Icons.chevron_right,
-                      color: enabled ? null : Theme.of(context).iconTheme.color?.withValues(alpha: 128))
+                  ? Icon(Icons.chevron_right)
                   : null,
-              onTap: enabled ? () {
+              onTap: () {
                 if (deviceId == currentDeviceId) {
                   _toggleBlockGroup(context, deviceId);
                 } else {
@@ -158,7 +149,7 @@ class BlockGroupSection extends StatelessWidget {
                     },
                   );
                 }
-              } : null,
+              },
             ),
           );
         }),
@@ -166,9 +157,9 @@ class BlockGroupSection extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 8.0),
             child: ElevatedButton.icon(
-              onPressed: enabled ? () => _toggleBlockGroup(context, currentDeviceId) : null,
-              icon: Icon(Icons.add, color: enabled ? null : Theme.of(context).iconTheme.color?.withValues(alpha: 128)),
-              label: Text('Add Device Group', style: TextStyle(color: enabled ? null : Theme.of(context).textTheme.labelLarge?.color?.withValues(alpha: 128))),
+              onPressed: () => _toggleBlockGroup(context, currentDeviceId),
+              icon: Icon(Icons.add),
+              label: Text('Add Device Group'),
             ),
           ),
       ],
