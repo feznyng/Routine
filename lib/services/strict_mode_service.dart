@@ -1,3 +1,5 @@
+import 'package:Routine/database/database.dart';
+import 'package:Routine/setup.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import 'dart:convert';
@@ -72,11 +74,21 @@ class StrictModeService with ChangeNotifier {
   }
 
   Future<bool> isGroupLockedDown(String groupId) async {
-    final routines = await Routine.getAll();
+    final db = getIt<AppDatabase>();
 
+    
+
+    final routines = await db.getRoutines();
+
+    print("checking $groupId");
     bool lockedDown = false;
-    for (final routine in routines) {
-      if (routine.isActive && routine.strictMode && routine.groups.containsKey(groupId)) {
+    for (final routineWithGroup in routines) {
+      final routine = routineWithGroup.routine;
+
+      if (routine.name == "Routine") {
+        print(routine.groups);
+      }
+      if (routine.groups.contains(groupId)) {
         lockedDown = true;
         break;
       }

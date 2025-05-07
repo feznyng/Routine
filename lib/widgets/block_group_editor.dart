@@ -1,3 +1,4 @@
+import 'package:Routine/services/strict_mode_service.dart';
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
 import 'package:app_settings/app_settings.dart';
@@ -16,6 +17,7 @@ class BlockGroupEditor extends StatefulWidget {
   final bool blockSelected;
   final Function(bool) onBlockModeChanged;
   final bool showBlockMode;
+  final String groupId;
 
   const BlockGroupEditor({
     super.key,
@@ -25,6 +27,7 @@ class BlockGroupEditor extends StatefulWidget {
     required this.onSave,
     required this.blockSelected,
     required this.onBlockModeChanged,
+    required this.groupId,
     this.showBlockMode = true,
   });
 
@@ -37,6 +40,7 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
   late List<String> _selectedSites;
   late List<String>? _selectedCategories;
   late bool _blockSelected;
+  late bool _inLockdown;
 
   @override
   void initState() {
@@ -45,6 +49,13 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
     _selectedSites = List.from(widget.selectedSites);
     _selectedCategories = List.from(widget.selectedCategories ?? []);
     _blockSelected = widget.blockSelected;
+
+    StrictModeService().isGroupLockedDown(widget.groupId).then((lockDown) {
+      print("in lockdown $lockDown");
+      setState(() => 
+        _inLockdown = lockDown
+      );
+    });
   }
 
   Future<void> _openAppsDialog() async {

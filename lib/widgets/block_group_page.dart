@@ -245,6 +245,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                 ),
               if (!usingNamedGroup) 
                 BlockGroupEditor(
+                  groupId: _selectedGroup.id,
                   selectedApps: _selectedGroup.apps,
                   selectedSites: _selectedGroup.sites,
                   selectedCategories: _selectedGroup.categories,

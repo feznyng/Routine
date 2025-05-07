@@ -81,6 +81,7 @@ class _EditBlockGroupPageState extends State<EditBlockGroupPage> {
               ),
               const SizedBox(height: 24),
               BlockGroupEditor(
+                groupId: _group.id,
                 selectedApps: _group.apps,
                 selectedSites: _group.sites,
                 selectedCategories: _group.categories,
