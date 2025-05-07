@@ -160,14 +160,23 @@ class DesktopService extends PlatformService {
     Set<String> categories = {};
     bool allowList = routines.any((r) => r.allow);
 
+    Set<String> excludeApps = {};
+    Set<String> excludeSites = {};
+    Set<String> excludeCategories = {};
     if (allowList) {
-      routines = routines.where((r) => r.allow).toList();  
+      for (final routine in routines.where((r) => !r.allow)) {
+        excludeApps.addAll(routine.apps);
+        excludeSites.addAll(routine.sites);
+        excludeCategories.addAll(routine.categories);
+      }
+
+      routines = routines.where((r) => r.allow).toList();
     }
 
     for (final Routine routine in routines) {
-      apps.addAll(routine.apps);
-      sites.addAll(routine.sites);
-      categories.addAll(routine.categories);
+      apps.addAll(routine.apps.where((a) => !excludeApps.contains(a)));
+      sites.addAll(routine.sites.where((s) => !excludeSites.contains(s)));
+      categories.addAll(routine.categories.where((c) => !excludeCategories.contains(c)));
     }
     
     // Update cached values

@@ -61,7 +61,20 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
         os_log("DeviceActivityMonitorExtension: filtered routine count = %d", routines.count)
 
         let allow = routines.contains(where: { $0.allow })
+
+        var excludeApps = Set<ApplicationToken>();
+        var excludeSites = Set<WebDomainToken>();
+        var excludeDomains = Set<String>();
+        var excludeCategories = Set<ActivityCategoryToken>();
+
         if allow {
+            for routine in (routines.filter { !$0.allow }) {
+                excludeApps.formUnion(routine.apps)
+                excludeSites.formUnion(routine.sites)
+                excludeDomains.formUnion(routine.domains)
+                excludeCategories.formUnion(routine.categories)
+            }
+
             routines = routines.filter { $0.allow }
         }
         
@@ -71,10 +84,10 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
         var categories = Set<ActivityCategoryToken>();
         
         for routine in routines {
-            apps.formUnion(routine.apps)
-            sites.formUnion(routine.sites)
-            domains.formUnion(routine.domains)
-            categories.formUnion(routine.categories)
+            apps.formUnion(routine.apps.filter { !excludeApps.contains($0) })
+            sites.formUnion(routine.sites.filter { !excludeSites.contains($0) })
+            domains.formUnion(routine.domains.filter { !excludeDomains.contains($0) })
+            categories.formUnion(routine.categories.filter { !excludeCategories.contains($0) })
         }
         
         var webDomains: Set<WebDomain> = []
