@@ -226,12 +226,12 @@ class BreakConfigSection extends StatelessWidget {
                                 value: 'text',
                                 label: Text(routine.friction == FrictionType.delay 
                                   ? '${routine.frictionLen} sec'
-                                  : '${routine.frictionLen} chars'),
+                                  : '${routine.frictionLen}'),
                               ),
                               ButtonSegment(
                                 value: 'plus',
                                 icon: const Icon(Icons.add),
-                                enabled: enabled && routine.frictionLen! < (routine.friction == FrictionType.delay ? 60 : 12),
+                                enabled: enabled && routine.frictionLen! < (routine.friction == FrictionType.delay ? 60 : 20),
                               ),
                             ],
                             emptySelectionAllowed: true,
@@ -241,7 +241,7 @@ class BreakConfigSection extends StatelessWidget {
                                   routine.frictionLen! > (routine.friction == FrictionType.delay ? 5 : 4)) {
                                 routine.frictionLen = routine.frictionLen! - (routine.friction == FrictionType.delay ? 5 : 1);
                               } else if (selected.first == 'plus' && 
-                                  routine.frictionLen! < (routine.friction == FrictionType.delay ? 60 : 12)) {
+                                  routine.frictionLen! < (routine.friction == FrictionType.delay ? 60 : 20)) {
                                 routine.frictionLen = routine.frictionLen! + (routine.friction == FrictionType.delay ? 5 : 1);
                               }
                               onChanged();

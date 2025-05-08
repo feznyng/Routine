@@ -33,7 +33,9 @@ class _BreakDialogState extends State<BreakDialog> {
     if (widget.routine.friction == FrictionType.code) {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
       final random = Random();
-      generatedCode = List.generate(6, (index) => chars[random.nextInt(chars.length)]).join();
+
+      final codeLength = widget.routine.frictionLen ?? widget.routine.calculateCodeLength();
+      generatedCode = List.generate(codeLength, (index) => chars[random.nextInt(chars.length)]).join();
     } else if (widget.routine.friction == FrictionType.delay) {
       remainingDelay = widget.routine.frictionLen ?? 30;
       _startDelayTimer();

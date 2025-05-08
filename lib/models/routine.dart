@@ -477,7 +477,7 @@ class Routine implements Syncable {
 
   int calculateCodeLength() {
     if (frictionLen != null) return frictionLen!;
-    return (_numBreaksTaken ?? 0) * 2 + 4; // Base 4 chars + 2 per break taken
+    return (_numBreaksTaken ?? 0) * 4 + 6; // Base 4 chars + 2 per break taken
   }
 
   DateTime get startedAt {
