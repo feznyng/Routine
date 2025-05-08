@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:Routine/models/condition.dart';
 import 'package:Routine/models/device.dart';
 import '../setup.dart';
@@ -159,6 +160,13 @@ class SyncService {
   Future<bool> sync(bool notifyRemote, {bool full = false}) async {
     try {
       if (_userId.isEmpty) return true;
+
+      // Check for internet connectivity
+      final List<ConnectivityResult> connectivityResult = await (Connectivity().checkConnectivity());
+      if (!connectivityResult.contains(ConnectivityResult.wifi)) {
+        print('No internet connection, skipping sync');
+        return true;
+      }
 
       print("syncing...");
       

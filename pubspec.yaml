@@ -49,6 +49,7 @@ dependencies:
   device_info_plus: ^11.0.0
   json_annotation: ^4.9.0
   geolocator: ^8.1.0
+  connectivity_plus: ^6.1.4
   provider: ^6.1.2
   shared_preferences: ^2.2.2
   file_picker: ^9.0.2
