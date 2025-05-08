@@ -7,6 +7,7 @@ class AppSiteSelectorPage extends StatefulWidget {
   final List<String>? selectedCategories;
   final Function(List<String>, List<String>, List<String>?) onSave;
   final bool inLockdown;
+  final bool blockSelected;
 
   const AppSiteSelectorPage({
     super.key,
@@ -14,6 +15,7 @@ class AppSiteSelectorPage extends StatefulWidget {
     required this.selectedSites,
     required this.onSave,
     required this.inLockdown,
+    required this.blockSelected,
     this.selectedCategories,
   });
 
@@ -25,6 +27,37 @@ class _AppSiteSelectorPageState extends State<AppSiteSelectorPage> {
   List<String> _currentApps = [];
   List<String> _currentSites = [];
   List<String>? _currentCategories = [];
+  bool _isValidChange = true;
+
+  bool _canSaveChanges(List<String> newApps, List<String> newSites) {
+    if (!widget.inLockdown) return true;
+
+    final removedApps = widget.selectedApps.where((app) => !newApps.contains(app)).toList();
+    final addedApps = newApps.where((app) => !widget.selectedApps.contains(app)).toList();
+    final removedSites = widget.selectedSites.where((site) => !newSites.contains(site)).toList();
+    final addedSites = newSites.where((site) => !widget.selectedSites.contains(site)).toList();
+
+    // For block lists (blockSelected = true):
+    // - Users can add new items but cannot remove existing items
+    // For allow lists (blockSelected = false):
+    // - Users can remove items but cannot add new items
+    final hasRemovedBlockedItems = removedApps.isNotEmpty || removedSites.isNotEmpty;
+    final hasAddedAllowedItems = addedApps.isNotEmpty || addedSites.isNotEmpty;
+
+    // For block lists (blockSelected = true):
+    // - Users can add new items but cannot remove existing items
+    if (widget.blockSelected && hasRemovedBlockedItems) {
+      return false;
+    }
+
+    // For allow lists (blockSelected = false):
+    // - Users can remove items but cannot add new items
+    if (!widget.blockSelected && hasAddedAllowedItems) {
+      return false;
+    }
+
+    return true;
+  }
 
   @override
   void initState() {
@@ -46,7 +79,7 @@ class _AppSiteSelectorPageState extends State<AppSiteSelectorPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () async {
+            onPressed: !_isValidChange ? null : () async {
               widget.onSave(_currentApps, _currentSites, _currentCategories);
             },
             child: const Text('Done'),
@@ -56,16 +89,43 @@ class _AppSiteSelectorPageState extends State<AppSiteSelectorPage> {
       ),
       body: Column(
         children: [
+          if (widget.inLockdown) ...[            
+            Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.amber.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Colors.amber),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      widget.blockSelected
+                        ? 'Strict mode is active. You can add new items but cannot remove existing items from this block list.'
+                        : 'Strict mode is active. You can remove items but cannot add new items to this allow list.',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           Expanded(
             child: AppSiteSelector(
               selectedApps: _currentApps,
               selectedSites: _currentSites,
               selectedCategories: _currentCategories,
               onSelectionChanged: (apps, sites, categoryTokens) {
+                final isValid = _canSaveChanges(apps, sites);
                 setState(() {
                   _currentApps = apps;
                   _currentSites = sites;
                   _currentCategories = categoryTokens;
+                  _isValidChange = isValid;
                 });
               },
             ),

@@ -45,10 +45,6 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
   @override
   void initState() {
     super.initState();
-    _selectedApps = List.from(widget.selectedApps);
-    _selectedSites = List.from(widget.selectedSites);
-    _selectedCategories = List.from(widget.selectedCategories ?? []);
-    _blockSelected = widget.blockSelected;
 
     StrictModeService().isGroupLockedDown(widget.groupId).then((lockDown) {
       if (mounted) {
@@ -56,6 +52,67 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
         setState(() => _inLockdown = lockDown);
       }
     });
+
+    _selectedApps = List.from(widget.selectedApps);
+    _selectedSites = List.from(widget.selectedSites);
+    _selectedCategories = List.from(widget.selectedCategories ?? []);
+    _blockSelected = widget.blockSelected;
+  }
+
+  void _handleAppSiteSelectionSync() {
+    _handleAppSiteSelection();
+  }
+
+  Future<void> _handleAppSiteSelection() async {
+    if (Platform.isIOS) {
+      final status = await MobileService.instance.checkAndRequestFamilyControlsAuthorization();
+      if (!status) {
+        if (!mounted) return;
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Screen Time Access Required'),
+            content: const Text('Please enable Screen Time access in Settings to manage applications.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  AppSettings.openAppSettings();
+                  Navigator.of(context).pop();
+                },
+                child: const Text('Open Settings'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+    }
+    
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => AppSiteSelectorPage(
+          selectedApps: _selectedApps,
+          selectedSites: _selectedSites,
+          selectedCategories: _selectedCategories,
+          inLockdown: _inLockdown,
+          blockSelected: _blockSelected,
+          onSave: (apps, sites, categoryTokens) {
+            setState(() {
+              _selectedApps = apps;
+              _selectedSites = sites;
+              _selectedCategories = categoryTokens;
+            });
+            widget.onSave(apps, sites, categoryTokens);
+            Navigator.of(context).pop();
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> _openAppsDialog() async {
@@ -326,7 +383,7 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
                           : Theme.of(context).colorScheme.surface,
                       ),
                     ),
-                    onSelectionChanged: (Set<bool> newSelection) {
+                    onSelectionChanged: _inLockdown ? null : (Set<bool> newSelection) {
                       print('newSelection: $newSelection');
                       setState(() {
                         _blockSelected = newSelection.first;
@@ -343,54 +400,7 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
             title: 'Applications & Websites',
             subtitle: _getCombinedSubtitle(),
             icon: Icons.apps,
-            onPressed: () async {
-              final hasPermission = await MobileService.instance.checkAndRequestFamilyControlsAuthorization();
-              if (!hasPermission) {
-                if (!mounted) return;
-                await showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Permission Required'),
-                    content: const Text('Screen Time permissions are required to block apps and websites. Please enable them in Settings.'),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          AppSettings.openAppSettings(type: AppSettingsType.location);
-                        },
-                        child: const Text('Open Settings'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Cancel'),
-                      ),
-                    ],
-                  ),
-                );
-                return;
-              }
-              
-              if (!mounted) return;
-              await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => AppSiteSelectorPage(
-                    selectedApps: _selectedApps,
-                    selectedSites: _selectedSites,
-                    selectedCategories: _selectedCategories,
-                    inLockdown: _inLockdown,
-                    onSave: (apps, sites, categoryTokens) {
-                      setState(() {
-                        _selectedApps = apps;
-                        _selectedSites = sites;
-                        _selectedCategories = categoryTokens;
-                      });
-                      widget.onSave(apps, sites, categoryTokens);
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                ),
-              );
-            },
+            onPressed: _handleAppSiteSelectionSync,
           ),
         ],
       );

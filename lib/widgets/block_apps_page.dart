@@ -70,6 +70,11 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
   }
 
   Future<void> _selectFolder() async {
+    // Don't allow adding folders in lockdown mode for allow lists
+    if (widget.inLockdown && !widget.blockSelected) {
+      return;
+    }
+
     if (_selectedCategories.length >= kMaxBlockedItems) {
       _showLimitDialog('folders');
       return;
@@ -255,7 +260,7 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
               ),
               const SizedBox(width: 8),
               ElevatedButton.icon(
-                onPressed: _pickCustomApp,
+                onPressed: widget.inLockdown && !widget.blockSelected ? null : _pickCustomApp,
                 icon: const Icon(Icons.add_circle_outline),
                 label: const Text('Select'),
                 style: ElevatedButton.styleFrom(
@@ -293,6 +298,11 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
   }
 
   Future<void> _pickCustomApp() async {
+    // Don't allow adding apps in lockdown mode for allow lists
+    if (widget.inLockdown && !widget.blockSelected) {
+      return;
+    }
+
     if (_selectedApps.length >= kMaxBlockedItems) {
       _showLimitDialog('applications');
       return;
@@ -411,7 +421,7 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
             }
           } else if (_selectedApps.length >= kMaxBlockedItems) {
             _showLimitDialog('applications');
-          } else {
+          } else if (!widget.inLockdown || widget.blockSelected) {
             _selectedApps.add(app.filePath);
           }
         });
