@@ -455,7 +455,7 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
               ),
               const SizedBox(width: 8),
               ElevatedButton.icon(
-                onPressed: _selectFolder,
+                onPressed: widget.inLockdown && !widget.blockSelected ? null : _selectFolder,
                 icon: const Icon(Icons.create_new_folder),
                 label: const Text('Select'),
                 style: ElevatedButton.styleFrom(
