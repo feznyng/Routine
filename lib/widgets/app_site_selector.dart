@@ -6,6 +6,8 @@ class AppSiteSelectorPage extends StatefulWidget {
   final List<String> selectedSites;
   final List<String>? selectedCategories;
   final Function(List<String>, List<String>, List<String>?) onSave;
+  final bool inLockdown;
+  final bool blockSelected;
 
   const AppSiteSelectorPage({
     super.key,
@@ -13,6 +15,8 @@ class AppSiteSelectorPage extends StatefulWidget {
     required this.selectedSites,
     this.selectedCategories,
     required this.onSave,
+    required this.inLockdown,
+    required this.blockSelected,
   });
 
   @override
@@ -45,6 +49,40 @@ class _AppSiteSelectorPageState extends State<AppSiteSelectorPage> {
         actions: [
           TextButton(
             onPressed: () async {
+              // Check if changes violate lockdown restrictions
+              bool hasViolations = false;
+              String violationMessage = '';
+              
+              if (widget.inLockdown) {
+                if (widget.blockSelected) {
+                  // In block list mode, can't remove items
+                  if (widget.selectedApps.length > _currentApps.length ||
+                      widget.selectedSites.length > _currentSites.length ||
+                      (widget.selectedCategories?.length ?? 0) > (_currentCategories?.length ?? 0)) {
+                    hasViolations = true;
+                    violationMessage = 'Cannot remove items from a block list in lockdown';
+                  }
+                } else {
+                  // In allow list mode, can't add items
+                  if (widget.selectedApps.length < _currentApps.length ||
+                      widget.selectedSites.length < _currentSites.length ||
+                      (widget.selectedCategories?.length ?? 0) < (_currentCategories?.length ?? 0)) {
+                    hasViolations = true;
+                    violationMessage = 'Cannot add items to an allow list in lockdown';
+                  }
+                }
+              }
+              
+              if (hasViolations) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(violationMessage),
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                );
+                return;
+              }
+              
               widget.onSave(_currentApps, _currentSites, _currentCategories);
             },
             child: const Text('Done'),
@@ -54,11 +92,37 @@ class _AppSiteSelectorPageState extends State<AppSiteSelectorPage> {
       ),
       body: Column(
         children: [
+          if (widget.inLockdown)
+            Container(
+              padding: const EdgeInsets.all(8.0),
+              margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Theme.of(context).colorScheme.error.withOpacity(0.5)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      widget.blockSelected 
+                        ? 'Strict Mode: You can add new items but cannot remove existing ones'
+                        : 'Strict Mode: You can remove items but cannot add new ones',
+                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: AppSiteSelector(
               selectedApps: _currentApps,
               selectedSites: _currentSites,
               selectedCategories: _currentCategories,
+              inLockdown: widget.inLockdown,
+              blockSelected: widget.blockSelected,
               onSelectionChanged: (apps, sites, categoryTokens) {
                 setState(() {
                   _currentApps = apps;
@@ -79,6 +143,8 @@ class AppSiteSelector extends StatefulWidget {
   final List<String> selectedSites;
   final List<String>? selectedCategories;
   final Function(List<String>, List<String>, List<String>?) onSelectionChanged;
+  final bool inLockdown;
+  final bool blockSelected;
 
   const AppSiteSelector({
     super.key,
@@ -86,6 +152,8 @@ class AppSiteSelector extends StatefulWidget {
     required this.selectedSites,
     this.selectedCategories,
     required this.onSelectionChanged,
+    required this.inLockdown,
+    required this.blockSelected,
   });
 
   @override

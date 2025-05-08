@@ -8,12 +8,16 @@ class BlockAppsPage extends StatefulWidget {
   final List<String> selectedApps;
   final List<String> selectedCategories;
   final Function(Map<String, List<String>>) onSave;
+  final bool inLockdown;
+  final bool blockSelected;
 
   const BlockAppsPage({
     super.key,
     required this.selectedApps,
     required this.selectedCategories,
     required this.onSave,
+    required this.inLockdown,
+    required this.blockSelected,
   });
 
   @override
@@ -106,6 +110,30 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (widget.inLockdown)
+              Container(
+                padding: const EdgeInsets.all(8.0),
+                margin: const EdgeInsets.only(bottom: 16.0),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Theme.of(context).colorScheme.error.withOpacity(0.5)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.blockSelected 
+                          ? 'Strict Mode: You can add new applications but cannot remove existing ones'
+                          : 'Strict Mode: You can remove applications but cannot add new ones',
+                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             if (_showFoldersTab)
               TabBar(
                 controller: _tabController,
@@ -362,20 +390,12 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(fontSize: 12),
       ),
-      trailing: isSelected 
-          ? IconButton(
-              icon: const Icon(Icons.delete_outline),
-              onPressed: () {
-                setState(() {
-                  _selectedApps.remove(app.filePath);
-                });
-              },
-            )
-          : null,
       onTap: () {
         setState(() {
           if (isSelected) {
-            _selectedApps.remove(app.filePath);
+            if (!widget.inLockdown || !widget.blockSelected) {
+              _selectedApps.remove(app.filePath);
+            }
           } else if (_selectedApps.length >= kMaxBlockedItems) {
             _showLimitDialog('applications');
           } else {

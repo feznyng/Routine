@@ -4,11 +4,15 @@ import '../constants.dart';
 class BlockSitesPage extends StatefulWidget {
   final List<String> selectedSites;
   final Function(List<String>) onSave;
+  final bool inLockdown;
+  final bool blockSelected;
 
   const BlockSitesPage({
     super.key,
     required this.selectedSites,
     required this.onSave,
+    required this.inLockdown,
+    required this.blockSelected,
   });
 
   @override
@@ -55,6 +59,12 @@ class _BlockSitesPageState extends State<BlockSitesPage> {
   void _addSite(String site) {
     if (site.isEmpty) return;
     
+    // Check lockdown restrictions
+    if (widget.inLockdown && !widget.blockSelected) {
+      // Cannot add sites in allow list lockdown
+      return;
+    }
+    
     // Check the limit before adding
     if (_selectedSites.length >= kMaxBlockedItems) {
       _showLimitDialog();
@@ -99,6 +109,30 @@ class _BlockSitesPageState extends State<BlockSitesPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (widget.inLockdown)
+              Container(
+                padding: const EdgeInsets.all(8.0),
+                margin: const EdgeInsets.only(bottom: 16.0),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Theme.of(context).colorScheme.error.withOpacity(0.5)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.blockSelected 
+                          ? 'Strict Mode: You can add new websites but cannot remove existing ones'
+                          : 'Strict Mode: You can remove websites but cannot add new ones',
+                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             TextField(
               focusNode: _focusNode,
               controller: _siteController,
@@ -112,25 +146,6 @@ class _BlockSitesPageState extends State<BlockSitesPage> {
               ),
               onSubmitted: _addSite,
             ),
-            const SizedBox(height: 16),
-            
-            // Search field
-            if (_selectedSites.isNotEmpty) ...[
-              TextField(
-                controller: _searchController,
-                decoration: const InputDecoration(
-                  hintText: 'Search sites',
-                  prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-            ],
             
             if (_selectedSites.isEmpty)
               const Padding(
@@ -154,12 +169,14 @@ class _BlockSitesPageState extends State<BlockSitesPage> {
                     children: filteredSites.map((site) => ListTile(
                       title: Text(site),
                       trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () {
-                          setState(() {
-                            _selectedSites.remove(site);
-                          });
-                        },
+                        icon: const Icon(Icons.close),
+                        onPressed: widget.inLockdown && widget.blockSelected 
+                          ? null // Disable removal in block list lockdown
+                          : () {
+                              setState(() {
+                                _selectedSites.remove(site);
+                              });
+                            },
                       ),
                     )).toList(),
                   ),

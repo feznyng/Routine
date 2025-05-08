@@ -254,6 +254,7 @@ class _RoutinePageState extends State<RoutinePage> {
               BlockGroupSection(
                 routine: _routine,
                 devices: _devices,
+                inLockdown: inLockdown,
                 onChanged: _validateRoutine,
               ),
               const SizedBox(height: 16),

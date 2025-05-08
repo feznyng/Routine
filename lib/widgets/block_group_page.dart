@@ -10,6 +10,7 @@ class BlockGroupPage extends StatefulWidget {
   final Function(Group) onSave;
   final VoidCallback onBack;
   final String deviceId;
+  final bool inLockdown;
 
   const BlockGroupPage({
     super.key,
@@ -17,6 +18,7 @@ class BlockGroupPage extends StatefulWidget {
     required this.onSave,
     required this.onBack,
     required this.deviceId,
+    required this.inLockdown
   });
 
   @override
@@ -120,6 +122,28 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (widget.inLockdown)
+                Container(
+                  padding: const EdgeInsets.all(8.0),
+                  margin: const EdgeInsets.only(bottom: 16.0),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Theme.of(context).colorScheme.error.withOpacity(0.5)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Strict Mode is enabled. You cannot modify block groups at this time.',
+                          style: TextStyle(color: Theme.of(context).colorScheme.error),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               // Group selection row
               Row(
                 children: [
@@ -157,7 +181,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                           child: Text('Edit Groups'),
                         ),
                       ],
-                      onChanged: (String? newId) async {
+                      onChanged: widget.inLockdown ? null : (String? newId) async {
                         if (newId == 'edit_groups') {
                           // Store current selection before navigating
                           final currentValue = _blockGroups.any((group) => group.id == _selectedGroup.id) ? _selectedGroup.id : null;

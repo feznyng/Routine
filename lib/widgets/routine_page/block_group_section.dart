@@ -9,6 +9,7 @@ import '../block_group_page.dart';
 class BlockGroupSection extends StatelessWidget {
   final Routine routine;
   final Map<String, DeviceEntry> devices;
+  final bool inLockdown;
   final Function() onChanged;
 
   const BlockGroupSection({
@@ -16,6 +17,7 @@ class BlockGroupSection extends StatelessWidget {
     required this.routine,
     required this.devices,
     required this.onChanged,
+    required this.inLockdown
   });
   
   IconData _getDeviceIcon(DeviceType type) {
@@ -63,37 +65,20 @@ class BlockGroupSection extends StatelessWidget {
   void _toggleBlockGroup(BuildContext context, String deviceId) {
     final group = routine.getGroup(deviceId);
     
-    // If creating a new group, set a default name for this device
-    if (group == null) {
-      final newGroup = Group();
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (context) => BlockGroupPage(
-            selectedGroup: newGroup,
-            deviceId: deviceId,
-            onSave: (group) {
-              routine.setGroup(group, deviceId);
-              onChanged();
-            },
-            onBack: () => Navigator.of(context).pop(),
-          ),
+     Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => BlockGroupPage(
+          selectedGroup: group ?? Group(),
+          deviceId: deviceId,
+          inLockdown: inLockdown,
+          onSave: (group) {
+            routine.setGroup(group, deviceId);
+            onChanged();
+          },
+          onBack: () => Navigator.of(context).pop(),
         ),
-      );
-    } else {
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (context) => BlockGroupPage(
-            selectedGroup: group,
-            deviceId: deviceId,
-            onSave: (group) {
-              routine.setGroup(group, deviceId);
-              onChanged();
-            },
-            onBack: () => Navigator.of(context).pop(),
-          ),
-        ),
-      );
-    }
+      ),
+    );
   }
 
   @override

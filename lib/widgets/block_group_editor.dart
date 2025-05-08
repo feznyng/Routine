@@ -40,7 +40,7 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
   late List<String> _selectedSites;
   late List<String>? _selectedCategories;
   late bool _blockSelected;
-  late bool _inLockdown;
+  bool _inLockdown = false; // Default to false until we get the actual value
 
   @override
   void initState() {
@@ -51,10 +51,9 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
     _blockSelected = widget.blockSelected;
 
     StrictModeService().isGroupLockedDown(widget.groupId).then((lockDown) {
-      print("in lockdown $lockDown");
-      setState(() => 
-        _inLockdown = lockDown
-      );
+      if (mounted) {
+        setState(() => _inLockdown = lockDown);
+      }
     });
   }
 
@@ -64,6 +63,8 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
         builder: (context) => BlockAppsPage(
           selectedApps: _selectedApps,
           selectedCategories: _selectedCategories ?? [],
+          inLockdown: _inLockdown,
+          blockSelected: _blockSelected,
           onSave: (result) {
             setState(() {
               _selectedApps = result['apps'] ?? [];
@@ -116,6 +117,8 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
         MaterialPageRoute(
           builder: (context) => BlockSitesPage(
             selectedSites: _selectedSites,
+            inLockdown: _inLockdown,
+            blockSelected: _blockSelected,
             onSave: (sites) {
               setState(() {
                 _selectedSites = sites;
@@ -369,17 +372,19 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
               if (!mounted) return;
               await Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => AppSiteSelectorPage(
+                  builder: (context) => AppSiteSelector(
                     selectedApps: _selectedApps,
                     selectedSites: _selectedSites,
                     selectedCategories: _selectedCategories,
-                    onSave: (apps, sites, categories) {
+                    inLockdown: _inLockdown,
+                    blockSelected: _blockSelected,
+                    onSelectionChanged: (apps, sites, categoryTokens) {
                       setState(() {
                         _selectedApps = apps;
                         _selectedSites = sites;
-                        _selectedCategories = categories;
+                        _selectedCategories = categoryTokens;
                       });
-                      widget.onSave(apps, sites, categories);
+                      widget.onSave(apps, sites, categoryTokens);
                       Navigator.of(context).pop();
                     },
                   ),
@@ -399,6 +404,7 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                const SizedBox(height: 8),
                 const SizedBox(height: 8),
                 SegmentedButton<bool>(
                   segments: const [
@@ -420,8 +426,7 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
                         : Theme.of(context).colorScheme.surface,
                     ),
                   ),
-                  onSelectionChanged: (Set<bool> newSelection) {
-                    print('newSelection: $newSelection');
+                  onSelectionChanged: _inLockdown ? null : (Set<bool> newSelection) {
                     setState(() {
                       _blockSelected = newSelection.first;
                     });
