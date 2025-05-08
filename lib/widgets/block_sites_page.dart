@@ -111,23 +111,36 @@ class _BlockSitesPageState extends State<BlockSitesPage> {
           children: [
             if (widget.inLockdown)
               Container(
-                padding: const EdgeInsets.all(8.0),
-                margin: const EdgeInsets.only(bottom: 16.0),
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.1),
+                  color: Colors.red.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Theme.of(context).colorScheme.error.withOpacity(0.5)),
+                  border: Border.all(color: Colors.red),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error),
-                    const SizedBox(width: 8),
+                    const Icon(Icons.lock, color: Colors.red),
+                    const SizedBox(width: 12),
                     Expanded(
-                      child: Text(
-                        widget.blockSelected 
-                          ? 'Strict Mode: You can add new websites but cannot remove existing ones'
-                          : 'Strict Mode: You can remove websites but cannot add new ones',
-                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Strict Mode Active',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.blockSelected 
+                              ? 'You can add new websites but cannot remove existing ones.'
+                              : 'You can remove websites but cannot add new ones.',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ],
                       ),
                     ),
                   ],
