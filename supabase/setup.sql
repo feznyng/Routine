@@ -1,6 +1,3 @@
--- Create enum type for friction
-CREATE TYPE friction_type AS ENUM ('none', 'delay', 'intention', 'code');
-
 -- Create Devices table
 CREATE TABLE devices (
     id TEXT PRIMARY KEY,
@@ -35,7 +32,7 @@ CREATE TABLE routines (
     paused_until TIMESTAMPTZ,
     max_breaks INTEGER,
     max_break_duration INTEGER NOT NULL DEFAULT 15,
-    friction friction_type NOT NULL,
+    friction TEXT NOT NULL,
     friction_len INTEGER,
     conditions TEXT,
     snoozed_until TIMESTAMPTZ,
