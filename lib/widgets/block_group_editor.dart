@@ -52,6 +52,7 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
 
     StrictModeService().isGroupLockedDown(widget.groupId).then((lockDown) {
       if (mounted) {
+        print("inLockdown: $lockDown");
         setState(() => _inLockdown = lockDown);
       }
     });
@@ -372,13 +373,12 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
               if (!mounted) return;
               await Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => AppSiteSelector(
+                  builder: (context) => AppSiteSelectorPage(
                     selectedApps: _selectedApps,
                     selectedSites: _selectedSites,
                     selectedCategories: _selectedCategories,
                     inLockdown: _inLockdown,
-                    blockSelected: _blockSelected,
-                    onSelectionChanged: (apps, sites, categoryTokens) {
+                    onSave: (apps, sites, categoryTokens) {
                       setState(() {
                         _selectedApps = apps;
                         _selectedSites = sites;
