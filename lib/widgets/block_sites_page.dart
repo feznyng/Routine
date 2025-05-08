@@ -96,10 +96,17 @@ class _BlockSitesPageState extends State<BlockSitesPage> {
 
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: 80,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: const Text('Blocked Sites'),
         actions: [
           TextButton(
-            onPressed: () => widget.onSave(_selectedSites),
+            onPressed: () {
+              widget.onSave(_selectedSites);
+            },
             child: const Text('Done'),
           ),
         ],

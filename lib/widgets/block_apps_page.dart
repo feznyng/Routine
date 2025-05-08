@@ -97,6 +97,11 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: 80,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: const Text('Blocked Items'),
         actions: [
           TextButton(

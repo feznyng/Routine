@@ -100,9 +100,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
         toolbarHeight: 80,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            widget.onBack();
-          },
+          onPressed: () => widget.onBack(),
         ),
         title: const Text('Block Group'),
         actions: [

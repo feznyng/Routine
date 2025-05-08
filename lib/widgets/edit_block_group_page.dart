@@ -48,7 +48,8 @@ class _EditBlockGroupPageState extends State<EditBlockGroupPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Block Group'),
+        toolbarHeight: 80,
+        title: const Text('Block Group'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),

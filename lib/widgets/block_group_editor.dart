@@ -48,7 +48,6 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
 
     StrictModeService().isGroupLockedDown(widget.groupId).then((lockDown) {
       if (mounted) {
-        print("inLockdown: $lockDown");
         setState(() => _inLockdown = lockDown);
       }
     });
