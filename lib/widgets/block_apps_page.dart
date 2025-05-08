@@ -407,7 +407,7 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
       leading: isSelected
           ? const Icon(Icons.check_circle, color: Colors.green)
           : const Icon(Icons.circle_outlined),
-      title: Text(app.displayName ?? app.name),
+      title: Text(app.displayName ?? _getFileNameWithoutExt(app.name)),
       subtitle: Text(
         app.filePath,
         overflow: TextOverflow.ellipsis,
@@ -472,6 +472,13 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
         ),
       ],
     );
+  }
+
+  String _getFileNameWithoutExt(String path) {
+    final fileName = path.split(Platform.pathSeparator).last;
+    return fileName.contains('.')
+        ? fileName.substring(0, fileName.lastIndexOf('.'))
+        : fileName;
   }
 
   Widget _buildFoldersList() {
