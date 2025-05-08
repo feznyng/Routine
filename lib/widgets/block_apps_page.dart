@@ -455,7 +455,7 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
               ),
               const SizedBox(width: 8),
               ElevatedButton.icon(
-                onPressed: widget.inLockdown && !widget.blockSelected ? null : _selectFolder,
+                onPressed: _selectFolder,
                 icon: const Icon(Icons.create_new_folder),
                 label: const Text('Select'),
                 style: ElevatedButton.styleFrom(
@@ -503,15 +503,7 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
             folder,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 12),
-          ),
-          trailing: IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () {
-              setState(() {
-                _selectedCategories.remove(folder);
-              });
-            },
-          ),
+          )
         );
       },
     );
