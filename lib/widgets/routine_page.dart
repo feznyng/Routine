@@ -383,7 +383,7 @@ class _RoutinePageState extends State<RoutinePage> {
                     ),
                     icon: Icon(Icons.delete_outline, color: inLockdown ? Colors.red.withValues(alpha: 128) : Colors.red),
                     label: Text('Delete Routine', style: TextStyle(color: inLockdown ? Colors.red.withValues(alpha: 128) : Colors.red)),
-                    onPressed:  () async {
+                    onPressed: inLockdown ? null : () async {
                       final BuildContext dialogContext = context;
                       final bool? confirm = await showDialog<bool>(
                         context: dialogContext,
