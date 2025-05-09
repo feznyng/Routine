@@ -86,6 +86,29 @@ class _DeviceOptionsBottomSheetState extends State<DeviceOptionsBottomSheet> {
       );
       return;
     }
+
+    final bool confirm = await showDialog(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Delete Device'),
+        content: Text('Are you sure you want to delete ${widget.device.name}? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    ) ?? false;
+
+    if (!confirm) return;
     
     setState(() => _isLoading = true);
     
@@ -201,29 +224,34 @@ class _DeviceOptionsBottomSheetState extends State<DeviceOptionsBottomSheet> {
               },
             ),
           ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: (_isLoading || !_hasNameChanged) 
-                ? null 
-                : _updateDeviceName,
-            child: _isLoading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Update Name'),
-          ),
-          if (!widget.device.curr) ...[  
-            const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: _isLoading ? null : _deleteDevice,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.red,
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (!widget.device.curr) ...[
+                TextButton(
+                  onPressed: _isLoading ? null : _deleteDevice,
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.red,
+                  ),
+                  child: const Text('Delete'),
+                ),
+              ],
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: (_isLoading || !_hasNameChanged) 
+                    ? null 
+                    : _updateDeviceName,
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Save'),
               ),
-              child: const Text('Delete Device'),
-            ),
-          ],
+            ],
+          ),
           const SizedBox(height: 16),
         ],
       ),

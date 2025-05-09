@@ -16,8 +16,6 @@ class ConditionSection extends StatelessWidget {
     this.enabled = true,
   });
 
-
-
   String _getConditionSummary(Condition condition) {
     return condition.name ?? '';
   }
@@ -351,8 +349,8 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
                 ],
               ),
               IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: widget.onDelete,
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
               ),
             ],
           ),
@@ -388,11 +386,14 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
+                onPressed: widget.onDelete,
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.red,
+                ),
+                child: const Text('Delete'),
               ),
               const SizedBox(width: 8),
-              TextButton(
+              FilledButton(
                 onPressed: () {
                   final trimmedName = _nameController.text.trim();
                   if (trimmedName.isEmpty) {
