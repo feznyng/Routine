@@ -164,10 +164,9 @@ class $RoutinesTable extends Routines
   static const VerificationMeta _frictionMeta =
       const VerificationMeta('friction');
   @override
-  late final GeneratedColumnWithTypeConverter<FrictionType, String> friction =
-      GeneratedColumn<String>('friction', aliasedName, false,
-              type: DriftSqlType.string, requiredDuringInsert: true)
-          .withConverter<FrictionType>($RoutinesTable.$converterfriction);
+  late final GeneratedColumn<String> friction = GeneratedColumn<String>(
+      'friction', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _frictionLenMeta =
       const VerificationMeta('frictionLen');
   @override
@@ -347,7 +346,12 @@ class $RoutinesTable extends Routines
           maxBreakDuration.isAcceptableOrUnknown(
               data['max_break_duration']!, _maxBreakDurationMeta));
     }
-    context.handle(_frictionMeta, const VerificationResult.success());
+    if (data.containsKey('friction')) {
+      context.handle(_frictionMeta,
+          friction.isAcceptableOrUnknown(data['friction']!, _frictionMeta));
+    } else if (isInserting) {
+      context.missing(_frictionMeta);
+    }
     if (data.containsKey('friction_len')) {
       context.handle(
           _frictionLenMeta,
@@ -420,9 +424,8 @@ class $RoutinesTable extends Routines
           .read(DriftSqlType.int, data['${effectivePrefix}max_breaks']),
       maxBreakDuration: attachedDatabase.typeMapping.read(
           DriftSqlType.int, data['${effectivePrefix}max_break_duration'])!,
-      friction: $RoutinesTable.$converterfriction.fromSql(attachedDatabase
-          .typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}friction'])!),
+      friction: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}friction'])!,
       frictionLen: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}friction_len']),
       snoozedUntil: attachedDatabase.typeMapping
@@ -444,8 +447,6 @@ class $RoutinesTable extends Routines
       StringListTypeConverter();
   static TypeConverter<List<String>, String> $convertergroups =
       StringListTypeConverter();
-  static JsonTypeConverter2<FrictionType, String, String> $converterfriction =
-      const EnumNameConverter<FrictionType>(FrictionType.values);
   static JsonTypeConverter2<List<Condition>, String, List<dynamic>>
       $converterconditions = const ConditionConverter();
 }
@@ -472,7 +473,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
   final DateTime? pausedUntil;
   final int? maxBreaks;
   final int maxBreakDuration;
-  final FrictionType friction;
+  final String friction;
   final int? frictionLen;
   final DateTime? snoozedUntil;
   final List<Condition> conditions;
@@ -542,10 +543,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       map['max_breaks'] = Variable<int>(maxBreaks);
     }
     map['max_break_duration'] = Variable<int>(maxBreakDuration);
-    {
-      map['friction'] =
-          Variable<String>($RoutinesTable.$converterfriction.toSql(friction));
-    }
+    map['friction'] = Variable<String>(friction);
     if (!nullToAbsent || frictionLen != null) {
       map['friction_len'] = Variable<int>(frictionLen);
     }
@@ -628,8 +626,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       pausedUntil: serializer.fromJson<DateTime?>(json['pausedUntil']),
       maxBreaks: serializer.fromJson<int?>(json['maxBreaks']),
       maxBreakDuration: serializer.fromJson<int>(json['maxBreakDuration']),
-      friction: $RoutinesTable.$converterfriction
-          .fromJson(serializer.fromJson<String>(json['friction'])),
+      friction: serializer.fromJson<String>(json['friction']),
       frictionLen: serializer.fromJson<int?>(json['frictionLen']),
       snoozedUntil: serializer.fromJson<DateTime?>(json['snoozedUntil']),
       conditions: $RoutinesTable.$converterconditions
@@ -662,8 +659,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       'pausedUntil': serializer.toJson<DateTime?>(pausedUntil),
       'maxBreaks': serializer.toJson<int?>(maxBreaks),
       'maxBreakDuration': serializer.toJson<int>(maxBreakDuration),
-      'friction': serializer
-          .toJson<String>($RoutinesTable.$converterfriction.toJson(friction)),
+      'friction': serializer.toJson<String>(friction),
       'frictionLen': serializer.toJson<int?>(frictionLen),
       'snoozedUntil': serializer.toJson<DateTime?>(snoozedUntil),
       'conditions': serializer.toJson<List<dynamic>>(
@@ -694,7 +690,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           Value<DateTime?> pausedUntil = const Value.absent(),
           Value<int?> maxBreaks = const Value.absent(),
           int? maxBreakDuration,
-          FrictionType? friction,
+          String? friction,
           Value<int?> frictionLen = const Value.absent(),
           Value<DateTime?> snoozedUntil = const Value.absent(),
           List<Condition>? conditions,
@@ -887,7 +883,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
   final Value<DateTime?> pausedUntil;
   final Value<int?> maxBreaks;
   final Value<int> maxBreakDuration;
-  final Value<FrictionType> friction;
+  final Value<String> friction;
   final Value<int?> frictionLen;
   final Value<DateTime?> snoozedUntil;
   final Value<List<Condition>> conditions;
@@ -944,7 +940,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     this.pausedUntil = const Value.absent(),
     this.maxBreaks = const Value.absent(),
     this.maxBreakDuration = const Value.absent(),
-    required FrictionType friction,
+    required String friction,
     this.frictionLen = const Value.absent(),
     this.snoozedUntil = const Value.absent(),
     required List<Condition> conditions,
@@ -1049,7 +1045,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       Value<DateTime?>? pausedUntil,
       Value<int?>? maxBreaks,
       Value<int>? maxBreakDuration,
-      Value<FrictionType>? friction,
+      Value<String>? friction,
       Value<int?>? frictionLen,
       Value<DateTime?>? snoozedUntil,
       Value<List<Condition>>? conditions,
@@ -1155,8 +1151,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       map['max_break_duration'] = Variable<int>(maxBreakDuration.value);
     }
     if (friction.present) {
-      map['friction'] = Variable<String>(
-          $RoutinesTable.$converterfriction.toSql(friction.value));
+      map['friction'] = Variable<String>(friction.value);
     }
     if (frictionLen.present) {
       map['friction_len'] = Variable<int>(frictionLen.value);
@@ -2201,7 +2196,7 @@ typedef $$RoutinesTableCreateCompanionBuilder = RoutinesCompanion Function({
   Value<DateTime?> pausedUntil,
   Value<int?> maxBreaks,
   Value<int> maxBreakDuration,
-  required FrictionType friction,
+  required String friction,
   Value<int?> frictionLen,
   Value<DateTime?> snoozedUntil,
   required List<Condition> conditions,
@@ -2230,7 +2225,7 @@ typedef $$RoutinesTableUpdateCompanionBuilder = RoutinesCompanion Function({
   Value<DateTime?> pausedUntil,
   Value<int?> maxBreaks,
   Value<int> maxBreakDuration,
-  Value<FrictionType> friction,
+  Value<String> friction,
   Value<int?> frictionLen,
   Value<DateTime?> snoozedUntil,
   Value<List<Condition>> conditions,
@@ -2316,10 +2311,8 @@ class $$RoutinesTableFilterComposer
       column: $table.maxBreakDuration,
       builder: (column) => ColumnFilters(column));
 
-  ColumnWithTypeConverterFilters<FrictionType, FrictionType, String>
-      get friction => $composableBuilder(
-          column: $table.friction,
-          builder: (column) => ColumnWithTypeConverterFilters(column));
+  ColumnFilters<String> get friction => $composableBuilder(
+      column: $table.friction, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get frictionLen => $composableBuilder(
       column: $table.frictionLen, builder: (column) => ColumnFilters(column));
@@ -2499,7 +2492,7 @@ class $$RoutinesTableAnnotationComposer
   GeneratedColumn<int> get maxBreakDuration => $composableBuilder(
       column: $table.maxBreakDuration, builder: (column) => column);
 
-  GeneratedColumnWithTypeConverter<FrictionType, String> get friction =>
+  GeneratedColumn<String> get friction =>
       $composableBuilder(column: $table.friction, builder: (column) => column);
 
   GeneratedColumn<int> get frictionLen => $composableBuilder(
@@ -2560,7 +2553,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             Value<DateTime?> pausedUntil = const Value.absent(),
             Value<int?> maxBreaks = const Value.absent(),
             Value<int> maxBreakDuration = const Value.absent(),
-            Value<FrictionType> friction = const Value.absent(),
+            Value<String> friction = const Value.absent(),
             Value<int?> frictionLen = const Value.absent(),
             Value<DateTime?> snoozedUntil = const Value.absent(),
             Value<List<Condition>> conditions = const Value.absent(),
@@ -2618,7 +2611,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             Value<DateTime?> pausedUntil = const Value.absent(),
             Value<int?> maxBreaks = const Value.absent(),
             Value<int> maxBreakDuration = const Value.absent(),
-            required FrictionType friction,
+            required String friction,
             Value<int?> frictionLen = const Value.absent(),
             Value<DateTime?> snoozedUntil = const Value.absent(),
             required List<Condition> conditions,

@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/routine.dart';
-import '../database/database.dart';
 import 'dart:io' show Platform;
 import 'package:mobile_scanner/mobile_scanner.dart';
 
@@ -31,15 +30,15 @@ class _BreakDialogState extends State<BreakDialog> {
   @override
   void initState() {
     super.initState();
-    canConfirm = widget.routine.friction == FrictionType.none;
+    canConfirm = widget.routine.friction == 'none';
 
-    if (widget.routine.friction == FrictionType.code) {
+    if (widget.routine.friction == 'code') {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
       final random = Random();
 
       final codeLength = widget.routine.frictionLen ?? widget.routine.calculateCodeLength();
       generatedCode = List.generate(codeLength, (index) => chars[random.nextInt(chars.length)]).join();
-    } else if (widget.routine.friction == FrictionType.delay) {
+    } else if (widget.routine.friction == 'delay') {
       remainingDelay = widget.routine.frictionLen ?? 30;
       _startDelayTimer();
     }
@@ -133,13 +132,13 @@ class _BreakDialogState extends State<BreakDialog> {
               });
             },
           ),
-          if (widget.routine.friction != FrictionType.none) ...[
+          if (widget.routine.friction != 'none') ...[
             const SizedBox(height: 16),
             const Divider(),
             const SizedBox(height: 16),
-            if (widget.routine.friction == FrictionType.delay && remainingDelay! > 0) ...[
+            if (widget.routine.friction == 'delay' && remainingDelay! > 0) ...[
               Text('Wait $remainingDelay ${remainingDelay == 1 ? 'second' : 'seconds'}'),
-            ] else if (widget.routine.friction == FrictionType.intention) ...[
+            ] else if (widget.routine.friction == 'intention') ...[
               const Text('What will you do during this break?'),
               const SizedBox(height: 8),
               TextField(
@@ -151,7 +150,7 @@ class _BreakDialogState extends State<BreakDialog> {
                   border: OutlineInputBorder(),
                 ),
               ),
-            ] else if (widget.routine.friction == FrictionType.code) ...[
+            ] else if (widget.routine.friction == 'code') ...[
               Text('Type this code: $generatedCode'),
               const SizedBox(height: 8),
               TextField(
@@ -168,7 +167,7 @@ class _BreakDialogState extends State<BreakDialog> {
                   LengthLimitingTextInputFormatter(6),
                 ],
               ),
-            ] else if (widget.routine.friction == FrictionType.qr) ...[
+            ] else if (widget.routine.friction == 'qr') ...[
               if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) ...[
                 const Text(
                   'Please use your phone to scan the QR code.',

@@ -1,4 +1,3 @@
-import 'package:Routine/database/database.dart';
 import 'package:flutter/material.dart';
 import '../../models/routine.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -151,34 +150,34 @@ class BreakConfigSection extends StatelessWidget {
                       const SizedBox(height: 8),
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
-                        child: SegmentedButton<FrictionType>(
+                        child: SegmentedButton<String>(
                           segments: const [
                             ButtonSegment(
-                              value: FrictionType.none,
+                              value: 'none',
                               label: Text('None'),
                             ),
                             ButtonSegment(
-                              value: FrictionType.delay,
+                              value: 'delay',
                               label: Text('Delay'),
                             ),
                             ButtonSegment(
-                              value: FrictionType.intention,
+                              value: 'intention',
                               label: Text('Intention'),
                             ),
                             ButtonSegment(
-                              value: FrictionType.code,
+                              value: 'code',
                               label: Text('Code'),
                             ),
                             ButtonSegment(
-                              value: FrictionType.qr,
+                              value: 'qr',
                               label: Text('QR Code'),
                             ),
                           ],
                           selected: {routine.friction},
-                          onSelectionChanged: enabled ? (Set<FrictionType> selection) {
+                          onSelectionChanged: enabled ? (Set<String> selection) {
                             routine.friction = selection.first;
-                            if (routine.friction == FrictionType.none || 
-                                routine.friction == FrictionType.intention) {
+                            if (routine.friction == 'none' || 
+                                routine.friction == 'intention') {
                               routine.frictionLen = null;
                             }
                             onChanged();
@@ -186,7 +185,7 @@ class BreakConfigSection extends StatelessWidget {
                         ),
                       ),
                     ],
-                    if (routine.maxBreaks != 0 && routine.friction == FrictionType.qr) ...[                
+                    if (routine.maxBreaks != 0 && routine.friction == 'qr') ...[                
                       const SizedBox(height: 16),
                       TextButton.icon(
                         onPressed: () async {
@@ -222,11 +221,11 @@ class BreakConfigSection extends StatelessWidget {
                         label: const Text('Download QR Code'),
                       ),
                     ],
-                    if (routine.maxBreaks != 0 && (routine.friction == FrictionType.delay || routine.friction == FrictionType.code)) ...[                
+                    if (routine.maxBreaks != 0 && (routine.friction == 'delay' || routine.friction == 'code')) ...[                
                       const SizedBox(height: 16),
                       Row(
                         children: [
-                          Text(routine.friction == FrictionType.delay ? 'Delay Length' : 'Code Length'),
+                          Text(routine.friction == 'delay' ? 'Delay Length' : 'Code Length'),
                           const SizedBox(width: 8)
                         ],
                       ),
@@ -247,7 +246,7 @@ class BreakConfigSection extends StatelessWidget {
                           selected: {routine.frictionLen != null},
                           onSelectionChanged: enabled ? (Set<bool> selection) {
                             routine.frictionLen = selection.first 
-                              ? (routine.friction == FrictionType.delay ? 30 : 6)
+                              ? (routine.friction == 'delay' ? 30 : 6)
                               : null;
                             onChanged();
                           } : null,
@@ -262,29 +261,29 @@ class BreakConfigSection extends StatelessWidget {
                               ButtonSegment(
                                 value: 'minus',
                                 icon: const Icon(Icons.remove),
-                                enabled: enabled && routine.frictionLen! > (routine.friction == FrictionType.delay ? 5 : 4),
+                                enabled: enabled && routine.frictionLen! > (routine.friction == 'delay' ? 5 : 4),
                               ),
                               ButtonSegment(
                                 value: 'text',
-                                label: Text(routine.friction == FrictionType.delay 
+                                label: Text(routine.friction == 'delay' 
                                   ? '${routine.frictionLen} sec'
                                   : '${routine.frictionLen}'),
                               ),
                               ButtonSegment(
                                 value: 'plus',
                                 icon: const Icon(Icons.add),
-                                enabled: enabled && routine.frictionLen! < (routine.friction == FrictionType.delay ? 60 : 20),
+                                enabled: enabled && routine.frictionLen! < (routine.friction == 'delay' ? 60 : 20),
                               ),
                             ],
                             emptySelectionAllowed: true,
                             selected: const {},
                             onSelectionChanged: enabled ? (Set<String> selected) {
                               if (selected.first == 'minus' && 
-                                  routine.frictionLen! > (routine.friction == FrictionType.delay ? 5 : 4)) {
-                                routine.frictionLen = routine.frictionLen! - (routine.friction == FrictionType.delay ? 5 : 1);
+                                  routine.frictionLen! > (routine.friction == 'delay' ? 5 : 4)) {
+                                routine.frictionLen = routine.frictionLen! - (routine.friction == 'delay' ? 5 : 1);
                               } else if (selected.first == 'plus' && 
-                                  routine.frictionLen! < (routine.friction == FrictionType.delay ? 60 : 20)) {
-                                routine.frictionLen = routine.frictionLen! + (routine.friction == FrictionType.delay ? 5 : 1);
+                                  routine.frictionLen! < (routine.friction == 'delay' ? 60 : 20)) {
+                                routine.frictionLen = routine.frictionLen! + (routine.friction == 'delay' ? 5 : 1);
                               }
                               onChanged();
                             } : null,

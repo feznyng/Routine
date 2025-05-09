@@ -28,7 +28,7 @@ class Routine implements Syncable {
   DateTime? _pausedUntil;
   int? maxBreaks;
   int _maxBreakDuration;
-  FrictionType friction;
+  String friction;
   int? frictionLen;
   DateTime? _snoozedUntil;
   bool strictMode = false;
@@ -61,7 +61,7 @@ class Routine implements Syncable {
     _pausedUntil = null,
     maxBreaks = null,
     _maxBreakDuration = 15,
-    friction = FrictionType.delay,
+    friction = 'delay',
     frictionLen = null,
     _snoozedUntil = null,
     strictMode = false,

@@ -8,14 +8,6 @@ import 'package:path_provider/path_provider.dart';
 import '../models/condition.dart';
 part 'database.g.dart';
 
-enum FrictionType {
-  none,
-  delay,
-  intention,
-  code,
-  qr
-}
-
 @DataClassName('RoutineEntry')
 class Routines extends Table {
   late final id = text()();
@@ -48,7 +40,7 @@ class Routines extends Table {
   late final pausedUntil = dateTime().nullable()();
   late final maxBreaks = integer().nullable()();
   late final maxBreakDuration = integer().clientDefault(() => 15)();
-  late final friction = textEnum<FrictionType>()();
+  late final friction = text()();
   late final frictionLen = integer().nullable()();
   late final snoozedUntil = dateTime().nullable()();
 
