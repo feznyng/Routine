@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/routine.dart';
 import 'dart:io' show Platform;
-import 'package:mobile_scanner/mobile_scanner.dart';
+import 'qr_scanner_page.dart';
 
 class BreakDialog extends StatefulWidget {
   final Routine routine;
@@ -20,10 +20,10 @@ class BreakDialog extends StatefulWidget {
 
 class _BreakDialogState extends State<BreakDialog> {
   final _codeController = TextEditingController();
-  final _qrController = MobileScannerController(detectionSpeed: DetectionSpeed.noDuplicates);
   Timer? _delayTimer;
   int breakDuration = 15;
   bool canConfirm = false;
+  String? _scanFeedback;
   int? remainingDelay;
   String? generatedCode;
 
@@ -48,7 +48,6 @@ class _BreakDialogState extends State<BreakDialog> {
   void dispose() {
     _codeController.dispose();
     _delayTimer?.cancel();
-    _qrController.dispose();
     super.dispose();
   }
 
@@ -174,25 +173,45 @@ class _BreakDialogState extends State<BreakDialog> {
                   style: TextStyle(fontSize: 16),
                 ),
               ] else ...[
-                const Text('Scan the QR code to start your break'),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 300,
-                  width: double.infinity,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: MobileScanner(
-                      controller: _qrController,
-                      onDetect: (capture) {
-                        if (capture.raw == widget.routine.id) {
-                          setState(() {
-                            canConfirm = true;
-                          });
-                        }
-                      },
+                if (!canConfirm) ...[
+                  const Text('Scan the QR code to start your break'),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => QrScannerPage(
+                            onCodeScanned: (code) {
+                              if (code == widget.routine.id) {
+                                setState(() {
+                                  canConfirm = true;
+                                  _scanFeedback = 'QR code verified ✓';
+                                });
+                              } else {
+                                setState(() {
+                                  _scanFeedback = 'Invalid QR code ✗';
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.qr_code_scanner),
+                    label: const Text('Open Scanner'),
+                  ),
+                ],
+                if (_scanFeedback != null) ...[                  
+                  const SizedBox(height: 8),
+                  Text(
+                    _scanFeedback!,
+                    style: TextStyle(
+                      color: canConfirm ? Colors.green : Colors.red,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
+                ]
               ],
             ],
           ],

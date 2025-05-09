@@ -102,7 +102,7 @@ class _QrConditionEditorState extends State<QrConditionEditor> {
       
       // Convert to Uint8List
       final imageBytes = imageData.buffer.asUint8List();
-      const String fileName = 'routine_qr_code.png';
+      String fileName = '${widget.condition.name}_qr_code.png';
       
       // Check if we're on desktop and should use Downloads directory
       final isDesktop = await _isDesktopPlatform();

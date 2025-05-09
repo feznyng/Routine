@@ -87,8 +87,6 @@ class MobileService extends PlatformService {
                 .map((condition) => condition.lastCompletedAt!)
                 .reduce((earliest, date) => earliest.isBefore(date) ? earliest : date);
           }
-
-          print("${routine.name} = $conditionsLastMet");
         }
         
         return {

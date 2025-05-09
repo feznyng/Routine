@@ -16,6 +16,7 @@ class QrScannerPage extends StatefulWidget {
 class _QrScannerPageState extends State<QrScannerPage> {
   late final MobileScannerController controller;
   bool _hasScanned = false;
+  bool? _isValidCode;
 
   @override
   void initState() {
@@ -73,15 +74,21 @@ class _QrScannerPageState extends State<QrScannerPage> {
                 if (code != null) {
                   setState(() {
                     _hasScanned = true;
+                    _isValidCode = true;
                   });
-                  widget.onCodeScanned(code);
-                  Navigator.pop(context);
+                  // Show success feedback for a moment before closing
+                  Future.delayed(const Duration(milliseconds: 500), () {
+                    if (mounted) {
+                      widget.onCodeScanned(code);
+                      Navigator.pop(context);
+                    }
+                  });
                   break;
                 }
               }
             },
           ),
-          // Overlay with scanning instructions
+          // Overlay with scanning instructions and feedback
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -92,14 +99,35 @@ class _QrScannerPageState extends State<QrScannerPage> {
                   width: 250,
                   height: 250,
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.white, width: 2),
+                    border: Border.all(
+                      color: _hasScanned
+                          ? (_isValidCode == true ? Colors.green : Colors.red)
+                          : Colors.white,
+                      width: 2,
+                    ),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Center(
-                    child: Text(
-                      'Position QR code within the frame',
-                      style: TextStyle(color: Colors.white),
-                      textAlign: TextAlign.center,
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_hasScanned)
+                          Icon(
+                            _isValidCode == true
+                                ? Icons.check_circle
+                                : Icons.error,
+                            color: _isValidCode == true
+                                ? Colors.green
+                                : Colors.red,
+                            size: 48,
+                          )
+                        else
+                          const Text(
+                            'Position QR code within the frame',
+                            style: TextStyle(color: Colors.white),
+                            textAlign: TextAlign.center,
+                          ),
+                      ],
                     ),
                   ),
                 ),
