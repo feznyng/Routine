@@ -12,7 +12,8 @@ enum FrictionType {
   none,
   delay,
   intention,
-  code
+  code,
+  qr
 }
 
 @DataClassName('RoutineEntry')

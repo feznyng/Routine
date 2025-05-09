@@ -1,6 +1,8 @@
 import 'package:Routine/database/database.dart';
 import 'package:flutter/material.dart';
 import '../../models/routine.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:file_selector/file_selector.dart';
 
 class BreakConfigSection extends StatelessWidget {
   final Routine routine;
@@ -167,6 +169,10 @@ class BreakConfigSection extends StatelessWidget {
                               value: FrictionType.code,
                               label: Text('Code'),
                             ),
+                            ButtonSegment(
+                              value: FrictionType.qr,
+                              label: Text('QR Code'),
+                            ),
                           ],
                           selected: {routine.friction},
                           onSelectionChanged: enabled ? (Set<FrictionType> selection) {
@@ -178,6 +184,42 @@ class BreakConfigSection extends StatelessWidget {
                             onChanged();
                           } : null,
                         ),
+                      ),
+                    ],
+                    if (routine.maxBreaks != 0 && routine.friction == FrictionType.qr) ...[                
+                      const SizedBox(height: 16),
+                      TextButton.icon(
+                        onPressed: () async {
+                          final path = await getSaveLocation(
+                            suggestedName: '${routine.name.toLowerCase().replaceAll(' ', '_')}_qr.png',
+                            acceptedTypeGroups: [
+                              const XTypeGroup(label: 'PNG', extensions: ['png']),
+                            ],
+                          );
+                          if (path == null) return;
+
+                          // Create QR painter
+                          final painter = QrPainter(
+                            data: routine.id,
+                            version: QrVersions.auto,
+                            gapless: true,
+                            errorCorrectionLevel: QrErrorCorrectLevel.L,
+                          );
+                          
+                          // Generate image data
+                          final imageData = await painter.toImageData(600.0);
+                          if (imageData == null) return;
+                          
+                          // Save the file
+                          final file = XFile.fromData(
+                            imageData.buffer.asUint8List(),
+                            mimeType: 'image/png',
+                            name: path.path.split('/').last,
+                          );
+                          await file.saveTo(path.path);
+                        },
+                        icon: const Icon(Icons.download),
+                        label: const Text('Download QR Code'),
                       ),
                     ],
                     if (routine.maxBreaks != 0 && (routine.friction == FrictionType.delay || routine.friction == FrictionType.code)) ...[                

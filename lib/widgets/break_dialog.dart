@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/routine.dart';
 import '../database/database.dart';
+import 'dart:io' show Platform;
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 class BreakDialog extends StatefulWidget {
   final Routine routine;
@@ -19,6 +21,7 @@ class BreakDialog extends StatefulWidget {
 
 class _BreakDialogState extends State<BreakDialog> {
   final _codeController = TextEditingController();
+  final _qrController = MobileScannerController(detectionSpeed: DetectionSpeed.noDuplicates);
   Timer? _delayTimer;
   int breakDuration = 15;
   bool canConfirm = false;
@@ -46,6 +49,7 @@ class _BreakDialogState extends State<BreakDialog> {
   void dispose() {
     _codeController.dispose();
     _delayTimer?.cancel();
+    _qrController.dispose();
     super.dispose();
   }
 
@@ -71,11 +75,12 @@ class _BreakDialogState extends State<BreakDialog> {
     return AlertDialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
       title: const Text('Take a Break'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Always show breaks information
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Always show breaks information
           Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: Row(
@@ -163,9 +168,37 @@ class _BreakDialogState extends State<BreakDialog> {
                   LengthLimitingTextInputFormatter(6),
                 ],
               ),
+            ] else if (widget.routine.friction == FrictionType.qr) ...[
+              if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) ...[
+                const Text(
+                  'Please use your phone to scan the QR code.',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ] else ...[
+                const Text('Scan the QR code to start your break'),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 300,
+                  width: double.infinity,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: MobileScanner(
+                      controller: _qrController,
+                      onDetect: (capture) {
+                        if (capture.raw == widget.routine.id) {
+                          setState(() {
+                            canConfirm = true;
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ],
           ],
-        ],
+          ],
+        ),
       ),
       actions: [
         TextButton(
