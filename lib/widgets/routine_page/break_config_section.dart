@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../models/routine.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:nfc_manager/nfc_manager.dart';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class BreakConfigSection extends StatelessWidget {
   final Routine routine;
@@ -172,6 +175,10 @@ class BreakConfigSection extends StatelessWidget {
                               value: 'qr',
                               label: Text('QR Code'),
                             ),
+                            ButtonSegment(
+                              value: 'nfc',
+                              label: Text('NFC'),
+                            ),
                           ],
                           selected: {routine.friction},
                           onSelectionChanged: enabled ? (Set<String> selection) {
@@ -183,6 +190,99 @@ class BreakConfigSection extends StatelessWidget {
                             onChanged();
                           } : null,
                         ),
+                      ),
+                    ],
+                    if (routine.maxBreaks != 0 && routine.friction == 'nfc') ...[                
+                      const SizedBox(height: 16),
+                      TextButton.icon(
+                        onPressed: enabled ? () async {
+                          // Check if we're on desktop
+                          if (!kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux)) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('NFC is only supported on mobile devices. Please use a mobile device to scan a tag.'),
+                              ),
+                            );
+                            return;
+                          }
+
+                          try {
+                            bool isAvailable = await NfcManager.instance.isAvailable();
+                            if (!isAvailable) {
+                              if (context.mounted) {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('NFC Not Available'),
+                                    content: const Text('NFC is not available on this device.'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text('OK'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+                              return;
+                            }
+
+                            // Start NFC session
+                            NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
+                              try {
+                                bool writeSuccess = false;
+                                if (tag.data.containsKey('ndef')) {
+                                  final ndef = Ndef.from(tag);
+                                  if (ndef != null && ndef.isWritable) {
+                                    final message = NdefMessage([
+                                      NdefRecord.createText(routine.id),
+                                    ]);
+                                    await ndef.write(message);
+                                    writeSuccess = true;
+                                  }
+                                }
+
+                                if (writeSuccess) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Successfully scanned NFC tag ✓'),
+                                      ),
+                                    );
+                                  }
+                                } else {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Failed to scan NFC Tag ✗'),
+                                      ),
+                                    );
+                                  }
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Error scanning NFC tag: $e'),
+                                    ),
+                                  );
+                                }
+                              } finally {
+                                NfcManager.instance.stopSession();
+                              }
+                            });
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error starting NFC: $e'),
+                                ),
+                              );
+                            }
+                          }
+                        } : null,
+                        icon: const Icon(Icons.nfc),
+                        label: const Text('Scan Tag'),
                       ),
                     ],
                     if (routine.maxBreaks != 0 && routine.friction == 'qr') ...[                

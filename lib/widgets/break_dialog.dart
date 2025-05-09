@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../models/routine.dart';
 import 'dart:io' show Platform;
 import 'qr_scanner_page.dart';
+import 'package:nfc_manager/nfc_manager.dart';
 
 class BreakDialog extends StatefulWidget {
   final Routine routine;
@@ -199,23 +200,97 @@ class _BreakDialogState extends State<BreakDialog> {
                       );
                     },
                     icon: const Icon(Icons.qr_code_scanner),
-                    label: const Text('Open Scanner'),
+                    label: const Text('Scan QR Code'),
                   ),
                 ],
-                if (_scanFeedback != null) ...[                  
-                  const SizedBox(height: 8),
-                  Text(
-                    _scanFeedback!,
-                    style: TextStyle(
-                      color: canConfirm ? Colors.green : Colors.red,
-                      fontWeight: FontWeight.bold,
-                    ),
+              ],
+            ] else if (widget.routine.friction == 'nfc') ...[
+              if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) ...[
+                const Text(
+                  'Please use your phone to scan the NFC tag.',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ] else ...[
+                if (!canConfirm) ...[
+                  const Text('Scan the NFC tag to start your break'),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: () async {
+                      try {
+                        bool isAvailable = await NfcManager.instance.isAvailable();
+                        if (!isAvailable) {
+                          if (context.mounted) {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('NFC Not Available'),
+                                content: const Text('NFC is not available on this device.'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('OK'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                          return;
+                        }
+
+                        // Start NFC session
+                        NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
+                          try {
+                            if (tag.data.containsKey('ndef')) {
+                              final ndef = Ndef.from(tag);
+                              if (ndef != null) {
+                                final message = await ndef.read();
+                                final record = message.records.first;
+                                final payload = String.fromCharCodes(record.payload).substring(3); // Skip language code
+                                
+                                if (payload == widget.routine.id) {
+                                  setState(() {
+                                    canConfirm = true;
+                                    _scanFeedback = 'NFC tag verified ✓';
+                                  });
+                                } else {
+                                  setState(() {
+                                    _scanFeedback = 'Invalid NFC tag ✗';
+                                  });
+                                }
+                              }
+                            }
+                          } catch (e) {
+                            setState(() {
+                              _scanFeedback = 'Error reading NFC tag: $e';
+                            });
+                          } finally {
+                            NfcManager.instance.stopSession();
+                          }
+                        });
+                      } catch (e) {
+                        setState(() {
+                          _scanFeedback = 'Error starting NFC: $e';
+                        });
+                      }
+                    },
+                    icon: const Icon(Icons.nfc),
+                    label: const Text('Scan NFC Tag'),
                   ),
-                ]
+                ],
               ],
             ],
+            if (_scanFeedback != null) ...[                  
+              const SizedBox(height: 8),
+              Text(
+                _scanFeedback!,
+                style: TextStyle(
+                  color: canConfirm ? Colors.green : Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ],
-          ],
+          ]
         ),
       ),
       actions: [
