@@ -18,15 +18,11 @@ class RoutineManager {
         center.stopMonitoring()
         
         let now = Date()
-        var seenTimes: Set<Int> = []
 
         // always schedule for midnight to handle all day routines
         do {
             let intervalStart = minutesOfDayToDateComponents(0)
             let intervalEnd = minutesOfDayToDateComponents(15)
-
-            seenTimes.insert(0)
-            seenTimes.insert(15)
 
             let name = DeviceActivityName("midnight-eval")
             let schedule = DeviceActivitySchedule(intervalStart: intervalStart, intervalEnd: intervalEnd, repeats: true)
@@ -41,22 +37,17 @@ class RoutineManager {
                 let startTime = routine.startTime!
                 let endTime = routine.endTime!
                 
-                if !(seenTimes.contains(startTime) && seenTimes.contains(endTime)) {
-                    let intervalStart = minutesOfDayToDateComponents(startTime)
-                    let intervalEnd = minutesOfDayToDateComponents(endTime)
+                let intervalStart = minutesOfDayToDateComponents(startTime)
+                let intervalEnd = minutesOfDayToDateComponents(endTime)
 
-                    let name = DeviceActivityName(routine.id)
-                    let schedule = DeviceActivitySchedule(intervalStart: intervalStart, intervalEnd: intervalEnd, repeats: true)
+                let name = DeviceActivityName(routine.id)
+                let schedule = DeviceActivitySchedule(intervalStart: intervalStart, intervalEnd: intervalEnd, repeats: true)
+                
+                do {
+                    try center.startMonitoring(name, during: schedule)
                     
-                    do {
-                        try center.startMonitoring(name, during: schedule)
-                        
-                        seenTimes.insert(startTime)
-                        seenTimes.insert(endTime)
-                        
-                    } catch {
-                        print("failed to register device activity \(error.localizedDescription)")
-                    }
+                } catch {
+                    print("failed to register device activity \(error.localizedDescription)")
                 }
             }
             
