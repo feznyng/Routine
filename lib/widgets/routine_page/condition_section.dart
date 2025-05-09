@@ -64,8 +64,22 @@ class ConditionSection extends StatelessWidget {
                 onTap: () {
                   Navigator.pop(context);
                   final newCondition = Condition.create(type: type);
-                  routine.conditions.add(newCondition);
-                  _editCondition(context, newCondition);
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (context) => _ConditionEditSheet(
+                      condition: newCondition,
+                      onSave: (updatedCondition) {
+                        routine.conditions.add(updatedCondition);
+                        onChanged();
+                        Navigator.pop(context);
+                      },
+                      onDelete: () {
+                        // Just close the dialog since we haven't added the condition yet
+                        Navigator.pop(context);
+                      },
+                    ),
+                  );
                 },
               );
             }).toList(),
