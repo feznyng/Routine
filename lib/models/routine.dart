@@ -177,7 +177,7 @@ class Routine implements Syncable {
       frictionLen: Value(frictionLen),
       snoozedUntil: Value(_snoozedUntil),
       updatedAt: Value(DateTime.now()),
-      recurring: Value(true),
+      recurrence: Value(1),
       conditions: Value(conditions),
       strictMode: Value(strictMode)
     ));

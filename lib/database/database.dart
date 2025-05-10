@@ -1,3 +1,4 @@
+import 'package:Routine/database/database.steps.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/extensions/json1.dart';
 import 'package:drift_flutter/drift_flutter.dart';
@@ -26,7 +27,7 @@ class Routines extends Table {
   late final sunday = boolean()();
   late final startTime = integer()();
   late final endTime = integer()();
-  late final recurring = boolean()();
+  late final recurrence = integer().clientDefault(() => 1).nullable()();
 
   late final changes = text().map(StringListTypeConverter())();
   late final deleted = boolean().clientDefault(() => false)();
@@ -97,7 +98,18 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration {
+    return MigrationStrategy(
+      onUpgrade: stepByStep(
+        from1To2: (m, schema) async {
+          await m.dropColumn(schema.routines, 'recurring');
+          await m.addColumn(schema.routines, schema.routines.recurrence);
+        }),
+    );
+  }
 
   static QueryExecutor _openConnection() {
     return driftDatabase(
