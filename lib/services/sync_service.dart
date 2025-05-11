@@ -163,7 +163,11 @@ class SyncService {
 
       // Check for internet connectivity
       final List<ConnectivityResult> connectivityResult = await (Connectivity().checkConnectivity());
-      if (!connectivityResult.contains(ConnectivityResult.wifi)) {
+      if (!connectivityResult.contains(ConnectivityResult.wifi) && 
+            !connectivityResult.contains(ConnectivityResult.ethernet) && 
+            !connectivityResult.contains(ConnectivityResult.vpn) && 
+            !connectivityResult.contains(ConnectivityResult.mobile) 
+            ) {
         print('No internet connection, skipping sync');
         return true;
       }
