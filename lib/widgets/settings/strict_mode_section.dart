@@ -113,8 +113,8 @@ class _StrictModeSectionState extends State<StrictModeSection> {
                               title: const Text('Enable Emergency Mode'),
                               content: Text(
                                 'This will temporarily suspend all strict mode restrictions. '
-                                'You have ${remainingEmergencies - 1} emergenc${remainingEmergencies - 1 == 1 ? 'y' : 'ies'} '
-                                'remaining after this one.\n\n'
+                                'You have ${remainingEmergencies} emergenc${remainingEmergencies == 1 ? 'y' : 'ies'} '
+                                'remaining.\n\n'
                                 'Are you sure you want to proceed?'
                               ),
                               actions: [

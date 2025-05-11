@@ -7,6 +7,7 @@ import '../setup.dart';
 import '../database/database.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:drift/drift.dart';
+import 'strict_mode_service.dart';
 
 class SyncJob {
   bool remote;
@@ -31,8 +32,14 @@ typedef Changes = ({
 class SyncService {
   static final SyncService _instance = SyncService._internal();
   RealtimeChannel? _syncChannel;
+  final AppDatabase db;
+  final SupabaseClient _client;
+  late final String _userId;
   
-  SyncService._internal() {
+  SyncService._internal() : 
+    db = getIt<AppDatabase>(),
+    _client = Supabase.instance.client {
+    _userId = Supabase.instance.client.auth.currentUser?.id ?? '';
     _startConsumer();
     setupRealtimeSync();
   }
@@ -94,7 +101,6 @@ class SyncService {
   Timer? _batchTimer;
   final List<SyncJob> _pendingJobs = [];
   bool _isProcessing = false;
-  final SupabaseClient _client = Supabase.instance.client;
   
   void addJob(SyncJob job) {
     _jobController.add(job);
@@ -135,10 +141,7 @@ class SyncService {
       if (batchJobs.isNotEmpty) {
         final shouldNotifyRemote = batchJobs.any((job) => !job.remote);
         final isFullSync = batchJobs.any((job) => job.full);
-        final success = await sync(shouldNotifyRemote, full: isFullSync);
-        if (!success) {
-          addJob(SyncJob(remote: true));
-        }
+        await sync(shouldNotifyRemote, full: isFullSync);
       }
     } finally {
       _isProcessing = false;
@@ -154,8 +157,6 @@ class SyncService {
     await _syncChannel?.unsubscribe();
     _jobController.close();
   }
-
-  String get _userId => _client.auth.currentUser?.id ?? '';
 
   Future<bool> sync(bool notifyRemote, {bool full = false}) async {
     try {
@@ -183,6 +184,51 @@ class SyncService {
       bool madeRemoteChange = false;
       bool accidentalDeletion = false;
 
+      {
+        final userData = await _client.from('users')
+            .select('emergencies,in_emergency')
+            .eq('id', _userId)
+            .maybeSingle() ?? 
+          await _client.from('users').insert({
+            'id': _userId,
+            'emergencies': [],
+            'in_emergency': false,
+          }).select() as Map<String, dynamic>;
+        
+        // Remote emergency state wins over local
+        final remoteEmergency = userData['in_emergency'] ?? false;
+        if (remoteEmergency != StrictModeService().emergencyMode) {
+          await StrictModeService().setEmergencyMode(remoteEmergency);
+        }
+
+        final remoteEmergencies = (userData['emergencies'] as List)
+            .map((ts) => DateTime.parse(ts))
+            .map((dt) => dt.toUtc())
+            .toList();
+
+        final localEmergencies = StrictModeService().emergencyTimestamps
+            .map((dt) => dt.toUtc())
+            .toList();
+
+        // Deduplicate based on ISO string representation
+        final allTimestamps = {...remoteEmergencies, ...localEmergencies}
+            .map((dt) => dt.toIso8601String())
+            .toSet()
+            .map((ts) => DateTime.parse(ts))
+            .toList();
+
+        await StrictModeService().updateEmergencyTimestamps(allTimestamps);
+
+        print("local emergencies: $localEmergencies");
+        print("all emergencies: $allTimestamps");
+        
+        // Update remote with merged timestamps
+        await _client.from('users').update({
+          'emergencies': allTimestamps.map((ts) => ts.toUtc().toIso8601String()).toList(),
+          'in_emergency': StrictModeService().emergencyMode
+        }).eq('id', _userId);
+      }
+      
       // pull devices
       {
         final remoteDevices = await _client.from('devices').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());

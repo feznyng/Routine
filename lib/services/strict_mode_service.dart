@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import '../models/routine.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/sync_service.dart';
 
 class StrictModeService with ChangeNotifier {
   static final StrictModeService _instance = StrictModeService._internal();
@@ -131,10 +133,30 @@ class StrictModeService with ChangeNotifier {
   // Emergency mode getter
   bool get emergencyMode => _emergencyMode;
 
+  // Get all emergency timestamps
+  List<DateTime> get emergencyTimestamps => List.unmodifiable(_emergencyTimestamps);
+
+  // Update emergency timestamps from sync
+  Future<void> updateEmergencyTimestamps(List<DateTime> timestamps) async {
+    _emergencyTimestamps = timestamps.toList();
+    await _storeEmergencyTimestamps();
+    notifyListeners();
+  }
+
+  Future<void> _storeEmergencyTimestamps() async {
+    final prefs = await SharedPreferences.getInstance();
+    final timestampsJson = _emergencyTimestamps
+        .map((ts) => ts.toIso8601String())
+        .toList();
+    await prefs.setStringList(_emergencyTimestampsKey, timestampsJson);
+  }
+
   int get remainingEmergencies {
     // Remove timestamps older than a week
     final oneWeekAgo = DateTime.now().subtract(const Duration(days: 7));
     _emergencyTimestamps.removeWhere((ts) => ts.isBefore(oneWeekAgo));
+
+    print("emergencies left ${emergencyTimestamps.length} ${_maxEmergenciesPerWeek}");
     
     return _maxEmergenciesPerWeek - _emergencyTimestamps.length;
   }
@@ -253,11 +275,23 @@ class StrictModeService with ChangeNotifier {
     // Load emergency mode
     _emergencyMode = prefs.getBool(_emergencyModeKey) ?? false;
     
-    // Load emergency timestamps
-    final timestampsJson = prefs.getStringList(_emergencyTimestampsKey) ?? [];
-    _emergencyTimestamps = timestampsJson
-        .map((ts) => DateTime.parse(ts))
-        .toList();
+    // Clear emergency timestamps for testing
+    // _emergencyTimestamps = [];
+    // await _storeEmergencyTimestamps();
+    
+    // Clear remote emergencies if they exist
+    try {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+      if (userId != null) {
+        await supabase.from('users').update({
+          'emergencies': [],
+          'in_emergency': false,
+        }).eq('id', userId);
+      }
+    } catch (e) {
+      print('Error clearing remote emergencies: $e');
+    }
     
     _initialized = true;
     
@@ -386,15 +420,24 @@ class StrictModeService with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_emergencyModeKey, value);
     _emergencyMode = value;
+
+    // When enabling emergency mode, add current timestamp
+    if (value) {
+      _emergencyTimestamps.add(DateTime.now());
+      await _storeEmergencyTimestamps();
+    }
+
     notifyListeners();
     _notifyEffectiveSettingsChanged();
+
+    // Notify other devices of the change
+    SyncService().addJob(SyncJob(remote: true));
   }
 
   // Helper method to store strict mode data in shared preferences
   Future<void> _storeStrictModeDataInSharedPreferences(Map<String, dynamic> settings) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _emergencyMode = prefs.getBool(_emergencyModeKey) ?? false;
       final jsonString = jsonEncode(settings);
       await prefs.setString('strictModeData', jsonString);
       print('Stored strict mode data in shared preferences');

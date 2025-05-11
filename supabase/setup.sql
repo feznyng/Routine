@@ -51,8 +51,10 @@ CREATE TABLE groups (
 );
 
 CREATE TABLE users (
-    user_id uuid not null primary key references auth.users on delete cascade,
-    emergencies TIMESTAMPTZ[]
+    id uuid not null primary key references auth.users on delete cascade,
+    emergencies TIMESTAMPTZ[],
+    in_emergency BOOLEAN,
+    updated_at TIMESTAMPTZ
 );
 
 -- Enable Row Level Security for all tables
@@ -131,20 +133,20 @@ CREATE POLICY groups_delete_policy ON groups
 -- Policy for selecting users (read)
 CREATE POLICY users_select_policy ON users
     FOR SELECT
-    USING (auth.uid() = user_id);
+    USING (auth.uid() = id);
 
 -- Policy for inserting users
 CREATE POLICY users_insert_policy ON users
     FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
+    WITH CHECK (auth.uid() = id);
 
 -- Policy for updating users
 CREATE POLICY users_update_policy ON users
     FOR UPDATE
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+    USING (auth.uid() = id)
+    WITH CHECK (auth.uid() = id);
 
 -- Policy for deleting users
 CREATE POLICY users_delete_policy ON users
     FOR DELETE
-    USING (auth.uid() = user_id);
+    USING (auth.uid() = id);
