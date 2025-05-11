@@ -23,7 +23,7 @@ CREATE TABLE routines (
     sunday BOOLEAN NOT NULL,
     start_time INTEGER NOT NULL,
     end_time INTEGER NOT NULL,
-    recurring BOOLEAN NOT NULL,
+    recurrence BOOLEAN NOT NULL,
     deleted BOOLEAN NOT NULL DEFAULT FALSE,
     updated_at TIMESTAMPTZ NOT NULL,
     groups TEXT[] NOT NULL,
@@ -50,10 +50,16 @@ CREATE TABLE groups (
     user_id uuid not null references auth.users on delete cascade
 );
 
+CREATE TABLE users (
+    user_id uuid not null primary key references auth.users on delete cascade,
+    emergency_flag boolean
+);
+
 -- Enable Row Level Security for all tables
 ALTER TABLE devices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE routines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE groups ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies for devices table
 -- Policy for selecting devices (read)
@@ -118,5 +124,27 @@ CREATE POLICY groups_update_policy ON groups
 
 -- Policy for deleting groups
 CREATE POLICY groups_delete_policy ON groups
+    FOR DELETE
+    USING (auth.uid() = user_id);
+
+-- Create RLS policies for users table
+-- Policy for selecting users (read)
+CREATE POLICY users_select_policy ON users
+    FOR SELECT
+    USING (auth.uid() = user_id);
+
+-- Policy for inserting users
+CREATE POLICY users_insert_policy ON users
+    FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+-- Policy for updating users
+CREATE POLICY users_update_policy ON users
+    FOR UPDATE
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+-- Policy for deleting users
+CREATE POLICY users_delete_policy ON users
     FOR DELETE
     USING (auth.uid() = user_id);
