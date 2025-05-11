@@ -38,7 +38,10 @@ class StrictModeService with ChangeNotifier {
   bool _initialized = false;
   bool _inStrictMode = false;
   bool _emergencyMode = false;
+  List<DateTime> _emergencyTimestamps = [];
   static const String _emergencyModeKey = 'emergency_mode';
+  static const String _emergencyTimestampsKey = 'emergency_timestamps';
+  static const int _maxEmergenciesPerWeek = 2;
   
   // Desktop strict mode settings
   bool _blockAppExit = false;
@@ -127,6 +130,23 @@ class StrictModeService with ChangeNotifier {
   
   // Emergency mode getter
   bool get emergencyMode => _emergencyMode;
+
+  int get remainingEmergencies {
+    // Remove timestamps older than a week
+    final oneWeekAgo = DateTime.now().subtract(const Duration(days: 7));
+    _emergencyTimestamps.removeWhere((ts) => ts.isBefore(oneWeekAgo));
+    
+    return _maxEmergenciesPerWeek - _emergencyTimestamps.length;
+  }
+
+  bool get canStartEmergency {
+    // Remove timestamps older than a week
+    final oneWeekAgo = DateTime.now().subtract(const Duration(days: 7));
+    _emergencyTimestamps.removeWhere((ts) => ts.isBefore(oneWeekAgo));
+    
+    // Count emergencies in the last week
+    return _emergencyTimestamps.length < _maxEmergenciesPerWeek;
+  }
 
   // Enhanced getters that consider if any active routine is in strict mode AND emergency mode is off
   bool get effectiveBlockAppExit => _blockAppExit && _inStrictMode && !_emergencyMode;
@@ -232,6 +252,12 @@ class StrictModeService with ChangeNotifier {
 
     // Load emergency mode
     _emergencyMode = prefs.getBool(_emergencyModeKey) ?? false;
+    
+    // Load emergency timestamps
+    final timestampsJson = prefs.getStringList(_emergencyTimestampsKey) ?? [];
+    _emergencyTimestamps = timestampsJson
+        .map((ts) => DateTime.parse(ts))
+        .toList();
     
     _initialized = true;
     

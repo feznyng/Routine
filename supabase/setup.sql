@@ -52,7 +52,7 @@ CREATE TABLE groups (
 
 CREATE TABLE users (
     user_id uuid not null primary key references auth.users on delete cascade,
-    emergency_flag boolean
+    emergencies TIMESTAMPTZ[]
 );
 
 -- Enable Row Level Security for all tables
