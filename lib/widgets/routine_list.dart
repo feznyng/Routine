@@ -5,8 +5,10 @@ import 'package:cron/cron.dart';
 import 'package:flutter/material.dart';
 import '../models/routine.dart';
 import '../services/sync_service.dart';
+import '../services/strict_mode_service.dart';
 import 'routine_page.dart';
 import 'routine_card.dart';
+import 'common/emergency_mode_banner.dart';
 
 class RoutineList extends StatefulWidget {
   const RoutineList({super.key});
@@ -25,6 +27,7 @@ class _RoutineListState extends State<RoutineList> {
   final cron = Cron();
   final List<ScheduledTask> _scheduledTasks = [];
   final _syncService = SyncService();
+  final _strictModeService = StrictModeService.instance;
 
   @override
   void initState() {
@@ -168,6 +171,9 @@ class _RoutineListState extends State<RoutineList> {
                 },
                 child: ListView(
                   children: [
+                    // Emergency mode banner
+                    if (_strictModeService.emergencyMode)
+                      const EmergencyModeBanner(),
                     // Active routines section
                     if (activeRoutines.isNotEmpty) ...[  
                       _buildSectionHeader(

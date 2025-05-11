@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'dart:async';
 import '../../services/strict_mode_service.dart';
+import '../common/emergency_mode_banner.dart';
 
 class StrictModeSection extends StatefulWidget {
   const StrictModeSection({super.key});
@@ -94,42 +95,67 @@ class _StrictModeSectionState extends State<StrictModeSection> {
           ),
           const Divider(height: 1),
           
-          // Warning banner when in strict mode
-          if (_strictModeService.inStrictMode) ...[
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.lock, color: Colors.red),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Strict Mode Active',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Colors.red,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'A routine with strict mode is currently active. You cannot disable strict mode settings until all strict mode routines become inactive.',
-                          style: TextStyle(fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+          // Emergency mode button and banner
+          if (_strictModeService.inStrictMode || _strictModeService.emergencyMode) ...[
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  final newValue = !_strictModeService.emergencyMode;
+                  await _strictModeService.setEmergencyMode(newValue);
+                  if (mounted) setState(() {});
+                },
+                icon: Icon(
+                  _strictModeService.emergencyMode ? Icons.warning_amber : Icons.emergency,
+                  color: _strictModeService.emergencyMode ? Colors.amber : Colors.white,
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _strictModeService.emergencyMode ? Colors.white : Colors.red,
+                  foregroundColor: _strictModeService.emergencyMode ? Colors.black : Colors.white,
+                  side: _strictModeService.emergencyMode ? BorderSide(color: Colors.amber) : null,
+                ),
+                label: Text(_strictModeService.emergencyMode ? 'Disable Emergency Mode' : 'Enable Emergency Mode'),
               ),
             ),
+
+            // Show emergency mode banner if emergency mode is active, otherwise show strict mode warning if in strict mode
+            if (_strictModeService.emergencyMode)
+              const EmergencyModeBanner()
+            else if (_strictModeService.inStrictMode)
+              Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.lock, color: Colors.red),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Strict Mode Active',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'A routine with strict mode is currently active. You cannot disable strict mode settings until all strict mode routines become inactive.',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
           
           // Desktop strict mode options
@@ -137,11 +163,11 @@ class _StrictModeSectionState extends State<StrictModeSection> {
             SwitchListTile(
               title: const Text('Block app exit'),
               value: _strictModeService.blockAppExit,
-              onChanged: (_strictModeService.inStrictMode && _strictModeService.blockAppExit)
-                ? null // Disable the switch when trying to turn it off in strict mode
+              onChanged: (_strictModeService.inStrictMode && _strictModeService.blockAppExit && !_strictModeService.emergencyMode)
+                ? null // Disable the switch when trying to turn it off in strict mode (unless in emergency mode)
                 : (value) async {
-                  // Only allow turning on in strict mode, not turning off
-                  if (_strictModeService.inStrictMode && !value) return;
+                  // Only prevent turning off in strict mode when not in emergency mode
+                  if (_strictModeService.inStrictMode && !value && !_strictModeService.emergencyMode) return;
                   
                   final success = await _strictModeService.setBlockAppExitWithConfirmation(context, value);
                   if (success && mounted) {
@@ -152,11 +178,11 @@ class _StrictModeSectionState extends State<StrictModeSection> {
             SwitchListTile(
               title: const Text('Block disabling system startup'),
               value: _strictModeService.blockDisablingSystemStartup,
-              onChanged: (_strictModeService.inStrictMode && _strictModeService.blockDisablingSystemStartup)
-                ? null // Disable the switch when trying to turn it off in strict mode
+              onChanged: (_strictModeService.inStrictMode && _strictModeService.blockDisablingSystemStartup && !_strictModeService.emergencyMode)
+                ? null // Disable the switch when trying to turn it off in strict mode (unless in emergency mode)
                 : (value) async {
-                  // Only allow turning on in strict mode, not turning off
-                  if (_strictModeService.inStrictMode && !value) return;
+                  // Only prevent turning off in strict mode when not in emergency mode
+                  if (_strictModeService.inStrictMode && !value && !_strictModeService.emergencyMode) return;
                   
                   final success = await _strictModeService.setBlockDisablingSystemStartupWithConfirmation(context, value);
                   if (success && mounted) {
@@ -167,11 +193,11 @@ class _StrictModeSectionState extends State<StrictModeSection> {
             SwitchListTile(
               title: const Text('Block browsers without extension'),
               value: _strictModeService.blockBrowsersWithoutExtension,
-              onChanged: (_strictModeService.inStrictMode && _strictModeService.blockBrowsersWithoutExtension)
-                ? null // Disable the switch when trying to turn it off in strict mode
+              onChanged: (_strictModeService.inStrictMode && _strictModeService.blockBrowsersWithoutExtension && !_strictModeService.emergencyMode)
+                ? null // Disable the switch when trying to turn it off in strict mode (unless in emergency mode)
                 : (value) async {
-                  // Only allow turning on in strict mode, not turning off
-                  if (_strictModeService.inStrictMode && !value) return;
+                  // Only prevent turning off in strict mode when not in emergency mode
+                  if (_strictModeService.inStrictMode && !value && !_strictModeService.emergencyMode) return;
                   
                   final success = await _strictModeService.setBlockBrowsersWithoutExtensionWithConfirmation(context, value);
                   if (success && mounted) {
@@ -186,11 +212,11 @@ class _StrictModeSectionState extends State<StrictModeSection> {
             SwitchListTile(
               title: const Text('Block changing time settings'),
               value: _strictModeService.blockChangingTimeSettings,
-              onChanged: (_strictModeService.inStrictMode && _strictModeService.blockChangingTimeSettings)
-                ? null // Disable the switch when trying to turn it off in strict mode
+              onChanged: (_strictModeService.inStrictMode && _strictModeService.blockChangingTimeSettings && !_strictModeService.emergencyMode)
+                ? null // Disable the switch when trying to turn it off in strict mode (unless in emergency mode)
                 : (value) async {
-                  // Only allow turning on in strict mode, not turning off
-                  if (_strictModeService.inStrictMode && !value) return;
+                  // Only prevent turning off in strict mode when not in emergency mode
+                  if (_strictModeService.inStrictMode && !value && !_strictModeService.emergencyMode) return;
                   
                   final success = await _strictModeService.setBlockChangingTimeSettingsWithConfirmation(context, value);
                   if (success && mounted) {
@@ -204,8 +230,8 @@ class _StrictModeSectionState extends State<StrictModeSection> {
               onChanged: (_strictModeService.inStrictMode && _strictModeService.blockUninstallingApps)
                 ? null // Disable the switch when trying to turn it off in strict mode
                 : (value) async {
-                  // Only allow turning on in strict mode, not turning off
-                  if (_strictModeService.inStrictMode && !value) return;
+                  // Only prevent turning off in strict mode when not in emergency mode
+                  if (_strictModeService.inStrictMode && !value && !_strictModeService.emergencyMode) return;
                   
                   final success = await _strictModeService.setBlockUninstallingAppsWithConfirmation(context, value);
                   if (success && mounted) {
@@ -219,8 +245,8 @@ class _StrictModeSectionState extends State<StrictModeSection> {
               onChanged: (_strictModeService.inStrictMode && _strictModeService.blockInstallingApps)
                 ? null // Disable the switch when trying to turn it off in strict mode
                 : (value) async {
-                  // Only allow turning on in strict mode, not turning off
-                  if (_strictModeService.inStrictMode && !value) return;
+                  // Only prevent turning off in strict mode when not in emergency mode
+                  if (_strictModeService.inStrictMode && !value && !_strictModeService.emergencyMode) return;
                   
                   final success = await _strictModeService.setBlockInstallingAppsWithConfirmation(context, value);
                   if (success && mounted) {

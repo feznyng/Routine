@@ -37,6 +37,8 @@ class StrictModeService with ChangeNotifier {
   
   bool _initialized = false;
   bool _inStrictMode = false;
+  bool _emergencyMode = false;
+  static const String _emergencyModeKey = 'emergency_mode';
   
   // Desktop strict mode settings
   bool _blockAppExit = false;
@@ -123,13 +125,16 @@ class StrictModeService with ChangeNotifier {
     return _extensionCooldownEnd!.difference(DateTime.now()).inMinutes + 1; // +1 to round up
   }
   
-  // Enhanced getters that consider if any active routine is in strict mode
-  bool get effectiveBlockAppExit => _blockAppExit && _inStrictMode;
-  bool get effectiveBlockDisablingSystemStartup => _blockDisablingSystemStartup && _inStrictMode;
-  bool get effectiveBlockBrowsersWithoutExtension => _blockBrowsersWithoutExtension && _inStrictMode;
-  bool get effectiveBlockChangingTimeSettings => _blockChangingTimeSettings && _inStrictMode;
-  bool get effectiveBlockUninstallingApps => _blockUninstallingApps && _inStrictMode;
-  bool get effectiveBlockInstallingApps => _blockInstallingApps && _inStrictMode;
+  // Emergency mode getter
+  bool get emergencyMode => _emergencyMode;
+
+  // Enhanced getters that consider if any active routine is in strict mode AND emergency mode is off
+  bool get effectiveBlockAppExit => _blockAppExit && _inStrictMode && !_emergencyMode;
+  bool get effectiveBlockDisablingSystemStartup => _blockDisablingSystemStartup && _inStrictMode && !_emergencyMode;
+  bool get effectiveBlockBrowsersWithoutExtension => _blockBrowsersWithoutExtension && _inStrictMode && !_emergencyMode;
+  bool get effectiveBlockChangingTimeSettings => _blockChangingTimeSettings && _inStrictMode && !_emergencyMode;
+  bool get effectiveBlockUninstallingApps => _blockUninstallingApps && _inStrictMode && !_emergencyMode;
+  bool get effectiveBlockInstallingApps => _blockInstallingApps && _inStrictMode && !_emergencyMode;
   
   // Shared preferences keys
   static const String _blockAppExitKey = 'block_app_exit';
@@ -224,6 +229,9 @@ class StrictModeService with ChangeNotifier {
     _blockChangingTimeSettings = prefs.getBool(_blockChangingTimeSettingsKey) ?? false;
     _blockUninstallingApps = prefs.getBool(_blockUninstallingAppsKey) ?? false;
     _blockInstallingApps = prefs.getBool(_blockInstallingAppsKey) ?? false;
+
+    // Load emergency mode
+    _emergencyMode = prefs.getBool(_emergencyModeKey) ?? false;
     
     _initialized = true;
     
@@ -347,11 +355,21 @@ class StrictModeService with ChangeNotifier {
     }
   }
   
+  // Method to toggle emergency mode
+  Future<void> setEmergencyMode(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_emergencyModeKey, value);
+    _emergencyMode = value;
+    notifyListeners();
+    _notifyEffectiveSettingsChanged();
+  }
+
   // Helper method to store strict mode data in shared preferences
   Future<void> _storeStrictModeDataInSharedPreferences(Map<String, dynamic> settings) async {
     try {
-      final jsonString = jsonEncode(settings);
       final prefs = await SharedPreferences.getInstance();
+      _emergencyMode = prefs.getBool(_emergencyModeKey) ?? false;
+      final jsonString = jsonEncode(settings);
       await prefs.setString('strictModeData', jsonString);
       print('Stored strict mode data in shared preferences');
     } catch (e) {
@@ -361,8 +379,8 @@ class StrictModeService with ChangeNotifier {
   
   // Set desktop settings with confirmation when needed
   Future<bool> setBlockAppExitWithConfirmation(BuildContext context, bool value) async {
-    // If trying to disable while in strict mode, block the change
-    if (!value && _inStrictMode) {
+    // If trying to disable while in strict mode and not in emergency mode, block the change
+    if (!value && _inStrictMode && !_emergencyMode) {
       showStrictModeActiveDialog(context);
       return false;
     }
@@ -384,8 +402,8 @@ class StrictModeService with ChangeNotifier {
   }
   
   Future<bool> setBlockDisablingSystemStartupWithConfirmation(BuildContext context, bool value) async {
-    // If trying to disable while in strict mode, block the change
-    if (!value && _inStrictMode) {
+    // If trying to disable while in strict mode and not in emergency mode, block the change
+    if (!value && _inStrictMode && !_emergencyMode) {
       showStrictModeActiveDialog(context);
       return false;
     }
@@ -407,8 +425,8 @@ class StrictModeService with ChangeNotifier {
   }
   
   Future<bool> setBlockBrowsersWithoutExtensionWithConfirmation(BuildContext context, bool value) async {
-    // If trying to disable while in strict mode, block the change
-    if (!value && _inStrictMode) {
+    // If trying to disable while in strict mode and not in emergency mode, block the change
+    if (!value && _inStrictMode && !_emergencyMode) {
       showStrictModeActiveDialog(context);
       return false;
     }
@@ -431,8 +449,8 @@ class StrictModeService with ChangeNotifier {
   
   // Set iOS settings with confirmation when needed
   Future<bool> setBlockChangingTimeSettingsWithConfirmation(BuildContext context, bool value) async {
-    // If trying to disable while in strict mode, block the change
-    if (!value && _inStrictMode) {
+    // If trying to disable while in strict mode and not in emergency mode, block the change
+    if (!value && _inStrictMode && !_emergencyMode) {
       showStrictModeActiveDialog(context);
       return false;
     }
@@ -454,8 +472,8 @@ class StrictModeService with ChangeNotifier {
   }
   
   Future<bool> setBlockUninstallingAppsWithConfirmation(BuildContext context, bool value) async {
-    // If trying to disable while in strict mode, block the change
-    if (!value && _inStrictMode) {
+    // If trying to disable while in strict mode and not in emergency mode, block the change
+    if (!value && _inStrictMode && !_emergencyMode) {
       showStrictModeActiveDialog(context);
       return false;
     }
@@ -477,8 +495,8 @@ class StrictModeService with ChangeNotifier {
   }
   
   Future<bool> setBlockInstallingAppsWithConfirmation(BuildContext context, bool value) async {
-    // If trying to disable while in strict mode, block the change
-    if (!value && _inStrictMode) {
+    // If trying to disable while in strict mode and not in emergency mode, block the change
+    if (!value && _inStrictMode && !_emergencyMode) {
       showStrictModeActiveDialog(context);
       return false;
     }

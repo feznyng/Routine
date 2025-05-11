@@ -3,6 +3,7 @@ import '../models/routine.dart';
 import '../database/database.dart';
 import '../setup.dart';
 import 'routine_page/index.dart';
+import '../services/strict_mode_service.dart';
 
 class RoutinePage extends StatefulWidget {
   final Routine routine;
@@ -27,6 +28,7 @@ class _RoutinePageState extends State<RoutinePage> {
   bool _hasChanges = false;
   bool _originalStrictMode = false;
   bool _originalIsActive = false;
+  final _strictModeService = StrictModeService.instance;
 
   late Map<String, DeviceEntry> _devices = {};
 
@@ -162,7 +164,7 @@ class _RoutinePageState extends State<RoutinePage> {
 
   @override
   Widget build(BuildContext context) {
-    final inLockdown = _originalIsActive && _originalStrictMode;
+    final inLockdown = _originalIsActive && _originalStrictMode && !_strictModeService.emergencyMode;
 
     return Scaffold(
       appBar: AppBar(
