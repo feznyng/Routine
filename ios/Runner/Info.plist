@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NFCReaderUsageDescription</key>
+	<string>Allow Routine to read and write NFC tags for conditions.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Allow Routine to scan QR codes for conditions.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app needs access to location when open.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
@@ -39,6 +43,10 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>nfc</string>
+	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
@@ -51,14 +59,6 @@
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>NSCameraUsageDescription</key>
-	<string>Allow Routine to scan QR codes for conditions.</string>
-	<key>NFCReaderUsageDescription</key>
-	<string>Allow Routine to read and write NFC tags for conditions.</string>
-	<key>UIRequiredDeviceCapabilities</key>
-	<array>
-		<string>nfc</string>
 	</array>
 	<key>com.apple.developer.nfc.readersession.felica.systemcodes</key>
 	<array>
