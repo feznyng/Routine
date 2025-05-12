@@ -116,13 +116,13 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (widget.inLockdown)
               Container(
-                margin: const EdgeInsets.only(bottom: 16),
+                margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.red.withOpacity(0.1),
@@ -165,7 +165,7 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
                   Tab(text: 'Folders'),
                 ],
               ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             Expanded(
               child: _showFoldersTab 
                 ? TabBarView(
