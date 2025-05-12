@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:Routine/models/emergency_event.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:Routine/models/condition.dart';
 import 'package:Routine/models/device.dart';
@@ -184,48 +185,81 @@ class SyncService {
       bool madeRemoteChange = false;
       bool accidentalDeletion = false;
 
+      // sync emergencies first due to criticality
       {
         final userData = await _client.from('users')
-            .select('emergencies,in_emergency')
+            .select('emergencies')
             .eq('id', _userId)
             .maybeSingle() ?? 
           await _client.from('users').insert({
             'id': _userId,
             'emergencies': [],
-            'in_emergency': false,
           }).select() as Map<String, dynamic>;
-        
-        // Remote emergency state wins over local
-        final remoteEmergency = userData['in_emergency'] ?? false;
-        if (remoteEmergency != StrictModeService().emergencyMode) {
-          await StrictModeService().setEmergencyMode(remoteEmergency);
+
+        // Parse remote and local events
+        final remoteEvents = <EmergencyEvent>[];
+        if (userData['emergencies'] != null) {
+          final List<dynamic> eventsList = userData['emergencies'] as List<dynamic>;
+          for (final event in eventsList) {
+            remoteEvents.add(EmergencyEvent.fromJson(Map<String, dynamic>.from(event)));
+          }
+        }
+        final localEvents = StrictModeService().emergencyEvents;
+
+        // First clean up old events (older than a week)
+        final oneWeekAgo = DateTime.now().subtract(const Duration(days: 7));
+        final recentEvents = [...remoteEvents, ...localEvents]
+          .where((e) => !e.startedAt.isBefore(oneWeekAgo))
+          .toList();
+
+        // Merge events, ensuring only one active emergency
+        final mergedEvents = <EmergencyEvent>[];
+
+        // Find the latest active emergency if any
+        final activeEvents = recentEvents.where((e) => e.endedAt == null).toList()
+          ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
+
+        EmergencyEvent? latestActive;
+        if (activeEvents.isNotEmpty) {
+          latestActive = activeEvents.first;
+          // End all other active events at the time the latest one started
+          for (final event in activeEvents.skip(1)) {
+            event.endedAt = latestActive.startedAt;
+          }
         }
 
-        final remoteEmergencies = (userData['emergencies'] as List)
-            .map((ts) => DateTime.parse(ts))
-            .map((dt) => dt.toUtc())
-            .toList();
+        // Now process all events, keeping track of seen IDs
+        final seenIds = <String>{};
+        final processedEvents = <EmergencyEvent>[];
 
-        final localEmergencies = StrictModeService().emergencyTimestamps
-            .map((dt) => dt.toUtc())
-            .toList();
+        // Add the latest active event first if it exists
+        if (latestActive != null) {
+          processedEvents.add(latestActive);
+          seenIds.add(latestActive.id);
+        }
 
-        // Deduplicate based on ISO string representation
-        final allTimestamps = {...remoteEmergencies, ...localEmergencies}
-            .map((dt) => dt.toIso8601String())
-            .toSet()
-            .map((ts) => DateTime.parse(ts))
-            .toList();
+        // Add all other events, preferring ended versions
+        final eventsByIds = <String, List<EmergencyEvent>>{};
+        for (final event in recentEvents.where((e) => !seenIds.contains(e.id))) {
+          eventsByIds.putIfAbsent(event.id, () => []).add(event);
+        }
 
-        await StrictModeService().updateEmergencyTimestamps(allTimestamps);
+        for (final events in eventsByIds.values) {
+          final endedEvent = events.firstWhere(
+            (e) => e.endedAt != null,
+            orElse: () => events.first
+          );
+          processedEvents.add(endedEvent);
+        }
 
-        print("local emergencies: $localEmergencies");
-        print("all emergencies: $allTimestamps");
-        
-        // Update remote with merged timestamps
+        mergedEvents.addAll(processedEvents);
+
+        // Update local state
+        await StrictModeService().updateEmergencyEvents(mergedEvents);
+
+        // Update remote state
         await _client.from('users').update({
-          'emergencies': allTimestamps.map((ts) => ts.toUtc().toIso8601String()).toList(),
-          'in_emergency': StrictModeService().emergencyMode
+          'emergencies': mergedEvents.map((e) => e.toJson()).toList(),
         }).eq('id', _userId);
       }
       

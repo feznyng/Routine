@@ -34,7 +34,7 @@ CREATE TABLE routines (
     max_break_duration INTEGER NOT NULL DEFAULT 15,
     friction TEXT NOT NULL,
     friction_len INTEGER,
-    conditions TEXT,
+    conditions JSONB,
     snoozed_until TIMESTAMPTZ,
     user_id uuid not null references auth.users on delete cascade
 );
@@ -52,9 +52,7 @@ CREATE TABLE groups (
 
 CREATE TABLE users (
     id uuid not null primary key references auth.users on delete cascade,
-    emergencies TIMESTAMPTZ[],
-    in_emergency BOOLEAN,
-    updated_at TIMESTAMPTZ
+    emergencies JSONB
 );
 
 -- Enable Row Level Security for all tables

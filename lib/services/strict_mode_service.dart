@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import '../models/routine.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/emergency_event.dart';
 import '../services/sync_service.dart';
 
 class StrictModeService with ChangeNotifier {
@@ -39,12 +39,12 @@ class StrictModeService with ChangeNotifier {
   
   bool _initialized = false;
   bool _inStrictMode = false;
-  bool _emergencyMode = false;
-  List<DateTime> _emergencyTimestamps = [];
-  static const String _emergencyModeKey = 'emergency_mode';
-  static const String _emergencyTimestampsKey = 'emergency_timestamps';
+
+  static const String _emergencyEventsKey = 'emergencyEvents';
   static const int _maxEmergenciesPerWeek = 2;
-  
+
+  List<EmergencyEvent> _emergencyEvents = [];
+
   // Desktop strict mode settings
   bool _blockAppExit = false;
   bool _blockDisablingSystemStartup = false;
@@ -100,11 +100,11 @@ class StrictModeService with ChangeNotifier {
   bool get inStrictMode => _inStrictMode;
   
   // Basic getters for settings (without considering active routines)
-  bool get blockAppExit => _blockAppExit;
+  bool get blockAppExit => _blockAppExit && !emergencyMode;
   bool get blockDisablingSystemStartup => _blockDisablingSystemStartup;
   bool get blockBrowsersWithoutExtension => _blockBrowsersWithoutExtension;
   bool get blockChangingTimeSettings => _blockChangingTimeSettings;
-  bool get blockUninstallingApps => _blockUninstallingApps;
+  bool get blockUninstallingApps => _blockUninstallingApps && !emergencyMode;
   bool get blockInstallingApps => _blockInstallingApps;
   
   // Grace period getters
@@ -130,53 +130,44 @@ class StrictModeService with ChangeNotifier {
     return _extensionCooldownEnd!.difference(DateTime.now()).inMinutes + 1; // +1 to round up
   }
   
-  // Emergency mode getter
-  bool get emergencyMode => _emergencyMode;
+  // Emergency mode getters
+  bool get emergencyMode => _emergencyEvents.any((e) => e.isActive);
+  List<EmergencyEvent> get emergencyEvents => _emergencyEvents;
+  List<DateTime> get emergencyTimestamps => _emergencyEvents.map((e) => e.startedAt).toList();
 
-  // Get all emergency timestamps
-  List<DateTime> get emergencyTimestamps => List.unmodifiable(_emergencyTimestamps);
-
-  // Update emergency timestamps from sync
-  Future<void> updateEmergencyTimestamps(List<DateTime> timestamps) async {
-    _emergencyTimestamps = timestamps.toList();
-    await _storeEmergencyTimestamps();
-    notifyListeners();
+  // Update emergency events from sync
+  Future<void> updateEmergencyEvents(List<EmergencyEvent> events) async {
+    _emergencyEvents = events;
+    await _storeEmergencyEvents();
   }
 
-  Future<void> _storeEmergencyTimestamps() async {
+  Future<void> _storeEmergencyEvents() async {
     final prefs = await SharedPreferences.getInstance();
-    final timestampsJson = _emergencyTimestamps
-        .map((ts) => ts.toIso8601String())
-        .toList();
-    await prefs.setStringList(_emergencyTimestampsKey, timestampsJson);
+    await prefs.setString(_emergencyEventsKey, 
+      jsonEncode(_emergencyEvents.map((e) => e.toJson()).toList()));
   }
 
   int get remainingEmergencies {
-    // Remove timestamps older than a week
+    // Remove events older than a week
     final oneWeekAgo = DateTime.now().subtract(const Duration(days: 7));
-    _emergencyTimestamps.removeWhere((ts) => ts.isBefore(oneWeekAgo));
-
-    print("emergencies left ${emergencyTimestamps.length} ${_maxEmergenciesPerWeek}");
-    
-    return _maxEmergenciesPerWeek - _emergencyTimestamps.length;
+    _emergencyEvents.removeWhere((e) => e.startedAt.isBefore(oneWeekAgo));
+    return _maxEmergenciesPerWeek - _emergencyEvents.length;
   }
 
   bool get canStartEmergency {
-    // Remove timestamps older than a week
+    // Remove events older than a week
     final oneWeekAgo = DateTime.now().subtract(const Duration(days: 7));
-    _emergencyTimestamps.removeWhere((ts) => ts.isBefore(oneWeekAgo));
-    
-    // Count emergencies in the last week
-    return _emergencyTimestamps.length < _maxEmergenciesPerWeek;
+    _emergencyEvents.removeWhere((e) => e.startedAt.isBefore(oneWeekAgo));
+    return _emergencyEvents.length < _maxEmergenciesPerWeek;
   }
 
   // Enhanced getters that consider if any active routine is in strict mode AND emergency mode is off
-  bool get effectiveBlockAppExit => _blockAppExit && _inStrictMode && !_emergencyMode;
-  bool get effectiveBlockDisablingSystemStartup => _blockDisablingSystemStartup && _inStrictMode && !_emergencyMode;
-  bool get effectiveBlockBrowsersWithoutExtension => _blockBrowsersWithoutExtension && _inStrictMode && !_emergencyMode;
-  bool get effectiveBlockChangingTimeSettings => _blockChangingTimeSettings && _inStrictMode && !_emergencyMode;
-  bool get effectiveBlockUninstallingApps => _blockUninstallingApps && _inStrictMode && !_emergencyMode;
-  bool get effectiveBlockInstallingApps => _blockInstallingApps && _inStrictMode && !_emergencyMode;
+  bool get effectiveBlockAppExit => _blockAppExit && _inStrictMode && !emergencyMode;
+  bool get effectiveBlockDisablingSystemStartup => _blockDisablingSystemStartup && _inStrictMode && !emergencyMode;
+  bool get effectiveBlockBrowsersWithoutExtension => _blockBrowsersWithoutExtension && _inStrictMode && !emergencyMode;
+  bool get effectiveBlockChangingTimeSettings => _blockChangingTimeSettings && _inStrictMode && !emergencyMode;
+  bool get effectiveBlockUninstallingApps => _blockUninstallingApps && _inStrictMode && !emergencyMode;
+  bool get effectiveBlockInstallingApps => _blockInstallingApps && _inStrictMode && !emergencyMode;
   
   // Shared preferences keys
   static const String _blockAppExitKey = 'block_app_exit';
@@ -272,26 +263,19 @@ class StrictModeService with ChangeNotifier {
     _blockUninstallingApps = prefs.getBool(_blockUninstallingAppsKey) ?? false;
     _blockInstallingApps = prefs.getBool(_blockInstallingAppsKey) ?? false;
 
-    // Load emergency mode
-    _emergencyMode = prefs.getBool(_emergencyModeKey) ?? false;
-    
-    // Clear emergency timestamps for testing
-    // _emergencyTimestamps = [];
-    // await _storeEmergencyTimestamps();
-    
-    // Clear remote emergencies if they exist
-    try {
-      final supabase = Supabase.instance.client;
-      final userId = supabase.auth.currentUser?.id;
-      if (userId != null) {
-        await supabase.from('users').update({
-          'emergencies': [],
-          'in_emergency': false,
-        }).eq('id', userId);
-      }
-    } catch (e) {
-      print('Error clearing remote emergencies: $e');
+    // Load emergency events
+    final eventsJson = prefs.getString(_emergencyEventsKey);
+    if (eventsJson != null) {
+      final List<dynamic> eventsList = jsonDecode(eventsJson);
+      _emergencyEvents = eventsList
+          .map((e) => EmergencyEvent.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    } else {
+      _emergencyEvents = [];
     }
+    
+    // Store events to ensure they're properly persisted
+    await _storeEmergencyEvents();
     
     _initialized = true;
     
@@ -417,15 +401,17 @@ class StrictModeService with ChangeNotifier {
   
   // Method to toggle emergency mode
   Future<void> setEmergencyMode(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_emergencyModeKey, value);
-    _emergencyMode = value;
-
-    // When enabling emergency mode, add current timestamp
+    if (emergencyMode == value) return;
+    
+    // When enabling emergency mode, create new event
     if (value) {
-      _emergencyTimestamps.add(DateTime.now());
-      await _storeEmergencyTimestamps();
+      _emergencyEvents.add(EmergencyEvent(startedAt: DateTime.now()));
+    } else {
+      // When disabling, find the active event and set its end time
+      final activeEvent = _emergencyEvents.last;
+      activeEvent.endedAt = DateTime.now();
     }
+    await _storeEmergencyEvents();
 
     notifyListeners();
     _notifyEffectiveSettingsChanged();
@@ -449,7 +435,7 @@ class StrictModeService with ChangeNotifier {
   // Set desktop settings with confirmation when needed
   Future<bool> setBlockAppExitWithConfirmation(BuildContext context, bool value) async {
     // If trying to disable while in strict mode and not in emergency mode, block the change
-    if (!value && _inStrictMode && !_emergencyMode) {
+    if (!value && _inStrictMode && !emergencyMode) {
       showStrictModeActiveDialog(context);
       return false;
     }
@@ -472,7 +458,7 @@ class StrictModeService with ChangeNotifier {
   
   Future<bool> setBlockDisablingSystemStartupWithConfirmation(BuildContext context, bool value) async {
     // If trying to disable while in strict mode and not in emergency mode, block the change
-    if (!value && _inStrictMode && !_emergencyMode) {
+    if (!value && _inStrictMode && !emergencyMode) {
       showStrictModeActiveDialog(context);
       return false;
     }
@@ -495,7 +481,7 @@ class StrictModeService with ChangeNotifier {
   
   Future<bool> setBlockBrowsersWithoutExtensionWithConfirmation(BuildContext context, bool value) async {
     // If trying to disable while in strict mode and not in emergency mode, block the change
-    if (!value && _inStrictMode && !_emergencyMode) {
+    if (!value && _inStrictMode && !emergencyMode) {
       showStrictModeActiveDialog(context);
       return false;
     }
@@ -519,7 +505,7 @@ class StrictModeService with ChangeNotifier {
   // Set iOS settings with confirmation when needed
   Future<bool> setBlockChangingTimeSettingsWithConfirmation(BuildContext context, bool value) async {
     // If trying to disable while in strict mode and not in emergency mode, block the change
-    if (!value && _inStrictMode && !_emergencyMode) {
+    if (!value && _inStrictMode && !emergencyMode) {
       showStrictModeActiveDialog(context);
       return false;
     }
@@ -542,7 +528,7 @@ class StrictModeService with ChangeNotifier {
   
   Future<bool> setBlockUninstallingAppsWithConfirmation(BuildContext context, bool value) async {
     // If trying to disable while in strict mode and not in emergency mode, block the change
-    if (!value && _inStrictMode && !_emergencyMode) {
+    if (!value && _inStrictMode && !emergencyMode) {
       showStrictModeActiveDialog(context);
       return false;
     }
@@ -565,7 +551,7 @@ class StrictModeService with ChangeNotifier {
   
   Future<bool> setBlockInstallingAppsWithConfirmation(BuildContext context, bool value) async {
     // If trying to disable while in strict mode and not in emergency mode, block the change
-    if (!value && _inStrictMode && !_emergencyMode) {
+    if (!value && _inStrictMode && !emergencyMode) {
       showStrictModeActiveDialog(context);
       return false;
     }
