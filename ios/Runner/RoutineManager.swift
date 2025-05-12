@@ -18,18 +18,21 @@ class RoutineManager {
         center.stopMonitoring()
         
         let now = Date()
+        let hasAllDay = routines.contains { $0.allDay }
 
         // always schedule for midnight to handle all day routines
-        do {
-            let intervalStart = minutesOfDayToDateComponents(0)
-            let intervalEnd = minutesOfDayToDateComponents(15)
+        if hasAllDay {
+            do {
+                let intervalStart = minutesOfDayToDateComponents(0)
+                let intervalEnd = minutesOfDayToDateComponents(15)
 
-            let name = DeviceActivityName("midnight-eval")
-            let schedule = DeviceActivitySchedule(intervalStart: intervalStart, intervalEnd: intervalEnd, repeats: true)
+                let name = DeviceActivityName("midnight-eval")
+                let schedule = DeviceActivitySchedule(intervalStart: intervalStart, intervalEnd: intervalEnd, repeats: true)
 
-            try center.startMonitoring(name, during: schedule)
-        } catch {
-            print("failed to register device activity \(error.localizedDescription)")
+                try center.startMonitoring(name, during: schedule)
+            } catch {
+                print("failed to register device activity \(error.localizedDescription)")
+            }
         }
         
         for routine in routines {
@@ -51,12 +54,10 @@ class RoutineManager {
                 }
             }
             
-            if let pausedUntil = routine.pausedUntil, pausedUntil > now {
-                scheduleOneTimeActivity(for: routine, startDate: pausedUntil, activityType: "paused")
-            }
-            
             if let snoozedUntil = routine.snoozedUntil, snoozedUntil > now {
                 scheduleOneTimeActivity(for: routine, startDate: snoozedUntil, activityType: "snoozed")
+            } else if let pausedUntil = routine.pausedUntil, pausedUntil > now {
+                scheduleOneTimeActivity(for: routine, startDate: pausedUntil, activityType: "paused")
             }
         }
 
