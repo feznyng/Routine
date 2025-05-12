@@ -138,7 +138,7 @@ class BrowserExtensionService {
     throw UnsupportedError('Unsupported platform');
   }
 
-  // Helper function to get the target binary path
+  // Helper function to get the target binary path (used for Windows)
   Future<String> _getTargetBinaryPath() async {
     final Directory appDir = await getApplicationSupportDirectory();
     if (Platform.isWindows) {
@@ -146,27 +146,6 @@ class BrowserExtensionService {
     } else {
       return '${appDir.path}/routine-nmh';
     }
-  }
-
-  // Helper function to load and write binary
-  Future<Uint8List> _loadAndWriteBinary(String assetPath, String targetPath, {bool writeToTarget = true}) async {
-    debugPrint('Loading binary from asset: $assetPath');
-    final ByteData data = await rootBundle.load(assetPath);
-    final Uint8List bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-    debugPrint('Binary size: ${bytes.length} bytes');
-
-    if (writeToTarget) {
-      debugPrint('Installing binary to: $targetPath');
-      final File targetFile = File(targetPath);
-      await targetFile.writeAsBytes(bytes);
-
-      if (Platform.isMacOS || Platform.isLinux) {
-        await Process.run('chmod', ['+x', targetPath]);
-        debugPrint('Made binary executable with chmod +x');
-      }
-    }
-
-    return bytes;
   }
 
   // Helper function to create manifest content
@@ -183,43 +162,40 @@ class BrowserExtensionService {
   // Install native messaging host
   Future<bool> installNativeMessagingHost() async {
     try {
-      final String assetPath = await _getBinaryAssetPath();
-      final String targetPath = await _getTargetBinaryPath();
-      final Uint8List binaryBytes = await _loadAndWriteBinary(assetPath, targetPath);
-
       if (Platform.isMacOS) {
-        final Map<String, dynamic> manifest = _createManifestContent('PLACEHOLDER_PATH');
+        // Get the path to the binary in the app bundle
+        final String assetPath = await _getBinaryAssetPath();
+        
+        // Get the full path to the asset in the App.framework
+        final String bundlePath = Platform.resolvedExecutable
+            .replaceAll('/MacOS/Routine', '/Frameworks/App.framework/Resources/flutter_assets/$assetPath');
+        debugPrint('Using binary from app bundle: $bundlePath');
+        
+        // Create manifest pointing to the binary in the app bundle
+        final Map<String, dynamic> manifest = _createManifestContent(bundlePath);
         final String manifestJson = json.encode(manifest);
-        debugPrint('Manifest content (with placeholder path): $manifestJson');
+        debugPrint('Manifest content with bundle path: $manifestJson');
         
         try {
-          debugPrint('Showing NSOpenPanel to save manifest and binary');
-          final Uint8List binaryData = Uint8List.fromList(binaryBytes);
-          
+          debugPrint('Showing NSOpenPanel to save manifest');
           final bool result = await _channel.invokeMethod('saveNativeMessagingHostManifest', {
-            'content': manifestJson,
-            'binary': binaryData,
-            'binaryFilename': 'routine-nmh',
+            'content': manifestJson
           });
           
           if (result) {
-            debugPrint('Manifest and binary installation successful');
+            debugPrint('Manifest installation successful');
             Timer(const Duration(seconds: 2), () => connectToNMH());
             return true;
           } else {
-            debugPrint('Manifest and binary installation failed');
-            debugPrint('Note: If macOS security blocks the binary, the user may need to:');
-            debugPrint('1. Open System Preferences > Security & Privacy');
-            debugPrint('2. Look for a message about "routine-nmh" being blocked');
-            debugPrint('3. Click "Allow Anyway" or "Open Anyway"');
+            debugPrint('Manifest installation failed');
             return false;
           }
         } catch (e) {
-          debugPrint('Error saving manifest and binary: $e');
+          debugPrint('Error saving manifest: $e');
           return false;
         }
       } else if (Platform.isWindows) {
-        final String nmhPath = targetPath;
+        final String nmhPath = await _getTargetBinaryPath();
         debugPrint('Native messaging host binary path: $nmhPath');
         
         final Map<String, dynamic> manifest = _createManifestContent(nmhPath);
