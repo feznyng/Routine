@@ -111,7 +111,6 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-            const SizedBox(height: 16),
             Text(
               'The browser extension allows Routine to block distracting websites during focus sessions.',
               style: Theme.of(context).textTheme.bodyMedium,
