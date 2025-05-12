@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:Routine/models/emergency_event.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:Routine/models/condition.dart';
@@ -396,7 +395,7 @@ class SyncService {
           final DateTime updatedAt = localRoutine != null && localRoutine.updatedAt.toIso8601String().compareTo(routine['updated_at']) > 0 ? localRoutine.updatedAt : DateTime.parse(routine['updated_at']);
           
           final List<Condition> conditions = routine['conditions'] != null ? 
-            json.decode(routine['conditions'] as String).map<Condition>((map) => Condition.fromJson(Map<String, dynamic>.from(map))).toList() : [];
+            (routine['conditions'] as List<dynamic>).map<Condition>((map) => Condition.fromJson(map)).toList() : [];
 
           final List<Condition> localConditions = localRoutine?.conditions ?? [];
           final Map<String, Condition> localConditionMap = {for (final condition in localConditions) condition.id: condition};
