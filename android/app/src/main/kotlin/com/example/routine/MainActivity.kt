@@ -1,4 +1,4 @@
-package com.example.routine
+package com.solidsoft.routine
 
 import io.flutter.embedding.android.FlutterActivity
 
