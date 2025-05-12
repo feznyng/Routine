@@ -123,122 +123,78 @@ class BrowserExtensionService {
     }
   }
   
-  // Install the native messaging host binary from assets
-  Future<bool> installNativeMessagingHostBinary() async {
-    try {
-      // Get the application support directory
-      final Directory appDir = await getApplicationSupportDirectory();
-      String assetPath;
-      String targetPath;
-      
-      debugPrint('Application support directory: ${appDir.path}');
-      
-      if (Platform.isMacOS) {
-        // Determine which binary to use based on architecture
-        final ProcessResult result = await Process.run('uname', ['-m']);
-        final String arch = result.stdout.toString().trim();
-        debugPrint('Detected architecture: $arch');
-        
-        if (arch == 'arm64') {
-          assetPath = 'assets/extension/native_macos_arm64';
-        } else {
-          assetPath = 'assets/extension/native_macos_x86_64';
-        }
-        
-        targetPath = '${appDir.path}/routine-nmh';
-      } else if (Platform.isWindows) {
-        // Windows binary would be here
-        assetPath = 'assets/extension/native_windows.exe';
-        targetPath = '${appDir.path}\\routine-nmh.exe';
-        debugPrint('Native messaging host binary path: $targetPath');
-      } else if (Platform.isLinux) {
-        // Linux binary would be here
-        assetPath = 'assets/extension/native_linux';
-        targetPath = '${appDir.path}/routine-nmh';
-        debugPrint('Native messaging host binary path: $targetPath');
-      } else {
-        return false;
-      }
-      
-      debugPrint('Using asset: $assetPath');
+  // Helper function to get the appropriate binary asset path for the current platform
+  Future<String> _getBinaryAssetPath() async {
+    if (Platform.isMacOS) {
+      final ProcessResult result = await Process.run('uname', ['-m']);
+      final String arch = result.stdout.toString().trim();
+      debugPrint('Detected architecture: $arch');
+      return arch == 'arm64' ? 'assets/extension/native_macos_arm64' : 'assets/extension/native_macos_x86_64';
+    } else if (Platform.isWindows) {
+      return 'assets/extension/native_windows.exe';
+    } else if (Platform.isLinux) {
+      return 'assets/extension/native_linux';
+    }
+    throw UnsupportedError('Unsupported platform');
+  }
+
+  // Helper function to get the target binary path
+  Future<String> _getTargetBinaryPath() async {
+    final Directory appDir = await getApplicationSupportDirectory();
+    if (Platform.isWindows) {
+      return '${appDir.path}\\routine-nmh.exe';
+    } else {
+      return '${appDir.path}/routine-nmh';
+    }
+  }
+
+  // Helper function to load and write binary
+  Future<Uint8List> _loadAndWriteBinary(String assetPath, String targetPath, {bool writeToTarget = true}) async {
+    debugPrint('Loading binary from asset: $assetPath');
+    final ByteData data = await rootBundle.load(assetPath);
+    final Uint8List bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    debugPrint('Binary size: ${bytes.length} bytes');
+
+    if (writeToTarget) {
       debugPrint('Installing binary to: $targetPath');
-      
-      // Load the binary from assets
-      final ByteData data = await rootBundle.load(assetPath);
-      final List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-      debugPrint('Binary size: ${bytes.length} bytes');
-      
-      // Write the binary to the target path
       final File targetFile = File(targetPath);
       await targetFile.writeAsBytes(bytes);
-      
-      // Make the binary executable
+
       if (Platform.isMacOS || Platform.isLinux) {
         await Process.run('chmod', ['+x', targetPath]);
         debugPrint('Made binary executable with chmod +x');
       }
-      
-      final bool exists = await targetFile.exists();
-      debugPrint('Binary installation in app directory ${exists ? "successful" : "failed"}');
-      
-      // Note: For macOS, the binary will be copied to the same directory as the manifest
-      // during the manifest installation process via platform method
-      return exists;
-    } catch (e) {
-      debugPrint('Error installing NMH binary: $e');
-      return false;
     }
+
+    return bytes;
   }
 
-  // Install native messaging host manifest
+  // Helper function to create manifest content
+  Map<String, dynamic> _createManifestContent(String binaryPath) {
+    return {
+      'name': 'com.routine.native_messaging',
+      'description': 'Routine Native Messaging Host',
+      'path': binaryPath,
+      'type': 'stdio',
+      'allowed_extensions': ['blocker@routine-blocker.com']
+    };
+  }
+
+  // Install native messaging host
   Future<bool> installNativeMessagingHost() async {
     try {
-      // Create the manifest file with the correct path to the native messaging host
-      // and install it in the correct location based on the platform
-      
+      final String assetPath = await _getBinaryAssetPath();
+      final String targetPath = await _getTargetBinaryPath();
+      final Uint8List binaryBytes = await _loadAndWriteBinary(assetPath, targetPath);
+
       if (Platform.isMacOS) {
-        // Determine which binary to use based on architecture
-        String assetPath;
-        final ProcessResult result = await Process.run('uname', ['-m']);
-        final String arch = result.stdout.toString().trim();
-        debugPrint('Detected architecture: $arch');
-        
-        if (arch == 'arm64') {
-          assetPath = 'assets/extension/native_macos_arm64';
-        } else {
-          assetPath = 'assets/extension/native_macos_x86_64';
-        }
-        
-        // Load the binary directly from assets
-        debugPrint('Loading binary from asset: $assetPath');
-        final ByteData data = await rootBundle.load(assetPath);
-        final List<int> binaryBytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-        debugPrint('Read binary from assets, size: ${binaryBytes.length} bytes');
-        
-        // For macOS, the binary needs to be in the same directory as the manifest
-        // which is outside the sandbox. The path in the manifest will be updated by
-        // the platform method to point to the correct location.
-        
-        // Create the manifest content with a placeholder path that will be updated
-        // by the platform method
-        final Map<String, dynamic> manifest = {
-          'name': 'com.routine.native_messaging',
-          'description': 'Routine Native Messaging Host',
-          'path': 'PLACEHOLDER_PATH', // This will be updated by the platform method
-          'type': 'stdio',
-          'allowed_extensions': ['blocker@routine-blocker.com']
-        };
-        
+        final Map<String, dynamic> manifest = _createManifestContent('PLACEHOLDER_PATH');
         final String manifestJson = json.encode(manifest);
         debugPrint('Manifest content (with placeholder path): $manifestJson');
         
         try {
-          // Call the platform method to show NSOpenPanel, save the manifest file,
-          // and copy the binary to the same directory
           debugPrint('Showing NSOpenPanel to save manifest and binary');
-          // Wrap the binary data in Uint8List to ensure proper serialization
           final Uint8List binaryData = Uint8List.fromList(binaryBytes);
-          debugPrint('Sending binary data to platform method: ${binaryData.length} bytes');
           
           final bool result = await _channel.invokeMethod('saveNativeMessagingHostManifest', {
             'content': manifestJson,
@@ -248,15 +204,10 @@ class BrowserExtensionService {
           
           if (result) {
             debugPrint('Manifest and binary installation successful');
-            // Try to connect to the Native Messaging Host after installation
-            // This will trigger the extension connection flow
-            Timer(const Duration(seconds: 2), () {
-              connectToNMH();
-            });
+            Timer(const Duration(seconds: 2), () => connectToNMH());
             return true;
           } else {
             debugPrint('Manifest and binary installation failed');
-            // Log additional guidance for macOS security restrictions
             debugPrint('Note: If macOS security blocks the binary, the user may need to:');
             debugPrint('1. Open System Preferences > Security & Privacy');
             debugPrint('2. Look for a message about "routine-nmh" being blocked');
@@ -268,38 +219,20 @@ class BrowserExtensionService {
           return false;
         }
       } else if (Platform.isWindows) {
-        // On Windows, the manifest goes in the registry
-        // Use win32 package to write to the registry
-        await installNativeMessagingHostBinary();
-        
-        // Get the path to the native messaging host executable
-        final Directory appDir = await getApplicationSupportDirectory();
-        final String nmhPath = '${appDir.path}\\routine-nmh.exe';
+        final String nmhPath = targetPath;
         debugPrint('Native messaging host binary path: $nmhPath');
         
-        // Create the manifest content
-        final Map<String, dynamic> manifest = {
-          'name': 'com.routine.native_messaging',
-          'description': 'Routine Native Messaging Host',
-          'path': nmhPath,
-          'type': 'stdio',
-          'allowed_extensions': ['blocker@routine-blocker.com']
-        };
-        
-        // Convert manifest to JSON string
+        final Map<String, dynamic> manifest = _createManifestContent(nmhPath);
         final String manifestJson = json.encode(manifest);
         debugPrint('Manifest content: $manifestJson');
         
-        // Registry paths for Firefox
         const String mozillaRegistryPath = 
             'SOFTWARE\\Mozilla\\NativeMessagingHosts\\com.routine.native_messaging';
         debugPrint('Registry path: $mozillaRegistryPath');
             
-        // Open the registry key (create if it doesn't exist)
         final Pointer<HKEY> hKey = calloc<HKEY>();
         
         try {
-          // Create or open the key
           debugPrint('Creating registry key...');
           final int result = RegCreateKeyEx(
             HKEY_CURRENT_USER,
