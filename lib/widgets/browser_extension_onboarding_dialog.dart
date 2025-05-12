@@ -310,15 +310,19 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
         ),
         const SizedBox(height: 16),
         ...List.generate(_detectedBrowsers.length, (index) {
+          final words = _detectedBrowsers[index].split(' ');
+          final titleCase = words.map((word) => word[0].toUpperCase() + word.substring(1)).join(' ');
           return ListTile(
             leading: const Icon(Icons.check_circle, color: Colors.green),
-            title: Text(_detectedBrowsers[index]),
+            title: Text(titleCase),
           );
         }),
         const SizedBox(height: 16),
-        const Text(
-          'To block websites, you need to set up our browser extension for each browser.',
-          style: TextStyle(fontSize: 14),
+        Text(
+          Platform.isWindows
+              ? 'Please open any additional browsers you want to block sites on. Routine can only detect running browsers on Windows.'
+              : 'To block websites, please set up our extension for each browser you have installed.',
+          style: const TextStyle(fontSize: 14),
         ),
         ],
       ),

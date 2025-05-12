@@ -47,13 +47,6 @@ build_and_process() {
     echo "Verifying signature..."
     codesign --verify --verbose "$binary_path"
     
-    echo "Creating zip for notarization..."
-    local zip_path="$temp_dir/$APP_NAME.zip"
-    ditto -c -k --keepParent "$binary_path" "$zip_path"
-    
-    echo "Submitting for notarization..."
-    xcrun notarytool submit "$zip_path" --apple-id "$NOTARIZATION_APPLE_ID" --password "$APPLE_APP_PASSWORD" --team-id "$TEAM_ID" --wait
-    
     echo "Copying final binary to assets directory..."
     cp "$binary_path" "$OUTPUT_DIR/$output_name"
     
