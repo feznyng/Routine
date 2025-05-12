@@ -116,13 +116,13 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
 
   Future<void> _initializeTray() async {
     await trayManager.setIcon(
-      'assets/app_icon.png',
+      'assets/logotransparent1024.png',
     );
         
     Menu menu = Menu(
       items: [
         MenuItem(
-          label: 'Show',
+          label: 'Open',
           onClick: (menuItem) async {
             await windowManager.show();
           },
