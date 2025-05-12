@@ -135,7 +135,7 @@ class _RoutineListState extends State<RoutineList> {
   
   @override
   Widget build(BuildContext context) {
-    // Sort all routines by next active time
+    // Sort all routines by next active time, except active ones which are sorted by start time
     final sortedRoutines = List<Routine>.from(_routines);
     sortedRoutines.sort((a, b) {
       // Handle snoozed routines - sort by when they'll be unsnoozed
@@ -145,10 +145,18 @@ class _RoutineListState extends State<RoutineList> {
       if (a.isSnoozed) return 1; // Snoozed routines come after active ones
       if (b.isSnoozed) return -1;
       
-      // Calculate next active time for both routines
+      // If both routines are active, sort by start time (most recent first)
+      if (a.isActive && b.isActive && !a.areConditionsMet && !b.areConditionsMet) {
+        final aStartTime = a.startTime;
+        final bStartTime = b.startTime;
+        // For routines that started today, compare their start times
+        // Later start times should come first (reverse order)
+        return bStartTime.compareTo(aStartTime);
+      }
+      
+      // Otherwise, sort by next active time
       final aNextActive = _getNextActiveTime(a);
       final bNextActive = _getNextActiveTime(b);
-      
       return aNextActive.compareTo(bNextActive);
     });
     
