@@ -112,7 +112,7 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
             store.webContent.blockedByFilter = .specific(webDomains)
         }
 
-        let strictMode = routines.contains(where: { $0.strictMode ?? false })
+        let strictMode = routines.contains(where: { $0.isActive() && $0.strictMode ?? false })
         if strictMode {
             os_log("DeviceActivityMonitorExtension: Strict mode enabled")
             
