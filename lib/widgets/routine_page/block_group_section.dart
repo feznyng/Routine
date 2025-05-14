@@ -6,7 +6,7 @@ import '../../database/database.dart';
 import '../../setup.dart';
 import '../block_group_page.dart';
 
-class BlockGroupSection extends StatelessWidget {
+class BlockGroupSection extends StatefulWidget {
   final Routine routine;
   final Map<String, DeviceEntry> devices;
   final bool inLockdown;
@@ -19,7 +19,12 @@ class BlockGroupSection extends StatelessWidget {
     required this.onChanged,
     required this.inLockdown
   });
-  
+
+  @override
+  State<BlockGroupSection> createState() => _BlockGroupSectionState();
+}
+
+class _BlockGroupSectionState extends State<BlockGroupSection> {
   IconData _getDeviceIcon(DeviceType type) {
     switch (type) {
       case DeviceType.windows:
@@ -62,18 +67,54 @@ class BlockGroupSection extends StatelessWidget {
     }
   }
 
-  void _toggleBlockGroup(BuildContext context, String deviceId) {
-    final group = routine.getGroup(deviceId);
+  void _toggleBlockGroup(BuildContext context, String deviceId) async {
+    final group = widget.routine.getGroup(deviceId);
+    final currentDevice = getIt<Device>();
     
-     Navigator.of(context).push(
+    // Check iOS block group limit only when adding a new group on iOS
+    if (group == null && currentDevice.type == DeviceType.ios) {
+      final allRoutines = await Routine.getAll();
+      final iosBlockGroups = allRoutines.where((r) => r.getGroup(currentDevice.id) != null).length;
+      
+      if (iosBlockGroups >= 10) {
+        if (!mounted) return;
+        
+        final dialogContext = context;
+        if (!dialogContext.mounted) return;
+        
+        await showDialog(
+          context: dialogContext,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Maximum Routines Reached'),
+              content: const Text('iOS devices are limited to a maximum of 10 routines with block groups. Please remove a block group from another routine before adding a new one.'),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+        return;
+      }
+    }
+    
+    if (!mounted) return;
+    
+    final navContext = context;
+    if (!navContext.mounted) return;
+    
+    Navigator.of(navContext).push(
       MaterialPageRoute<void>(
         builder: (context) => BlockGroupPage(
           selectedGroup: group ?? Group(),
           deviceId: deviceId,
-          inLockdown: inLockdown,
+          inLockdown: widget.inLockdown,
           onSave: (group) {
-            routine.setGroup(group, deviceId);
-            onChanged();
+            widget.routine.setGroup(group, deviceId);
+            widget.onChanged();
           },
           onBack: () => Navigator.of(context).pop(),
         ),
@@ -84,23 +125,23 @@ class BlockGroupSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currentDeviceId = getIt<Device>().id;
-    final hasCurrentDeviceGroup = routine.getGroup() != null;
+    final hasCurrentDeviceGroup = widget.routine.getGroup() != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ...routine.groups.entries.map((entry) {
+        ...widget.routine.groups.entries.map((entry) {
           final deviceId = entry.key;
           final group = entry.value;
           final currDevice = deviceId == currentDeviceId;
           return Card(
             child: ListTile(
               leading: Icon(
-                _getDeviceIcon(devices[deviceId]?.type != null ? DeviceType.values.byName(devices[deviceId]!.type) : DeviceType.macos),
+                _getDeviceIcon(widget.devices[deviceId]?.type != null ? DeviceType.values.byName(widget.devices[deviceId]!.type) : DeviceType.macos),
                 color: Theme.of(context).iconTheme.color
               ),
               title: Text(
-                '${devices[deviceId]?.name}${currDevice ? ' (Current Device)' : ''}',
+                '${widget.devices[deviceId]?.name}${currDevice ? ' (Current Device)' : ''}',
                 style: TextStyle(
                   color: Theme.of(context).textTheme.titleMedium?.color
                 ),
@@ -122,8 +163,8 @@ class BlockGroupSection extends StatelessWidget {
                     context: context,
                     builder: (BuildContext context) {
                       return AlertDialog(
-                        title: Text('Modify ${devices[deviceId]?.name ?? 'Device'} Group'),
-                        content: Text('Please use Routine on ${devices[deviceId]?.name ?? 'the device'} to configure this block group.'),
+                        title: Text('Modify ${widget.devices[deviceId]?.name ?? 'Device'} Group'),
+                        content: Text('Please use Routine on ${widget.devices[deviceId]?.name ?? 'the device'} to configure this block group.'),
                         actions: <Widget>[
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(),
