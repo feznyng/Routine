@@ -10,7 +10,7 @@ class DevicePermissionsSection extends StatefulWidget {
   State<DevicePermissionsSection> createState() => _DevicePermissionsSectionState();
 }
 
-class _DevicePermissionsSectionState extends State<DevicePermissionsSection> {
+class _DevicePermissionsSectionState extends State<DevicePermissionsSection> with WidgetsBindingObserver {
   bool _notificationPermission = false;
   bool _cameraPermission = false;
   bool _locationPermission = false;
@@ -19,7 +19,21 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkPermissions();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkPermissions();
+    }
   }
 
   Future<void> _checkPermissions() async {
@@ -47,11 +61,46 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> {
     });
   }
 
+  Future<void> _requestPermission(Permission permission) async {
+    final status = await permission.request();
+    if (mounted) {
+      await _checkPermissions();
+    }
+    if (!status.isGranted) {
+      if (mounted) {
+        AppSettings.openAppSettings(type: _getSettingsType(permission));
+      }
+    }
+  }
+
+  Future<void> _requestFamilyControls() async {
+    final granted = await MobileService.instance.requestFamilyControlsAuthorization();
+    if (mounted) {
+      await _checkPermissions();
+    }
+    if (!granted && mounted) {
+      AppSettings.openAppSettings(type: AppSettingsType.settings);  // iOS will redirect to Screen Time settings
+    }
+  }
+
+  AppSettingsType _getSettingsType(Permission permission) {
+    switch (permission) {
+      case Permission.notification:
+        return AppSettingsType.notification;
+      case Permission.camera:
+        return AppSettingsType.camera;
+      case Permission.location:
+        return AppSettingsType.location;
+      default:
+        return AppSettingsType.settings;
+    }
+  }
+
   Widget _buildPermissionTile({
     required String title,
     required String subtitle,
     required bool isGranted,
-    required VoidCallback onOpenSettings,
+    required Future<void> Function() onRequestPermission,
   }) {
     return ListTile(
       title: Text(title),
@@ -59,8 +108,8 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> {
       trailing: isGranted
           ? const Icon(Icons.check_circle, color: Colors.green)
           : TextButton(
-              onPressed: onOpenSettings,
-              child: const Text('Open Settings'),
+              onPressed: onRequestPermission,
+              child: const Text('Grant'),
             ),
     );
   }
@@ -91,28 +140,28 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> {
               title: 'Notifications',
               subtitle: 'Required to keep routines updated in the background',
               isGranted: _notificationPermission,
-              onOpenSettings: () => AppSettings.openAppSettings(type: AppSettingsType.notification),
+              onRequestPermission: () => _requestPermission(Permission.notification),
             ),
             const Divider(),
             _buildPermissionTile(
               title: 'Camera',
               subtitle: 'Required for scanning QR codes',
               isGranted: _cameraPermission,
-              onOpenSettings: () => AppSettings.openAppSettings(type: AppSettingsType.camera),
+              onRequestPermission: () => _requestPermission(Permission.camera),
             ),
             const Divider(),
             _buildPermissionTile(
               title: 'Location',
               subtitle: 'Required for creating and completing location conditions',
               isGranted: _locationPermission,
-              onOpenSettings: () => AppSettings.openAppSettings(type: AppSettingsType.location),
+              onRequestPermission: () => _requestPermission(Permission.location),
             ),
             const Divider(),
             _buildPermissionTile(
               title: 'Screen Time Restrictions',
               subtitle: 'Required to block apps and websites',
               isGranted: _familyControlsPermission,
-              onOpenSettings: () => AppSettings.openAppSettings(type: AppSettingsType.location), // will redirect to same page
+              onRequestPermission: _requestFamilyControls,
             ),
               ],
             ),
