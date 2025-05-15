@@ -185,6 +185,7 @@ class SyncService {
       bool accidentalDeletion = false;
 
       // sync emergencies first due to criticality
+      print("syncing emergencies");
       {
         final userData = await _client.from('users')
             .select('emergencies')
@@ -261,9 +262,11 @@ class SyncService {
           'emergencies': mergedEvents.map((e) => e.toJson()).toList(),
         }).eq('id', _userId);
       }
+       print("finished syncing emergencies");
       
       // pull devices
-      {
+       print("syncing devices");
+       {
         final remoteDevices = await _client.from('devices').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
         final localDevices = await db.getDevicesById(remoteDevices.map((device) => device['id'] as String).toList());
         final localDeviceMap = {for (final device in localDevices) device.id: device};
@@ -293,7 +296,7 @@ class SyncService {
             // We need to restore it and any associated groups
             accidentalDeletion = true;
             
-            db.upsertDevice(DevicesCompanion(
+            await db.upsertDevice(DevicesCompanion(
               id: Value(device['id']),
               name: Value(overwriteMap['name'] ?? device['name']),
               type: Value(overwriteMap['type'] ?? device['type']),
@@ -305,9 +308,9 @@ class SyncService {
             ));
             
           } else if (device['deleted'] as bool) {
-            db.deleteDevice(device['id']);
+            await db.deleteDevice(device['id']);
           } else {
-              db.upsertDevice(DevicesCompanion(
+              await db.upsertDevice(DevicesCompanion(
               id: Value(device['id']),
               name: Value(overwriteMap['name'] ?? device['name']),
               type: Value(overwriteMap['type'] ?? device['type']),
@@ -320,9 +323,11 @@ class SyncService {
           }
         }
       }
+      print("finished syncing emergencies");
 
       // pull groups
-      {
+       print("syncing groups");
+       {
         final remoteGroups = await _client.from('groups').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
         final localGroups = await db.getGroupsById(remoteGroups.map((group) => group['id'] as String).toList());
         final localGroupMap = {for (final group in localGroups) group.id: group};
@@ -345,7 +350,7 @@ class SyncService {
 
           if (group['deleted'] as bool) {
             if (group['device'] == currDevice.id && accidentalDeletion) {
-              db.upsertGroup(GroupsCompanion(
+              await db.upsertGroup(GroupsCompanion(
                 id: Value(group['id']),
                 name: Value(overwriteMap['name'] ?? group['name'] as String?),
                 device: Value(overwriteMap['device'] ?? group['device'] as String?),
@@ -355,11 +360,11 @@ class SyncService {
                 changes: Value(['deleted', ...overwriteMap['changes'] ?? const []])
               ));
             } else {
-              db.deleteGroup(group['id']);
+              await db.deleteGroup(group['id']);
             }
 
           } else {
-            db.upsertGroup(GroupsCompanion(
+            await db.upsertGroup(GroupsCompanion(
               id: Value(group['id']),
               name: Value(overwriteMap['name'] ?? group['name'] as String?),
               device: Value(overwriteMap['device'] ?? group['device'] as String?),
@@ -371,9 +376,11 @@ class SyncService {
           }
         }
       }
+       print("finished syncing emergencies");
     
       // pull routines
-      {
+       print("syncing routines");
+       {
         final remoteRoutines = await _client.from('routines').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
         final localRoutines = await db.getRoutinesById(remoteRoutines.map((routine) => routine['id'] as String).toList());
         final localRoutineMap = {for (final routine in localRoutines) routine.id: routine};
@@ -408,9 +415,9 @@ class SyncService {
           }
 
           if (routine['deleted'] as bool) {
-            db.deleteRoutine(routine['id']);
+            await db.deleteRoutine(routine['id']);
           } else {
-            db.upsertRoutine(RoutinesCompanion( 
+            await db.upsertRoutine(RoutinesCompanion( 
               id: Value(routine['id']),
               name: Value(overwriteMap['name'] ?? routine['name']),
               monday: Value(overwriteMap['monday'] ?? routine['monday']),
@@ -441,14 +448,17 @@ class SyncService {
           }
         }
       }
+      print("finished syncing routines");
 
-      db.updateDevice(DevicesCompanion(
+      print("updating pulled at");
+      await db.updateDevice(DevicesCompanion(
         id: Value(currDevice.id),
         lastPulledAt: Value(pulledAt),
         updatedAt: Value(pulledAt),
       ));
 
       // push devices
+      print("fetching devices");
       final localDevices = await db.getDeviceChanges(lastPulledAt);
       final remoteDevices = await _client
         .from('devices')
@@ -464,8 +474,10 @@ class SyncService {
           return false;
         }
       }
+      print("finished fetching devices");
 
       // push groups    
+      print("fetching groups");
       final localGroups = await db.getGroupChanges(lastPulledAt);
       final remoteGroups = await _client
         .from('groups')
@@ -482,8 +494,10 @@ class SyncService {
           return false;
         }
       }
+      print("finished fetching groups");
 
       // push routines
+      print("fetching routines");
       final localRoutines = await db.getRoutineChanges(lastPulledAt);
       final remoteRoutines = await _client
         .from('routines')
@@ -499,6 +513,7 @@ class SyncService {
           return false;
         }
       }
+      print("finished fetching routines");
 
       // persist devices
       bool updatedCurrDevice = false;
@@ -534,6 +549,7 @@ class SyncService {
       }
 
       // persist groups
+      print("pushing groups");
       for (final group in localGroups) {
         print("syncing group ${group.changes}");
         madeRemoteChange = true;
@@ -550,8 +566,10 @@ class SyncService {
         })
         .eq('id', group.id);
       }
+      print("finished pushing groups");
 
       // persist routines
+      print("pushing routines");
       for (final routine in localRoutines) {       
         print("syncing routine ${routine.changes}");
 
@@ -588,9 +606,10 @@ class SyncService {
         })
         .eq('id', routine.id);
       }
+      print("finished pushing routines");
 
       // clean up soft deleted entries
-      db.clearChangesSince(pulledAt);
+      await db.clearChangesSince(pulledAt);
       {
         final remoteDevices = (await _client
           .from('devices')
@@ -616,6 +635,8 @@ class SyncService {
       if (madeRemoteChange) {
         _notifyPeers();
       }
+
+      print("finished syncing");
 
       return true;
     } catch (e) {
