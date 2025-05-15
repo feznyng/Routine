@@ -16,6 +16,12 @@ class SyncJob {
   SyncJob({required this.remote, this.full = false});
 }
 
+class SyncResult {
+  bool requiresUpdate;
+
+  SyncResult({required this.requiresUpdate});
+}
+
 class TableChanges {
   List<Map<String, dynamic>> upserts;
   List<String> deletes;
@@ -170,14 +176,16 @@ class SyncService {
     
     print("finished syncing");
 
-    db.forceNotifyRoutineChanges();
+    if (result?.requiresUpdate ?? false) {
+      db.forceNotifyRoutineChanges();
+    }
 
-    return result;
+    return result != null;
   }
 
-  Future<bool> _sync(bool notifyRemote, {bool full = false}) async {
+  Future<SyncResult?> _sync(bool notifyRemote, {bool full = false}) async {
     try {
-      if (_userId.isEmpty) return true;
+      if (_userId.isEmpty) return null;
 
       // Check for internet connectivity
       final List<ConnectivityResult> connectivityResult = await (Connectivity().checkConnectivity());
@@ -187,10 +195,9 @@ class SyncService {
             !connectivityResult.contains(ConnectivityResult.mobile) 
             ) {
         print('No internet connection, skipping sync $syncing');
-        return true;
+        return null;
       }
 
-      
       final db = getIt<AppDatabase>();
       final currDevice = (await db.getThisDevice())!;
 
@@ -199,6 +206,7 @@ class SyncService {
 
       bool madeRemoteChange = false;
       bool accidentalDeletion = false;
+      bool requiresUpdate = false;
 
       // sync emergencies first due to criticality
       {
@@ -344,6 +352,8 @@ class SyncService {
         final localGroupMap = {for (final group in localGroups) group.id: group};
         
         for (final group in remoteGroups) {
+          requiresUpdate = true;
+          
           final overwriteMap = {};
           final localGroup = localGroupMap[group['id']];
 
@@ -373,7 +383,6 @@ class SyncService {
             } else {
               await db.deleteGroup(group['id']);
             }
-
           } else {
             await db.upsertGroup(GroupsCompanion(
               id: Value(group['id']),
@@ -395,6 +404,8 @@ class SyncService {
         final localRoutineMap = {for (final routine in localRoutines) routine.id: routine};
         
         for (final routine in remoteRoutines) {
+          requiresUpdate = true;
+          
           final overwriteMap = {};
           final localRoutine = localRoutineMap[routine['id']];
 
@@ -477,7 +488,7 @@ class SyncService {
         final remoteDevice = remoteDeviceMap[device.id];
         if (remoteDevice != null && remoteDevice['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
           print("device conflict detected - cancelling sync");
-          return false;
+          return null;
         }
       }
 
@@ -495,7 +506,7 @@ class SyncService {
         final remoteGroup = remoteGroupMap[group.id];
         if (remoteGroup != null && remoteGroup['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
           print("group conflict detected - cancelling sync");
-          return false;
+          return null;
         }
       }
 
@@ -512,7 +523,7 @@ class SyncService {
         final remoteRoutine = remoteRoutineMap[routine.id];
         if (remoteRoutine != null && remoteRoutine['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
           print("routine conflict detected - cancelling sync");
-          return false;
+          return null;
         }
       }
 
@@ -633,10 +644,10 @@ class SyncService {
         _notifyPeers();
       }
 
-      return true;
+      return SyncResult(requiresUpdate: requiresUpdate);
     } catch (e) {
       print('Error during sync: $e');
-      return false;
+      return null;
     }
   }
 }
