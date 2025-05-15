@@ -5,6 +5,7 @@
 //  Created by Ajan on 2/28/25.
 //
 
+import Foundation
 import ManagedSettings
 import DeviceActivity
 
@@ -14,54 +15,61 @@ class RoutineManager {
     var routines: [Routine] = []
     
     func update(routines: [Routine]) {
-        store.clearAllSettings()
-        center.stopMonitoring()
+        // Store routines immediately on main thread since it's just an array assignment
+        self.routines = routines
         
-        let now = Date()
-        let hasAllDay = routines.contains { $0.allDay }
+        // Move the heavy lifting to a background queue
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            
+            self.store.clearAllSettings()
+            self.center.stopMonitoring()
+            
+            let now = Date()
+            let hasAllDay = routines.contains { $0.allDay }
 
-        // always schedule for midnight to handle all day routines
-        if hasAllDay {
-            do {
-                let intervalStart = minutesOfDayToDateComponents(0)
-                let intervalEnd = minutesOfDayToDateComponents(15)
-
-                let name = DeviceActivityName("midnight-eval")
-                let schedule = DeviceActivitySchedule(intervalStart: intervalStart, intervalEnd: intervalEnd, repeats: true)
-
-                try center.startMonitoring(name, during: schedule)
-            } catch {
-                print("failed to register device activity \(error.localizedDescription)")
-            }
-        }
-        
-        for routine in routines {
-            if routine.startTime != nil && routine.endTime != nil && !routine.allDay {
-                let startTime = routine.startTime!
-                let endTime = routine.endTime!
-                
-                let intervalStart = minutesOfDayToDateComponents(startTime)
-                let intervalEnd = minutesOfDayToDateComponents(endTime)
-
-                let name = DeviceActivityName(routine.id)
-                let schedule = DeviceActivitySchedule(intervalStart: intervalStart, intervalEnd: intervalEnd, repeats: true)
-                
+            // always schedule for midnight to handle all day routines
+            if hasAllDay {
                 do {
-                    try center.startMonitoring(name, during: schedule)
-                    
+                    let intervalStart = self.minutesOfDayToDateComponents(0)
+                    let intervalEnd = self.minutesOfDayToDateComponents(15)
+
+                    let name = DeviceActivityName("midnight-eval")
+                    let schedule = DeviceActivitySchedule(intervalStart: intervalStart, intervalEnd: intervalEnd, repeats: true)
+
+                    try self.center.startMonitoring(name, during: schedule)
                 } catch {
                     print("failed to register device activity \(error.localizedDescription)")
                 }
             }
             
-            if let snoozedUntil = routine.snoozedUntil, snoozedUntil > now {
-                scheduleOneTimeActivity(for: routine, startDate: snoozedUntil, activityType: "snoozed")
-            } else if let pausedUntil = routine.pausedUntil, pausedUntil > now {
-                scheduleOneTimeActivity(for: routine, startDate: pausedUntil, activityType: "paused")
+            for routine in routines {
+                if routine.startTime != nil && routine.endTime != nil && !routine.allDay {
+                    let startTime = routine.startTime!
+                    let endTime = routine.endTime!
+                    
+                    let intervalStart = self.minutesOfDayToDateComponents(startTime)
+                    let intervalEnd = self.minutesOfDayToDateComponents(endTime)
+
+                    let name = DeviceActivityName(routine.id)
+                    let schedule = DeviceActivitySchedule(intervalStart: intervalStart, intervalEnd: intervalEnd, repeats: true)
+                    
+                    do {
+                        try self.center.startMonitoring(name, during: schedule)
+                    } catch {
+                        print("failed to register device activity \(error.localizedDescription)")
+                    }
+                }
+                
+                if let snoozedUntil = routine.snoozedUntil, snoozedUntil > now {
+                    self.scheduleOneTimeActivity(for: routine, startDate: snoozedUntil, activityType: "snoozed")
+                } else if let pausedUntil = routine.pausedUntil, pausedUntil > now {
+                    self.scheduleOneTimeActivity(for: routine, startDate: pausedUntil, activityType: "paused")
+                }
             }
         }
-
-        self.routines = routines
+        
+        print("finished updating routines")
     }
     
     private func scheduleOneTimeActivity(for routine: Routine, startDate: Date, activityType: String) {
