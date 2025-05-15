@@ -33,7 +33,7 @@ class MobileService extends PlatformService {
         return;
       }
 
-      print("UPDATING ROUTINES ${SyncService().syncing}");
+      print("UPDATING ROUTINES");
       _sendRoutines(routines);
 
       // we need to evaluate strict mode in case a strict routine is active after changes

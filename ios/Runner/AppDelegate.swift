@@ -30,35 +30,43 @@ import os.log
                 if let args = call.arguments as? [String: Any],
                    let routinesJson = args["routines"] as? [[String: Any]] {
                     
-                    do {
-                        let jsonData = try JSONSerialization.data(withJSONObject: routinesJson)
-                        let jsonString = String(data: jsonData, encoding: .utf8)!
-                        
-                        if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker") {
-                            sharedDefaults.set(jsonString, forKey: "routinesData")
-                            sharedDefaults.synchronize()
-                        } else {
-                            print("Failed to access shared UserDefaults")
-                        }
-                        
-                        let decoder = JSONDecoder()
-                        let routines = try decoder.decode([Routine].self, from: jsonString.data(using: .utf8)!)
-                        
-                        self?.manager.update(routines: routines)
-                    } catch {
-                        print("Failed to deserialize: \(error)")
-                        return result(FlutterError(code: "JSON_DECODE_ERROR",
+                    // Move heavy processing to background queue
+                    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                        do {
+                            let jsonData = try JSONSerialization.data(withJSONObject: routinesJson)
+                            let jsonString = String(data: jsonData, encoding: .utf8)!
+                            
+                            if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker") {
+                                sharedDefaults.set(jsonString, forKey: "routinesData")
+                                sharedDefaults.synchronize()
+                            } else {
+                                print("Failed to access shared UserDefaults")
+                            }
+                            
+                            let decoder = JSONDecoder()
+                            let routines = try decoder.decode([Routine].self, from: jsonString.data(using: .utf8)!)
+                            
+                            self?.manager.update(routines: routines)
+                            
+                            // Return success on main thread
+                            DispatchQueue.main.async {
+                                result(true)
+                            }
+                        } catch {
+                            print("Failed to deserialize: \(error)")
+                            // Return error on main thread
+                            DispatchQueue.main.async {
+                                result(FlutterError(code: "JSON_DECODE_ERROR",
                                                    message: "Failed to deserialize: \(error.localizedDescription)",
                                                    details: nil))
-                        
+                            }
+                        }
                     }
-                    
-                    result(true)
                 } else {
                     print("Error: Invalid arguments for updateRoutines")
                     result(FlutterError(code: "INVALID_ARGUMENTS",
-                                        message: "Invalid arguments for updateRoutines",
-                                        details: nil))
+                                      message: "Invalid arguments for updateRoutines",
+                                      details: nil))
                 }
                 
             case "checkFamilyControlsAuthorization":
