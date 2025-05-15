@@ -144,9 +144,7 @@ class SyncService {
       if (batchJobs.isNotEmpty) {
         final shouldNotifyRemote = batchJobs.any((job) => !job.remote);
         final isFullSync = batchJobs.any((job) => job.full);
-        _syncing = true;
         await sync(shouldNotifyRemote, full: isFullSync);
-        _syncing = false;
       }
     } finally {
       _isProcessing = false;
@@ -164,6 +162,20 @@ class SyncService {
   }
 
   Future<bool> sync(bool notifyRemote, {bool full = false}) async {
+    print("syncing...");
+  
+    _syncing = true;
+    final result = await _sync(notifyRemote, full: full);
+    _syncing = false;
+    
+    print("finished syncing");
+
+    db.forceNotifyRoutineChanges();
+
+    return result;
+  }
+
+  Future<bool> _sync(bool notifyRemote, {bool full = false}) async {
     try {
       if (_userId.isEmpty) return true;
 
@@ -174,11 +186,10 @@ class SyncService {
             !connectivityResult.contains(ConnectivityResult.vpn) && 
             !connectivityResult.contains(ConnectivityResult.mobile) 
             ) {
-        print('No internet connection, skipping sync');
+        print('No internet connection, skipping sync $syncing');
         return true;
       }
 
-      print("syncing...");
       
       final db = getIt<AppDatabase>();
       final currDevice = (await db.getThisDevice())!;
@@ -267,7 +278,7 @@ class SyncService {
           'emergencies': mergedEvents.map((e) => e.toJson()).toList(),
         }).eq('id', _userId);
       }
-       print("finished syncing emergencies");
+       print("finished syncing emergencies $syncing");
       
       // pull devices
        print("syncing devices");
@@ -328,7 +339,7 @@ class SyncService {
           }
         }
       }
-      print("finished syncing emergencies");
+      print("finished syncing emergencies $syncing");
 
       // pull groups
        print("syncing groups");
@@ -381,7 +392,7 @@ class SyncService {
           }
         }
       }
-       print("finished syncing emergencies");
+       print("finished syncing emergencies $syncing");
     
       // pull routines
        print("syncing routines");
@@ -453,7 +464,7 @@ class SyncService {
           }
         }
       }
-      print("finished syncing routines");
+      print("finished syncing routines $syncing");
 
       print("updating pulled at");
       await db.updateDevice(DevicesCompanion(
@@ -479,7 +490,7 @@ class SyncService {
           return false;
         }
       }
-      print("finished fetching devices");
+      print("finished fetching devices $syncing");
 
       // push groups    
       print("fetching groups");
@@ -499,7 +510,7 @@ class SyncService {
           return false;
         }
       }
-      print("finished fetching groups");
+      print("finished fetching groups $syncing");
 
       // push routines
       print("fetching routines");
@@ -518,7 +529,7 @@ class SyncService {
           return false;
         }
       }
-      print("finished fetching routines");
+      print("finished fetching routines $syncing");
 
       // persist devices
       bool updatedCurrDevice = false;
@@ -571,7 +582,7 @@ class SyncService {
         })
         .eq('id', group.id);
       }
-      print("finished pushing groups");
+      print("finished pushing groups $syncing");
 
       // persist routines
       print("pushing routines");
@@ -611,7 +622,7 @@ class SyncService {
         })
         .eq('id', routine.id);
       }
-      print("finished pushing routines");
+      print("finished pushing routines $syncing");
 
       // clean up soft deleted entries
       await db.clearChangesSince(pulledAt);
@@ -640,8 +651,6 @@ class SyncService {
       if (madeRemoteChange) {
         _notifyPeers();
       }
-
-      print("finished syncing");
 
       return true;
     } catch (e) {

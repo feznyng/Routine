@@ -6,6 +6,10 @@ import 'package:flutter/services.dart';
 import '../models/routine.dart';
 import 'strict_mode_service.dart';
 
+Future<void> transferRoutines() async {
+
+}
+
 class MobileService extends PlatformService {
   static final MobileService _instance = MobileService._internal();
   
@@ -25,6 +29,11 @@ class MobileService extends PlatformService {
     checkAndRequestFamilyControlsAuthorization();
     
     _routineSubscription = Routine.watchAll().listen((routines) {
+      if (SyncService().syncing) {
+        return;
+      }
+
+      print("UPDATING ROUTINES ${SyncService().syncing}");
       _sendRoutines(routines);
 
       // we need to evaluate strict mode in case a strict routine is active after changes
@@ -32,10 +41,10 @@ class MobileService extends PlatformService {
     });
     
     _strictModeSubscription = StrictModeService.instance.effectiveSettingsStream.listen((_) {
+      print("UPDATING STRICT MODE");
       _sendStrictModeSettings();
     });
     
-    _sendStrictModeSettings();
   }
 
   @override

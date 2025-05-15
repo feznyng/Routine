@@ -369,4 +369,8 @@ class AppDatabase extends _$AppDatabase {
       await (delete(routines)..where((t) => t.deleted.equals(true))).go();
     });
   }
+
+  Future<void> forceNotifyRoutineChanges() async {
+    notifyUpdates({TableUpdate.onTable(routines, kind: UpdateKind.insert)});
+  }
 }
