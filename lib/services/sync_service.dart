@@ -35,6 +35,9 @@ class SyncService {
   final AppDatabase db;
   final SupabaseClient _client;
   late final String _userId;
+  bool _syncing = false;
+
+  bool get syncing => _syncing;
   
   SyncService._internal() : 
     db = getIt<AppDatabase>(),
@@ -141,7 +144,9 @@ class SyncService {
       if (batchJobs.isNotEmpty) {
         final shouldNotifyRemote = batchJobs.any((job) => !job.remote);
         final isFullSync = batchJobs.any((job) => job.full);
+        _syncing = true;
         await sync(shouldNotifyRemote, full: isFullSync);
+        _syncing = false;
       }
     } finally {
       _isProcessing = false;
