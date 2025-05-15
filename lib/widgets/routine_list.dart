@@ -17,7 +17,7 @@ class RoutineList extends StatefulWidget {
   State<RoutineList> createState() => _RoutineListState();
 }
 
-class _RoutineListState extends State<RoutineList> {
+class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
   late List<Routine> _routines;
   late StreamSubscription<List<Routine>> _routineSubscription;
   bool _activeRoutinesExpanded = true;
@@ -34,6 +34,7 @@ class _RoutineListState extends State<RoutineList> {
     super.initState();
     print("UI: INIT LIST");
     _routines = [];
+    WidgetsBinding.instance.addObserver(this);
    
     _routineSubscription = Routine.watchAll().listen((routines) {
       if (mounted) {
@@ -62,8 +63,19 @@ class _RoutineListState extends State<RoutineList> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _routineSubscription.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Refresh the list when app is resumed
+      setState(() {
+        _routines = _routines;
+      });
+    }
   }
 
   // Calculate when a routine will be active next
