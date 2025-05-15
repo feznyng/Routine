@@ -32,10 +32,12 @@ class _RoutineListState extends State<RoutineList> {
   @override
   void initState() {
     super.initState();
+    print("UI: INIT LIST");
     _routines = [];
    
     _routineSubscription = Routine.watchAll().listen((routines) {
       if (mounted) {
+        print("UI: ROUTINES UPDATED");
         setState(() {
           _routines = routines;
         });
@@ -132,7 +134,7 @@ class _RoutineListState extends State<RoutineList> {
     // If no active days found (shouldn't happen if routine is valid)
     return DateTime(9999); // Far future date
   }
-  
+
   @override
   Widget build(BuildContext context) {
     // Sort all routines by next active time, except active ones which are sorted by start time
@@ -165,6 +167,8 @@ class _RoutineListState extends State<RoutineList> {
     final completedRoutines = sortedRoutines.where((routine) => !routine.isSnoozed && routine.isActive && routine.areConditionsMet).toList();
     final activeRoutines = sortedRoutines.where((routine) => routine.isActive && !routine.isSnoozed && !routine.areConditionsMet).toList();
     final inactiveRoutines = sortedRoutines.where((routine) => !routine.isActive && !routine.isSnoozed).toList();
+   
+    print("UI: FINISHED UPDATING ROUTINES");
     
     return Scaffold(
       body: Center(

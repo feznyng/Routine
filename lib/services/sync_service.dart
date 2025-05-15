@@ -201,7 +201,6 @@ class SyncService {
       bool accidentalDeletion = false;
 
       // sync emergencies first due to criticality
-      print("syncing emergencies");
       {
         final userData = await _client.from('users')
             .select('emergencies')
@@ -278,10 +277,8 @@ class SyncService {
           'emergencies': mergedEvents.map((e) => e.toJson()).toList(),
         }).eq('id', _userId);
       }
-       print("finished syncing emergencies $syncing");
       
       // pull devices
-       print("syncing devices");
        {
         final remoteDevices = await _client.from('devices').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
         final localDevices = await db.getDevicesById(remoteDevices.map((device) => device['id'] as String).toList());
@@ -339,10 +336,8 @@ class SyncService {
           }
         }
       }
-      print("finished syncing emergencies $syncing");
 
       // pull groups
-       print("syncing groups");
        {
         final remoteGroups = await _client.from('groups').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
         final localGroups = await db.getGroupsById(remoteGroups.map((group) => group['id'] as String).toList());
@@ -392,10 +387,8 @@ class SyncService {
           }
         }
       }
-       print("finished syncing emergencies $syncing");
     
       // pull routines
-       print("syncing routines");
        {
         final remoteRoutines = await _client.from('routines').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
         final localRoutines = await db.getRoutinesById(remoteRoutines.map((routine) => routine['id'] as String).toList());
@@ -464,9 +457,7 @@ class SyncService {
           }
         }
       }
-      print("finished syncing routines $syncing");
 
-      print("updating pulled at");
       await db.updateDevice(DevicesCompanion(
         id: Value(currDevice.id),
         lastPulledAt: Value(pulledAt),
@@ -474,7 +465,6 @@ class SyncService {
       ));
 
       // push devices
-      print("fetching devices");
       final localDevices = await db.getDeviceChanges(lastPulledAt);
       final remoteDevices = await _client
         .from('devices')
@@ -490,10 +480,8 @@ class SyncService {
           return false;
         }
       }
-      print("finished fetching devices $syncing");
 
       // push groups    
-      print("fetching groups");
       final localGroups = await db.getGroupChanges(lastPulledAt);
       final remoteGroups = await _client
         .from('groups')
@@ -510,10 +498,8 @@ class SyncService {
           return false;
         }
       }
-      print("finished fetching groups $syncing");
 
       // push routines
-      print("fetching routines");
       final localRoutines = await db.getRoutineChanges(lastPulledAt);
       final remoteRoutines = await _client
         .from('routines')
@@ -529,7 +515,6 @@ class SyncService {
           return false;
         }
       }
-      print("finished fetching routines $syncing");
 
       // persist devices
       bool updatedCurrDevice = false;
@@ -565,7 +550,6 @@ class SyncService {
       }
 
       // persist groups
-      print("pushing groups");
       for (final group in localGroups) {
         print("syncing group ${group.changes}");
         madeRemoteChange = true;
@@ -582,10 +566,8 @@ class SyncService {
         })
         .eq('id', group.id);
       }
-      print("finished pushing groups $syncing");
 
       // persist routines
-      print("pushing routines");
       for (final routine in localRoutines) {       
         print("syncing routine ${routine.changes}");
 
@@ -622,7 +604,6 @@ class SyncService {
         })
         .eq('id', routine.id);
       }
-      print("finished pushing routines $syncing");
 
       // clean up soft deleted entries
       await db.clearChangesSince(pulledAt);

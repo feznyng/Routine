@@ -54,9 +54,6 @@ class DesktopService extends PlatformService {
     }
 
     Routine.watchAll().listen((routines) {
-      if (SyncService().syncing) {
-        return;
-      }
       onRoutinesUpdated(routines);
     });
 

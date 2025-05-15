@@ -29,10 +29,6 @@ class MobileService extends PlatformService {
     checkAndRequestFamilyControlsAuthorization();
     
     _routineSubscription = Routine.watchAll().listen((routines) {
-      if (SyncService().syncing) {
-        return;
-      }
-
       print("UPDATING ROUTINES");
       _sendRoutines(routines);
 
