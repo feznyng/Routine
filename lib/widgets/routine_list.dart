@@ -20,7 +20,7 @@ class RoutineList extends StatefulWidget {
 class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
   late List<Routine> _routines;
   late StreamSubscription<List<Routine>> _routineSubscription;
-  bool _isLoading = true;
+  bool _isLoading = false;
   bool _activeRoutinesExpanded = true;
   bool _inactiveRoutinesExpanded = true;
   bool _snoozedRoutinesExpanded = true;

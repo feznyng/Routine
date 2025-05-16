@@ -445,7 +445,7 @@ class StrictModeService with ChangeNotifier {
       final bool? confirmed = await _showEnableConfirmationDialog(
         context, 
         'Block App Exit',
-        'This will prevent the app from being closed. Are you sure you want to enable this setting?'
+        'This will prevent the app from being closed when in strict mode. Are you sure you want to enable this setting?'
       );
       if (confirmed != true) {
         return false;
@@ -468,7 +468,7 @@ class StrictModeService with ChangeNotifier {
       final bool? confirmed = await _showEnableConfirmationDialog(
         context, 
         'Block Disabling System Startup',
-        'This will prevent the app\'s startup setting from being disabled. Are you sure you want to enable this setting?'
+        'This will prevent the app\'s startup setting from being disabled when in strict mode. Are you sure you want to enable this setting?'
       );
       if (confirmed != true) {
         return false;
@@ -515,7 +515,7 @@ class StrictModeService with ChangeNotifier {
       final bool? confirmed = await _showEnableConfirmationDialog(
         context, 
         'Block Changing Time Settings',
-        'This will prevent changing the system time. Are you sure you want to enable this setting?'
+        'This will prevent changing the system time when in strict mode. Are you sure you want to enable this setting?'
       );
       if (confirmed != true) {
         return false;
@@ -538,7 +538,7 @@ class StrictModeService with ChangeNotifier {
       final bool? confirmed = await _showEnableConfirmationDialog(
         context, 
         'Block Uninstalling Apps',
-        'This will prevent uninstalling apps. Are you sure you want to enable this setting?'
+        'This will prevent uninstalling apps when in strict mode. Are you sure you want to enable this setting?'
       );
       if (confirmed != true) {
         return false;
@@ -561,7 +561,7 @@ class StrictModeService with ChangeNotifier {
       final bool? confirmed = await _showEnableConfirmationDialog(
         context, 
         'Block Installing Apps',
-        'This will prevent installing new apps. Are you sure you want to enable this setting?'
+        'This will prevent installing new apps when in strict mode. Are you sure you want to enable this setting?'
       );
       if (confirmed != true) {
         return false;

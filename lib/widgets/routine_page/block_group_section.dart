@@ -72,7 +72,10 @@ class _BlockGroupSectionState extends State<BlockGroupSection> {
     final currentDevice = getIt<Device>();
     
     // Check iOS block group limit only when adding a new group on iOS
-    if (group == null && currentDevice.type == DeviceType.ios) {
+
+    print("toggle group: $group ${widget.routine.saved} ${currentDevice.type}");
+
+    if ((group == null || !widget.routine.saved) && currentDevice.type == DeviceType.ios) {
       final allRoutines = await Routine.getAll();
       final iosBlockGroups = allRoutines.where((r) => r.getGroup(currentDevice.id) != null).length;
       
@@ -87,7 +90,7 @@ class _BlockGroupSectionState extends State<BlockGroupSection> {
           builder: (BuildContext context) {
             return AlertDialog(
               title: const Text('Maximum Routines Reached'),
-              content: const Text('iOS devices are limited to a maximum of 10 routines with block groups. Please remove a block group from another routine before adding a new one.'),
+              content: const Text('iOS devices are limited to a maximum of 10 routines with block groups. You can have up to 50 on other devices.'),
               actions: <Widget>[
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
