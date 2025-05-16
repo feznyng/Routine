@@ -209,6 +209,7 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                   });
                 },
                 child: ListView(
+                  padding: EdgeInsets.zero,
                   children: [
                     // Emergency mode banner
                     if (_strictModeService.emergencyMode)
