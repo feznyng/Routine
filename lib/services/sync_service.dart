@@ -148,9 +148,12 @@ class SyncService {
       _pendingJobs.clear();
       
       if (batchJobs.isNotEmpty) {
-        final shouldNotifyRemote = batchJobs.any((job) => !job.remote);
+        if (_syncing) {
+          // we're already syncing (potentially manually) do nothing
+          return;
+        }
         final isFullSync = batchJobs.any((job) => job.full);
-        await sync(shouldNotifyRemote, full: isFullSync);
+        await sync(full: isFullSync);
       }
     } finally {
       _isProcessing = false;
@@ -167,11 +170,11 @@ class SyncService {
     _jobController.close();
   }
 
-  Future<bool> sync(bool notifyRemote, {bool full = false}) async {
+  Future<bool> sync({bool full = false}) async {
     print("syncing...");
   
     _syncing = true;
-    final result = await _sync(notifyRemote, full: full);
+    final result = await _sync(full: full);
     _syncing = false;
     
     print("finished syncing");
@@ -183,7 +186,7 @@ class SyncService {
     return result != null;
   }
 
-  Future<SyncResult?> _sync(bool notifyRemote, {bool full = false}) async {
+  Future<SyncResult?> _sync({bool full = false}) async {
     try {
       if (_userId.isEmpty) return null;
 

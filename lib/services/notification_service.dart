@@ -11,7 +11,7 @@ import 'package:firebase_core/firebase_core.dart';
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   final iosService = MobileService();
   iosService.stopWatching();
-  await SyncService().sync(false);
+  await SyncService().sync();
   await iosService.updateRoutines();
 }
 
