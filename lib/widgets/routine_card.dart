@@ -5,7 +5,7 @@ import 'break_dialog.dart';
 import 'routine_conditions_list.dart';
 import 'break_timer_display.dart';
 
-class RoutineCard extends StatefulWidget {
+class RoutineCard extends StatelessWidget {
   final Routine routine;
   final VoidCallback? onRoutineUpdated;
 
@@ -14,12 +14,6 @@ class RoutineCard extends StatefulWidget {
     required this.routine,
     this.onRoutineUpdated,
   });
-
-  @override
-  State<RoutineCard> createState() => _RoutineCardState();
-}
-
-class _RoutineCardState extends State<RoutineCard> {
 
   @override
   Widget build(BuildContext context) {    
@@ -39,7 +33,7 @@ class _RoutineCardState extends State<RoutineCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.routine.name,
+                          routine.name,
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: 2),
@@ -52,15 +46,15 @@ class _RoutineCardState extends State<RoutineCard> {
                       ],
                     ),
                   ),
-                  if (widget.routine.isSnoozed && widget.routine.snoozedUntil != null) ...[  
+                  if (routine.isSnoozed && routine.snoozedUntil != null) ...[  
                     const Icon(Icons.snooze, color: Colors.orange, size: 16),
                     const SizedBox(width: 4),
                     Text(
-                      _formatSnoozeDate(widget.routine.snoozedUntil!),
+                      _formatSnoozeDate(routine.snoozedUntil!),
                       style: const TextStyle(fontSize: 12, color: Colors.orange),
                     ),
                   ],
-                  if (widget.routine.isActive) ...[  
+                  if (routine.isActive) ...[  
                     const SizedBox(width: 8),
                     _buildBreakButton(context),
                   ],
@@ -69,8 +63,8 @@ class _RoutineCardState extends State<RoutineCard> {
               const SizedBox(height: 8),
               _buildBlockedChips(),
               RoutineConditionsList(
-                routine: widget.routine,
-                onRoutineUpdated: widget.onRoutineUpdated,
+                routine: routine,
+                onRoutineUpdated: onRoutineUpdated,
               ),
             ],
           ),
@@ -81,11 +75,11 @@ class _RoutineCardState extends State<RoutineCard> {
 
   String _buildTimeText(BuildContext context) {
     // Add time information
-    if (widget.routine.startTime == -1 && widget.routine.endTime == -1) {
+    if (routine.startTime == -1 && routine.endTime == -1) {
       return 'All day';
     } else {
-      final startTimeOfDay = TimeOfDay(hour: widget.routine.startHour, minute: widget.routine.startMinute);
-      final endTimeOfDay = TimeOfDay(hour: widget.routine.endHour, minute: widget.routine.endMinute);
+      final startTimeOfDay = TimeOfDay(hour: routine.startHour, minute: routine.startMinute);
+      final endTimeOfDay = TimeOfDay(hour: routine.endHour, minute: routine.endMinute);
       return '${startTimeOfDay.format(context)} - ${endTimeOfDay.format(context)}';
     }
   }
@@ -104,7 +98,7 @@ class _RoutineCardState extends State<RoutineCard> {
   }
 
   Widget _buildBlockedChips() {
-    final group = widget.routine.getGroup();
+    final group = routine.getGroup();
     List<String> chipTexts = [];
     
     // Collect all chip texts first
@@ -145,16 +139,16 @@ class _RoutineCardState extends State<RoutineCard> {
     }
     
     // Add strict mode chip if enabled
-    if (widget.routine.strictMode) {
+    if (routine.strictMode) {
       chipTexts.add('Strict');
     }
         
     // Always add breaks chip
-    final breaksLeftText = widget.routine.breaksLeftText;
-    final numBreaksLeft = widget.routine.numBreaksLeft;
+    final breaksLeftText = routine.breaksLeftText;
+    final numBreaksLeft = routine.numBreaksLeft;
     final isUnlimited = breaksLeftText == "Unlimited";
     final breakWord = numBreaksLeft == 1 ? 'break' : 'breaks';
-    final suffix = widget.routine.isActive && !isUnlimited && widget.routine.maxBreaks != 0 ? ' left' : '';
+    final suffix = routine.isActive && !isUnlimited && routine.maxBreaks != 0 ? ' left' : '';
     
     chipTexts.add('$breaksLeftText ${isUnlimited ? "breaks" : "$breakWord$suffix"}');
 
@@ -184,22 +178,20 @@ class _RoutineCardState extends State<RoutineCard> {
     );
   }
 
-
-
   Widget _buildBreakButton(BuildContext context) {
-    if (widget.routine.isPaused && widget.routine.pausedUntil != null) {
+    if (routine.isPaused && routine.pausedUntil != null) {
       return BreakTimerDisplay(
-        routine: widget.routine,
+        routine: routine,
         onEndBreak: () {
-          widget.routine.endBreak();
-          if (widget.onRoutineUpdated != null) {
-            widget.onRoutineUpdated!();
+          routine.endBreak();
+          if (onRoutineUpdated != null) {
+            onRoutineUpdated!();
           }
         },
       );
     }
 
-    final canBreak = widget.routine.canBreak;
+    final canBreak = routine.canBreak;
     return TextButton.icon(
       onPressed: canBreak ? () => _showBreakDialog(context) : null,
       icon: const Icon(Icons.coffee),
@@ -207,12 +199,10 @@ class _RoutineCardState extends State<RoutineCard> {
     );
   }
 
-
-
   void _showBreakDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => BreakDialog(routine: widget.routine),
+      builder: (context) => BreakDialog(routine: routine),
       barrierDismissible: false,
     );
   }
@@ -221,16 +211,16 @@ class _RoutineCardState extends State<RoutineCard> {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => RoutinePage(
-          routine: widget.routine,
+          routine: routine,
           onSave: (updatedRoutine) {
-            if (widget.onRoutineUpdated != null) {
-              widget.onRoutineUpdated!();
+            if (onRoutineUpdated != null) {
+              onRoutineUpdated!();
             }
             Navigator.of(context).pop();
           },
           onDelete: () {
-            if (widget.onRoutineUpdated != null) {
-              widget.onRoutineUpdated!();
+            if (onRoutineUpdated != null) {
+              onRoutineUpdated!();
             }
             Navigator.of(context).pop();
           },
