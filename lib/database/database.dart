@@ -370,7 +370,8 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
-  Future<void> forceNotifyRoutineChanges() async {
+  Future<void> forceNotifyChanges() async {
     notifyUpdates({TableUpdate.onTable(routines, kind: UpdateKind.insert)});
+    notifyUpdates({TableUpdate.onTable(devices, kind: UpdateKind.insert)});
   }
 }

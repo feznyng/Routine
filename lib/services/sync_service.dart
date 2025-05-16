@@ -177,7 +177,7 @@ class SyncService {
     print("finished syncing - success = ${result != null}");
 
     if (result?.requiresUpdate ?? false) {
-      db.forceNotifyRoutineChanges();
+      db.forceNotifyChanges();
     }
 
     return result != null;
@@ -284,6 +284,8 @@ class SyncService {
           final overwriteMap = {};
           final localDevice = localDeviceMap[device['id']];
 
+          requiresUpdate = true;
+          
           if (localDevice != null) {
             final localDeviceData = localDevice.toJson();
             for (final change in localDevice.changes) {
