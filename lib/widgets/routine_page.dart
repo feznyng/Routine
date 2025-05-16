@@ -95,7 +95,9 @@ class _RoutinePageState extends State<RoutinePage> {
   void _validateRoutine() {
     setState(() {
       _isValid = _routine.valid;
-      _hasChanges = _routine.modified;
+      _hasChanges = _routine.changes
+        .where((change) => !['snoozedUntil', 'numBreaksTaken'].contains(change))
+        .isNotEmpty;
     });
   }
   
