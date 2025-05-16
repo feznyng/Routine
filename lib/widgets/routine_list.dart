@@ -53,9 +53,11 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
         final evaluationTimes = Util.getEvaluationTimes(routines);
         for (final Schedule time in evaluationTimes) {
           ScheduledTask task = cron.schedule(time, () async {
-            setState(() {
-              _routines = routines;
-            });
+            if (mounted) {
+              setState(() {
+                _routines = routines;
+              });
+            }
           });
           _scheduledTasks.add(task);
         }
@@ -195,13 +197,17 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                   : RefreshIndicator(
                 onRefresh: () async {
                   // Trigger a full sync
-                  setState(() {
-                    _isLoading = true;
-                  });
+                  if (mounted) {
+                    setState(() {
+                      _isLoading = true;
+                    });
+                  }
                   await _syncService.sync(full: true);
-                  setState(() {
-                    _isLoading = false;
-                  });
+                  if (mounted) {
+                    setState(() {
+                      _isLoading = false;
+                    });
+                  }
                 },
                 child: ListView(
                   padding: EdgeInsets.zero,
