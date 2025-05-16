@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
 import '../models/routine.dart';
 import 'routine_page.dart';
 import 'break_dialog.dart';
 import 'routine_conditions_list.dart';
+import 'break_timer_display.dart';
 
 class RoutineCard extends StatefulWidget {
   final Routine routine;
@@ -20,77 +20,9 @@ class RoutineCard extends StatefulWidget {
 }
 
 class _RoutineCardState extends State<RoutineCard> {
-  Timer? _breakTimer;
-  String _remainingBreakTime = "";
-  bool _timerInitialized = false;
 
   @override
-  void initState() {
-    super.initState();
-    
-    // Delay timer initialization slightly to ensure all data is loaded
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (mounted && widget.routine.isPaused && widget.routine.pausedUntil != null) {
-        print("Initializing timer in initState for ${widget.routine.name}");
-        _updateRemainingBreakTime();
-        _startBreakTimer();
-        _timerInitialized = true;
-      }
-    });
-  }
-  
-  @override
-  void didUpdateWidget(RoutineCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    
-    // Always check break status when widget updates
-    final wasPaused = oldWidget.routine.isPaused;
-    final isPaused = widget.routine.isPaused;
-    final pausedUntilChanged = oldWidget.routine.pausedUntil != widget.routine.pausedUntil;
-    
-    // If pause status or pausedUntil time changed, update timer
-    if (wasPaused != isPaused || pausedUntilChanged) {      
-      if (isPaused && widget.routine.pausedUntil != null) {
-        _updateRemainingBreakTime();
-        _startBreakTimer();
-        _timerInitialized = true;
-      } else {
-        _cancelBreakTimer();
-        setState(() {
-          _remainingBreakTime = "";
-        });
-        _timerInitialized = false;
-      }
-    } else if (isPaused && widget.routine.pausedUntil != null && !_timerInitialized) {
-      // Catch cases where the widget might have been rebuilt without status change
-      print("Reinitializing timer for ${widget.routine.name} that was missed");
-      _updateRemainingBreakTime();
-      _startBreakTimer();
-      _timerInitialized = true;
-    }
-  }
-  
-  @override
-  void dispose() {
-    _cancelBreakTimer();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Check if we need to initialize the timer on build
-    if (widget.routine.isPaused && widget.routine.pausedUntil != null && !_timerInitialized) {
-      print("Initializing timer in build for ${widget.routine.name}");
-      // Use post-frame callback to avoid setState during build
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _updateRemainingBreakTime();
-          _startBreakTimer();
-          _timerInitialized = true;
-        }
-      });
-    }
-    
+  Widget build(BuildContext context) {    
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: InkWell(
@@ -252,86 +184,18 @@ class _RoutineCardState extends State<RoutineCard> {
     );
   }
 
-  void _startBreakTimer() {
-    // Cancel existing timer if any
-    _cancelBreakTimer();
-    
-    // Create a new timer that updates every second
-    _breakTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      _updateRemainingBreakTime();
-    });
-  }
-  
-  void _cancelBreakTimer() {
-    _breakTimer?.cancel();
-    _breakTimer = null;
-  }
 
-  void _updateRemainingBreakTime() {
-    // Skip update if widget is no longer mounted
-    if (!mounted) return;
-    
-    if (widget.routine.pausedUntil == null) {
-      setState(() {
-        _remainingBreakTime = "";
-      });
-      return;
-    }
-
-    final now = DateTime.now();
-    final pausedUntil = widget.routine.pausedUntil!;
-    
-    if (now.isAfter(pausedUntil)) {
-      setState(() {
-        _remainingBreakTime = "(00:00)";
-      });
-      _cancelBreakTimer();
-      _timerInitialized = false;
-      return;
-    }
-    
-    final remaining = pausedUntil.difference(now);
-    final minutes = remaining.inMinutes.toString().padLeft(2, '0');
-    final seconds = (remaining.inSeconds % 60).toString().padLeft(2, '0');
-    
-    // Only update if the time has changed to reduce unnecessary setState calls
-    final newTimeString = "($minutes:$seconds)";
-    if (_remainingBreakTime != newTimeString) {
-      setState(() {
-        _remainingBreakTime = newTimeString;
-      });
-    }
-  }
 
   Widget _buildBreakButton(BuildContext context) {
     if (widget.routine.isPaused && widget.routine.pausedUntil != null) {
-      // Force timer initialization if needed when building the break button
-      if (!_timerInitialized) {
-        print("Initializing timer in _buildBreakButton for ${widget.routine.name}");
-        // Use post-frame callback to avoid setState during build
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            _updateRemainingBreakTime();
-            _startBreakTimer();
-            _timerInitialized = true;
+      return BreakTimerDisplay(
+        routine: widget.routine,
+        onEndBreak: () {
+          widget.routine.endBreak();
+          if (widget.onRoutineUpdated != null) {
+            widget.onRoutineUpdated!();
           }
-        });
-      }
-      
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            _remainingBreakTime.isEmpty ? "" : _remainingBreakTime,
-            style: TextStyle(color: Theme.of(context).colorScheme.secondary),
-          ),
-          const SizedBox(width: 4),
-          TextButton.icon(
-            onPressed: () => _showEndBreakDialog(context),
-            icon: const Icon(Icons.timer_off),
-            label: const Text('End Break'),
-          ),
-        ],
+        },
       );
     }
 
@@ -343,31 +207,7 @@ class _RoutineCardState extends State<RoutineCard> {
     );
   }
 
-  void _showEndBreakDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('End Break'),
-        content: const Text('Are you sure you want to end your break?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              widget.routine.endBreak();
-              if (widget.onRoutineUpdated != null) {
-                widget.onRoutineUpdated!();
-              }
-              Navigator.of(context).pop();
-            },
-            child: const Text('End Break'),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   void _showBreakDialog(BuildContext context) {
     showDialog(
