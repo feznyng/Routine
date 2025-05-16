@@ -20,6 +20,7 @@ class RoutineList extends StatefulWidget {
 class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
   late List<Routine> _routines;
   late StreamSubscription<List<Routine>> _routineSubscription;
+  bool _isLoading = true;
   bool _activeRoutinesExpanded = true;
   bool _inactiveRoutinesExpanded = true;
   bool _snoozedRoutinesExpanded = true;
@@ -34,6 +35,7 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
     super.initState();
     print("UI: INIT LIST");
     _routines = [];
+    _isLoading = true;
     WidgetsBinding.instance.addObserver(this);
    
     _routineSubscription = Routine.watchAll().listen((routines) {
@@ -41,6 +43,7 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
         print("UI: ROUTINES UPDATED");
         setState(() {
           _routines = routines;
+          _isLoading = false;
         });
     
         for (final task in _scheduledTasks) {
@@ -190,9 +193,11 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
-          child: _routines.isEmpty
-              ? _buildEmptyState(context)
-              : RefreshIndicator(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _routines.isEmpty
+                  ? _buildEmptyState(context)
+                  : RefreshIndicator(
                 onRefresh: () async {
                   // Trigger a full sync
                   _syncService.addJob(SyncJob(remote: true, full: true));
