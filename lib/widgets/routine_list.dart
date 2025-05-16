@@ -152,9 +152,6 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    print("UI: BUILDING LIST");
-
-    final stopWatch = Stopwatch();
 
     // Sort all routines by next active time, except active ones which are sorted by start time
     final sortedRoutines = List<Routine>.from(_routines);
@@ -186,9 +183,7 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
     final completedRoutines = sortedRoutines.where((routine) => !routine.isSnoozed && routine.isActive && routine.areConditionsMet).toList();
     final activeRoutines = sortedRoutines.where((routine) => routine.isActive && !routine.isSnoozed && !routine.areConditionsMet).toList();
     final inactiveRoutines = sortedRoutines.where((routine) => !routine.isActive && !routine.isSnoozed).toList();
-   
-    print("UI: FINISHED BUILDING LIST in ${stopWatch.elapsed}ns");
-    
+       
     return Scaffold(
       body: Center(
         child: ConstrainedBox(

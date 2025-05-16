@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import 'forgot_password_page.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -14,6 +15,7 @@ class _AuthPageState extends State<AuthPage> {
   bool _isRegistering = false;
   final _authService = AuthService();
   String? _errorText;
+  String? _bannerMessage;
 
   @override
   void dispose() {
@@ -25,6 +27,7 @@ class _AuthPageState extends State<AuthPage> {
   Future<void> _handleSubmit() async {
     setState(() {
       _errorText = null;
+      _bannerMessage = null;
     });
 
     try {
@@ -46,6 +49,22 @@ class _AuthPageState extends State<AuthPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        bottom: _bannerMessage != null
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(40),
+                child: Container(
+                  width: double.infinity,
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  child: Text(
+                    _bannerMessage!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+              )
+            : null,
         title: Text(_isRegistering ? 'Register' : 'Sign In'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -76,6 +95,7 @@ class _AuthPageState extends State<AuthPage> {
               obscureText: true,
               autofillHints: const [AutofillHints.password],
             ),
+
             if (_errorText != null) ...[
               const SizedBox(height: 16),
               Text(
@@ -89,11 +109,27 @@ class _AuthPageState extends State<AuthPage> {
               child: Text(_isRegistering ? 'Register' : 'Sign In'),
             ),
             const SizedBox(height: 8),
+            if (!_isRegistering) TextButton(
+              onPressed: () async {
+                final success = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute<bool>(
+                    builder: (context) => const ForgotPasswordPage(),
+                  ),
+                );
+                if (success == true && mounted) {
+                  setState(() {
+                    _bannerMessage = 'Password reset email sent. Please check your inbox.';
+                  });
+                }
+              },
+              child: const Text('Forgot Password?'),
+            ),
             TextButton(
               onPressed: () {
                 setState(() {
                   _isRegistering = !_isRegistering;
                   _errorText = null;
+                  _bannerMessage = null;
                 });
               },
               child: Text(_isRegistering

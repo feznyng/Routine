@@ -184,6 +184,24 @@ class AuthService {
       throw 'Unable to sign out. Please try again later.';
     }
   }
+
+  Future<void> resetPasswordForEmail(String email) async {
+    if (!_initialized) throw Exception('AuthService not initialized');
+    try {
+      print("site url: ${dotenv.env['SITE_URL']}");
+
+      await _client.auth.resetPasswordForEmail(email, redirectTo: "${dotenv.env['SITE_URL']}/reset-password");
+    } on AuthException catch (e) {
+      print('Password reset error: ${e.message}');
+      if (e.message.contains('not found')) {
+        return;
+      }
+      throw 'Unable to send password reset email. Please try again later.';
+    } catch (e) {
+      print('Unexpected password reset error: $e');
+      throw 'Unable to send password reset email. Please try again later.';
+    }
+  }
   
   // Method to handle app resume events
   void _setupResumeListener() {

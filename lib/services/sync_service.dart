@@ -40,15 +40,14 @@ class SyncService {
   RealtimeChannel? _syncChannel;
   final AppDatabase db;
   final SupabaseClient _client;
-  late final String _userId;
   bool _syncing = false;
 
   bool get syncing => _syncing;
+  String get userId => Supabase.instance.client.auth.currentUser?.id ?? '';
   
   SyncService._internal() : 
     db = getIt<AppDatabase>(),
     _client = Supabase.instance.client {
-    _userId = Supabase.instance.client.auth.currentUser?.id ?? '';
     _startConsumer();
     setupRealtimeSync();
   }
@@ -58,7 +57,6 @@ class SyncService {
   }
 
   void setupRealtimeSync() {
-    final userId = _userId;
     if (userId.isEmpty) return;
 
     // Clean up existing subscription if any
@@ -177,7 +175,7 @@ class SyncService {
     final result = await _sync(full: full);
     _syncing = false;
     
-    print("finished syncing");
+    print("finished syncing - success = ${result != null}");
 
     if (result?.requiresUpdate ?? false) {
       db.forceNotifyRoutineChanges();
@@ -188,7 +186,7 @@ class SyncService {
 
   Future<SyncResult?> _sync({bool full = false}) async {
     try {
-      if (_userId.isEmpty) return null;
+      if (userId.isEmpty) return null;
 
       // Check for internet connectivity
       final List<ConnectivityResult> connectivityResult = await (Connectivity().checkConnectivity());
@@ -215,10 +213,10 @@ class SyncService {
       {
         final userData = await _client.from('users')
             .select('emergencies')
-            .eq('id', _userId)
+            .eq('id', userId)
             .maybeSingle() ?? 
           await _client.from('users').insert({
-            'id': _userId,
+            'id': userId,
             'emergencies': [],
           }).select() as Map<String, dynamic>;
 
@@ -286,12 +284,12 @@ class SyncService {
         // Update remote state
         await _client.from('users').update({
           'emergencies': mergedEvents.map((e) => e.toJson()).toList(),
-        }).eq('id', _userId);
+        }).eq('id', userId);
       }
       
       // pull devices
        {
-        final remoteDevices = await _client.from('devices').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
+        final remoteDevices = await _client.from('devices').select().eq('user_id', userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
         final localDevices = await db.getDevicesById(remoteDevices.map((device) => device['id'] as String).toList());
         final localDeviceMap = {for (final device in localDevices) device.id: device};
         for (final device in remoteDevices) {
@@ -350,7 +348,7 @@ class SyncService {
 
       // pull groups
        {
-        final remoteGroups = await _client.from('groups').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
+        final remoteGroups = await _client.from('groups').select().eq('user_id', userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
         final localGroups = await db.getGroupsById(remoteGroups.map((group) => group['id'] as String).toList());
         final localGroupMap = {for (final group in localGroups) group.id: group};
         
@@ -402,7 +400,7 @@ class SyncService {
     
       // pull routines
        {
-        final remoteRoutines = await _client.from('routines').select().eq('user_id', _userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
+        final remoteRoutines = await _client.from('routines').select().eq('user_id', userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
         final localRoutines = await db.getRoutinesById(remoteRoutines.map((routine) => routine['id'] as String).toList());
         final localRoutineMap = {for (final routine in localRoutines) routine.id: routine};
         
@@ -483,7 +481,7 @@ class SyncService {
       final remoteDevices = await _client
         .from('devices')
         .select()
-        .eq('user_id', _userId)
+        .eq('user_id', userId)
         .inFilter('id', localDevices.map((device) => device.id).toList());
 
       final remoteDeviceMap = {for (final device in remoteDevices) device['id']: device};
@@ -500,7 +498,7 @@ class SyncService {
       final remoteGroups = await _client
         .from('groups')
         .select()
-        .eq('user_id', _userId)
+        .eq('user_id', userId)
         .inFilter('id', localGroups.map((group) => group.id).toList());
 
       final remoteGroupMap = {for (final group in remoteGroups) group['id']: group};
@@ -518,7 +516,7 @@ class SyncService {
       final remoteRoutines = await _client
         .from('routines')
         .select()
-        .eq('user_id', _userId)
+        .eq('user_id', userId)
         .inFilter('id', localRoutines.map((routine) => routine.id).toList());
       final remoteRoutineMap = {for (final routine in remoteRoutines) routine['id']: routine};
       
@@ -540,7 +538,7 @@ class SyncService {
 
         final Map<String, dynamic> data = {
           'id': device.id, 
-          'user_id': _userId,
+          'user_id': userId,
           'name': device.name,
           'type': device.type,
           'updated_at': device.updatedAt.toUtc().toIso8601String(),
@@ -571,7 +569,7 @@ class SyncService {
         .from('groups')
         .upsert({
           'id': group.id,
-          'user_id': _userId,
+          'user_id': userId,
           'name': group.name,
           'device': group.device,
           'allow': group.allow,
@@ -590,7 +588,7 @@ class SyncService {
         .from('routines')
         .upsert({
           'id': routine.id,
-          'user_id': _userId,
+          'user_id': userId,
           'name': routine.name,
           'monday': routine.monday,
           'tuesday': routine.tuesday,
@@ -625,7 +623,7 @@ class SyncService {
         final remoteDevices = (await _client
           .from('devices')
           .select('last_pulled_at')
-          .eq('user_id', _userId));
+          .eq('user_id', userId));
 
         final deviceList = remoteDevices
             .map<String>((d) => d['last_pulled_at'])
