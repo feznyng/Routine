@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:Routine/models/emergency_event.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:Routine/models/condition.dart';
 import 'package:Routine/models/device.dart';
 import '../setup.dart';
@@ -187,17 +186,6 @@ class SyncService {
   Future<SyncResult?> _sync({bool full = false}) async {
     try {
       if (userId.isEmpty) return null;
-
-      // Check for internet connectivity
-      final List<ConnectivityResult> connectivityResult = await (Connectivity().checkConnectivity());
-      if (!connectivityResult.contains(ConnectivityResult.wifi) && 
-            !connectivityResult.contains(ConnectivityResult.ethernet) && 
-            !connectivityResult.contains(ConnectivityResult.vpn) && 
-            !connectivityResult.contains(ConnectivityResult.mobile) 
-            ) {
-        print('No internet connection, skipping sync $syncing');
-        return null;
-      }
 
       final db = getIt<AppDatabase>();
       final currDevice = (await db.getThisDevice())!;
