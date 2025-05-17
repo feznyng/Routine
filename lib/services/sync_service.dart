@@ -36,7 +36,6 @@ class SyncService {
   RealtimeChannel? _syncChannel;
   final AppDatabase db;
   final SupabaseClient _client;
-  bool _syncing = false;
 
   String get userId => Supabase.instance.client.auth.currentUser?.id ?? '';
   
@@ -138,13 +137,8 @@ class SyncService {
       if (!_isProcessing) return;
       
       final batchJobs = List<SyncJob>.from(_pendingJobs);
-      _pendingJobs.clear();
       
       if (batchJobs.isNotEmpty) {
-        if (_syncing) {
-          // we're already syncing (potentially manually) do nothing
-          return;
-        }
         final isFullSync = batchJobs.any((job) => job.full);
         await sync(full: isFullSync);
       }
@@ -165,10 +159,9 @@ class SyncService {
 
   Future<bool> sync({bool full = false}) async {
     print("syncing...");
-  
-    _syncing = true;
+
+    _pendingJobs.clear();
     final result = await _sync(full: full);
-    _syncing = false;
     
     print("finished syncing - success = ${result != null}");
 
