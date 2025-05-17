@@ -33,14 +33,12 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    print("UI: INIT LIST");
     _routines = [];
     _isLoading = true;
     WidgetsBinding.instance.addObserver(this);
    
     _routineSubscription = Routine.watchAll().listen((routines) {
       if (mounted) {
-        print("UI: ROUTINES UPDATED");
         setState(() {
           _routines = routines;
           _isLoading = false;

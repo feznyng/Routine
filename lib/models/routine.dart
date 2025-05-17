@@ -41,7 +41,6 @@ class Routine implements Syncable {
   static Stream<List<Routine>> watchAll() {
     return getIt<AppDatabase>()
       .watchRoutines()
-      .where((_) => !SyncService().syncing)
       .map((entries) => entries.map((e) => Routine.fromEntry(e.routine, e.groups))
       .toList());
   }

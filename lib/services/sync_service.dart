@@ -16,9 +16,6 @@ class SyncJob {
 }
 
 class SyncResult {
-  bool requiresUpdate;
-
-  SyncResult({required this.requiresUpdate});
 }
 
 class TableChanges {
@@ -41,7 +38,6 @@ class SyncService {
   final SupabaseClient _client;
   bool _syncing = false;
 
-  bool get syncing => _syncing;
   String get userId => Supabase.instance.client.auth.currentUser?.id ?? '';
   
   SyncService._internal() : 
@@ -176,10 +172,6 @@ class SyncService {
     
     print("finished syncing - success = ${result != null}");
 
-    if (result?.requiresUpdate ?? false) {
-      db.forceNotifyChanges();
-    }
-
     return result != null;
   }
 
@@ -192,10 +184,6 @@ class SyncService {
 
       final lastPulledAt = full ? DateTime.fromMicrosecondsSinceEpoch(0) : (currDevice.lastPulledAt ?? DateTime.fromMicrosecondsSinceEpoch(0));
       final pulledAt = DateTime.now();
-
-      bool madeRemoteChange = false;
-      bool accidentalDeletion = false;
-      bool requiresUpdate = false;
 
       // sync emergencies first due to criticality
       {
@@ -274,197 +262,196 @@ class SyncService {
           'emergencies': mergedEvents.map((e) => e.toJson()).toList(),
         }).eq('id', userId);
       }
+
+      bool madeRemoteChange = false;
+      bool accidentalDeletion = false;
       
-      // pull devices
-       {
-        final remoteDevices = await _client.from('devices').select().eq('user_id', userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
-        final localDevices = await db.getDevicesById(remoteDevices.map((device) => device['id'] as String).toList());
-        final localDeviceMap = {for (final device in localDevices) device.id: device};
-        for (final device in remoteDevices) {
-          final overwriteMap = {};
-          final localDevice = localDeviceMap[device['id']];
-
-          requiresUpdate = true;
-          
-          if (localDevice != null) {
-            final localDeviceData = localDevice.toJson();
-            for (final change in localDevice.changes) {
-              if (change == 'new') {
-                continue;
+      await db.transaction(() async {
+        // pull devices
+        {
+          final remoteDevices = await _client.from('devices').select().eq('user_id', userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
+          final localDevices = await db.getDevicesById(remoteDevices.map((device) => device['id'] as String).toList());
+          final localDeviceMap = {for (final device in localDevices) device.id: device};
+          for (final device in remoteDevices) {
+            final overwriteMap = {};
+            final localDevice = localDeviceMap[device['id']];
+            
+            if (localDevice != null) {
+              final localDeviceData = localDevice.toJson();
+              for (final change in localDevice.changes) {
+                if (change == 'new') {
+                  continue;
+                }
+                overwriteMap[change] = localDeviceData[change];
               }
-              overwriteMap[change] = localDeviceData[change];
             }
-          }
 
-          final DateTime updatedAt = localDevice != null && localDevice.updatedAt.toIso8601String().compareTo(device['updated_at']) > 0 ? localDevice.updatedAt : DateTime.parse(device['updated_at']);
-          final DateTime deviceLastSynced = localDevice?.lastPulledAt != null && localDevice!.lastPulledAt!.toIso8601String().compareTo(device['last_pulled_at']) > 0 ? localDevice.lastPulledAt! : DateTime.parse(device['last_pulled_at']);
+            final DateTime updatedAt = localDevice != null && localDevice.updatedAt.toIso8601String().compareTo(device['updated_at']) > 0 ? localDevice.updatedAt : DateTime.parse(device['updated_at']);
+            final DateTime deviceLastSynced = localDevice?.lastPulledAt != null && localDevice!.lastPulledAt!.toIso8601String().compareTo(device['last_pulled_at']) > 0 ? localDevice.lastPulledAt! : DateTime.parse(device['last_pulled_at']);
 
-          // Check if this is the current device or an active device that was mistakenly deleted
-          final isCurrentDevice = localDevice?.curr ?? false;
-          final isActiveDevice = device['id'] == currDevice.id;
-          
-          if (device['deleted'] as bool && (isCurrentDevice || isActiveDevice)) {
-            // This is an active device that was mistakenly marked as deleted
-            // We need to restore it and any associated groups
-            accidentalDeletion = true;
+            // Check if this is the current device or an active device that was mistakenly deleted
+            final isCurrentDevice = localDevice?.curr ?? false;
+            final isActiveDevice = device['id'] == currDevice.id;
             
-            await db.upsertDevice(DevicesCompanion(
-              id: Value(device['id']),
-              name: Value(overwriteMap['name'] ?? device['name']),
-              type: Value(overwriteMap['type'] ?? device['type']),
-              curr: Value(isCurrentDevice),
-              updatedAt: Value(updatedAt),
-              lastPulledAt: Value(deviceLastSynced),
-              deleted: Value(false), // Explicitly set to false to restore
-              changes: Value(['deleted', ...overwriteMap['changes'] ?? const []]), // Mark 'deleted' as changed
-            ));
-            
-          } else if (device['deleted'] as bool) {
-            await db.deleteDevice(device['id']);
-          } else {
+            if (device['deleted'] as bool && (isCurrentDevice || isActiveDevice)) {
+              // This is an active device that was mistakenly marked as deleted
+              // We need to restore it and any associated groups
+              accidentalDeletion = true;
+              
               await db.upsertDevice(DevicesCompanion(
-              id: Value(device['id']),
-              name: Value(overwriteMap['name'] ?? device['name']),
-              type: Value(overwriteMap['type'] ?? device['type']),
-              curr: Value(localDevice?.curr ?? false),
-              updatedAt: Value(DateTime.now()),
-              lastPulledAt: Value(deviceLastSynced),
-              deleted: Value(overwriteMap['deleted'] ?? device['deleted']),
-              changes: Value(overwriteMap['changes'] ?? const []),
-            ));
+                id: Value(device['id']),
+                name: Value(overwriteMap['name'] ?? device['name']),
+                type: Value(overwriteMap['type'] ?? device['type']),
+                curr: Value(isCurrentDevice),
+                updatedAt: Value(updatedAt),
+                lastPulledAt: Value(deviceLastSynced),
+                deleted: Value(false), // Explicitly set to false to restore
+                changes: Value(['deleted', ...overwriteMap['changes'] ?? const []]), // Mark 'deleted' as changed
+              ));
+              
+            } else if (device['deleted'] as bool) {
+              await db.deleteDevice(device['id']);
+            } else {
+                await db.upsertDevice(DevicesCompanion(
+                id: Value(device['id']),
+                name: Value(overwriteMap['name'] ?? device['name']),
+                type: Value(overwriteMap['type'] ?? device['type']),
+                curr: Value(localDevice?.curr ?? false),
+                updatedAt: Value(DateTime.now()),
+                lastPulledAt: Value(deviceLastSynced),
+                deleted: Value(overwriteMap['deleted'] ?? device['deleted']),
+                changes: Value(overwriteMap['changes'] ?? const []),
+              ));
+            }
           }
         }
-      }
 
-      // pull groups
-       {
-        final remoteGroups = await _client.from('groups').select().eq('user_id', userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
-        final localGroups = await db.getGroupsById(remoteGroups.map((group) => group['id'] as String).toList());
-        final localGroupMap = {for (final group in localGroups) group.id: group};
-        
-        for (final group in remoteGroups) {
-          requiresUpdate = true;
+        // pull groups
+        {
+          final remoteGroups = await _client.from('groups').select().eq('user_id', userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
+          final localGroups = await db.getGroupsById(remoteGroups.map((group) => group['id'] as String).toList());
+          final localGroupMap = {for (final group in localGroups) group.id: group};
           
-          final overwriteMap = {};
-          final localGroup = localGroupMap[group['id']];
+          for (final group in remoteGroups) {            
+            final overwriteMap = {};
+            final localGroup = localGroupMap[group['id']];
 
-          if (localGroup != null) {
-            final localGroupData = localGroup.toJson();
-            for (final change in localGroup.changes) {
-              if (change == 'new') {
-                continue;
+            if (localGroup != null) {
+              final localGroupData = localGroup.toJson();
+              for (final change in localGroup.changes) {
+                if (change == 'new') {
+                  continue;
+                }
+                overwriteMap[change] = localGroupData[change];
               }
-              overwriteMap[change] = localGroupData[change];
             }
-          }
 
-          final DateTime updatedAt = localGroup != null && localGroup.updatedAt.toIso8601String().compareTo(group['updated_at']) > 0 ? localGroup.updatedAt : DateTime.parse(group['updated_at']);
+            final DateTime updatedAt = localGroup != null && localGroup.updatedAt.toIso8601String().compareTo(group['updated_at']) > 0 ? localGroup.updatedAt : DateTime.parse(group['updated_at']);
 
-          if (group['deleted'] as bool) {
-            if (group['device'] == currDevice.id && accidentalDeletion) {
+            if (group['deleted'] as bool) {
+              if (group['device'] == currDevice.id && accidentalDeletion) {
+                await db.upsertGroup(GroupsCompanion(
+                  id: Value(group['id']),
+                  name: Value(overwriteMap['name'] ?? group['name'] as String?),
+                  device: Value(overwriteMap['device'] ?? group['device'] as String?),
+                  allow: Value(overwriteMap['allow'] ?? group['allow'] as bool?),
+                  updatedAt: Value(DateTime.now()),
+                  deleted: Value(false),
+                  changes: Value(['deleted', ...overwriteMap['changes'] ?? const []])
+                ));
+              } else {
+                await db.deleteGroup(group['id']);
+              }
+            } else {
               await db.upsertGroup(GroupsCompanion(
                 id: Value(group['id']),
                 name: Value(overwriteMap['name'] ?? group['name'] as String?),
                 device: Value(overwriteMap['device'] ?? group['device'] as String?),
                 allow: Value(overwriteMap['allow'] ?? group['allow'] as bool?),
-                updatedAt: Value(DateTime.now()),
-                deleted: Value(false),
-                changes: Value(['deleted', ...overwriteMap['changes'] ?? const []])
+                updatedAt: Value(updatedAt),
+                deleted: Value(overwriteMap['deleted'] ?? group['deleted']),
+                changes: Value(overwriteMap['changes'] ?? const [])
               ));
-            } else {
-              await db.deleteGroup(group['id']);
             }
-          } else {
-            await db.upsertGroup(GroupsCompanion(
-              id: Value(group['id']),
-              name: Value(overwriteMap['name'] ?? group['name'] as String?),
-              device: Value(overwriteMap['device'] ?? group['device'] as String?),
-              allow: Value(overwriteMap['allow'] ?? group['allow'] as bool?),
-              updatedAt: Value(updatedAt),
-              deleted: Value(overwriteMap['deleted'] ?? group['deleted']),
-              changes: Value(overwriteMap['changes'] ?? const [])
-            ));
           }
         }
-      }
-    
-      // pull routines
-       {
-        final remoteRoutines = await _client.from('routines').select().eq('user_id', userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
-        final localRoutines = await db.getRoutinesById(remoteRoutines.map((routine) => routine['id'] as String).toList());
-        final localRoutineMap = {for (final routine in localRoutines) routine.id: routine};
-        
-        for (final routine in remoteRoutines) {
-          requiresUpdate = true;
+      
+        // pull routines
+        {
+          final remoteRoutines = await _client.from('routines').select().eq('user_id', userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
+          final localRoutines = await db.getRoutinesById(remoteRoutines.map((routine) => routine['id'] as String).toList());
+          final localRoutineMap = {for (final routine in localRoutines) routine.id: routine};
           
-          final overwriteMap = {};
-          final localRoutine = localRoutineMap[routine['id']];
+          for (final routine in remoteRoutines) {            
+            final overwriteMap = {};
+            final localRoutine = localRoutineMap[routine['id']];
 
-          if (localRoutine != null) {
-            final localRoutineData = localRoutine.toJson();
-            for (final change in localRoutine.changes) {
-              if (change == 'new') {
-                continue;
+            if (localRoutine != null) {
+              final localRoutineData = localRoutine.toJson();
+              for (final change in localRoutine.changes) {
+                if (change == 'new') {
+                  continue;
+                }
+                overwriteMap[change] = localRoutineData[change];
               }
-              overwriteMap[change] = localRoutineData[change];
             }
-          }
 
-          final DateTime updatedAt = localRoutine != null && localRoutine.updatedAt.toIso8601String().compareTo(routine['updated_at']) > 0 ? localRoutine.updatedAt : DateTime.parse(routine['updated_at']);
-          
-          final List<Condition> conditions = routine['conditions'] != null ? 
-            (routine['conditions'] as List<dynamic>).map<Condition>((map) => Condition.fromJson(map)).toList() : [];
+            final DateTime updatedAt = localRoutine != null && localRoutine.updatedAt.toIso8601String().compareTo(routine['updated_at']) > 0 ? localRoutine.updatedAt : DateTime.parse(routine['updated_at']);
+            
+            final List<Condition> conditions = routine['conditions'] != null ? 
+              (routine['conditions'] as List<dynamic>).map<Condition>((map) => Condition.fromJson(map)).toList() : [];
 
-          final List<Condition> localConditions = localRoutine?.conditions ?? [];
-          final Map<String, Condition> localConditionMap = {for (final condition in localConditions) condition.id: condition};
+            final List<Condition> localConditions = localRoutine?.conditions ?? [];
+            final Map<String, Condition> localConditionMap = {for (final condition in localConditions) condition.id: condition};
 
-          for (final condition in conditions) {
-            final localCondition = localConditionMap[condition.id];
-            if (localCondition != null && (condition.lastCompletedAt != null && (localCondition.lastCompletedAt?.isAfter(condition.lastCompletedAt!) ?? false))) {
-              condition.lastCompletedAt = localCondition.lastCompletedAt;
+            for (final condition in conditions) {
+              final localCondition = localConditionMap[condition.id];
+              if (localCondition != null && (condition.lastCompletedAt != null && (localCondition.lastCompletedAt?.isAfter(condition.lastCompletedAt!) ?? false))) {
+                condition.lastCompletedAt = localCondition.lastCompletedAt;
+              }
             }
-          }
 
-          if (routine['deleted'] as bool) {
-            await db.deleteRoutine(routine['id']);
-          } else {
-            await db.upsertRoutine(RoutinesCompanion( 
-              id: Value(routine['id']),
-              name: Value(overwriteMap['name'] ?? routine['name']),
-              monday: Value(overwriteMap['monday'] ?? routine['monday']),
-              tuesday: Value(overwriteMap['tuesday'] ?? routine['tuesday']),
-              wednesday: Value(overwriteMap['wednesday'] ?? routine['wednesday']),
-              thursday: Value(overwriteMap['thursday'] ?? routine['thursday']),
-              friday: Value(overwriteMap['friday'] ?? routine['friday']),
-              saturday: Value(overwriteMap['saturday'] ?? routine['saturday']),
-              sunday: Value(overwriteMap['sunday'] ?? routine['sunday']),
-              startTime: Value(overwriteMap['start_time'] ?? routine['start_time']),
-              endTime: Value(overwriteMap['end_time'] ?? routine['end_time']),
-              recurrence: Value(overwriteMap['recurrence'] ?? routine['recurrence']),
-              groups: Value(overwriteMap['groups']?.cast<String>() ?? (routine['groups'] as List<dynamic>).cast<String>()),
-              numBreaksTaken: Value(overwriteMap['num_breaks_taken'] ?? routine['num_breaks_taken']),
-              lastBreakAt: Value(overwriteMap['last_break_at'] != null ? DateTime.parse(overwriteMap['last_break_at']) : routine['last_break_at'] != null ? DateTime.parse(routine['last_break_at']) : null),
-              pausedUntil: Value(overwriteMap['paused_until'] != null ? DateTime.parse(overwriteMap['paused_until']) : routine['paused_until'] != null ? DateTime.parse(routine['paused_until']) : null),
-              maxBreaks: Value(overwriteMap['max_breaks'] ?? routine['max_breaks']),
-              maxBreakDuration: Value(overwriteMap['max_break_duration'] ?? routine['max_break_duration']),
-              friction: Value(overwriteMap['friction'] ?? routine['friction']),
-              frictionLen: Value(overwriteMap['friction_len'] ?? routine['friction_len']),
-              snoozedUntil: Value(overwriteMap['snoozed_until'] != null ? DateTime.parse(overwriteMap['snoozed_until']) : routine['snoozed_until'] != null ? DateTime.parse(routine['snoozed_until']) : null),
-              updatedAt: Value(updatedAt),
-              deleted: Value(overwriteMap['deleted'] ?? routine['deleted']),
-              changes: Value(overwriteMap['changes'] ?? []),
-              strictMode: Value((overwriteMap['strictMode'] ?? routine['strict_mode']) ?? false),
-              conditions: Value(conditions),
-            ));
+            if (routine['deleted'] as bool) {
+              await db.deleteRoutine(routine['id']);
+            } else {
+              await db.upsertRoutine(RoutinesCompanion( 
+                id: Value(routine['id']),
+                name: Value(overwriteMap['name'] ?? routine['name']),
+                monday: Value(overwriteMap['monday'] ?? routine['monday']),
+                tuesday: Value(overwriteMap['tuesday'] ?? routine['tuesday']),
+                wednesday: Value(overwriteMap['wednesday'] ?? routine['wednesday']),
+                thursday: Value(overwriteMap['thursday'] ?? routine['thursday']),
+                friday: Value(overwriteMap['friday'] ?? routine['friday']),
+                saturday: Value(overwriteMap['saturday'] ?? routine['saturday']),
+                sunday: Value(overwriteMap['sunday'] ?? routine['sunday']),
+                startTime: Value(overwriteMap['start_time'] ?? routine['start_time']),
+                endTime: Value(overwriteMap['end_time'] ?? routine['end_time']),
+                recurrence: Value(overwriteMap['recurrence'] ?? routine['recurrence']),
+                groups: Value(overwriteMap['groups']?.cast<String>() ?? (routine['groups'] as List<dynamic>).cast<String>()),
+                numBreaksTaken: Value(overwriteMap['num_breaks_taken'] ?? routine['num_breaks_taken']),
+                lastBreakAt: Value(overwriteMap['last_break_at'] != null ? DateTime.parse(overwriteMap['last_break_at']) : routine['last_break_at'] != null ? DateTime.parse(routine['last_break_at']) : null),
+                pausedUntil: Value(overwriteMap['paused_until'] != null ? DateTime.parse(overwriteMap['paused_until']) : routine['paused_until'] != null ? DateTime.parse(routine['paused_until']) : null),
+                maxBreaks: Value(overwriteMap['max_breaks'] ?? routine['max_breaks']),
+                maxBreakDuration: Value(overwriteMap['max_break_duration'] ?? routine['max_break_duration']),
+                friction: Value(overwriteMap['friction'] ?? routine['friction']),
+                frictionLen: Value(overwriteMap['friction_len'] ?? routine['friction_len']),
+                snoozedUntil: Value(overwriteMap['snoozed_until'] != null ? DateTime.parse(overwriteMap['snoozed_until']) : routine['snoozed_until'] != null ? DateTime.parse(routine['snoozed_until']) : null),
+                updatedAt: Value(updatedAt),
+                deleted: Value(overwriteMap['deleted'] ?? routine['deleted']),
+                changes: Value(overwriteMap['changes'] ?? []),
+                strictMode: Value((overwriteMap['strictMode'] ?? routine['strict_mode']) ?? false),
+                conditions: Value(conditions),
+              ));
+            }
           }
         }
-      }
 
-      await db.updateDevice(DevicesCompanion(
-        id: Value(currDevice.id),
-        lastPulledAt: Value(pulledAt),
-        updatedAt: Value(pulledAt),
-      ));
+        await db.updateDevice(DevicesCompanion(
+          id: Value(currDevice.id),
+          lastPulledAt: Value(pulledAt),
+          updatedAt: Value(pulledAt),
+        ));
+      });
 
       // push devices
       final localDevices = await db.getDeviceChanges(lastPulledAt);
@@ -635,7 +622,7 @@ class SyncService {
         _notifyPeers();
       }
 
-      return SyncResult(requiresUpdate: requiresUpdate);
+      return SyncResult();
     } catch (e) {
       print('Error during sync: $e');
       return null;

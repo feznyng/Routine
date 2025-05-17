@@ -27,7 +27,6 @@ class Device implements Syncable {
   static Stream<List<Device>> watchAll() {
     return getIt<AppDatabase>()
       .watchDevices()
-      .where((_) => !SyncService().syncing)
       .map((entries) => entries.map((e) => Device.fromEntry(e)).toList());
   }
 

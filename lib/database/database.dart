@@ -97,6 +97,8 @@ typedef RoutineWithGroups = ({
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  bool _skipUpdates = false;
+
   @override
   int get schemaVersion => 2;
 
@@ -136,7 +138,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Stream<List<DeviceEntry>> watchDevices() {
-    return (select(devices)..where((t) => t.deleted.equals(false))).watch();
+    return (select(devices)..where((t) => t.deleted.equals(false))).watch().skipWhile((_) => _skipUpdates);
   }
 
   Stream<List<RoutineWithGroups>> watchRoutines() {
@@ -152,7 +154,10 @@ class AppDatabase extends _$AppDatabase {
       ],
     )..where(routines.deleted.equals(false));
 
-    return routineWithGroups.watch().map((rows) {
+    return routineWithGroups.watch().skipWhile((_) {
+      print("skip updates: $_skipUpdates");
+      return _skipUpdates;
+    }).map((rows) {
       final groupsByRoutine = <String, List<GroupEntry>>{};
       final routinesById = <String, RoutineEntry>{};
 
@@ -360,6 +365,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> clearChangesSince(DateTime time) async {
+    _skipUpdates = true;
     return await transaction(() async {
       await (update(devices)..where((t) => t.updatedAt.isSmallerOrEqualValue(time) & t.deleted.equals(false))).write(DevicesCompanion(changes: Value([])));
       await (delete(devices)..where((t) => t.deleted.equals(true))).go();
@@ -367,6 +373,7 @@ class AppDatabase extends _$AppDatabase {
       await (delete(groups)..where((t) => t.deleted.equals(true))).go();
       await (update(routines)..where((t) => t.updatedAt.isSmallerOrEqualValue(time) & t.deleted.equals(false))).write(RoutinesCompanion(changes: Value([])));
       await (delete(routines)..where((t) => t.deleted.equals(true))).go();
+      _skipUpdates = false;
     });
   }
 

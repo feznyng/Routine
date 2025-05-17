@@ -54,6 +54,7 @@ class DesktopService extends PlatformService {
     }
 
     Routine.watchAll().listen((routines) {
+      print("UPDATING ROUTINES");
       onRoutinesUpdated(routines);
     });
 
