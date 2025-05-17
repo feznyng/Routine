@@ -140,7 +140,7 @@ class Routine implements Syncable {
   Future<void> save() async {
     final changes = this.changes;
 
-    for (final group in _groups.values) {
+    for (final group in _groups.values.where((g) => g.modified)) {
       group.save();
     }
 
@@ -181,7 +181,7 @@ class Routine implements Syncable {
       conditions: Value(conditions),
       strictMode: Value(strictMode)
     ));
-    scheduleSyncJob();
+    SyncService().sync();
   }
 
   @override
@@ -215,7 +215,7 @@ class Routine implements Syncable {
   @override
   Future<void> delete() async {
     await getIt<AppDatabase>().tempDeleteRoutine(_id);
-    scheduleSyncJob();
+    SyncService().sync();
   }
 
   @override

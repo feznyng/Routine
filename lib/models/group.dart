@@ -70,13 +70,13 @@ class Group implements Syncable {
       changes: Value(changes),
       updatedAt: Value(DateTime.now()),
     ));
-    scheduleSyncJob();
+    SyncService().sync();
   }
 
   @override
   Future<void> delete() async {
     await getIt<AppDatabase>().tempDeleteGroup(_id);
-    scheduleSyncJob();
+    SyncService().sync();
   }
 
   @override
