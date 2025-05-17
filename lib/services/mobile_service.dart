@@ -6,10 +6,6 @@ import 'package:flutter/services.dart';
 import '../models/routine.dart';
 import 'strict_mode_service.dart';
 
-Future<void> transferRoutines() async {
-
-}
-
 class MobileService extends PlatformService {
   static final MobileService _instance = MobileService._internal();
   
@@ -30,7 +26,7 @@ class MobileService extends PlatformService {
     
     _routineSubscription = Routine.watchAll().listen((routines) {
       print("UPDATING ROUTINES");
-      _sendRoutines(routines);
+      _sendRoutines(routines, false);
 
       // we need to evaluate strict mode in case a strict routine is active after changes
       _sendStrictModeSettings();
@@ -75,12 +71,12 @@ class MobileService extends PlatformService {
     }
   }
 
-  Future<void> updateRoutines() async {
+  Future<void> updateRoutines({bool immediate = false}) async {
     final routines = await Routine.getAll();
-    _sendRoutines(routines);
+    _sendRoutines(routines, immediate);
   }
   
-  Future<void> _sendRoutines(List<Routine> routines) async {
+  Future<void> _sendRoutines(List<Routine> routines, bool immediate) async {
     try {
       final List<Map<String, dynamic>> routineMaps = routines.where((routine) => routine.getGroup() != null).map((routine) {
         DateTime? conditionsLastMet;
@@ -113,7 +109,7 @@ class MobileService extends PlatformService {
         };
       }).toList();
             
-      await _channel.invokeMethod('updateRoutines', {'routines': routineMaps});
+      await _channel.invokeMethod(immediate ? 'immediateUpdateRoutines' : 'updateRoutines', {'routines': routineMaps});
     } catch (e) {
       print('Error sending routines to iOS: $e');
     }

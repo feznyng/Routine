@@ -26,12 +26,45 @@ import os.log
         routineChannel.setMethodCallHandler { [weak self] (call, result) in
             os_log("AppDelegate: %{public}s", call.method)
             switch call.method {
+            case "immediateUpdateRoutines":
+                os_log("updateRoutines: immediate start")
+                if let args = call.arguments as? [String: Any],
+                   let routinesJson = args["routines"] as? [[String: Any]] {
+                    do {
+                        let jsonData = try JSONSerialization.data(withJSONObject: routinesJson)
+                        let jsonString = String(data: jsonData, encoding: .utf8)!
+                        
+                        if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker") {
+                            sharedDefaults.set(jsonString, forKey: "routinesData")
+                            sharedDefaults.synchronize()
+                        } else {
+                            print("Failed to access shared UserDefaults")
+                        }
+                        
+                        let decoder = JSONDecoder()
+                        let routines = try decoder.decode([Routine].self, from: jsonString.data(using: .utf8)!)
+                        
+                        self?.manager.update(routines: routines)
+                        
+                        os_log("updateRoutines: immediate done")
+                        result(true)
+                    } catch {
+                        // Return error on main thread
+                        os_log("updateRoutines: immediate failed - \(error)")
+                        result(FlutterError(code: "JSON_DECODE_ERROR",
+                                            message: "Failed to deserialize: \(error.localizedDescription)",
+                                            details: nil))
+                    }
+
+                }
+                return;
             case "updateRoutines":
                 if let args = call.arguments as? [String: Any],
                    let routinesJson = args["routines"] as? [[String: Any]] {
                     
-                    // Move heavy processing to background queue
                     DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                        os_log("updateRoutines: start")
+                        
                         do {
                             let jsonData = try JSONSerialization.data(withJSONObject: routinesJson)
                             let jsonString = String(data: jsonData, encoding: .utf8)!
@@ -48,17 +81,20 @@ import os.log
                             
                             self?.manager.update(routines: routines)
                             
+                            
                             // Return success on main thread
                             DispatchQueue.main.async {
+                                os_log("updateRoutines: done")
                                 result(true)
                             }
+                            
                         } catch {
-                            print("Failed to deserialize: \(error)")
                             // Return error on main thread
                             DispatchQueue.main.async {
+                                os_log("updateRoutines: failed - \(error)")
                                 result(FlutterError(code: "JSON_DECODE_ERROR",
-                                                   message: "Failed to deserialize: \(error.localizedDescription)",
-                                                   details: nil))
+                                                    message: "Failed to deserialize: \(error.localizedDescription)",
+                                                    details: nil))
                             }
                         }
                     }
