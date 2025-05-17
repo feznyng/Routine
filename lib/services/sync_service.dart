@@ -286,7 +286,7 @@ class SyncService {
               }
             }
 
-            final DateTime updatedAt = localDevice != null && localDevice.updatedAt.toIso8601String().compareTo(device['updated_at']) > 0 ? localDevice.updatedAt : DateTime.parse(device['updated_at']);
+            final DateTime updatedAt = pulledAt.toIso8601String().compareTo(device['updated_at']) > 0 ? pulledAt : DateTime.parse(device['updated_at']);
             final DateTime deviceLastSynced = localDevice?.lastPulledAt != null && localDevice!.lastPulledAt!.toIso8601String().compareTo(device['last_pulled_at']) > 0 ? localDevice.lastPulledAt! : DateTime.parse(device['last_pulled_at']);
 
             // Check if this is the current device or an active device that was mistakenly deleted
@@ -346,7 +346,7 @@ class SyncService {
               }
             }
 
-            final DateTime updatedAt = localGroup != null && localGroup.updatedAt.toIso8601String().compareTo(group['updated_at']) > 0 ? localGroup.updatedAt : DateTime.parse(group['updated_at']);
+            final DateTime updatedAt = pulledAt.toIso8601String().compareTo(group['updated_at']) > 0 ? pulledAt : DateTime.parse(group['updated_at']);
 
             if (group['deleted'] as bool) {
               if (group['device'] == currDevice.id && accidentalDeletion) {
@@ -396,7 +396,7 @@ class SyncService {
               }
             }
 
-            final DateTime updatedAt = localRoutine != null && localRoutine.updatedAt.toIso8601String().compareTo(routine['updated_at']) > 0 ? localRoutine.updatedAt : DateTime.parse(routine['updated_at']);
+            final DateTime updatedAt = pulledAt.toIso8601String().compareTo(routine['updated_at']) > 0 ? pulledAt : DateTime.parse(routine['updated_at']);
             
             final List<Condition> conditions = routine['conditions'] != null ? 
               (routine['conditions'] as List<dynamic>).map<Condition>((map) => Condition.fromJson(map)).toList() : [];
