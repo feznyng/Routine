@@ -20,12 +20,14 @@ class MobileService extends PlatformService {
   
   @override
   Future<void> init() async {
-    stopWatching();
+    print("INITING");
+
+    await stopWatching();
     
     checkAndRequestFamilyControlsAuthorization();
     
     _routineSubscription = Routine.watchAll().listen((routines) {
-      print("UPDATING ROUTINES");
+      print("UPDATING ROUTINES REMOTE");
       _sendRoutines(routines, false);
 
       // we need to evaluate strict mode in case a strict routine is active after changes
@@ -41,16 +43,15 @@ class MobileService extends PlatformService {
 
   @override
   Future<void> refresh() async {
-    init();
-
-    // we need to manually refresh on mobile since we don't have sockets/consistent notifications
-    SyncService().addJob(SyncJob(remote: false));
+    await stopWatching();
+    await SyncService().sync();
+    await init();
   }
   
-  void stopWatching() {
-    _routineSubscription?.cancel();
+  Future<void> stopWatching() async {
+    await _routineSubscription?.cancel();
     _routineSubscription = null;
-    _strictModeSubscription?.cancel();
+    await _strictModeSubscription?.cancel();
     _strictModeSubscription = null;
   }
   

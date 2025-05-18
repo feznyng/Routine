@@ -79,35 +79,11 @@ class DesktopService extends PlatformService {
     platform.setMethodCallHandler((call) async {
       switch (call.method) {
         case 'systemWake':
-          final timestamp = call.arguments is Map ? call.arguments['timestamp'] : 'unknown';
           debugPrint('=== SYSTEM WAKE EVENT ===');
-          debugPrint('System wake event received at: $timestamp');
-          debugPrint('Current time: ${DateTime.now().toIso8601String()}');
-          
-          // Log the current state before updating
-          final routinesBefore = await Routine.getAll();
-          debugPrint('Number of routines before update: ${routinesBefore.length}');
-          final activeRoutines = routinesBefore.where((r) => r.isActive && !r.isPaused).length;
-          debugPrint('Active routines before update: $activeRoutines');
-          
-          // Update routines
-          debugPrint('refeshing service...');
-          refresh();
-          
-          // Trigger a sync job to ensure database is up-to-date after wake
-          debugPrint('Triggering database sync after system wake...');
-          SyncService().addJob(SyncJob(remote: false, full: true));
-          debugPrint('Sync job added to queue');
-          
-          // Log after update
-          Future.delayed(const Duration(milliseconds: 500), () async {
-            final routinesAfter = await Routine.getAll();
-            debugPrint('Number of routines after update: ${routinesAfter.length}');
-            final activeRoutinesAfter = routinesAfter.where((r) => r.isActive && !r.isPaused).length;
-            debugPrint('Active routines after update: $activeRoutinesAfter');
-            debugPrint('=== SYSTEM WAKE EVENT PROCESSING COMPLETE ===');
-          });
-          
+          await SyncService().sync();
+          await refresh();
+          debugPrint('=== SYSTEM WAKE EVENT PROCESSING COMPLETE ===');
+
           return null;
         default:
           debugPrint('Unknown method call: ${call.method}');

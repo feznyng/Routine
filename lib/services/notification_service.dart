@@ -9,10 +9,9 @@ import 'package:firebase_core/firebase_core.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  final mobileService = MobileService();
-  mobileService.stopWatching();
+  await MobileService().stopWatching();
   await SyncService().sync();
-  await mobileService.updateRoutines(immediate: true);
+  await MobileService().updateRoutines(immediate: true);
 }
 
 class NotificationService {
