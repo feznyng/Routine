@@ -21,9 +21,7 @@ class MobileService extends PlatformService {
   @override
   Future<void> init() async {
     print("INITING");
-
-    await stopWatching();
-    
+        
     checkAndRequestFamilyControlsAuthorization();
     
     _routineSubscription = Routine.watchAll().listen((routines) {

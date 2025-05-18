@@ -7,8 +7,8 @@ DEVELOPER_ID="$(security find-identity -v -p codesigning | grep "Developer ID Ap
 TEAM_ID="$APPLE_TEAM_ID"
 NOTARIZATION_APPLE_ID="$APPLE_ID" # Set this via environment variable
 NOTARIZATION_PASSWORD="$APPLE_APP_PASSWORD" # Set this via environment variable or keychain
-OUTPUT_DIR="../../assets/extension"
-ENTITLEMENTS_FILE="$(pwd)/native.entitlements"
+OUTPUT_DIR="../assets/extension"
+ENTITLEMENTS_FILE="$(pwd)/native/native.entitlements"
 
 # Check if required environment variables are set
 if [ -z "$APPLE_ID" ] || [ -z "$APPLE_APP_PASSWORD" ]; then
@@ -39,7 +39,7 @@ build_and_process() {
     RUSTFLAGS="-C link-arg=-s" cargo build --release --target "$target"
     
     # Copy binary to temp directory
-    cp "../../target/$target/release/$APP_NAME" "$binary_path"
+    cp "../target/$target/release/$APP_NAME" "$binary_path"
     
     echo "Signing binary for $arch with entitlements..."
     codesign --force --options runtime --entitlements "$ENTITLEMENTS_FILE" --sign "$DEVELOPER_ID" "$binary_path"

@@ -109,7 +109,6 @@ fn main() -> io::Result<()> {
 
     // Track number of active Flutter connections
     let active_connections = std::sync::Arc::new(AtomicI32::new(0));
-    let active_connections_clone = active_connections.clone();
 
     // Thread for accepting TCP connections and handling Flutter clients
     let listener_handle = thread::spawn(move || {
