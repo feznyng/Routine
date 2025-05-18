@@ -12,13 +12,22 @@ import 'package:window_manager/window_manager.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'services/desktop_service.dart';
 import 'services/mobile_service.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await setup();
 
-  runApp(
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = dotenv.env['SENTRY_DSN'];
+      options.sendDefaultPii = false;
+      options.tracesSampleRate = 1.0;
+      options.profilesSampleRate = 1.0;
+    },
+    appRunner: () => runApp(SentryWidget(child: 
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
@@ -26,6 +35,7 @@ void main() async {
       ],
       child: const MyApp(),
     ),
+  )),
   );
 }
 

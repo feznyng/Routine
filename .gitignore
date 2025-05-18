@@ -52,3 +52,5 @@ target
 
 # Firebase configuration
 lib/firebase_options.dart
+
+sentry.properties
