@@ -302,7 +302,7 @@ class MainFlutterWindow: NSWindow {
     // Show the save panel
     savePanel.begin { response in
       if response == .OK, let selectedURL = savePanel.url {
-        let fileURL = selectedURL.appendingPathComponent("com.routine.native_messaging.json")
+        let fileURL = selectedURL.appendingPathComponent("com.solidsoft.routine.NativeMessagingHost.json")
         
         do {
           try content.write(to: fileURL, atomically: true, encoding: .utf8)

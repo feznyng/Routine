@@ -1,7 +1,9 @@
 // Native messaging host name
-const hostName = "com.routine.native_messaging";
+const hostName = "com.solidsoft.routine.NativeMessagingHost";
 let port = null;
 let isAppConnected = false;  // Track Flutter app connection state
+let reconnectTimer = null;
+const RECONNECT_INTERVAL = 2000; // Attempt reconnection every 2 seconds to match onboarding dialog behavior
 
 // List of blocked sites
 let blockedSites = [];
@@ -9,9 +11,9 @@ let allowList = false;
 
 // Connect to native messaging host
 function connectToNative() {
-  port = chrome.runtime.connectNative(hostName);
-  
-  console.log("Connected to native host", port);
+  try {
+    port = chrome.runtime.connectNative(hostName);
+    console.log("Attempting to connect to native host");
 
   port.onMessage.addListener((message) => {
     console.log("Received message from native host:", message);
@@ -37,11 +39,38 @@ function connectToNative() {
   });
   
   port.onDisconnect.addListener(() => {
-    console.log("Disconnected from native host");
+    const error = chrome.runtime.lastError;
+    console.log("Disconnected from native host", error ? error.message : "");
     port = null;
     isAppConnected = false;  // Reset app connection state
     registerBlockingRules();  // Re-register rules with new connection state
+    
+    // Start reconnection attempts
+    scheduleReconnect();
   });
+
+  // Clear reconnection timer on successful connection
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  } catch (error) {
+    console.log("Failed to connect to native host:", error);
+    scheduleReconnect();
+  }
+}
+
+// Schedule reconnection at fixed interval
+function scheduleReconnect() {
+  if (reconnectTimer) {
+    return; // Already trying to reconnect
+  }
+
+  console.log(`Scheduling reconnection attempt in ${RECONNECT_INTERVAL}ms`);
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    connectToNative();
+  }, delay);
 }
 
 // Initialize connection

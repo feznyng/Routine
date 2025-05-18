@@ -151,11 +151,11 @@ class BrowserExtensionService {
   // Helper function to create manifest content
   Map<String, dynamic> _createManifestContent(String binaryPath) {
     return {
-      'name': 'com.routine.native_messaging',
+      'name': 'com.solidsoft.routine.NativeMessagingHost',
       'description': 'Routine Native Messaging Host',
       'path': binaryPath,
       'type': 'stdio',
-      'allowed_extensions': ['blocker@routine-blocker.com']
+      'allowed_extensions': ['blocker@routineblocker.com']
     };
   }
 
@@ -203,7 +203,7 @@ class BrowserExtensionService {
         debugPrint('Manifest content: $manifestJson');
         
         const String mozillaRegistryPath = 
-            'SOFTWARE\\Mozilla\\NativeMessagingHosts\\com.routine.native_messaging';
+            'SOFTWARE\\Mozilla\\NativeMessagingHosts\\com.solidsoft.routine.NativeMessagingHost';
         debugPrint('Registry path: $mozillaRegistryPath');
             
         final Pointer<HKEY> hKey = calloc<HKEY>();
@@ -289,7 +289,7 @@ class BrowserExtensionService {
         }
         
         // Create the manifest file
-        final File manifestFile = File('$manifestDir/com.routine.native_messaging.json');
+        final File manifestFile = File('$manifestDir/com.solidsoft.routine.NativeMessagingHost.json');
         debugPrint('Creating manifest file at: ${manifestFile.path}');
         
         // Example manifest content

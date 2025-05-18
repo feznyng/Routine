@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Routine Blocker",
-  "version": "1.4",
+  "version": "1.6",
   "description": "Routine site blocking extension",
   "permissions": [
     "webRequest",
