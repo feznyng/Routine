@@ -97,14 +97,14 @@ class Util {
     for (final Routine routine in routines) {
       if (routine.allDay) { continue; }
 
-      _addIfUnseen(evaluationTimes, seen, routine.startHour, routine.startMinute, 0);
-      _addIfUnseen(evaluationTimes, seen, routine.endHour, routine.endMinute, 0);
+      _addIfUnseen(evaluationTimes, seen, routine.startHour, routine.startMinute, 1);
+      _addIfUnseen(evaluationTimes, seen, routine.endHour, routine.endMinute, 1);
 
       if (routine.pausedUntil != null) {
-        _addIfUnseen(evaluationTimes, seen, routine.pausedUntil!.hour, routine.pausedUntil!.minute, routine.pausedUntil!.second);
+        _addIfUnseen(evaluationTimes, seen, routine.pausedUntil!.hour, routine.pausedUntil!.minute, routine.pausedUntil!.second + 1);
       }
       if (routine.snoozedUntil != null) {
-        _addIfUnseen(evaluationTimes, seen, routine.snoozedUntil!.hour, routine.snoozedUntil!.minute, routine.snoozedUntil!.second);
+        _addIfUnseen(evaluationTimes, seen, routine.snoozedUntil!.hour, routine.snoozedUntil!.minute, routine.snoozedUntil!.second + 1);
       }
     }
     

@@ -200,6 +200,62 @@ class AuthService {
       throw 'Unable to send password reset email. Please try again later.';
     }
   }
+
+  Future<void> updatePassword(String currentPassword, String newPassword) async {
+    if (!_initialized) throw Exception('AuthService not initialized');
+    if (!isSignedIn) throw Exception('User not signed in');
+    
+    try {
+      // First verify the current password by attempting to sign in
+      final email = currentUser;
+      if (email == null) throw Exception('Current user email not found');
+      
+      await signIn(email, currentPassword);
+      
+      // If sign in succeeded, update the password
+      await _client.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+    } on AuthException catch (e) {
+      print('Password update error: ${e.message}');
+      if (e.message.contains('Invalid login credentials')) {
+        throw 'Current password is incorrect';
+      }
+      throw 'Unable to update password. Please try again later.';
+    } catch (e) {
+      print('Unexpected password update error: $e');
+      throw 'Unable to update password. Please try again later.';
+    }
+  }
+
+  Future<void> updateEmail(String password, String newEmail) async {
+    if (!_initialized) throw Exception('AuthService not initialized');
+    if (!isSignedIn) throw Exception('User not signed in');
+    
+    try {
+      // First verify the password by attempting to sign in
+      final email = currentUser;
+      if (email == null) throw Exception('Current user email not found');
+      
+      await signIn(email, password);
+      
+      // If sign in succeeded, update the email
+      await _client.auth.updateUser(
+        UserAttributes(email: newEmail),
+      );
+    } on AuthException catch (e) {
+      print('Email update error: ${e.message}');
+      if (e.message.contains('Invalid login credentials')) {
+        throw 'Password is incorrect';
+      } else if (e.message.contains('already registered')) {
+        throw 'This email is already in use';
+      }
+      throw 'Unable to update email. Please try again later.';
+    } catch (e) {
+      print('Unexpected email update error: $e');
+      throw 'Unable to update email. Please try again later.';
+    }
+  }
   
   // Method to handle app resume events
   void _setupResumeListener() {

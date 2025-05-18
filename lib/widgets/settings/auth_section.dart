@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
+import '../../pages/account_settings_page.dart';
 
 class AuthSection extends StatelessWidget {
   final VoidCallback onSignInTap;
@@ -26,15 +27,18 @@ class AuthSection extends StatelessWidget {
       );
     } else {
       return Card(
-        child: ListTile(
-          leading: const Icon(Icons.person),
-          title: Text('Signed in as ${authService.currentUser}'),
-          trailing: TextButton(
-            onPressed: () async {
-              await authService.signOut();
-              // We don't need to call setState here as the parent widget will handle it
-            },
-            child: const Text('Sign Out'),
+        child: InkWell(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const AccountSettingsPage(),
+              ),
+            );
+          },
+          child: ListTile(
+            leading: const Icon(Icons.person),
+            title: Text('Signed in as ${authService.currentUser}'),
+            trailing: const Icon(Icons.chevron_right),
           ),
         ),
       );

@@ -377,7 +377,7 @@ class SyncService {
           final localRoutines = await db.getRoutinesById(remoteRoutines.map((routine) => routine['id'] as String).toList());
           final localRoutineMap = {for (final routine in localRoutines) routine.id: routine};
           
-          print("remote devices: $remoteRoutines");
+          print("remote routines: $remoteRoutines");
           for (final routine in remoteRoutines) {            
             final overwriteMap = {};
             final localRoutine = localRoutineMap[routine['id']];
