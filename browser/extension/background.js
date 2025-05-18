@@ -2,8 +2,6 @@
 const hostName = "com.routine.native_messaging";
 let port = null;
 let isAppConnected = false;  // Track Flutter app connection state
-let reconnectTimer = null;
-const RECONNECT_INTERVAL = 2000; // Attempt reconnection every 2 seconds to match onboarding dialog behavior
 
 // List of blocked sites
 let blockedSites = [];
@@ -11,66 +9,39 @@ let allowList = false;
 
 // Connect to native messaging host
 function connectToNative() {
-  try {
-    port = chrome.runtime.connectNative(hostName);
-    console.log("Attempting to connect to native host");
+  port = chrome.runtime.connectNative(hostName);
+  
+  console.log("Connected to native host", port);
 
-    port.onMessage.addListener((message) => {
-      console.log("Received message from native host:", message);
-      
-      if (message.action === "updateBlockedSites" && Array.isArray(message.data.sites)) {
-        // Update blocked sites list
-        blockedSites = message.data.sites;
-        allowList = message.data.allowList;
-        
-        // Re-register web request listener with new patterns
-        registerBlockingRules();
-        
-        console.log("Updated blocked sites:", blockedSites, allowList);
-      } else if (message.action === "appConnectionState") {
-        // Update app connection state
-        isAppConnected = message.data.connected;
-        console.log("App connection state changed:", isAppConnected ? "connected" : "disconnected", 
-                  "active connections:", message.data.connections);
-        
-        // Re-register blocking rules with new connection state
-        registerBlockingRules();
-      }
-    });
+  port.onMessage.addListener((message) => {
+    console.log("Received message from native host:", message);
     
-    port.onDisconnect.addListener(() => {
-      const error = chrome.runtime.lastError;
-      console.log("Disconnected from native host", error ? error.message : "");
-      port = null;
-      isAppConnected = false;  // Reset app connection state
-      registerBlockingRules();  // Re-register rules with new connection state
+    if (message.action === "updateBlockedSites" && Array.isArray(message.data.sites)) {
+      // Update blocked sites list
+      blockedSites = message.data.sites;
+      allowList = message.data.allowList;
       
-      // Start reconnection attempts
-      scheduleReconnect();
-    });
-
-    // Clear reconnection timer on successful connection
-    if (reconnectTimer) {
-      clearTimeout(reconnectTimer);
-      reconnectTimer = null;
+      // Re-register web request listener with new patterns
+      registerBlockingRules();
+      
+      console.log("Updated blocked sites:", blockedSites, allowList);
+    } else if (message.action === "appConnectionState") {
+      // Update app connection state
+      isAppConnected = message.data.connected;
+      console.log("App connection state changed:", isAppConnected ? "connected" : "disconnected", 
+                 "active connections:", message.data.connections);
+      
+      // Re-register blocking rules with new connection state
+      registerBlockingRules();
     }
-  } catch (error) {
-    console.log("Failed to connect to native host:", error);
-    scheduleReconnect();
-  }
-}
-
-// Schedule reconnection at fixed interval
-function scheduleReconnect() {
-  if (reconnectTimer) {
-    return; // Already trying to reconnect
-  }
-
-  console.log(`Scheduling reconnection attempt in ${RECONNECT_INTERVAL}ms`);
-  reconnectTimer = setTimeout(() => {
-    reconnectTimer = null;
-    connectToNative();
-  }, delay);
+  });
+  
+  port.onDisconnect.addListener(() => {
+    console.log("Disconnected from native host");
+    port = null;
+    isAppConnected = false;  // Reset app connection state
+    registerBlockingRules();  // Re-register rules with new connection state
+  });
 }
 
 // Initialize connection
