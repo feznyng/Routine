@@ -188,8 +188,6 @@ class AuthService {
   Future<void> resetPasswordForEmail(String email) async {
     if (!_initialized) throw Exception('AuthService not initialized');
     try {
-      print("site url: ${dotenv.env['SITE_URL']}");
-
       await _client.auth.resetPasswordForEmail(email, redirectTo: "${dotenv.env['SITE_URL']}/reset-password");
     } on AuthException catch (e) {
       print('Password reset error: ${e.message}');

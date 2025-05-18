@@ -99,8 +99,6 @@ class $RoutinesTable extends Routines
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       clientDefault: () => 1);
-  static const VerificationMeta _changesMeta =
-      const VerificationMeta('changes');
   @override
   late final GeneratedColumnWithTypeConverter<List<String>, String> changes =
       GeneratedColumn<String>('changes', aliasedName, false,
@@ -122,7 +120,6 @@ class $RoutinesTable extends Routines
   late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
       'updated_at', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
-  static const VerificationMeta _groupsMeta = const VerificationMeta('groups');
   @override
   late final GeneratedColumnWithTypeConverter<List<String>, String> groups =
       GeneratedColumn<String>('groups', aliasedName, false,
@@ -178,8 +175,6 @@ class $RoutinesTable extends Routines
   late final GeneratedColumn<DateTime> snoozedUntil = GeneratedColumn<DateTime>(
       'snoozed_until', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
-  static const VerificationMeta _conditionsMeta =
-      const VerificationMeta('conditions');
   @override
   late final GeneratedColumnWithTypeConverter<List<Condition>, String>
       conditions = GeneratedColumn<String>('conditions', aliasedName, false,
@@ -305,7 +300,6 @@ class $RoutinesTable extends Routines
           recurrence.isAcceptableOrUnknown(
               data['recurrence']!, _recurrenceMeta));
     }
-    context.handle(_changesMeta, const VerificationResult.success());
     if (data.containsKey('deleted')) {
       context.handle(_deletedMeta,
           deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta));
@@ -316,7 +310,6 @@ class $RoutinesTable extends Routines
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
-    context.handle(_groupsMeta, const VerificationResult.success());
     if (data.containsKey('num_breaks_taken')) {
       context.handle(
           _numBreaksTakenMeta,
@@ -363,7 +356,6 @@ class $RoutinesTable extends Routines
           snoozedUntil.isAcceptableOrUnknown(
               data['snoozed_until']!, _snoozedUntilMeta));
     }
-    context.handle(_conditionsMeta, const VerificationResult.success());
     if (data.containsKey('strict_mode')) {
       context.handle(
           _strictModeMeta,
@@ -1248,8 +1240,6 @@ class $DevicesTable extends Devices with TableInfo<$DevicesTable, DeviceEntry> {
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('CHECK ("deleted" IN (0, 1))'),
       clientDefault: () => false);
-  static const VerificationMeta _changesMeta =
-      const VerificationMeta('changes');
   @override
   late final GeneratedColumnWithTypeConverter<List<String>, String> changes =
       GeneratedColumn<String>('changes', aliasedName, false,
@@ -1307,7 +1297,6 @@ class $DevicesTable extends Devices with TableInfo<$DevicesTable, DeviceEntry> {
       context.handle(_deletedMeta,
           deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta));
     }
-    context.handle(_changesMeta, const VerificationResult.success());
     if (data.containsKey('updated_at')) {
       context.handle(_updatedAtMeta,
           updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
@@ -1672,7 +1661,6 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupEntry> {
       requiredDuringInsert: true,
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('CHECK ("allow" IN (0, 1))'));
-  static const VerificationMeta _appsMeta = const VerificationMeta('apps');
   @override
   late final GeneratedColumnWithTypeConverter<List<String>, String> apps =
       GeneratedColumn<String>('apps', aliasedName, false,
@@ -1680,7 +1668,6 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupEntry> {
               requiredDuringInsert: false,
               clientDefault: () => '[]')
           .withConverter<List<String>>($GroupsTable.$converterapps);
-  static const VerificationMeta _sitesMeta = const VerificationMeta('sites');
   @override
   late final GeneratedColumnWithTypeConverter<List<String>, String> sites =
       GeneratedColumn<String>('sites', aliasedName, false,
@@ -1688,8 +1675,6 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupEntry> {
               requiredDuringInsert: false,
               clientDefault: () => '[]')
           .withConverter<List<String>>($GroupsTable.$convertersites);
-  static const VerificationMeta _categoriesMeta =
-      const VerificationMeta('categories');
   @override
   late final GeneratedColumnWithTypeConverter<List<String>, String> categories =
       GeneratedColumn<String>('categories', aliasedName, false,
@@ -1697,8 +1682,6 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupEntry> {
               requiredDuringInsert: false,
               clientDefault: () => '[]')
           .withConverter<List<String>>($GroupsTable.$convertercategories);
-  static const VerificationMeta _changesMeta =
-      const VerificationMeta('changes');
   @override
   late final GeneratedColumnWithTypeConverter<List<String>, String> changes =
       GeneratedColumn<String>('changes', aliasedName, false,
@@ -1764,10 +1747,6 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupEntry> {
     } else if (isInserting) {
       context.missing(_allowMeta);
     }
-    context.handle(_appsMeta, const VerificationResult.success());
-    context.handle(_sitesMeta, const VerificationResult.success());
-    context.handle(_categoriesMeta, const VerificationResult.success());
-    context.handle(_changesMeta, const VerificationResult.success());
     if (data.containsKey('deleted')) {
       context.handle(_deletedMeta,
           deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta));
@@ -2936,7 +2915,8 @@ class $$DevicesTableTableManager extends RootTableManager<
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (groupsRefs)
-                    await $_getPrefetchedData(
+                    await $_getPrefetchedData<DeviceEntry, $DevicesTable,
+                            GroupEntry>(
                         currentTable: table,
                         referencedTable:
                             $$DevicesTableReferences._groupsRefsTable(db),

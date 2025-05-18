@@ -38,6 +38,8 @@ class _RoutinePageState extends State<RoutinePage> {
     _initializeRoutine();
     _loadDevices();
     _refreshRoutine();
+
+    print(_routine.changes);
   }
 
   void _initializeRoutine() {

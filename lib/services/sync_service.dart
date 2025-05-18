@@ -265,6 +265,8 @@ class SyncService {
           final remoteDevices = await _client.from('devices').select().eq('user_id', userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
           final localDevices = await db.getDevicesById(remoteDevices.map((device) => device['id'] as String).toList());
           final localDeviceMap = {for (final device in localDevices) device.id: device};
+          print("remote devices: $remoteDevices");
+
           for (final device in remoteDevices) {
             final overwriteMap = {};
             final localDevice = localDeviceMap[device['id']];
@@ -324,7 +326,7 @@ class SyncService {
           final remoteGroups = await _client.from('groups').select().eq('user_id', userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
           final localGroups = await db.getGroupsById(remoteGroups.map((group) => group['id'] as String).toList());
           final localGroupMap = {for (final group in localGroups) group.id: group};
-          
+          print("remote devices: $remoteGroups");
           for (final group in remoteGroups) {            
             final overwriteMap = {};
             final localGroup = localGroupMap[group['id']];
@@ -375,6 +377,7 @@ class SyncService {
           final localRoutines = await db.getRoutinesById(remoteRoutines.map((routine) => routine['id'] as String).toList());
           final localRoutineMap = {for (final routine in localRoutines) routine.id: routine};
           
+          print("remote devices: $remoteRoutines");
           for (final routine in remoteRoutines) {            
             final overwriteMap = {};
             final localRoutine = localRoutineMap[routine['id']];
@@ -448,6 +451,8 @@ class SyncService {
 
       // push devices
       final localDevices = await db.getDeviceChanges(lastPulledAt);
+
+      print("local devices: $localDevices");
       final remoteDevices = await _client
         .from('devices')
         .select()
@@ -465,6 +470,7 @@ class SyncService {
 
       // push groups    
       final localGroups = await db.getGroupChanges(lastPulledAt);
+      print("local groups: $localGroups");
       final remoteGroups = await _client
         .from('groups')
         .select()
@@ -483,6 +489,7 @@ class SyncService {
 
       // push routines
       final localRoutines = await db.getRoutineChanges(lastPulledAt);
+      print("local routines: $localRoutines");
       final remoteRoutines = await _client
         .from('routines')
         .select()

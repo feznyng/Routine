@@ -128,6 +128,7 @@ class Condition {
       completedAt: json['lastCompletedAt'] == null
         ? null
         : DateTime.parse(json['lastCompletedAt'] as String),
+      original: json
     );
     
     // Handle legacy data that might have a name field

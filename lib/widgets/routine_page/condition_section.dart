@@ -231,7 +231,8 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
       activityType: widget.condition.activityType,
       activityAmt: widget.condition.activityAmt,
       name: widget.condition.name,
-      completedAt: widget.condition.lastCompletedAt
+      completedAt: widget.condition.lastCompletedAt,
+      original: widget.condition.toJson()
     );
     _latitudeController = TextEditingController(text: _condition.latitude?.toString() ?? '');
     _longitudeController = TextEditingController(text: _condition.longitude?.toString() ?? '');
@@ -386,7 +387,8 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
                 activityType: _condition.activityType,
                 activityAmt: _condition.activityAmt,
                 name: value.isNotEmpty ? value : null,
-                completedAt: _condition.lastCompletedAt
+                completedAt: _condition.lastCompletedAt,
+                original: _condition.toJson(),
               );
               setState(() {});
             },
@@ -417,7 +419,7 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
                   _condition.name = trimmedName;
                   widget.onSave(_condition);
                 },
-                child: const Text('Save'),
+                child: const Text('Done'),
               ),
             ],
           ),
