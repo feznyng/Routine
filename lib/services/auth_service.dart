@@ -90,8 +90,7 @@ class AuthService {
           await _storage.write(key: 'supabase_refresh_token', value: session.refreshToken);
         } catch (e, st) {
           Util.report('Failed to write refresh token to secure storage', e, st);
-          // Continue despite storage error
-        }
+        } 
       } else {
         Sentry.configureScope(
           (scope) => scope.setUser(SentryUser(id: null)),

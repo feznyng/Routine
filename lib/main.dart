@@ -25,6 +25,23 @@ void main() async {
       options.dsn = dotenv.env['SENTRY_DSN'];
       options.tracesSampleRate = 0.1;
       options.profilesSampleRate = 0.1;
+
+      final exclusionList = [
+        'ClientException: Bad file descriptor',
+        'FormatException: InvalidJWTToken: Invalid value for JWT claim "exp" with value'
+      ];
+
+      options.beforeSend = (event, hint) {
+        final exceptions = event.exceptions;
+
+        if (exceptions != null && exceptions.where((e) =>
+          exclusionList.firstWhere((el) => e.value?.startsWith(el) ?? false, orElse: () => '').isNotEmpty
+          ).isNotEmpty) {
+          return null;
+        }
+
+        return event;
+      };
     },
     appRunner: () => runApp(SentryWidget(child: 
     MultiProvider(
