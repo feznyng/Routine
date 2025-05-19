@@ -1,8 +1,10 @@
 import 'dart:io';
 
 import 'package:Routine/models/routine.dart';
+import 'package:Routine/setup.dart';
 import 'package:cron/cron.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 class Util {
   static bool isDesktop() {
@@ -117,5 +119,18 @@ class Util {
       seen.add(time);
       schedules.add(Schedule(hours: hour, minutes: minute, seconds: second + 5)); // add a little delay to avoid timing issues
     }
+  }
+
+  static void report(String context, dynamic e, StackTrace st) {
+    logger.e("$context: e");
+
+    final Hint hint = Hint();
+    hint.set('context', context);
+
+    Sentry.captureException(
+      e,
+      stackTrace: st,
+      hint: hint
+    );
   }
 }

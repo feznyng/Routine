@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:Routine/setup.dart';
+import 'package:Routine/util.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -64,8 +65,8 @@ class AuthService {
           logger.i('Restored session for user: ${response.user?.email}');
           initNotifications();
         }
-      } catch (e) {
-        logger.e('Failed to restore session: $e');
+      } catch (e, st) {
+        Util.report('Failed to refresh session', e, st);
         try {
           await _storage.delete(key: 'supabase_refresh_token');
         } catch (storageError) {
@@ -87,8 +88,8 @@ class AuthService {
 
         try {
           await _storage.write(key: 'supabase_refresh_token', value: session.refreshToken);
-        } catch (e) {
-          logger.e('Failed to write refresh token to secure storage: $e');
+        } catch (e, st) {
+          Util.report('Failed to write refresh token to secure storage', e, st);
           // Continue despite storage error
         }
       } else {
@@ -156,8 +157,8 @@ class AuthService {
         throw 'Please verify your email address';
       }
       throw 'Unable to sign in. Please try again later.';
-    } catch (e) {
-      logger.e('Unexpected sign in error: $e');
+    } catch (e, st) {
+      Util.report('Unexpected sign in failure', e, st);
       throw 'Unable to sign in. Please try again later.';
     }
   }
@@ -178,8 +179,8 @@ class AuthService {
         throw 'Please choose a stronger password';
       }
       throw 'Unable to create account. Please try again later.';
-    } catch (e) {
-      logger.e('Unexpected sign up error: $e');
+    } catch (e, st) {
+      Util.report('Unexpected sign up failure', e, st);
       throw 'Unable to create account. Please try again later.';
     }
   }
@@ -188,8 +189,8 @@ class AuthService {
     if (!_initialized) throw Exception('AuthService not initialized');
     try {
       await _client.auth.signOut();
-    } catch (e) {
-      logger.e('Sign out error: $e');
+    } catch (e, st) {
+      Util.report('Unexpected sign out failure', e, st);
       throw 'Unable to sign out. Please try again later.';
     }
   }
@@ -204,8 +205,8 @@ class AuthService {
         return;
       }
       throw 'Unable to send password reset email. Please try again later.';
-    } catch (e) {
-      logger.e('Unexpected password reset error: $e');
+    } catch (e, st) {
+      Util.report('Unexpected sign up failure', e, st);
       throw 'Unable to send password reset email. Please try again later.';
     }
   }
@@ -231,8 +232,8 @@ class AuthService {
         throw 'Current password is incorrect';
       }
       throw 'Unable to update password. Please try again later.';
-    } catch (e) {
-      logger.e('Unexpected password update error: $e');
+    } catch (e, st) {
+      Util.report('Unexpected password change failure', e, st);
       throw 'Unable to update password. Please try again later.';
     }
   }
@@ -260,8 +261,8 @@ class AuthService {
         throw 'This email is already in use';
       }
       throw 'Unable to update email. Please try again later.';
-    } catch (e) {
-      logger.e('Unexpected email update error: $e');
+    } catch (e, st) {
+      Util.report('Unexpected email change failure', e, st);
       throw 'Unable to update email. Please try again later.';
     }
   }
@@ -299,22 +300,8 @@ class AuthService {
           await _client.auth.refreshSession();
         }
       }
-    } catch (e) {
-      logger.e('Error refreshing session: $e');
-      // If refresh fails, try to recover by reading from storage
-      // try {
-      //   final refreshToken = await _storage.read(key: 'supabase_refresh_token');
-      //   if (refreshToken != null) {
-      //     try {
-      //       await _client.auth.refreshSession();
-      //       logger.i('Successfully refreshed session after error');
-      //     } catch (refreshError) {
-      //       logger.e('Failed to refresh session after error: $refreshError');
-      //     }
-      //   }
-      // } catch (storageError) {
-      //   logger.e('Failed to read refresh token from storage: $storageError');
-      // }
+    } catch (e, st) {
+      Util.report('Error refreshing session', e, st);
     }
   }
   
