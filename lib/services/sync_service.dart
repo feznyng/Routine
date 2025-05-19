@@ -70,7 +70,7 @@ class SyncService {
         )
         .subscribe();
     } catch (e) {
-      logger.i('Error setting up realtime sync: $e');
+      logger.e('Error setting up realtime sync: $e');
       // We'll try again later when the app resumes or when auth state changes
     }
   }
@@ -87,14 +87,14 @@ class SyncService {
         );
       }
     } catch (e) {
-      logger.i('Error notifying peers: $e');
+      logger.e('Error notifying peers: $e');
       setupRealtimeSync();
     }
 
     try {
       _client.functions.invoke('push', body: {'content': 'sample message', 'source_id': currDevice.id});
     } catch (e) {
-      logger.i('Error sending fcm message: $e');
+      logger.e('Error sending fcm message: $e');
     }
   }
   
@@ -624,7 +624,7 @@ class SyncService {
 
       return SyncResult();
     } catch (e) {
-      logger.i('Error during sync: $e');
+      logger.e('Error during sync: $e');
       return null;
     }
   }

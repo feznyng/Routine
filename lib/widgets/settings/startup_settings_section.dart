@@ -34,7 +34,7 @@ class _StartupSettingsSectionState extends State<StartupSettingsSection> {
         });
       }
     } catch (e) {
-      logger.i('Error loading startup setting: $e');
+      logger.e('Error loading startup setting: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;

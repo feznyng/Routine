@@ -195,14 +195,8 @@ class _AppSiteSelectorState extends State<AppSiteSelector> {
 
   Future<void> _handleMethodCall(MethodCall call) async {
     if (_viewId == null) return;
-    logger.i("handleMethodCall: ${call.method}");
     switch (call.method) {
       case 'onSelectionChanged':
-       logger.i("onSelectionChanged: ${call.arguments}");
-        logger.i("apps: ${call.arguments['apps']} = ${call.arguments['apps'].runtimeType}");
-        logger.i("sites: ${call.arguments['sites']} = ${call.arguments['sites'].runtimeType}");
-        logger.i("categories: ${call.arguments['categories']} = ${call.arguments['categories']?.runtimeType}");
-
         final selectedApps = List<String>.from(call.arguments['apps'] ?? []);
         final selectedSites = List<String>.from(call.arguments['sites'] ?? []);
         final selectedCategories = call.arguments['categories'] != null 
@@ -211,7 +205,7 @@ class _AppSiteSelectorState extends State<AppSiteSelector> {
         widget.onSelectionChanged(selectedApps, selectedSites, selectedCategories);
         break;
       default:
-        logger.i('Unhandled method ${call.method}');
+        logger.e('Unhandled method ${call.method}');
     }
   }
 }

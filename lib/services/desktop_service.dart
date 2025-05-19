@@ -50,11 +50,10 @@ class DesktopService extends PlatformService {
     try {
       await platform.invokeMethod('engineReady');
     } catch (e) {
-      logger.i('Failed to signal engine ready: $e');
+      logger.e('Failed to signal engine ready: $e');
     }
 
     Routine.watchAll().listen((routines) {
-      logger.i("UPDATING ROUTINES");
       onRoutinesUpdated(routines);
     });
 
@@ -86,7 +85,7 @@ class DesktopService extends PlatformService {
 
           return null;
         default:
-          logger.i('Unknown method call: ${call.method}');
+          logger.e('Unknown method call: ${call.method}');
           throw PlatformException(
             code: 'Unimplemented',
             message: "Method ${call.method} not implemented",
@@ -196,7 +195,6 @@ class DesktopService extends PlatformService {
     // Check if strict mode is enabled and we're trying to disable startup
     final strictModeService = StrictModeService.instance;
     if (!enabled && strictModeService.blockDisablingSystemStartup) {
-      logger.i('Strict mode is enabled, cannot disable startup');
       return;
     }
     
@@ -209,23 +207,23 @@ class DesktopService extends PlatformService {
           appPath: Platform.resolvedExecutable
         );
         
-        final bool before = await launchAtStartup.isEnabled();
-        logger.i('Setting start on login to $before');
         if (enabled) {
           await launchAtStartup.enable();
         } else {
           await launchAtStartup.disable();
         }
         final bool result = await launchAtStartup.isEnabled();
-        logger.i('set start on login to $result');
+        if (result == enabled) {
+          logger.e('failed to set launch at startup');
+        }
       } catch (e) {
-        logger.i('Error setting start on login: $e');
+        logger.e('Error setting start on login: $e');
       }
     } else {
       try {
         await platform.invokeMethod('setStartOnLogin', enabled);
       } catch (e) {
-        logger.i('Failed to set start on login: $e');
+        logger.e('Failed to set start on login: $e');
       }
     }
   }
@@ -250,7 +248,7 @@ class DesktopService extends PlatformService {
         final bool enabled = await platform.invokeMethod('getStartOnLogin');
         return enabled;
       } catch (e) {
-        logger.i('Failed to get start on login status: $e');
+        logger.e('Failed to get start on login status: $e');
         return false;
       }
     }
@@ -289,7 +287,7 @@ class DesktopService extends PlatformService {
           }
         }
       } catch (e) {
-        logger.i('Error getting running applications: $e');
+        logger.e('Error getting running applications: $e');
       }
     } else if (Platform.isMacOS) {  
       Directory appDir = Directory('/Applications');

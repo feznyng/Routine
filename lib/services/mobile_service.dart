@@ -20,13 +20,10 @@ class MobileService extends PlatformService {
   StreamSubscription? _strictModeSubscription;
   
   @override
-  Future<void> init() async {
-    logger.i("INITING");
-        
+  Future<void> init() async {        
     checkAndRequestFamilyControlsAuthorization();
     
     _routineSubscription = Routine.watchAll().listen((routines) {
-      logger.i("UPDATING ROUTINES REMOTE");
       _sendRoutines(routines, false);
 
       // we need to evaluate strict mode in case a strict routine is active after changes
@@ -34,7 +31,6 @@ class MobileService extends PlatformService {
     });
     
     _strictModeSubscription = StrictModeService.instance.effectiveSettingsStream.listen((_) {
-      logger.i("UPDATING STRICT MODE");
       _sendStrictModeSettings();
     });
     
@@ -67,7 +63,7 @@ class MobileService extends PlatformService {
       
       await _channel.invokeMethod('updateStrictModeSettings', settings);
     } catch (e) {
-      logger.i('Error sending strict mode settings to iOS: $e');
+      logger.e('Error sending strict mode settings to iOS: $e');
     }
   }
 
@@ -111,7 +107,7 @@ class MobileService extends PlatformService {
             
       await _channel.invokeMethod(immediate ? 'immediateUpdateRoutines' : 'updateRoutines', {'routines': routineMaps});
     } catch (e) {
-      logger.i('Error sending routines to iOS: $e');
+      logger.e('Error sending routines to iOS: $e');
     }
   }
   
@@ -124,7 +120,7 @@ class MobileService extends PlatformService {
       final bool isAuthorized = await _channel.invokeMethod('checkFamilyControlsAuthorization');
       return isAuthorized;
     } catch (e) {
-      logger.i('Error checking FamilyControls authorization: $e');
+      logger.e('Error checking FamilyControls authorization: $e');
       return false;
     }
   }
@@ -136,7 +132,7 @@ class MobileService extends PlatformService {
       final bool isAuthorized = await _channel.invokeMethod('requestFamilyControlsAuthorization');
       return isAuthorized;
     } catch (e) {
-      logger.i('Error requesting FamilyControls authorization: $e');
+      logger.e('Error requesting FamilyControls authorization: $e');
       return false;
     }
   }

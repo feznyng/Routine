@@ -65,7 +65,7 @@ class AuthService {
           initNotifications();
         }
       } catch (e) {
-        logger.i('Failed to restore session: $e');
+        logger.e('Failed to restore session: $e');
         try {
           await _storage.delete(key: 'supabase_refresh_token');
         } catch (storageError) {
@@ -88,7 +88,7 @@ class AuthService {
         try {
           await _storage.write(key: 'supabase_refresh_token', value: session.refreshToken);
         } catch (e) {
-          logger.i('Failed to write refresh token to secure storage: $e');
+          logger.e('Failed to write refresh token to secure storage: $e');
           // Continue despite storage error
         }
       } else {
@@ -99,7 +99,7 @@ class AuthService {
         try {
           await _storage.delete(key: 'supabase_refresh_token');
         } catch (e) {
-          logger.i('Failed to delete refresh token from secure storage: $e');
+          logger.e('Failed to delete refresh token from secure storage: $e');
           // Continue despite storage error
         }
       }
@@ -149,7 +149,7 @@ class AuthService {
 
       return response.user != null;
     } on AuthException catch (e) {
-      logger.i('Sign in error: ${e.message}');
+      logger.e('Sign in error: ${e.message}');
       if (e.message.contains('Invalid login credentials')) {
         throw 'Incorrect email or password';
       } else if (e.message.contains('Email not confirmed')) {
@@ -157,7 +157,7 @@ class AuthService {
       }
       throw 'Unable to sign in. Please try again later.';
     } catch (e) {
-      logger.i('Unexpected sign in error: $e');
+      logger.e('Unexpected sign in error: $e');
       throw 'Unable to sign in. Please try again later.';
     }
   }
@@ -171,7 +171,7 @@ class AuthService {
       );
       return response.user != null;
     } on AuthException catch (e) {
-      logger.i('Sign up error: ${e.message}');
+      logger.e('Sign up error: ${e.message}');
       if (e.message.contains('already registered')) {
         throw 'An account with this email already exists';
       } else if (e.message.contains('weak password')) {
@@ -179,7 +179,7 @@ class AuthService {
       }
       throw 'Unable to create account. Please try again later.';
     } catch (e) {
-      logger.i('Unexpected sign up error: $e');
+      logger.e('Unexpected sign up error: $e');
       throw 'Unable to create account. Please try again later.';
     }
   }
@@ -189,7 +189,7 @@ class AuthService {
     try {
       await _client.auth.signOut();
     } catch (e) {
-      logger.i('Sign out error: $e');
+      logger.e('Sign out error: $e');
       throw 'Unable to sign out. Please try again later.';
     }
   }
@@ -199,13 +199,13 @@ class AuthService {
     try {
       await _client.auth.resetPasswordForEmail(email, redirectTo: "${dotenv.env['SITE_URL']}/reset-password");
     } on AuthException catch (e) {
-      logger.i('Password reset error: ${e.message}');
+      logger.e('Password reset error: ${e.message}');
       if (e.message.contains('not found')) {
         return;
       }
       throw 'Unable to send password reset email. Please try again later.';
     } catch (e) {
-      logger.i('Unexpected password reset error: $e');
+      logger.e('Unexpected password reset error: $e');
       throw 'Unable to send password reset email. Please try again later.';
     }
   }
@@ -226,13 +226,13 @@ class AuthService {
         UserAttributes(password: newPassword),
       );
     } on AuthException catch (e) {
-      logger.i('Password update error: ${e.message}');
+      logger.e('Password update error: ${e.message}');
       if (e.message.contains('Invalid login credentials')) {
         throw 'Current password is incorrect';
       }
       throw 'Unable to update password. Please try again later.';
     } catch (e) {
-      logger.i('Unexpected password update error: $e');
+      logger.e('Unexpected password update error: $e');
       throw 'Unable to update password. Please try again later.';
     }
   }
@@ -253,7 +253,7 @@ class AuthService {
         UserAttributes(email: newEmail),
       );
     } on AuthException catch (e) {
-      logger.i('Email update error: ${e.message}');
+      logger.e('Email update error: ${e.message}');
       if (e.message.contains('Invalid login credentials')) {
         throw 'Password is incorrect';
       } else if (e.message.contains('already registered')) {
@@ -261,7 +261,7 @@ class AuthService {
       }
       throw 'Unable to update email. Please try again later.';
     } catch (e) {
-      logger.i('Unexpected email update error: $e');
+      logger.e('Unexpected email update error: $e');
       throw 'Unable to update email. Please try again later.';
     }
   }
@@ -300,7 +300,7 @@ class AuthService {
         }
       }
     } catch (e) {
-      logger.i('Error refreshing session: $e');
+      logger.e('Error refreshing session: $e');
       // If refresh fails, try to recover by reading from storage
       try {
         final refreshToken = await _storage.read(key: 'supabase_refresh_token');
@@ -309,11 +309,11 @@ class AuthService {
             await _client.auth.refreshSession();
             logger.i('Successfully refreshed session after error');
           } catch (refreshError) {
-            logger.i('Failed to refresh session after error: $refreshError');
+            logger.e('Failed to refresh session after error: $refreshError');
           }
         }
       } catch (storageError) {
-        logger.i('Failed to read refresh token from storage: $storageError');
+        logger.e('Failed to read refresh token from storage: $storageError');
       }
     }
   }

@@ -84,10 +84,6 @@ class StrictModeService with ChangeNotifier {
 
     bool lockedDown = false;
     for (final routine in routines) {
-
-      if (routine.name == "AllowRoutine") {
-        logger.i(routine.groups.keys);
-      }
       if (routine.getGroup()?.id == groupId && routine.isActive && routine.strictMode) {
         lockedDown = true;
         break;
@@ -395,7 +391,7 @@ class StrictModeService with ChangeNotifier {
         // Also store in shared preferences with the required key
         _storeStrictModeDataInSharedPreferences(settings);
       } catch (e) {
-        logger.i('Error updating iOS strict mode settings: $e');
+        logger.e('Error updating iOS strict mode settings: $e');
       }
     }
   }
@@ -429,7 +425,7 @@ class StrictModeService with ChangeNotifier {
       await prefs.setString('strictModeData', jsonString);
       logger.i('Stored strict mode data in shared preferences');
     } catch (e) {
-      logger.i('Error storing strict mode data in shared preferences: $e');
+      logger.e('Error storing strict mode data in shared preferences: $e');
     }
   }
   

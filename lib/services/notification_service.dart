@@ -54,7 +54,7 @@ class NotificationService {
 
     FirebaseMessaging messaging = FirebaseMessaging.instance;
 
-    NotificationSettings settings = await messaging.requestPermission(
+    final _ = await messaging.requestPermission(
       alert: true,
       announcement: false,
       badge: false,
@@ -64,10 +64,6 @@ class NotificationService {
       sound: true,
     );
 
-    logger.i('User granted permission: ${settings.authorizationStatus}');
-
-    // TODO: handle failure gracefully here
-
     await fetchAndUpdateToken();
 
     messaging.onTokenRefresh
@@ -75,7 +71,7 @@ class NotificationService {
         await updateToken(fcmToken);
       })
       .onError((err) {
-        logger.i("failed to retrieve fcm token $err");
+        logger.e("failed to retrieve fcm token $err");
       });
 
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);

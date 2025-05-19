@@ -122,7 +122,7 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
         _isLoading = false;
       });
     } catch (e) {
-      logger.i('Error detecting browsers: $e');
+      logger.e('Error detecting browsers: $e');
       setState(() {
         _detectedBrowsers = [];
         _isLoading = false;
@@ -219,7 +219,6 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
   // Attempt to connect to the Native Messaging Host
   Future<void> _attemptConnection() async {
     if (!BrowserExtensionService.instance.isExtensionConnected) {
-      logger.i('Attempting to connect to Native Messaging Host...');
       await BrowserExtensionService.instance.connectToNMH();
     }
   }
