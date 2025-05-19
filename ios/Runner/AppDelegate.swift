@@ -4,6 +4,7 @@ import Foundation
 import FamilyControls
 import ManagedSettings
 import os.log
+import Sentry
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -51,6 +52,9 @@ import os.log
                     } catch {
                         // Return error on main thread
                         os_log("updateRoutines: immediate failed - \(error)")
+                        SentrySDK.capture(error: error) { (scope) in
+                            scope.setTag(value: "failed to immediately update routines", key: "context")
+                        }
                         result(FlutterError(code: "JSON_DECODE_ERROR",
                                             message: "Failed to deserialize: \(error.localizedDescription)",
                                             details: nil))
@@ -81,7 +85,6 @@ import os.log
                             
                             self?.manager.update(routines: routines)
                             
-                            
                             // Return success on main thread
                             DispatchQueue.main.async {
                                 os_log("updateRoutines: done")
@@ -90,6 +93,9 @@ import os.log
                             
                         } catch {
                             // Return error on main thread
+                            SentrySDK.capture(error: error) { (scope) in
+                                scope.setTag(value: "failed to background update routines", key: "context")
+                            }
                             DispatchQueue.main.async {
                                 os_log("updateRoutines: failed - \(error)")
                                 result(FlutterError(code: "JSON_DECODE_ERROR",

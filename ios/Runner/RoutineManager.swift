@@ -8,6 +8,7 @@
 import Foundation
 import ManagedSettings
 import DeviceActivity
+import Sentry
 
 class RoutineManager {
     private let store = ManagedSettingsStore(named: ManagedSettingsStore.Name("routineBlockerRestrictions"))
@@ -53,7 +54,10 @@ class RoutineManager {
                 do {
                     try self.center.startMonitoring(name, during: schedule)
                 } catch {
-                    print("failed to register device activity \(error.localizedDescription)")
+                    print("failed to register routine schedule \(error.localizedDescription)")
+                    SentrySDK.capture(error: error) { (scope) in
+                        scope.setTag(value: "failed to register routine schedule from \(startTime) to \(endTime)", key: "context")
+                    }
                 }
             }
             
@@ -92,7 +96,9 @@ class RoutineManager {
         do {
             try center.startMonitoring(name, during: schedule)
         } catch {
-            print("failed to register one-time \(activityType) activity: \(error.localizedDescription)")
+            SentrySDK.capture(error: error) { (scope) in
+                scope.setTag(value: "failed to register one time break for \(startDate)", key: "context")
+            }
         }
     }
     
