@@ -272,9 +272,9 @@ class AuthService {
   }
   
   // Method to notify that the app has resumed
-  void notifyAppResumed() {
+  Future<void> notifyAppResumed() async {
     _resumeStreamController.add(null);
-    _refreshSessionIfNeeded();
+    await _refreshSessionIfNeeded();
   }
 
   void initNotifications() {
@@ -302,19 +302,19 @@ class AuthService {
     } catch (e) {
       logger.e('Error refreshing session: $e');
       // If refresh fails, try to recover by reading from storage
-      try {
-        final refreshToken = await _storage.read(key: 'supabase_refresh_token');
-        if (refreshToken != null) {
-          try {
-            await _client.auth.refreshSession();
-            logger.i('Successfully refreshed session after error');
-          } catch (refreshError) {
-            logger.e('Failed to refresh session after error: $refreshError');
-          }
-        }
-      } catch (storageError) {
-        logger.e('Failed to read refresh token from storage: $storageError');
-      }
+      // try {
+      //   final refreshToken = await _storage.read(key: 'supabase_refresh_token');
+      //   if (refreshToken != null) {
+      //     try {
+      //       await _client.auth.refreshSession();
+      //       logger.i('Successfully refreshed session after error');
+      //     } catch (refreshError) {
+      //       logger.e('Failed to refresh session after error: $refreshError');
+      //     }
+      //   }
+      // } catch (storageError) {
+      //   logger.e('Failed to read refresh token from storage: $storageError');
+      // }
     }
   }
   
