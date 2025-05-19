@@ -2,7 +2,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'dart:async';
 import '../models/routine.dart';
 import '../models/emergency_event.dart';
@@ -16,23 +15,17 @@ class StrictModeService with ChangeNotifier {
     return _instance;
   }
   
-  // Grace period for extension reinstallation
   DateTime? _extensionGracePeriodEnd;
   DateTime? _extensionCooldownEnd;
-  static const int _extensionGracePeriodSeconds = 60; // Changed to 60 seconds as per requirements
+  static const int _extensionGracePeriodSeconds = 60;
   static const int _extensionCooldownMinutes = 10;
   
-  // Timer for grace period expiration
   Timer? _gracePeriodTimer;
   
-  // Stream controllers for different event types
   final StreamController<Map<String, bool>> _effectiveSettingsStreamController = StreamController<Map<String, bool>>.broadcast();
   final StreamController<void> _gracePeriodExpirationController = StreamController<void>.broadcast();
   
-  // Private constructor
-  StrictModeService._internal() {
-    // We'll initialize the listener in the init method
-  }
+  StrictModeService._internal();
   
   static StrictModeService get instance => _instance;
   
@@ -54,25 +47,14 @@ class StrictModeService with ChangeNotifier {
   bool _blockUninstallingApps = false;
   bool _blockInstallingApps = false;
   
-  // Evaluate if any active routines are in strict mode
   void evaluateStrictMode(List<Routine> routines) {
-    // Filter for active, not paused routines
     final activeRoutines = routines.where((r) => r.isActive && !r.isPaused).toList();
     
-    // Check if any active routines are in strict mode
     final wasInStrictMode = _inStrictMode;
     _inStrictMode = activeRoutines.any((r) => r.strictMode);
-    
-    // Notify listeners if the strict mode status changed
     if (wasInStrictMode != _inStrictMode) {
       notifyListeners();
       
-      // Update iOS if on iOS platform
-      if (Platform.isIOS) {
-        _updateIOSStrictModeSettings();
-      }
-      
-      // Notify effective settings listeners since effective settings depend on _inStrictMode
       _notifyEffectiveSettingsChanged();
     }
   }
@@ -91,10 +73,8 @@ class StrictModeService with ChangeNotifier {
     return lockedDown;
   }
   
-  // Getter for strict mode status
   bool get inStrictMode => _inStrictMode;
   
-  // Basic getters for settings (without considering active routines)
   bool get blockAppExit => _blockAppExit && !emergencyMode;
   bool get blockDisablingSystemStartup => _blockDisablingSystemStartup;
   bool get blockBrowsersWithoutExtension => _blockBrowsersWithoutExtension;
@@ -102,7 +82,6 @@ class StrictModeService with ChangeNotifier {
   bool get blockUninstallingApps => _blockUninstallingApps && !emergencyMode;
   bool get blockInstallingApps => _blockInstallingApps;
   
-  // Grace period getters
   bool get isInExtensionGracePeriod {
     if (_extensionGracePeriodEnd == null) return false;
     return DateTime.now().isBefore(_extensionGracePeriodEnd!);
@@ -113,24 +92,20 @@ class StrictModeService with ChangeNotifier {
     return DateTime.now().isBefore(_extensionCooldownEnd!);
   }
   
-  // Remaining time in grace period (in seconds)
   int get remainingGracePeriodSeconds {
     if (!isInExtensionGracePeriod) return 0;
     return _extensionGracePeriodEnd!.difference(DateTime.now()).inSeconds;
   }
   
-  // Remaining time in cooldown (in minutes)
   int get remainingCooldownMinutes {
     if (!isInExtensionCooldown) return 0;
     return _extensionCooldownEnd!.difference(DateTime.now()).inMinutes + 1; // +1 to round up
   }
   
-  // Emergency mode getters
   bool get emergencyMode => _emergencyEvents.any((e) => e.isActive);
   List<EmergencyEvent> get emergencyEvents => _emergencyEvents;
   List<DateTime> get emergencyTimestamps => _emergencyEvents.map((e) => e.startedAt).toList();
 
-  // Update emergency events from sync
   Future<void> updateEmergencyEvents(List<EmergencyEvent> events) async {
     _emergencyEvents = events;
     await _storeEmergencyEvents();
@@ -156,15 +131,12 @@ class StrictModeService with ChangeNotifier {
     return _emergencyEvents.length < _maxEmergenciesPerWeek;
   }
 
-  // Enhanced getters that consider if any active routine is in strict mode AND emergency mode is off
   bool get effectiveBlockAppExit => _blockAppExit && _inStrictMode && !emergencyMode;
   bool get effectiveBlockDisablingSystemStartup => _blockDisablingSystemStartup && _inStrictMode && !emergencyMode;
   bool get effectiveBlockBrowsersWithoutExtension => _blockBrowsersWithoutExtension && _inStrictMode && !emergencyMode;
   bool get effectiveBlockChangingTimeSettings => _blockChangingTimeSettings && _inStrictMode && !emergencyMode;
   bool get effectiveBlockUninstallingApps => _blockUninstallingApps && _inStrictMode && !emergencyMode;
   bool get effectiveBlockInstallingApps => _blockInstallingApps && _inStrictMode && !emergencyMode;
-  
-  // Shared preferences keys
   static const String _blockAppExitKey = 'block_app_exit';
   static const String _blockDisablingSystemStartupKey = 'block_disabling_system_startup';
   static const String _blockBrowsersWithoutExtensionKey = 'block_browsers_without_extension';
@@ -172,34 +144,21 @@ class StrictModeService with ChangeNotifier {
   static const String _blockUninstallingAppsKey = 'block_uninstalling_apps';
   static const String _blockInstallingAppsKey = 'block_installing_apps';
   
-  // Start a grace period for extension reinstallation
   void startExtensionGracePeriod() {
-    // Check if in cooldown
     if (isInExtensionCooldown) {
       return;
     }
     
-    // Cancel any existing timer
     _gracePeriodTimer?.cancel();
     
-    // Set grace period end time
     _extensionGracePeriodEnd = DateTime.now().add(Duration(seconds: _extensionGracePeriodSeconds));
     
-    // Set cooldown end time
     _extensionCooldownEnd = DateTime.now().add(Duration(minutes: _extensionCooldownMinutes));
-    
-    // Set up a timer to handle grace period expiration
     _gracePeriodTimer = Timer(Duration(seconds: _extensionGracePeriodSeconds), () {
-      // Grace period has expired
       _extensionGracePeriodEnd = null;
       
-      // Notify general listeners
       notifyListeners();
-      
-      // Notify effective settings listeners
       _notifyEffectiveSettingsChanged();
-      
-      // Notify grace period expiration listeners
       _notifyGracePeriodExpired();
     });
     
@@ -209,40 +168,30 @@ class StrictModeService with ChangeNotifier {
     _notifyEffectiveSettingsChanged();
   }
   
-  // End the grace period early
   void endExtensionGracePeriod() {
-    // Cancel the grace period timer
     _gracePeriodTimer?.cancel();
     _gracePeriodTimer = null;
     
     _extensionGracePeriodEnd = null;
     notifyListeners();
     
-    // Grace period affects effective settings
     _notifyEffectiveSettingsChanged();
   }
   
-  // Cancel the grace period and go directly to cooldown
   void cancelGracePeriodWithCooldown() {
     logger.i("canceling grace period with cooldown");
-    // Cancel the grace period timer
     _gracePeriodTimer?.cancel();
     _gracePeriodTimer = null;
     
-    // End grace period
     _extensionGracePeriodEnd = null;
     
-    // Ensure cooldown is set
     _extensionCooldownEnd ??= DateTime.now().add(Duration(minutes: _extensionCooldownMinutes));
     
     notifyListeners();
-    
-    // Notify listeners about the changes
     _notifyEffectiveSettingsChanged();
     _notifyGracePeriodExpired();
   }
   
-  // Initialize the service by loading saved preferences
   Future<void> init() async {
     if (_initialized) return;
     
@@ -280,7 +229,6 @@ class StrictModeService with ChangeNotifier {
     _notifyEffectiveSettingsChanged();
   }
   
-  // Generic helper method to update a boolean setting
   Future<void> _updateBoolSetting(
     bool value,
     String key,
@@ -288,27 +236,17 @@ class StrictModeService with ChangeNotifier {
     void Function(bool) setter,
     {bool updateIOS = false}
   ) async {
-    // Skip if value hasn't changed
     if (getter() == value) return;
     
-    // Update shared preferences
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(key, value);
     
-    // Update local value
     setter(value);
     notifyListeners();
     
-    // Update iOS if needed
-    if (updateIOS && Platform.isIOS) {
-      _updateIOSStrictModeSettings();
-    }
-    
-    // Notify effective settings listeners
     _notifyEffectiveSettingsChanged();
   }
   
-  // Set desktop settings
   Future<void> setBlockAppExit(bool value) async {
     return _updateBoolSetting(
       value,
@@ -336,7 +274,6 @@ class StrictModeService with ChangeNotifier {
     );
   }
   
-  // Set iOS settings
   Future<void> setBlockChangingTimeSettings(bool value) async {
     return _updateBoolSetting(
       value,
@@ -367,40 +304,12 @@ class StrictModeService with ChangeNotifier {
     );
   }
   
-  // Helper method to update iOS strict mode settings
-  void _updateIOSStrictModeSettings() {
-    if (Platform.isIOS) {
-      // Use method channel directly to avoid circular dependency
-      const MethodChannel _channel = MethodChannel('com.routine.ios_channel');
-      try {
-        final Map<String, dynamic> settings = {
-          'blockChangingTimeSettings': blockChangingTimeSettings,
-          'blockUninstallingApps': blockUninstallingApps,
-          'blockInstallingApps': blockInstallingApps,
-          'inStrictMode': inStrictMode,
-        };
-        
-        // Send settings to iOS via platform channel
-        _channel.invokeMethod('updateStrictModeSettings', settings);
-        logger.i('Updated iOS strict mode settings via direct channel');
-        
-        // Also store in shared preferences with the required key
-        _storeStrictModeDataInSharedPreferences(settings);
-      } catch (e) {
-        logger.e('Error updating iOS strict mode settings: $e');
-      }
-    }
-  }
-  
-  // Method to toggle emergency mode
   Future<void> setEmergencyMode(bool value) async {
     if (emergencyMode == value) return;
     
-    // When enabling emergency mode, create new event
     if (value) {
       _emergencyEvents.add(EmergencyEvent(startedAt: DateTime.now()));
     } else {
-      // When disabling, find the active event and set its end time
       final activeEvent = _emergencyEvents.last;
       activeEvent.endedAt = DateTime.now();
     }
@@ -413,19 +322,6 @@ class StrictModeService with ChangeNotifier {
     SyncService().addJob(SyncJob(remote: true));
   }
 
-  // Helper method to store strict mode data in shared preferences
-  Future<void> _storeStrictModeDataInSharedPreferences(Map<String, dynamic> settings) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonString = jsonEncode(settings);
-      await prefs.setString('strictModeData', jsonString);
-      logger.i('Stored strict mode data in shared preferences');
-    } catch (e) {
-      logger.e('Error storing strict mode data in shared preferences: $e');
-    }
-  }
-  
-  // Generic helper method for setting with confirmation
   Future<bool> _setSettingWithConfirmation(
     BuildContext context,
     bool value,
@@ -433,13 +329,10 @@ class StrictModeService with ChangeNotifier {
     String message,
     Future<void> Function(bool) setter
   ) async {
-    // If trying to disable while in strict mode and not in emergency mode, block the change
     if (!value && _inStrictMode && !emergencyMode) {
       showStrictModeActiveDialog(context);
       return false;
     }
-    
-    // If enabling, show confirmation dialog
     if (value) {
       final bool? confirmed = await _showEnableConfirmationDialog(
         context, 
@@ -455,7 +348,6 @@ class StrictModeService with ChangeNotifier {
     return true;
   }
 
-  // Set desktop settings with confirmation when needed
   Future<bool> setBlockAppExitWithConfirmation(BuildContext context, bool value) async {
     return _setSettingWithConfirmation(
       context,
@@ -486,7 +378,6 @@ class StrictModeService with ChangeNotifier {
     );
   }
   
-  // Set iOS settings with confirmation when needed
   Future<bool> setBlockChangingTimeSettingsWithConfirmation(BuildContext context, bool value) async {
     return _setSettingWithConfirmation(
       context,
@@ -517,7 +408,6 @@ class StrictModeService with ChangeNotifier {
     );
   }
   
-  // Helper method to show a dialog when strict mode is active (public method)
   void showStrictModeActiveDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -539,7 +429,6 @@ class StrictModeService with ChangeNotifier {
   }
   
   
-  // Helper method to show a confirmation dialog when enabling a setting
   Future<bool?> _showEnableConfirmationDialog(BuildContext context, String title, String message) {
     return showDialog<bool>(
       context: context,
@@ -562,7 +451,6 @@ class StrictModeService with ChangeNotifier {
     );
   }
   
-  // Check if any strict mode setting is enabled (based on settings only)
   bool get isStrictModeEnabled {
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       return _blockAppExit || _blockDisablingSystemStartup || _blockBrowsersWithoutExtension;
@@ -572,7 +460,6 @@ class StrictModeService with ChangeNotifier {
     return false;
   }
   
-  // Check if any strict mode setting is effectively enabled (considering active routines)
   bool get isEffectiveStrictModeEnabled {
     if (_inStrictMode) {
       return true;
@@ -580,7 +467,6 @@ class StrictModeService with ChangeNotifier {
     return isStrictModeEnabled;
   }
   
-  // Get the current effective settings as a map
   Map<String, bool> getCurrentEffectiveSettings() {
     return {
       'blockAppExit': effectiveBlockAppExit,
@@ -595,31 +481,20 @@ class StrictModeService with ChangeNotifier {
     };
   }
   
-  // Notify all listeners of changes
   void _notifyEffectiveSettingsChanged() {
     final effectiveSettings = getCurrentEffectiveSettings();
-    
-    // Notify through the stream
     _effectiveSettingsStreamController.add(effectiveSettings);
-    
-    // Notify ChangeNotifier listeners
     notifyListeners();
   }
   
-  // Notify all grace period expiration listeners
   void _notifyGracePeriodExpired() {
-    // Notify through the stream
     _gracePeriodExpirationController.add(null);
-    
-    // Also notify general listeners since this affects app state
     notifyListeners();
   }
   
-  // Stream getters for different event types
   Stream<Map<String, bool>> get effectiveSettingsStream => _effectiveSettingsStreamController.stream;
   Stream<void> get gracePeriodExpirationStream => _gracePeriodExpirationController.stream;
   
-  // Clean up resources when the service is disposed
   @override
   void dispose() {
     _effectiveSettingsStreamController.close();
