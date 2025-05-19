@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/group.dart';
 import 'edit_block_group_page.dart';
+import 'package:Routine/setup.dart';
 
 class BlockGroupsPage extends StatefulWidget {
   const BlockGroupsPage({super.key});
@@ -68,7 +69,7 @@ class _BlockGroupsPageState extends State<BlockGroupsPage> {
         builder: (context) => EditBlockGroupPage(
           group: group,
           onSave: (updatedGroup) {
-            print('Saving group: ${updatedGroup.name}');
+            logger.i('Saving group: ${updatedGroup.name}');
             updatedGroup.save();
             Navigator.of(context).pop();
             setState(() {});

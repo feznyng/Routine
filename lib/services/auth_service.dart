@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:Routine/setup.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -42,8 +43,7 @@ class AuthService {
     try {
       refreshToken = await _storage.read(key: 'supabase_refresh_token');
     } catch (e) {
-      print('Failed to read refresh token from secure storage: $e');
-      // Continue without the refresh token
+      logger.e('Failed to read refresh token from secure storage: $e');
     }
     
     await Supabase.initialize(
@@ -61,15 +61,15 @@ class AuthService {
       try {
         final response = await _client.auth.refreshSession();
         if (response.session != null) {
-          print('Restored session for user: ${response.user?.email}');
+          logger.i('Restored session for user: ${response.user?.email}');
           initNotifications();
         }
       } catch (e) {
-        print('Failed to restore session: $e');
+        logger.i('Failed to restore session: $e');
         try {
           await _storage.delete(key: 'supabase_refresh_token');
         } catch (storageError) {
-          print('Failed to delete refresh token: $storageError');
+          logger.e('Failed to delete refresh token: $storageError');
           // Continue despite storage error
         }
       }
@@ -88,7 +88,7 @@ class AuthService {
         try {
           await _storage.write(key: 'supabase_refresh_token', value: session.refreshToken);
         } catch (e) {
-          print('Failed to write refresh token to secure storage: $e');
+          logger.i('Failed to write refresh token to secure storage: $e');
           // Continue despite storage error
         }
       } else {
@@ -99,29 +99,29 @@ class AuthService {
         try {
           await _storage.delete(key: 'supabase_refresh_token');
         } catch (e) {
-          print('Failed to delete refresh token from secure storage: $e');
+          logger.i('Failed to delete refresh token from secure storage: $e');
           // Continue despite storage error
         }
       }
       
       switch (event) {
         case AuthChangeEvent.signedIn:
-          print('User signed in: ${session?.user.email}');
+          logger.i('User signed in: ${session?.user.email}');
           break;
         case AuthChangeEvent.signedOut:
-          print('User signed out');
+          logger.i('User signed out');
           break;
         case AuthChangeEvent.userUpdated:
-          print('User updated: ${session?.user.email}');
+          logger.i('User updated: ${session?.user.email}');
           break;
         case AuthChangeEvent.passwordRecovery:
-          print('Password recovery requested');
+          logger.i('Password recovery requested');
           break;
         case AuthChangeEvent.tokenRefreshed:
-          print('Token refreshed for user: ${session?.user.email}');
+          logger.i('Token refreshed for user: ${session?.user.email}');
           break;
         default:
-          print('Auth event: $event');
+          logger.i('Auth event: $event');
       }
     });
     
@@ -149,7 +149,7 @@ class AuthService {
 
       return response.user != null;
     } on AuthException catch (e) {
-      print('Sign in error: ${e.message}');
+      logger.i('Sign in error: ${e.message}');
       if (e.message.contains('Invalid login credentials')) {
         throw 'Incorrect email or password';
       } else if (e.message.contains('Email not confirmed')) {
@@ -157,7 +157,7 @@ class AuthService {
       }
       throw 'Unable to sign in. Please try again later.';
     } catch (e) {
-      print('Unexpected sign in error: $e');
+      logger.i('Unexpected sign in error: $e');
       throw 'Unable to sign in. Please try again later.';
     }
   }
@@ -171,7 +171,7 @@ class AuthService {
       );
       return response.user != null;
     } on AuthException catch (e) {
-      print('Sign up error: ${e.message}');
+      logger.i('Sign up error: ${e.message}');
       if (e.message.contains('already registered')) {
         throw 'An account with this email already exists';
       } else if (e.message.contains('weak password')) {
@@ -179,7 +179,7 @@ class AuthService {
       }
       throw 'Unable to create account. Please try again later.';
     } catch (e) {
-      print('Unexpected sign up error: $e');
+      logger.i('Unexpected sign up error: $e');
       throw 'Unable to create account. Please try again later.';
     }
   }
@@ -189,7 +189,7 @@ class AuthService {
     try {
       await _client.auth.signOut();
     } catch (e) {
-      print('Sign out error: $e');
+      logger.i('Sign out error: $e');
       throw 'Unable to sign out. Please try again later.';
     }
   }
@@ -199,13 +199,13 @@ class AuthService {
     try {
       await _client.auth.resetPasswordForEmail(email, redirectTo: "${dotenv.env['SITE_URL']}/reset-password");
     } on AuthException catch (e) {
-      print('Password reset error: ${e.message}');
+      logger.i('Password reset error: ${e.message}');
       if (e.message.contains('not found')) {
         return;
       }
       throw 'Unable to send password reset email. Please try again later.';
     } catch (e) {
-      print('Unexpected password reset error: $e');
+      logger.i('Unexpected password reset error: $e');
       throw 'Unable to send password reset email. Please try again later.';
     }
   }
@@ -226,13 +226,13 @@ class AuthService {
         UserAttributes(password: newPassword),
       );
     } on AuthException catch (e) {
-      print('Password update error: ${e.message}');
+      logger.i('Password update error: ${e.message}');
       if (e.message.contains('Invalid login credentials')) {
         throw 'Current password is incorrect';
       }
       throw 'Unable to update password. Please try again later.';
     } catch (e) {
-      print('Unexpected password update error: $e');
+      logger.i('Unexpected password update error: $e');
       throw 'Unable to update password. Please try again later.';
     }
   }
@@ -253,7 +253,7 @@ class AuthService {
         UserAttributes(email: newEmail),
       );
     } on AuthException catch (e) {
-      print('Email update error: ${e.message}');
+      logger.i('Email update error: ${e.message}');
       if (e.message.contains('Invalid login credentials')) {
         throw 'Password is incorrect';
       } else if (e.message.contains('already registered')) {
@@ -261,7 +261,7 @@ class AuthService {
       }
       throw 'Unable to update email. Please try again later.';
     } catch (e) {
-      print('Unexpected email update error: $e');
+      logger.i('Unexpected email update error: $e');
       throw 'Unable to update email. Please try again later.';
     }
   }
@@ -295,25 +295,25 @@ class AuthService {
         
         // If token is expired or about to expire in the next 5 minutes, refresh it
         if (expiresAt != null && (expiresAt < now + 300)) {
-          print('Token expired or about to expire, refreshing...');
+          logger.i('Token expired or about to expire, refreshing...');
           await _client.auth.refreshSession();
         }
       }
     } catch (e) {
-      print('Error refreshing session: $e');
+      logger.i('Error refreshing session: $e');
       // If refresh fails, try to recover by reading from storage
       try {
         final refreshToken = await _storage.read(key: 'supabase_refresh_token');
         if (refreshToken != null) {
           try {
             await _client.auth.refreshSession();
-            print('Successfully refreshed session after error');
+            logger.i('Successfully refreshed session after error');
           } catch (refreshError) {
-            print('Failed to refresh session after error: $refreshError');
+            logger.i('Failed to refresh session after error: $refreshError');
           }
         }
       } catch (storageError) {
-        print('Failed to read refresh token from storage: $storageError');
+        logger.i('Failed to read refresh token from storage: $storageError');
       }
     }
   }

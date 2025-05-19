@@ -155,7 +155,6 @@ class AppDatabase extends _$AppDatabase {
     )..where(routines.deleted.equals(false));
 
     return routineWithGroups.watch().skipWhile((_) {
-      print("skip updates: $_skipUpdates");
       return _skipUpdates;
     }).map((rows) {
       final groupsByRoutine = <String, List<GroupEntry>>{};
@@ -255,8 +254,6 @@ class AppDatabase extends _$AppDatabase {
             updatedAt: Value(DateTime.now()),
             changes: Value([...group.changes, 'deleted']), // Mark 'deleted' as changed
           ));
-        
-        print('Restored group ${group.id} for device $deviceId');
       }
     });
   }

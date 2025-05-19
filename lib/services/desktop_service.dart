@@ -1,6 +1,5 @@
 import 'package:Routine/services/platform_service.dart';
 import 'package:Routine/util.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 import 'dart:async';
@@ -11,6 +10,7 @@ import 'sync_service.dart';
 import 'package:cron/cron.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:Routine/setup.dart';
 
 class InstalledApplication {
   final String name;
@@ -50,11 +50,11 @@ class DesktopService extends PlatformService {
     try {
       await platform.invokeMethod('engineReady');
     } catch (e) {
-      debugPrint('Failed to signal engine ready: $e');
+      logger.i('Failed to signal engine ready: $e');
     }
 
     Routine.watchAll().listen((routines) {
-      print("UPDATING ROUTINES");
+      logger.i("UPDATING ROUTINES");
       onRoutinesUpdated(routines);
     });
 
@@ -79,14 +79,14 @@ class DesktopService extends PlatformService {
     platform.setMethodCallHandler((call) async {
       switch (call.method) {
         case 'systemWake':
-          debugPrint('=== SYSTEM WAKE EVENT ===');
+          logger.i('=== SYSTEM WAKE EVENT ===');
           await SyncService().sync();
           await refresh();
-          debugPrint('=== SYSTEM WAKE EVENT PROCESSING COMPLETE ===');
+          logger.i('=== SYSTEM WAKE EVENT PROCESSING COMPLETE ===');
 
           return null;
         default:
-          debugPrint('Unknown method call: ${call.method}');
+          logger.i('Unknown method call: ${call.method}');
           throw PlatformException(
             code: 'Unimplemented',
             message: "Method ${call.method} not implemented",
@@ -196,7 +196,7 @@ class DesktopService extends PlatformService {
     // Check if strict mode is enabled and we're trying to disable startup
     final strictModeService = StrictModeService.instance;
     if (!enabled && strictModeService.blockDisablingSystemStartup) {
-      debugPrint('Strict mode is enabled, cannot disable startup');
+      logger.i('Strict mode is enabled, cannot disable startup');
       return;
     }
     
@@ -210,22 +210,22 @@ class DesktopService extends PlatformService {
         );
         
         final bool before = await launchAtStartup.isEnabled();
-        debugPrint('Setting start on login to $before');
+        logger.i('Setting start on login to $before');
         if (enabled) {
           await launchAtStartup.enable();
         } else {
           await launchAtStartup.disable();
         }
         final bool result = await launchAtStartup.isEnabled();
-        debugPrint('set start on login to $result');
+        logger.i('set start on login to $result');
       } catch (e) {
-        debugPrint('Error setting start on login: $e');
+        logger.i('Error setting start on login: $e');
       }
     } else {
       try {
         await platform.invokeMethod('setStartOnLogin', enabled);
       } catch (e) {
-        debugPrint('Failed to set start on login: $e');
+        logger.i('Failed to set start on login: $e');
       }
     }
   }
@@ -250,7 +250,7 @@ class DesktopService extends PlatformService {
         final bool enabled = await platform.invokeMethod('getStartOnLogin');
         return enabled;
       } catch (e) {
-        debugPrint('Failed to get start on login status: $e');
+        logger.i('Failed to get start on login status: $e');
         return false;
       }
     }
@@ -289,7 +289,7 @@ class DesktopService extends PlatformService {
           }
         }
       } catch (e) {
-        debugPrint('Error getting running applications: $e');
+        logger.i('Error getting running applications: $e');
       }
     } else if (Platform.isMacOS) {  
       Directory appDir = Directory('/Applications');

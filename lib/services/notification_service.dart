@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:Routine/setup.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -63,7 +64,7 @@ class NotificationService {
       sound: true,
     );
 
-    print('User granted permission: ${settings.authorizationStatus}');
+    logger.i('User granted permission: ${settings.authorizationStatus}');
 
     // TODO: handle failure gracefully here
 
@@ -74,7 +75,7 @@ class NotificationService {
         await updateToken(fcmToken);
       })
       .onError((err) {
-        print("failed to retrieve fcm token $err");
+        logger.i("failed to retrieve fcm token $err");
       });
 
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);

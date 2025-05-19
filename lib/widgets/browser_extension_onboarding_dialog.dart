@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'package:Routine/setup.dart';
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
 import '../services/desktop_service.dart';
@@ -122,7 +122,7 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('Error detecting browsers: $e');
+      logger.i('Error detecting browsers: $e');
       setState(() {
         _detectedBrowsers = [];
         _isLoading = false;
@@ -219,7 +219,7 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
   // Attempt to connect to the Native Messaging Host
   Future<void> _attemptConnection() async {
     if (!BrowserExtensionService.instance.isExtensionConnected) {
-      debugPrint('Attempting to connect to Native Messaging Host...');
+      logger.i('Attempting to connect to Native Messaging Host...');
       await BrowserExtensionService.instance.connectToNMH();
     }
   }

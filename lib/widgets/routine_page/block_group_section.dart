@@ -73,7 +73,7 @@ class _BlockGroupSectionState extends State<BlockGroupSection> {
     
     // Check iOS block group limit only when adding a new group on iOS
 
-    print("toggle group: $group ${widget.routine.saved} ${currentDevice.type}");
+    logger.i("toggle group: $group ${widget.routine.saved} ${currentDevice.type}");
 
     if ((group == null || !widget.routine.saved) && currentDevice.type == DeviceType.ios) {
       final allRoutines = await Routine.getAll();

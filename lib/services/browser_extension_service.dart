@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io' show Directory, File, Platform, Process, ProcessResult, Socket, SocketException;
 import 'package:path_provider/path_provider.dart';
@@ -9,6 +8,7 @@ import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 import 'dart:typed_data';
 import 'dart:async';
+import 'package:Routine/setup.dart';
 
 class BrowserExtensionService {
   // Singleton instance
@@ -93,7 +93,7 @@ class BrowserExtensionService {
         }
       }
     } catch (e) {
-      debugPrint('Error detecting browsers: $e');
+      logger.i('Error detecting browsers: $e');
     }
     
     return supportedBrowsers;
@@ -118,7 +118,7 @@ class BrowserExtensionService {
       final File nmhFile = File(nmhPath);
       return await nmhFile.exists();
     } catch (e) {
-      debugPrint('Error checking if NMH binary is installed: $e');
+      logger.i('Error checking if NMH binary is installed: $e');
       return false;
     }
   }
@@ -128,7 +128,7 @@ class BrowserExtensionService {
     if (Platform.isMacOS) {
       final ProcessResult result = await Process.run('uname', ['-m']);
       final String arch = result.stdout.toString().trim();
-      debugPrint('Detected architecture: $arch');
+      logger.i('Detected architecture: $arch');
       return arch == 'arm64' ? 'assets/extension/native_macos_arm64' : 'assets/extension/native_macos_x86_64';
     } else if (Platform.isWindows) {
       return 'assets/extension/native_windows.exe';
@@ -169,47 +169,47 @@ class BrowserExtensionService {
         // Get the full path to the asset in the App.framework
         final String bundlePath = Platform.resolvedExecutable
             .replaceAll('/MacOS/Routine', '/Frameworks/App.framework/Resources/flutter_assets/$assetPath');
-        debugPrint('Using binary from app bundle: $bundlePath');
+        logger.i('Using binary from app bundle: $bundlePath');
         
         // Create manifest pointing to the binary in the app bundle
         final Map<String, dynamic> manifest = _createManifestContent(bundlePath);
         final String manifestJson = json.encode(manifest);
-        debugPrint('Manifest content with bundle path: $manifestJson');
+        logger.i('Manifest content with bundle path: $manifestJson');
         
         try {
-          debugPrint('Showing NSOpenPanel to save manifest');
+          logger.i('Showing NSOpenPanel to save manifest');
           final bool result = await _channel.invokeMethod('saveNativeMessagingHostManifest', {
             'content': manifestJson
           });
           
           if (result) {
-            debugPrint('Manifest installation successful');
+            logger.i('Manifest installation successful');
             Timer(const Duration(seconds: 2), () => connectToNMH());
             return true;
           } else {
-            debugPrint('Manifest installation failed');
+            logger.i('Manifest installation failed');
             return false;
           }
         } catch (e) {
-          debugPrint('Error saving manifest: $e');
+          logger.i('Error saving manifest: $e');
           return false;
         }
       } else if (Platform.isWindows) {
         final String nmhPath = await _getTargetBinaryPath();
-        debugPrint('Native messaging host binary path: $nmhPath');
+        logger.i('Native messaging host binary path: $nmhPath');
         
         final Map<String, dynamic> manifest = _createManifestContent(nmhPath);
         final String manifestJson = json.encode(manifest);
-        debugPrint('Manifest content: $manifestJson');
+        logger.i('Manifest content: $manifestJson');
         
         const String mozillaRegistryPath = 
             'SOFTWARE\\Mozilla\\NativeMessagingHosts\\com.solidsoft.routine.NativeMessagingHost';
-        debugPrint('Registry path: $mozillaRegistryPath');
+        logger.i('Registry path: $mozillaRegistryPath');
             
         final Pointer<HKEY> hKey = calloc<HKEY>();
         
         try {
-          debugPrint('Creating registry key...');
+          logger.i('Creating registry key...');
           final int result = RegCreateKeyEx(
             HKEY_CURRENT_USER,
             TEXT(mozillaRegistryPath),
@@ -223,7 +223,7 @@ class BrowserExtensionService {
           );
           
           if (result != ERROR_SUCCESS) {
-            debugPrint('Failed to create registry key, error code: $result');
+            logger.i('Failed to create registry key, error code: $result');
             return false;
           }
           
@@ -231,7 +231,7 @@ class BrowserExtensionService {
           // First, create a temporary file with the manifest
           final tempDir = await getTemporaryDirectory();
           final manifestFile = File('${tempDir.path}\\routine_manifest.json');
-          debugPrint('Creating manifest file at: ${manifestFile.path}');
+          logger.i('Creating manifest file at: ${manifestFile.path}');
           
           await manifestFile.writeAsString(manifestJson);
           
@@ -240,7 +240,7 @@ class BrowserExtensionService {
             // Set the default value to the path of the manifest file
             final manifestPath = manifestFile.path;
             final Pointer<Utf16> manifestPathUtf16 = TEXT(manifestPath);
-            debugPrint('Setting registry value to manifest path: $manifestPath');
+            logger.i('Setting registry value to manifest path: $manifestPath');
             
             final int setValueResult = RegSetValueEx(
               hKey.value,
@@ -252,16 +252,16 @@ class BrowserExtensionService {
             );
             
             if (setValueResult != ERROR_SUCCESS) {
-              debugPrint('Failed to set registry value, error code: $setValueResult');
+              logger.i('Failed to set registry value, error code: $setValueResult');
               return false;
             }
             
             // Close the registry key
             RegCloseKey(hKey.value);
-            debugPrint('Windows manifest installation successful');
+            logger.i('Windows manifest installation successful');
             return true;
           } else {
-            debugPrint('Failed to create manifest file');
+            logger.i('Failed to create manifest file');
             return false;
           }
         } finally {
@@ -272,25 +272,25 @@ class BrowserExtensionService {
         // On Linux, the manifest goes in ~/.mozilla/native-messaging-hosts/
         final String homeDir = Platform.environment['HOME'] ?? '';
         final String manifestDir = '$homeDir/.mozilla/native-messaging-hosts';
-        debugPrint('Linux manifest directory: $manifestDir');
+        logger.i('Linux manifest directory: $manifestDir');
         
         // Get the path to the native messaging host executable
         final Directory appDir = await getApplicationSupportDirectory();
         final String nmhPath = '${appDir.path}/routine-nmh';
-        debugPrint('Native messaging host binary path: $nmhPath');
+        logger.i('Native messaging host binary path: $nmhPath');
         
         // Create directories if they don't exist
         final Directory dir = Directory(manifestDir);
         if (!await dir.exists()) {
-          debugPrint('Creating manifest directory: $manifestDir');
+          logger.i('Creating manifest directory: $manifestDir');
           await dir.create(recursive: true);
         } else {
-          debugPrint('Manifest directory already exists');
+          logger.i('Manifest directory already exists');
         }
         
         // Create the manifest file
         final File manifestFile = File('$manifestDir/com.solidsoft.routine.NativeMessagingHost.json');
-        debugPrint('Creating manifest file at: ${manifestFile.path}');
+        logger.i('Creating manifest file at: ${manifestFile.path}');
         
         // Example manifest content
         final Map<String, dynamic> manifest = {
@@ -302,18 +302,18 @@ class BrowserExtensionService {
         };
         
         final String manifestJson = json.encode(manifest);
-        debugPrint('Manifest content: $manifestJson');
+        logger.i('Manifest content: $manifestJson');
         
         await manifestFile.writeAsString(manifestJson);
         
         final bool exists = await manifestFile.exists();
-        debugPrint('Linux manifest installation ${exists ? "successful" : "failed"}');
+        logger.i('Linux manifest installation ${exists ? "successful" : "failed"}');
         return exists;
       }
       
       return false;
     } catch (e) {
-      debugPrint('Error installing native messaging host: $e');
+      logger.i('Error installing native messaging host: $e');
       return false;
     }
   }
@@ -340,7 +340,7 @@ class BrowserExtensionService {
       
       return false;
     } catch (e) {
-      debugPrint('Error installing browser extension: $e');
+      logger.i('Error installing browser extension: $e');
       return false;
     }
   }
@@ -354,7 +354,7 @@ class BrowserExtensionService {
   Future<void> connectToNMH() async {
     try {
       _socket = await Socket.connect('127.0.0.1', 54322);
-      debugPrint('Connected to NMH TCP server');
+      logger.i('Connected to NMH TCP server');
 
       setExtensionConnected(true);
 
@@ -383,9 +383,9 @@ class BrowserExtensionService {
               try {
                 final String message = utf8.decode(messageBytes);
                 final Map<String, dynamic> decoded = json.decode(message);
-                debugPrint('Received from NMH: $decoded');
+                logger.i('Received from NMH: $decoded');
               } catch (e) {
-                debugPrint('Error decoding message: $e');
+                logger.i('Error decoding message: $e');
               }
             } else {
               break;
@@ -393,20 +393,20 @@ class BrowserExtensionService {
           }
         },
         onError: (error) {
-          debugPrint('Socket error: $error');
+          logger.i('Socket error: $error');
           setExtensionConnected(false);
         },
         onDone: () {
-          debugPrint('Socket closed');
+          logger.i('Socket closed');
           setExtensionConnected(false);
         },
       );
     } on SocketException catch (e) {
       setExtensionConnected(false);
       if (e.osError?.errorCode == 61) {
-        debugPrint('NMH service is not running. The app will continue without NMH features.');
+        logger.i('NMH service is not running. The app will continue without NMH features.');
       } else {
-        debugPrint('Socket connection error: ${e.message}. The app will continue without NMH features.');
+        logger.i('Socket connection error: ${e.message}. The app will continue without NMH features.');
       }
     }
   }
@@ -416,7 +416,7 @@ class BrowserExtensionService {
      if (!isExtensionConnected) {
       await connectToNMH();
       if (!isExtensionConnected) {
-        debugPrint('Failed to connect to NMH, skipping update');
+        logger.i('Failed to connect to NMH, skipping update');
         return;
       }
     }
@@ -437,7 +437,7 @@ class BrowserExtensionService {
       ]));
       await _socket?.flush();
     } catch (e) {
-      debugPrint('Failed to send message to NMH: $e');
+      logger.i('Failed to send message to NMH: $e');
     }
   }
 

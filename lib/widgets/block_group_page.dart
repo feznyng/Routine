@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'block_group_editor.dart';
 import 'block_groups_page.dart';
 import '../models/group.dart';
+import 'package:Routine/setup.dart';
 
 class BlockGroupPage extends StatefulWidget {
   final Group? selectedGroup;
@@ -162,7 +163,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                           // Store current selection before navigating
                           final currentValue = _blockGroups.any((group) => group.id == _selectedGroup.id) ? _selectedGroup.id : null;
                           final Group currentGroup = _selectedGroup;
-                          print('Before navigation - selected value: $currentValue');
+                          logger.i('Before navigation - selected value: $currentValue');
                           
                           final Group? result = await Navigator.of(context).push<Group>(
                             MaterialPageRoute<Group>(
@@ -171,14 +172,14 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                           );
                           
                           if (result != null && mounted) {
-                            print('Returned with result: ${result.id}');
+                            logger.i('Returned with result: ${result.id}');
                             setState(() {
                               _selectedGroup = result;
                               // Force dropdown to rebuild with new key
                               _dropdownKey = UniqueKey();
                             });
                           } else if (mounted) {
-                            print('Returned without result, restoring: $currentValue');
+                            logger.i('Returned without result, restoring: $currentValue');
                             // Force rebuild with the previous selection
                             setState(() {
                               // Ensure we're using the same group instance
@@ -251,14 +252,14 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                   selectedCategories: _selectedGroup.categories,
                   blockSelected: !_selectedGroup.allow,
                   onBlockModeChanged: (value) {
-                    print('Block mode changed: $value');
+                    logger.i('Block mode changed: $value');
                     setState(() {
                       _selectedGroup.allow = !value;
                     });
                   },
                   onSave: (apps, sites, categories) {
                     setState(() {
-                      print('onSave: $apps, $sites, $categories');
+                      logger.i('onSave: $apps, $sites, $categories');
                       _selectedGroup.apps = apps;
                       _selectedGroup.sites = sites;
                       _selectedGroup.categories = categories ?? [];

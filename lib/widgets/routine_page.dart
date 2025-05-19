@@ -39,7 +39,7 @@ class _RoutinePageState extends State<RoutinePage> {
     _loadDevices();
     _refreshRoutine();
 
-    print(_routine.changes);
+    logger.i(_routine.changes);
   }
 
   void _initializeRoutine() {

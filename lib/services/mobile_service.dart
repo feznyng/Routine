@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:Routine/services/platform_service.dart';
 import 'package:Routine/services/sync_service.dart';
+import 'package:Routine/setup.dart';
 import 'package:flutter/services.dart';
 import '../models/routine.dart';
 import 'strict_mode_service.dart';
@@ -20,12 +21,12 @@ class MobileService extends PlatformService {
   
   @override
   Future<void> init() async {
-    print("INITING");
+    logger.i("INITING");
         
     checkAndRequestFamilyControlsAuthorization();
     
     _routineSubscription = Routine.watchAll().listen((routines) {
-      print("UPDATING ROUTINES REMOTE");
+      logger.i("UPDATING ROUTINES REMOTE");
       _sendRoutines(routines, false);
 
       // we need to evaluate strict mode in case a strict routine is active after changes
@@ -33,7 +34,7 @@ class MobileService extends PlatformService {
     });
     
     _strictModeSubscription = StrictModeService.instance.effectiveSettingsStream.listen((_) {
-      print("UPDATING STRICT MODE");
+      logger.i("UPDATING STRICT MODE");
       _sendStrictModeSettings();
     });
     
@@ -66,7 +67,7 @@ class MobileService extends PlatformService {
       
       await _channel.invokeMethod('updateStrictModeSettings', settings);
     } catch (e) {
-      print('Error sending strict mode settings to iOS: $e');
+      logger.i('Error sending strict mode settings to iOS: $e');
     }
   }
 
@@ -110,7 +111,7 @@ class MobileService extends PlatformService {
             
       await _channel.invokeMethod(immediate ? 'immediateUpdateRoutines' : 'updateRoutines', {'routines': routineMaps});
     } catch (e) {
-      print('Error sending routines to iOS: $e');
+      logger.i('Error sending routines to iOS: $e');
     }
   }
   
@@ -123,7 +124,7 @@ class MobileService extends PlatformService {
       final bool isAuthorized = await _channel.invokeMethod('checkFamilyControlsAuthorization');
       return isAuthorized;
     } catch (e) {
-      print('Error checking FamilyControls authorization: $e');
+      logger.i('Error checking FamilyControls authorization: $e');
       return false;
     }
   }
@@ -135,7 +136,7 @@ class MobileService extends PlatformService {
       final bool isAuthorized = await _channel.invokeMethod('requestFamilyControlsAuthorization');
       return isAuthorized;
     } catch (e) {
-      print('Error requesting FamilyControls authorization: $e');
+      logger.i('Error requesting FamilyControls authorization: $e');
       return false;
     }
   }

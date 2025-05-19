@@ -8,6 +8,7 @@ import 'app_site_selector.dart';
 import 'browser_extension_onboarding_dialog.dart';
 import '../services/browser_extension_service.dart';
 import '../services/mobile_service.dart';
+import 'package:Routine/setup.dart';
 
 class BlockGroupEditor extends StatefulWidget {
   final List<String> selectedApps;
@@ -383,7 +384,7 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
                       ),
                     ),
                     onSelectionChanged: _inLockdown ? null : (Set<bool> newSelection) {
-                      print('newSelection: $newSelection');
+                      logger.i('newSelection: $newSelection');
                       setState(() {
                         _blockSelected = newSelection.first;
                       });

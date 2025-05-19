@@ -7,6 +7,7 @@ import 'dart:async';
 import '../models/routine.dart';
 import '../models/emergency_event.dart';
 import '../services/sync_service.dart';
+import 'package:Routine/setup.dart';
 
 class StrictModeService with ChangeNotifier {
   static final StrictModeService _instance = StrictModeService._internal();
@@ -85,7 +86,7 @@ class StrictModeService with ChangeNotifier {
     for (final routine in routines) {
 
       if (routine.name == "AllowRoutine") {
-        print(routine.groups.keys);
+        logger.i(routine.groups.keys);
       }
       if (routine.getGroup()?.id == groupId && routine.isActive && routine.strictMode) {
         lockedDown = true;
@@ -229,7 +230,7 @@ class StrictModeService with ChangeNotifier {
   
   // Cancel the grace period and go directly to cooldown
   void cancelGracePeriodWithCooldown() {
-    print("canceling grace period with cooldown");
+    logger.i("canceling grace period with cooldown");
     // Cancel the grace period timer
     _gracePeriodTimer?.cancel();
     _gracePeriodTimer = null;
@@ -389,12 +390,12 @@ class StrictModeService with ChangeNotifier {
         
         // Send settings to iOS via platform channel
         _channel.invokeMethod('updateStrictModeSettings', settings);
-        print('Updated iOS strict mode settings via direct channel');
+        logger.i('Updated iOS strict mode settings via direct channel');
         
         // Also store in shared preferences with the required key
         _storeStrictModeDataInSharedPreferences(settings);
       } catch (e) {
-        print('Error updating iOS strict mode settings: $e');
+        logger.i('Error updating iOS strict mode settings: $e');
       }
     }
   }
@@ -426,9 +427,9 @@ class StrictModeService with ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final jsonString = jsonEncode(settings);
       await prefs.setString('strictModeData', jsonString);
-      print('Stored strict mode data in shared preferences');
+      logger.i('Stored strict mode data in shared preferences');
     } catch (e) {
-      print('Error storing strict mode data in shared preferences: $e');
+      logger.i('Error storing strict mode data in shared preferences: $e');
     }
   }
   

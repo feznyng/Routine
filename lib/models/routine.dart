@@ -207,7 +207,6 @@ class Routine implements Syncable {
   }
 
   Future<void> unsnooze() async {
-    print("unsnoozing");
     _snoozedUntil = null;
     await save();
   }

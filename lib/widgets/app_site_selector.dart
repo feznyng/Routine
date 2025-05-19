@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:Routine/setup.dart';
 
 class AppSiteSelectorPage extends StatefulWidget {
   final List<String> selectedApps;
@@ -194,13 +195,13 @@ class _AppSiteSelectorState extends State<AppSiteSelector> {
 
   Future<void> _handleMethodCall(MethodCall call) async {
     if (_viewId == null) return;
-    print("handleMethodCall: ${call.method}");
+    logger.i("handleMethodCall: ${call.method}");
     switch (call.method) {
       case 'onSelectionChanged':
-       print("onSelectionChanged: ${call.arguments}");
-        print("apps: ${call.arguments['apps']} = ${call.arguments['apps'].runtimeType}");
-        print("sites: ${call.arguments['sites']} = ${call.arguments['sites'].runtimeType}");
-        print("categories: ${call.arguments['categories']} = ${call.arguments['categories']?.runtimeType}");
+       logger.i("onSelectionChanged: ${call.arguments}");
+        logger.i("apps: ${call.arguments['apps']} = ${call.arguments['apps'].runtimeType}");
+        logger.i("sites: ${call.arguments['sites']} = ${call.arguments['sites'].runtimeType}");
+        logger.i("categories: ${call.arguments['categories']} = ${call.arguments['categories']?.runtimeType}");
 
         final selectedApps = List<String>.from(call.arguments['apps'] ?? []);
         final selectedSites = List<String>.from(call.arguments['sites'] ?? []);
@@ -210,7 +211,7 @@ class _AppSiteSelectorState extends State<AppSiteSelector> {
         widget.onSelectionChanged(selectedApps, selectedSites, selectedCategories);
         break;
       default:
-        print('Unhandled method ${call.method}');
+        logger.i('Unhandled method ${call.method}');
     }
   }
 }

@@ -64,13 +64,13 @@ class SyncService {
         .onBroadcast( 
           event: 'sync', 
           callback: (payload, [_]) {
-            print('received remote sync request from ${payload['source']}');
+            logger.i('received remote sync request from ${payload['source']}');
             addJob(SyncJob(remote: true));
           }
         )
         .subscribe();
     } catch (e) {
-      print('Error setting up realtime sync: $e');
+      logger.i('Error setting up realtime sync: $e');
       // We'll try again later when the app resumes or when auth state changes
     }
   }
@@ -87,14 +87,14 @@ class SyncService {
         );
       }
     } catch (e) {
-      print('Error notifying peers: $e');
+      logger.i('Error notifying peers: $e');
       setupRealtimeSync();
     }
 
     try {
       _client.functions.invoke('push', body: {'content': 'sample message', 'source_id': currDevice.id});
     } catch (e) {
-      print('Error sending fcm message: $e');
+      logger.i('Error sending fcm message: $e');
     }
   }
   
@@ -158,12 +158,12 @@ class SyncService {
   }
 
   Future<bool> sync({bool full = false}) async {
-    print("syncing...");
+    logger.i("syncing...");
 
     _pendingJobs.clear();
     final result = await _sync(full: full);
     
-    print("finished syncing - success = ${result != null}");
+    logger.i("finished syncing - success = ${result != null}");
 
     return result != null;
   }
@@ -265,7 +265,7 @@ class SyncService {
           final remoteDevices = await _client.from('devices').select().eq('user_id', userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
           final localDevices = await db.getDevicesById(remoteDevices.map((device) => device['id'] as String).toList());
           final localDeviceMap = {for (final device in localDevices) device.id: device};
-          print("remote devices: $remoteDevices");
+          logger.i("remote devices: $remoteDevices");
 
           for (final device in remoteDevices) {
             final overwriteMap = {};
@@ -326,7 +326,7 @@ class SyncService {
           final remoteGroups = await _client.from('groups').select().eq('user_id', userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
           final localGroups = await db.getGroupsById(remoteGroups.map((group) => group['id'] as String).toList());
           final localGroupMap = {for (final group in localGroups) group.id: group};
-          print("remote devices: $remoteGroups");
+          logger.i("remote devices: $remoteGroups");
           for (final group in remoteGroups) {            
             final overwriteMap = {};
             final localGroup = localGroupMap[group['id']];
@@ -377,7 +377,7 @@ class SyncService {
           final localRoutines = await db.getRoutinesById(remoteRoutines.map((routine) => routine['id'] as String).toList());
           final localRoutineMap = {for (final routine in localRoutines) routine.id: routine};
           
-          print("remote routines: $remoteRoutines");
+          logger.i("remote routines: $remoteRoutines");
           for (final routine in remoteRoutines) {            
             final overwriteMap = {};
             final localRoutine = localRoutineMap[routine['id']];
@@ -452,7 +452,7 @@ class SyncService {
       // push devices
       final localDevices = await db.getDeviceChanges(lastPulledAt);
 
-      print("local devices: $localDevices");
+      logger.i("local devices: $localDevices");
       final remoteDevices = await _client
         .from('devices')
         .select()
@@ -463,14 +463,14 @@ class SyncService {
       for (final device in localDevices) {
         final remoteDevice = remoteDeviceMap[device.id];
         if (remoteDevice != null && remoteDevice['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
-          print("device conflict detected - cancelling sync");
+          logger.i("device conflict detected - cancelling sync");
           return null;
         }
       }
 
       // push groups    
       final localGroups = await db.getGroupChanges(lastPulledAt);
-      print("local groups: $localGroups");
+      logger.i("local groups: $localGroups");
       final remoteGroups = await _client
         .from('groups')
         .select()
@@ -482,14 +482,14 @@ class SyncService {
       for (final group in localGroups) {
         final remoteGroup = remoteGroupMap[group.id];
         if (remoteGroup != null && remoteGroup['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
-          print("group conflict detected - cancelling sync");
+          logger.i("group conflict detected - cancelling sync");
           return null;
         }
       }
 
       // push routines
       final localRoutines = await db.getRoutineChanges(lastPulledAt);
-      print("local routines: $localRoutines");
+      logger.i("local routines: $localRoutines");
       final remoteRoutines = await _client
         .from('routines')
         .select()
@@ -500,7 +500,7 @@ class SyncService {
       for (final routine in localRoutines) {
         final remoteRoutine = remoteRoutineMap[routine.id];
         if (remoteRoutine != null && remoteRoutine['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
-          print("routine conflict detected - cancelling sync");
+          logger.i("routine conflict detected - cancelling sync");
           return null;
         }
       }
@@ -509,7 +509,7 @@ class SyncService {
       bool updatedCurrDevice = false;
       for (final device in localDevices) {
         madeRemoteChange = true;
-        print("syncing device ${device.changes}");
+        logger.i("syncing device ${device.changes}");
 
         updatedCurrDevice = updatedCurrDevice || device.id == currDevice.id;          
 
@@ -540,7 +540,7 @@ class SyncService {
 
       // persist groups
       for (final group in localGroups) {
-        print("syncing group ${group.changes}");
+        logger.i("syncing group ${group.changes}");
         madeRemoteChange = true;
         await _client
         .from('groups')
@@ -558,7 +558,7 @@ class SyncService {
 
       // persist routines
       for (final routine in localRoutines) {       
-        print("syncing routine ${routine.changes}");
+        logger.i("syncing routine ${routine.changes}");
 
         madeRemoteChange = true;
         await _client
@@ -624,7 +624,7 @@ class SyncService {
 
       return SyncResult();
     } catch (e) {
-      print('Error during sync: $e');
+      logger.i('Error during sync: $e');
       return null;
     }
   }
