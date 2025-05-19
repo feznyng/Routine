@@ -8,12 +8,22 @@ import Sentry
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
+    // Timer for checking extension errors
+    var extensionErrorCheckTimer: Timer?
     let manager = RoutineManager()
     
     override func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
+        // Start periodic check for extension errors
+        startExtensionErrorChecking()
+        
+        // Register for app lifecycle notifications
+        NotificationCenter.default.addObserver(self, 
+                                               selector: #selector(handleAppDidBecomeActive), 
+                                               name: UIApplication.didBecomeActiveNotification, 
+                                               object: nil)
         let controller = window?.rootViewController as! FlutterViewController
         let factory = AppSiteSelectorFactory(messenger: controller.binaryMessenger)
         registrar(forPlugin: "AppSiteSelectorPlugin")?.register(
@@ -213,5 +223,72 @@ import Sentry
         
         GeneratedPluginRegistrant.register(with: self)
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    }
+    
+    // MARK: - Extension Error Handling
+    
+    /// Starts periodic checking for extension errors
+    func startExtensionErrorChecking() {
+        // Check for extension errors every 30 seconds
+        extensionErrorCheckTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
+            self?.checkAndReportExtensionErrors()
+        }
+        
+        // Also check immediately
+        checkAndReportExtensionErrors()
+    }
+    
+    /// Checks for and reports any errors logged by the extension
+    /// - Parameter flush: If true, will force flush Sentry events after reporting
+    func checkAndReportExtensionErrors(flush: Bool = false) {
+        if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker") {
+            if let errors = sharedDefaults.array(forKey: "extensionErrors") as? [String], !errors.isEmpty {
+                for errorJson in errors {
+                    do {
+                        if let data = errorJson.data(using: .utf8),
+                           let errorDict = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                            
+                            let context = errorDict["context"] as? String ?? "Unknown extension context"
+                            let errorMessage = errorDict["error"] as? String ?? "Unknown extension error"
+                            let timestamp = errorDict["timestamp"] as? Double ?? Date().timeIntervalSince1970
+                            
+                            let event = Event(level: .error)
+                            event.message = SentryMessage(formatted: "\(context): \(errorMessage)")
+                            event.timestamp = Date(timeIntervalSince1970: timestamp)
+                            
+                            SentrySDK.capture(event: event)
+                            os_log("Reported extension error to Sentry: %{public}s", "\(context): \(errorMessage)")
+                        }
+                    } catch {
+                        os_log("Failed to parse extension error: %{public}s", error.localizedDescription)
+                    }
+                }
+                
+                sharedDefaults.removeObject(forKey: "extensionErrors")
+                sharedDefaults.synchronize()
+                
+                if flush {
+                    os_log("Flushing Sentry events")
+                    SentrySDK.flush(timeout: 5)
+                }
+            } else if flush {
+                os_log("No extension errors found, but flushing any pending Sentry events")
+                SentrySDK.flush(timeout: 5)
+            }
+        }
+    }
+    
+    deinit {
+        extensionErrorCheckTimer?.invalidate()
+        extensionErrorCheckTimer = nil
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    // MARK: - App Lifecycle
+    
+    @objc func handleAppDidBecomeActive() {
+        // Immediately check for and report any extension errors when app becomes active
+        os_log("App became active, checking for extension errors")
+        checkAndReportExtensionErrors(flush: true)
     }
 }

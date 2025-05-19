@@ -100,7 +100,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		A7E6A3D12D72935C0029FD40 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		A7E6A3D12D72935C0029FD40 /* Exceptions for "ActivityMonitor" folder in "ActivityMonitor" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -110,7 +110,18 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		A7E6A3C52D72935C0029FD40 /* ActivityMonitor */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (A7E6A3D12D72935C0029FD40 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = ActivityMonitor; sourceTree = "<group>"; };
+		A7E6A3C52D72935C0029FD40 /* ActivityMonitor */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A7E6A3D12D72935C0029FD40 /* Exceptions for "ActivityMonitor" folder in "ActivityMonitor" target */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = ActivityMonitor;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
