@@ -55,8 +55,8 @@ class DesktopService extends PlatformService {
   Future<void> init() async {
     try {
       await platform.invokeMethod('engineReady');
-    } catch (e) {
-      logger.e('Failed to signal engine ready: $e');
+    } catch (e, st) {
+      Util.report('Failed to signal engine start', e, st);
     }
 
     _routineSubscription = Routine.watchAll().listen((routines) {
@@ -234,16 +234,16 @@ class DesktopService extends PlatformService {
         }
         final bool result = await launchAtStartup.isEnabled();
         if (result == enabled) {
-          logger.e('failed to set launch at startup');
+          Util.report('Failed to set launch at startup to correct value', Exception('start up setting change failure'), null);
         }
-      } catch (e) {
-        logger.e('Error setting start on login: $e');
+      } catch (e, st) {
+        Util.report('error setting start on login to $enabled', e, st);
       }
     } else {
       try {
         await platform.invokeMethod('setStartOnLogin', enabled);
-      } catch (e) {
-        logger.e('Failed to set start on login: $e');
+      } catch (e, st) {
+        Util.report('error setting start on login to $enabled', e, st);
       }
     }
   }
@@ -260,15 +260,16 @@ class DesktopService extends PlatformService {
         
         final bool enabled = await launchAtStartup.isEnabled();
         return enabled;
-      } catch (e) {
+      } catch (e, st) {
+        Util.report('failed retrieving startup on login status', e, st);
         return false;
       }
     } else {
       try {
         final bool enabled = await platform.invokeMethod('getStartOnLogin');
         return enabled;
-      } catch (e) {
-        logger.e('Failed to get start on login status: $e');
+      } catch (e, st) {
+        Util.report('failed retrieving startup on login status', e, st);
         return false;
       }
     }
@@ -306,8 +307,8 @@ class DesktopService extends PlatformService {
             ));
           }
         }
-      } catch (e) {
-        logger.e('Error getting running applications: $e');
+      } catch (e, st) {
+        Util.report('error retrieving installed applications', e, st);
       }
     } else if (Platform.isMacOS) {  
       Directory appDir = Directory('/Applications');
