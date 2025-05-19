@@ -243,6 +243,8 @@ import Sentry
     func checkAndReportExtensionErrors(flush: Bool = false) {
         if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker") {
             if let errors = sharedDefaults.array(forKey: "extensionErrors") as? [String], !errors.isEmpty {
+                // Set to track already processed errors (timestamp + error message)
+                var processedErrors = Set<String>()
                 for errorJson in errors {
                     do {
                         if let data = errorJson.data(using: .utf8),
@@ -251,6 +253,18 @@ import Sentry
                             let context = errorDict["context"] as? String ?? "Unknown extension context"
                             let errorMessage = errorDict["error"] as? String ?? "Unknown extension error"
                             let timestamp = errorDict["timestamp"] as? Double ?? Date().timeIntervalSince1970
+                            
+                            // Create a unique key for deduplication
+                            let dedupeKey = "\(Int(timestamp))-\(errorMessage)"
+                            
+                            // Skip if we've already processed this error
+                            guard !processedErrors.contains(dedupeKey) else {
+                                os_log("Skipping duplicate error: %{public}s", dedupeKey)
+                                continue
+                            }
+                            
+                            // Add to processed set
+                            processedErrors.insert(dedupeKey)
                             
                             let event = Event(level: .error)
                             event.message = SentryMessage(formatted: "\(context): \(errorMessage)")
