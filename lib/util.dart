@@ -122,7 +122,7 @@ class Util {
   }
 
   static void report(String context, dynamic e, StackTrace? st) {
-    logger.e("$context: e");
+    logger.e("$context: ${e.toString()}");
 
     final Hint hint = Hint();
     hint.set('context', context);
