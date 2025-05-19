@@ -1,3 +1,4 @@
+import 'package:Routine/util.dart';
 import 'package:flutter/services.dart';
 import 'dart:io' show Directory, File, Platform, Process, ProcessResult, Socket, SocketException;
 import 'package:path_provider/path_provider.dart';
@@ -88,8 +89,8 @@ class BrowserExtensionService {
           supportedBrowsers.add(result.stdout.toString().trim());
         }
       }
-    } catch (e) {
-      logger.e('Error detecting browsers: $e');
+    } catch (e, st) {
+      Util.report('Error detecting browsers', e, st);
     }
     
     return supportedBrowsers;
@@ -113,8 +114,8 @@ class BrowserExtensionService {
       
       final File nmhFile = File(nmhPath);
       return await nmhFile.exists();
-    } catch (e) {
-      logger.e('Error checking if NMH binary is installed: $e');
+    } catch (e, st) {
+      Util.report('Error checking for NMH', e, st);
       return false;
     }
   }
@@ -279,8 +280,8 @@ class BrowserExtensionService {
       }
       
       return false;
-    } catch (e) {
-      logger.e('Error installing native messaging host: $e');
+    } catch (e, st) {
+      Util.report('Error installing NMH', e, st);
       return false;
     }
   }
@@ -306,8 +307,8 @@ class BrowserExtensionService {
       }
       
       return false;
-    } catch (e) {
-      logger.e('Error installing browser extension: $e');
+    } catch (e, st) {
+      Util.report('Error opening browser to install browser extension for $browserName', e, st);
       return false;
     }
   }
@@ -351,8 +352,8 @@ class BrowserExtensionService {
                 final String message = utf8.decode(messageBytes);
                 final Map<String, dynamic> decoded = json.decode(message);
                 logger.i('Received from NMH: $decoded');
-              } catch (e) {
-                logger.e('Error decoding message: $e');
+              } catch (e, st) {
+                Util.report('Error decoding NMH message', e, st);
               }
             } else {
               break;
@@ -360,7 +361,7 @@ class BrowserExtensionService {
           }
         },
         onError: (error) {
-          logger.e('Socket error: $error');
+          Util.report('NMH socket error', error, null);
           setExtensionConnected(false);
         },
         onDone: () {
@@ -403,8 +404,8 @@ class BrowserExtensionService {
         ...messageBytes,
       ]));
       await _socket?.flush();
-    } catch (e) {
-      logger.e('Failed to send message to NMH: $e');
+    } catch (e, st) {
+      Util.report('Failed to send message to NMH', e, st);
     }
   }
 

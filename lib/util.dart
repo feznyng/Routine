@@ -121,7 +121,7 @@ class Util {
     }
   }
 
-  static void report(String context, dynamic e, StackTrace st) {
+  static void report(String context, dynamic e, StackTrace? st) {
     logger.e("$context: e");
 
     final Hint hint = Hint();
