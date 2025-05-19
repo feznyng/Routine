@@ -57,9 +57,9 @@ class DesktopService extends PlatformService {
       onRoutinesUpdated(routines);
     });
 
-    BrowserExtensionService.instance.connectionStream.listen((strictMode) {
-      updateAppList();
-      updateBlockedSites();
+    BrowserExtensionService.instance.connectionStream.listen((strictMode) async {
+      await updateAppList();
+      await updateBlockedSites();
     });
 
     StrictModeService.instance.addEffectiveSettingsListener((settings) {
@@ -176,7 +176,7 @@ class DesktopService extends PlatformService {
       final browsers = await BrowserExtensionService.instance.getInstalledSupportedBrowsers();
       apps.addAll(browsers);
     }
-    platform.invokeMethod('updateAppList', {
+    await platform.invokeMethod('updateAppList', {
       'apps': apps,
       'categories': _cachedCategories,
       'allowList': _isAllowList,
