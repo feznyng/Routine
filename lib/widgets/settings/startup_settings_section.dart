@@ -1,7 +1,7 @@
+import 'package:Routine/util.dart';
 import 'package:flutter/material.dart';
 import '../../services/desktop_service.dart';
 import '../../services/strict_mode_service.dart';
-import 'package:Routine/setup.dart';
 
 class StartupSettingsSection extends StatefulWidget {
   const StartupSettingsSection({super.key});
@@ -33,8 +33,8 @@ class _StartupSettingsSectionState extends State<StartupSettingsSection> {
           _isLoading = false;
         });
       }
-    } catch (e) {
-      logger.e('Error loading startup setting: $e');
+    } catch (e, st) {
+      Util.report('error loading startup setting', e, st);
       if (mounted) {
         setState(() {
           _isLoading = false;

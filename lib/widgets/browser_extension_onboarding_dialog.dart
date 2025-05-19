@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:Routine/setup.dart';
+import 'package:Routine/util.dart';
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
 import '../services/desktop_service.dart';
@@ -119,8 +119,8 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
         _detectedBrowsers = browsers;
         _isLoading = false;
       });
-    } catch (e) {
-      logger.e('Error detecting browsers: $e');
+    } catch (e, st) {
+      Util.report('error detecting browsers', e, st);
       setState(() {
         _detectedBrowsers = [];
         _isLoading = false;

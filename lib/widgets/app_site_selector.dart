@@ -206,6 +206,10 @@ class _AppSiteSelectorState extends State<AppSiteSelector> {
         break;
       default:
         logger.e('Unhandled method ${call.method}');
+        throw PlatformException(
+          code: 'Unimplemented',
+          message: "Method ${call.method} not implemented",
+        );
     }
   }
 }

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:Routine/services/platform_service.dart';
 import 'package:Routine/services/sync_service.dart';
-import 'package:Routine/setup.dart';
+import 'package:Routine/util.dart';
 import 'package:flutter/services.dart';
 import '../models/routine.dart';
 import 'strict_mode_service.dart';
@@ -62,8 +62,8 @@ class MobileService extends PlatformService {
       };
       
       await _channel.invokeMethod('updateStrictModeSettings', settings);
-    } catch (e) {
-      logger.e('Error sending strict mode settings to iOS: $e');
+    } catch (e, st) {
+      Util.report('error sending strict mode settings', e, st);
     }
   }
 
@@ -106,8 +106,8 @@ class MobileService extends PlatformService {
       }).toList();
             
       await _channel.invokeMethod(immediate ? 'immediateUpdateRoutines' : 'updateRoutines', {'routines': routineMaps});
-    } catch (e) {
-      logger.e('Error sending routines to iOS: $e');
+    } catch (e, st) {
+      Util.report('error updating routines', e, st);
     }
   }
   
@@ -119,8 +119,8 @@ class MobileService extends PlatformService {
     try {
       final bool isAuthorized = await _channel.invokeMethod('checkFamilyControlsAuthorization');
       return isAuthorized;
-    } catch (e) {
-      logger.e('Error checking FamilyControls authorization: $e');
+    } catch (e, st) {
+      Util.report('error retrieving family controls authorization', e, st);
       return false;
     }
   }
@@ -131,8 +131,8 @@ class MobileService extends PlatformService {
     try {
       final bool isAuthorized = await _channel.invokeMethod('requestFamilyControlsAuthorization');
       return isAuthorized;
-    } catch (e) {
-      logger.e('Error requesting FamilyControls authorization: $e');
+    } catch (e, st) {
+      Util.report('error requesting family controls auth', e, st);
       return false;
     }
   }

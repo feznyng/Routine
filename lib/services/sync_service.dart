@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:Routine/models/emergency_event.dart';
 import 'package:Routine/models/condition.dart';
 import 'package:Routine/models/device.dart';
+import 'package:Routine/util.dart';
 import '../setup.dart';
 import '../database/database.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -69,9 +70,8 @@ class SyncService {
           }
         )
         .subscribe();
-    } catch (e) {
-      logger.e('Error setting up realtime sync: $e');
-      // We'll try again later when the app resumes or when auth state changes
+    } catch (e, st) {
+      Util.report('error setting up real time sync', e, st);
     }
   }
 
@@ -86,15 +86,15 @@ class SyncService {
           payload: { 'timestamp': DateTime.now().toIso8601String(), 'source': currDevice.id },
         );
       }
-    } catch (e) {
-      logger.e('Error notifying peers: $e');
+    } catch (e, st) {
+      Util.report('error websocket notifying other devices', e, st);
       setupRealtimeSync();
     }
 
     try {
       _client.functions.invoke('push', body: {'content': 'sample message', 'source_id': currDevice.id});
-    } catch (e) {
-      logger.e('Error sending fcm message: $e');
+    } catch (e, st) {
+      Util.report('error fcm notifying other devices', e, st);
     }
   }
   
@@ -623,8 +623,8 @@ class SyncService {
       }
 
       return SyncResult();
-    } catch (e) {
-      logger.e('Error during sync: $e');
+    } catch (e, st) {
+      Util.report('error syncing', e, st);
       return null;
     }
   }

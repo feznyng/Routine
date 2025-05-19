@@ -150,7 +150,7 @@ class AuthService {
 
       return response.user != null;
     } on AuthException catch (e) {
-      logger.e('Sign in error: ${e.message}');
+      logger.w('Sign in error: ${e.message}');
       if (e.message.contains('Invalid login credentials')) {
         throw 'Incorrect email or password';
       } else if (e.message.contains('Email not confirmed')) {
@@ -172,7 +172,7 @@ class AuthService {
       );
       return response.user != null;
     } on AuthException catch (e) {
-      logger.e('Sign up error: ${e.message}');
+      logger.w('Sign up error: ${e.message}');
       if (e.message.contains('already registered')) {
         throw 'An account with this email already exists';
       } else if (e.message.contains('weak password')) {
@@ -200,7 +200,7 @@ class AuthService {
     try {
       await _client.auth.resetPasswordForEmail(email, redirectTo: "${dotenv.env['SITE_URL']}/reset-password");
     } on AuthException catch (e) {
-      logger.e('Password reset error: ${e.message}');
+      logger.w('Password reset error: ${e.message}');
       if (e.message.contains('not found')) {
         return;
       }
@@ -227,7 +227,7 @@ class AuthService {
         UserAttributes(password: newPassword),
       );
     } on AuthException catch (e) {
-      logger.e('Password update error: ${e.message}');
+      logger.w('Password update error: ${e.message}');
       if (e.message.contains('Invalid login credentials')) {
         throw 'Current password is incorrect';
       }
@@ -254,7 +254,7 @@ class AuthService {
         UserAttributes(email: newEmail),
       );
     } on AuthException catch (e) {
-      logger.e('Email update error: ${e.message}');
+      logger.w('Email update error: ${e.message}');
       if (e.message.contains('Invalid login credentials')) {
         throw 'Password is incorrect';
       } else if (e.message.contains('already registered')) {
