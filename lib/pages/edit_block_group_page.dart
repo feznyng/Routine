@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/group.dart';
-import 'block_group_editor.dart';
+import '../widgets/block_group_editor.dart';
 
 class EditBlockGroupPage extends StatefulWidget {
   final Group group;

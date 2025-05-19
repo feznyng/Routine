@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'package:Routine/widgets/edit_block_group_page.dart';
+import 'package:Routine/pages/edit_block_group_page.dart';
 import 'package:flutter/material.dart';
-import 'block_group_editor.dart';
+import '../widgets/block_group_editor.dart';
 import 'block_groups_page.dart';
 import '../models/group.dart';
 

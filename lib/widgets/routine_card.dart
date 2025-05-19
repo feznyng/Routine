@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/routine.dart';
-import 'routine_page.dart';
+import '../pages/routine_page.dart';
 import 'break_dialog.dart';
 import 'routine_conditions_list.dart';
 import 'break_timer_display.dart';

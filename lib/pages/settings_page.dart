@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import '../services/auth_service.dart';
 import 'auth_page.dart';
-import 'settings/theme_settings_section.dart';
-import 'settings/startup_settings_section.dart';
-import 'settings/strict_mode_section.dart';
-import 'settings/device_management_section.dart';
-import 'settings/auth_section.dart';
-import 'settings/browser_extension_section.dart';
-import 'settings/device_options_bottom_sheet.dart';
-import 'settings/sync_settings_section.dart';
-import 'settings/device_permissions_section.dart';
+import '../widgets/settings/theme_settings_section.dart';
+import '../widgets/settings/startup_settings_section.dart';
+import '../widgets/settings/strict_mode_section.dart';
+import '../widgets/settings/device_management_section.dart';
+import '../widgets/settings/auth_section.dart';
+import '../widgets/settings/browser_extension_section.dart';
+import '../widgets/settings/device_options_bottom_sheet.dart';
+import '../widgets/settings/sync_settings_section.dart';
+import '../widgets/settings/device_permissions_section.dart';
 import '../models/device.dart';
 
 class SettingsPage extends StatefulWidget {

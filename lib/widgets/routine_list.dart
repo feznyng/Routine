@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import '../models/routine.dart';
 import '../services/sync_service.dart';
 import '../services/strict_mode_service.dart';
-import 'routine_page.dart';
+import '../pages/routine_page.dart';
 import 'routine_card.dart';
 import 'common/emergency_mode_banner.dart';
 

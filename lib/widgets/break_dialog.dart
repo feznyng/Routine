@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/routine.dart';
 import 'dart:io' show Platform;
-import 'qr_scanner_page.dart';
+import '../pages/qr_scanner_page.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 
 class BreakDialog extends StatefulWidget {

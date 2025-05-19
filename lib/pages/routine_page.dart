@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/routine.dart';
 import '../database/database.dart';
 import '../setup.dart';
-import 'routine_page/index.dart';
+import '../widgets/routine_page/index.dart';
 import '../services/strict_mode_service.dart';
 
 class RoutinePage extends StatefulWidget {

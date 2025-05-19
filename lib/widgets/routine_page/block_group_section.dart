@@ -4,7 +4,7 @@ import '../../models/group.dart';
 import '../../models/routine.dart';
 import '../../database/database.dart';
 import '../../setup.dart';
-import '../block_group_page.dart';
+import '../../pages/block_group_page.dart';
 
 class BlockGroupSection extends StatefulWidget {
   final Routine routine;

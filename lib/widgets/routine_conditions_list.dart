@@ -6,7 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import '../models/routine.dart';
 import '../models/condition.dart';
-import 'qr_scanner_page.dart';
+import '../pages/qr_scanner_page.dart';
 
 class RoutineConditionsList extends StatelessWidget {
   final Routine routine;

@@ -3,7 +3,7 @@ import 'package:Routine/util.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'widgets/routine_list.dart';
-import 'widgets/settings_page.dart';
+import 'pages/settings_page.dart';
 import 'services/auth_service.dart';
 import 'setup.dart';
 import 'services/theme_provider.dart';
