@@ -210,7 +210,33 @@ class MainFlutterWindow: NSWindow {
       NSLog("[Routine] Sending systemWake event to Flutter")
       channel.invokeMethod("systemWake", arguments: ["timestamp": timestamp]) { result in
         if let error = result as? FlutterError {
-          NSLog("[Routine] Error sending systemWake event: %@", error.message ?? "Unknown error")
+          let errorCode = error.code
+          let errorMessage = error.message ?? "Unknown error"
+          let errorDetails = error.details as? String ?? "No details"
+          
+          NSLog("[Routine] Error sending systemWake event: code=%@, message=%@, details=%@", errorCode, errorMessage, errorDetails)
+          
+          // Track error with Sentry using error capture
+          if SentrySDK.isEnabled {
+            // Create a custom error object
+            let error = NSError(
+              domain: "com.routine.app.methodchannel",
+              code: Int(errorCode) ?? -1,
+              userInfo: [
+                NSLocalizedDescriptionKey: errorMessage,
+                "details": errorDetails,
+                "timestamp": timestamp,
+                "method": "systemWake"
+              ]
+            )
+            
+            // Capture the error with additional context
+            SentrySDK.capture(error: error) { scope in
+              scope.setTag(value: "MainFlutterWindow", key: "component")
+              scope.setTag(value: "systemWake", key: "method")
+              scope.setExtra(value: timestamp, key: "timestamp")
+            }
+          }
         } else {
           NSLog("[Routine] Successfully sent systemWake event to Flutter")
         }
