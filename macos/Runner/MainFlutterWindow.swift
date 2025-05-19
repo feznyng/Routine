@@ -3,7 +3,7 @@ import FlutterMacOS
 import UserNotifications
 import os.log
 import ServiceManagement
-
+import Sentry
 
 class MainFlutterWindow: NSWindow {
   private var appList: Set<String> = []
@@ -114,13 +114,13 @@ class MainFlutterWindow: NSWindow {
   private func setStartOnLogin(enabled: Bool) {
     if enabled {
         do {
-            try SMAppService.mainApp.register()
+          try SMAppService.mainApp.register()
         } catch {
             NSLog("Failed to register app for launch at login: \(error)")
         }
     } else {
         do {
-            try SMAppService.mainApp.unregister()
+          try SMAppService.mainApp.unregister()
         } catch {
             NSLog("Failed to unregister app for launch at login: \(error)")
         }
@@ -241,6 +241,9 @@ class MainFlutterWindow: NSWindow {
     UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
       if let error = error {
         NSLog("Failed to request notification permission: %@", error.localizedDescription)
+        SentrySDK.capture(error: error) { (scope) in
+          scope.setTag(value: "failed to request notification permission", key: "method")
+        }
       } else {
         NSLog("Notification permission granted: %@", String(granted))
       }
@@ -295,6 +298,9 @@ class MainFlutterWindow: NSWindow {
         try fileManager.createDirectory(at: recommendedPath, withIntermediateDirectories: true, attributes: nil)
         savePanel.directoryURL = recommendedPath
       } catch {
+        SentrySDK.capture(error: error) { (scope) in
+          scope.setTag(value: "failed to create nmh directory", key: "method")
+        }
         savePanel.directoryURL = homeDir
       }
     }
@@ -310,6 +316,9 @@ class MainFlutterWindow: NSWindow {
           completion(true, "")
         } catch {
           completion(false, error.localizedDescription)
+          SentrySDK.capture(error: error) { (scope) in
+            scope.setTag(value: "failed to write nmh manifest file", key: "method")
+          }
         }
       } else {
         completion(false, "User cancelled the operation")
