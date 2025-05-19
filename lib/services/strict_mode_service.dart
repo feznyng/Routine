@@ -282,93 +282,91 @@ class StrictModeService with ChangeNotifier {
     _notifyEffectiveSettingsChanged();
   }
   
-  // Set desktop settings
-  Future<void> setBlockAppExit(bool value) async {
-    if (_blockAppExit == value) return;
+  // Generic helper method to update a boolean setting
+  Future<void> _updateBoolSetting(
+    bool value,
+    String key,
+    bool Function() getter,
+    void Function(bool) setter,
+    {bool updateIOS = false}
+  ) async {
+    // Skip if value hasn't changed
+    if (getter() == value) return;
     
+    // Update shared preferences
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_blockAppExitKey, value);
-    _blockAppExit = value;
+    await prefs.setBool(key, value);
+    
+    // Update local value
+    setter(value);
     notifyListeners();
+    
+    // Update iOS if needed
+    if (updateIOS && Platform.isIOS) {
+      _updateIOSStrictModeSettings();
+    }
     
     // Notify effective settings listeners
     _notifyEffectiveSettingsChanged();
+  }
+  
+  // Set desktop settings
+  Future<void> setBlockAppExit(bool value) async {
+    return _updateBoolSetting(
+      value,
+      _blockAppExitKey,
+      () => _blockAppExit,
+      (v) => _blockAppExit = v,
+    );
   }
   
   Future<void> setBlockDisablingSystemStartup(bool value) async {
-    if (_blockDisablingSystemStartup == value) return;
-    
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_blockDisablingSystemStartupKey, value);
-    _blockDisablingSystemStartup = value;
-    notifyListeners();
-    
-    // Notify effective settings listeners
-    _notifyEffectiveSettingsChanged();
+    return _updateBoolSetting(
+      value,
+      _blockDisablingSystemStartupKey,
+      () => _blockDisablingSystemStartup,
+      (v) => _blockDisablingSystemStartup = v,
+    );
   }
   
   Future<void> setBlockBrowsersWithoutExtension(bool value) async {
-    if (_blockBrowsersWithoutExtension == value) return;
-    
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_blockBrowsersWithoutExtensionKey, value);
-    _blockBrowsersWithoutExtension = value;
-    notifyListeners();
-    
-    // Notify effective settings listeners
-    _notifyEffectiveSettingsChanged();
+    return _updateBoolSetting(
+      value,
+      _blockBrowsersWithoutExtensionKey,
+      () => _blockBrowsersWithoutExtension,
+      (v) => _blockBrowsersWithoutExtension = v,
+    );
   }
   
   // Set iOS settings
   Future<void> setBlockChangingTimeSettings(bool value) async {
-    if (_blockChangingTimeSettings == value) return;
-    
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_blockChangingTimeSettingsKey, value);
-    _blockChangingTimeSettings = value;
-    notifyListeners();
-    
-    // Update iOS if on iOS platform
-    if (Platform.isIOS) {
-      _updateIOSStrictModeSettings();
-    }
-    
-    // Notify effective settings listeners
-    _notifyEffectiveSettingsChanged();
+    return _updateBoolSetting(
+      value,
+      _blockChangingTimeSettingsKey,
+      () => _blockChangingTimeSettings,
+      (v) => _blockChangingTimeSettings = v,
+      updateIOS: true,
+    );
   }
   
   Future<void> setBlockUninstallingApps(bool value) async {
-    if (_blockUninstallingApps == value) return;
-    
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_blockUninstallingAppsKey, value);
-    _blockUninstallingApps = value;
-    notifyListeners();
-    
-    // Update iOS if on iOS platform
-    if (Platform.isIOS) {
-      _updateIOSStrictModeSettings();
-    }
-    
-    // Notify effective settings listeners
-    _notifyEffectiveSettingsChanged();
+    return _updateBoolSetting(
+      value,
+      _blockUninstallingAppsKey,
+      () => _blockUninstallingApps,
+      (v) => _blockUninstallingApps = v,
+      updateIOS: true,
+    );
   }
   
   Future<void> setBlockInstallingApps(bool value) async {
-    if (_blockInstallingApps == value) return;
-    
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_blockInstallingAppsKey, value);
-    _blockInstallingApps = value;
-    notifyListeners();
-    
-    // Update iOS if on iOS platform
-    if (Platform.isIOS) {
-      _updateIOSStrictModeSettings();
-    }
-    
-    // Notify effective settings listeners
-    _notifyEffectiveSettingsChanged();
+    return _updateBoolSetting(
+      value,
+      _blockInstallingAppsKey,
+      () => _blockInstallingApps,
+      (v) => _blockInstallingApps = v,
+      updateIOS: true,
+    );
   }
   
   // Helper method to update iOS strict mode settings
@@ -429,8 +427,14 @@ class StrictModeService with ChangeNotifier {
     }
   }
   
-  // Set desktop settings with confirmation when needed
-  Future<bool> setBlockAppExitWithConfirmation(BuildContext context, bool value) async {
+  // Generic helper method for setting with confirmation
+  Future<bool> _setSettingWithConfirmation(
+    BuildContext context,
+    bool value,
+    String title,
+    String message,
+    Future<void> Function(bool) setter
+  ) async {
     // If trying to disable while in strict mode and not in emergency mode, block the change
     if (!value && _inStrictMode && !emergencyMode) {
       showStrictModeActiveDialog(context);
@@ -441,132 +445,78 @@ class StrictModeService with ChangeNotifier {
     if (value) {
       final bool? confirmed = await _showEnableConfirmationDialog(
         context, 
-        'Block App Exit',
-        'This will prevent the app from being closed when in strict mode. Are you sure you want to enable this setting?'
+        title,
+        message
       );
       if (confirmed != true) {
         return false;
       }
     }
     
-    await setBlockAppExit(value);
+    await setter(value);
     return true;
+  }
+
+  // Set desktop settings with confirmation when needed
+  Future<bool> setBlockAppExitWithConfirmation(BuildContext context, bool value) async {
+    return _setSettingWithConfirmation(
+      context,
+      value,
+      'Block App Exit',
+      'This will prevent the app from being closed when in strict mode. Are you sure you want to enable this setting?',
+      setBlockAppExit
+    );
   }
   
   Future<bool> setBlockDisablingSystemStartupWithConfirmation(BuildContext context, bool value) async {
-    // If trying to disable while in strict mode and not in emergency mode, block the change
-    if (!value && _inStrictMode && !emergencyMode) {
-      showStrictModeActiveDialog(context);
-      return false;
-    }
-    
-    // If enabling, show confirmation dialog
-    if (value) {
-      final bool? confirmed = await _showEnableConfirmationDialog(
-        context, 
-        'Block Disabling System Startup',
-        'This will prevent the app\'s startup setting from being disabled when in strict mode. Are you sure you want to enable this setting?'
-      );
-      if (confirmed != true) {
-        return false;
-      }
-    }
-    
-    await setBlockDisablingSystemStartup(value);
-    return true;
+    return _setSettingWithConfirmation(
+      context,
+      value,
+      'Block Disabling System Startup',
+      'This will prevent the app\'s startup setting from being disabled when in strict mode. Are you sure you want to enable this setting?',
+      setBlockDisablingSystemStartup
+    );
   }
   
   Future<bool> setBlockBrowsersWithoutExtensionWithConfirmation(BuildContext context, bool value) async {
-    // If trying to disable while in strict mode and not in emergency mode, block the change
-    if (!value && _inStrictMode && !emergencyMode) {
-      showStrictModeActiveDialog(context);
-      return false;
-    }
-    
-    // If enabling, show confirmation dialog
-    if (value) {
-      final bool? confirmed = await _showEnableConfirmationDialog(
-        context, 
-        'Block Browsers Without Extension',
-        'This will block browsers when the extension is not installed or not connected. Are you sure you want to enable this setting?'
-      );
-      if (confirmed != true) {
-        return false;
-      }
-    }
-    
-    await setBlockBrowsersWithoutExtension(value);
-    return true;
+    return _setSettingWithConfirmation(
+      context,
+      value,
+      'Block Browsers Without Extension',
+      'This will block browsers when the extension is not installed or not connected. Are you sure you want to enable this setting?',
+      setBlockBrowsersWithoutExtension
+    );
   }
   
   // Set iOS settings with confirmation when needed
   Future<bool> setBlockChangingTimeSettingsWithConfirmation(BuildContext context, bool value) async {
-    // If trying to disable while in strict mode and not in emergency mode, block the change
-    if (!value && _inStrictMode && !emergencyMode) {
-      showStrictModeActiveDialog(context);
-      return false;
-    }
-    
-    // If enabling, show confirmation dialog
-    if (value) {
-      final bool? confirmed = await _showEnableConfirmationDialog(
-        context, 
-        'Block Changing Time Settings',
-        'This will prevent changing the system time when in strict mode. Are you sure you want to enable this setting?'
-      );
-      if (confirmed != true) {
-        return false;
-      }
-    }
-    
-    await setBlockChangingTimeSettings(value);
-    return true;
+    return _setSettingWithConfirmation(
+      context,
+      value,
+      'Block Changing Time Settings',
+      'This will prevent changing the system time when in strict mode. Are you sure you want to enable this setting?',
+      setBlockChangingTimeSettings
+    );
   }
   
   Future<bool> setBlockUninstallingAppsWithConfirmation(BuildContext context, bool value) async {
-    // If trying to disable while in strict mode and not in emergency mode, block the change
-    if (!value && _inStrictMode && !emergencyMode) {
-      showStrictModeActiveDialog(context);
-      return false;
-    }
-    
-    // If enabling, show confirmation dialog
-    if (value) {
-      final bool? confirmed = await _showEnableConfirmationDialog(
-        context, 
-        'Block Uninstalling Apps',
-        'This will prevent uninstalling apps when in strict mode. Are you sure you want to enable this setting?'
-      );
-      if (confirmed != true) {
-        return false;
-      }
-    }
-    
-    await setBlockUninstallingApps(value);
-    return true;
+    return _setSettingWithConfirmation(
+      context,
+      value,
+      'Block Uninstalling Apps',
+      'This will prevent uninstalling apps when in strict mode. Are you sure you want to enable this setting?',
+      setBlockUninstallingApps
+    );
   }
   
   Future<bool> setBlockInstallingAppsWithConfirmation(BuildContext context, bool value) async {
-    // If trying to disable while in strict mode and not in emergency mode, block the change
-    if (!value && _inStrictMode && !emergencyMode) {
-      showStrictModeActiveDialog(context);
-      return false;
-    }
-    
-    // If enabling, show confirmation dialog
-    if (value) {
-      final bool? confirmed = await _showEnableConfirmationDialog(
-        context, 
-        'Block Installing Apps',
-        'This will prevent installing new apps when in strict mode. Are you sure you want to enable this setting?'
-      );
-      if (confirmed != true) {
-        return false;
-      }
-    }
-    
-    await setBlockInstallingApps(value);
-    return true;
+    return _setSettingWithConfirmation(
+      context,
+      value,
+      'Block Installing Apps',
+      'This will prevent installing new apps when in strict mode. Are you sure you want to enable this setting?',
+      setBlockInstallingApps
+    );
   }
   
   // Helper method to show a dialog when strict mode is active (public method)
