@@ -57,7 +57,7 @@ class DesktopService extends PlatformService {
       onRoutinesUpdated(routines);
     });
 
-    BrowserExtensionService.instance.addConnectionListener((strictMode) {
+    BrowserExtensionService.instance.connectionStream.listen((strictMode) {
       updateAppList();
       updateBlockedSites();
     });

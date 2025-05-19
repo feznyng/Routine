@@ -26,13 +26,9 @@ class BrowserExtensionService {
   // Since the extension starts the NMH, this also indicates if NMH is connected
   bool _extensionConnected = false;
   
-  // Set of browser names in lowercase for O(1) lookup
   final Set<String> _browserNames = {
     'firefox'
   };
-  
-  // List of listeners for extension connection status changes
-  final List<Function(bool)> _connectionListeners = [];
   
   // Stream controller for extension connection status changes
   final StreamController<bool> _connectionStreamController = StreamController<bool>.broadcast();
@@ -415,23 +411,8 @@ class BrowserExtensionService {
   void setExtensionConnected(bool connected) {
     if (_extensionConnected != connected) {
       _extensionConnected = connected;
-      
-      for (final listener in _connectionListeners) {
-        listener(_extensionConnected);
-      }
-      
       _connectionStreamController.add(_extensionConnected);
     }
-  }
-  
-  void addConnectionListener(Function(bool) listener) {
-    if (!_connectionListeners.contains(listener)) {
-      _connectionListeners.add(listener);
-    }
-  }
-  
-  void removeConnectionListener(Function(bool) listener) {
-    _connectionListeners.remove(listener);
   }
   
   // Get a stream of extension connection status changes
@@ -446,7 +427,6 @@ class BrowserExtensionService {
   // Clean up resources
   void dispose() {
     _socket?.close();
-    _connectionListeners.clear();
     _connectionStreamController.close();
   }
 }
