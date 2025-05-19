@@ -83,6 +83,8 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
     SettingsPage(),
   ];
 
+  // We're using the ChangeNotifier mechanism for StrictModeService
+  
   @override
   void initState() {
     super.initState();
@@ -94,6 +96,8 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
       _initializeTray();
       windowManager.addListener(this);
       trayManager.addListener(this);
+      
+      // Use the ChangeNotifier mechanism for UI updates
       StrictModeService.instance.addListener(_updateTrayMenu);
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) {

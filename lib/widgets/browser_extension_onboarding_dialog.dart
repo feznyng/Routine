@@ -37,6 +37,7 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
   bool _startedGracePeriod = false;
   int _remainingGracePeriodSeconds = 0;
   Timer? _gracePeriodCountdownTimer;
+  StreamSubscription? _gracePeriodExpirationSubscription;
   
   // Subscription for extension connection status
   StreamSubscription<bool>? _connectionSubscription;
@@ -57,11 +58,7 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
     _connectionSubscription?.cancel();
     _connectionAttemptTimer?.cancel();
     _gracePeriodCountdownTimer?.cancel();
-    
-    // Remove grace period expiration listener
-    if (_startedGracePeriod) {
-      StrictModeService.instance.removeGracePeriodExpirationListener(_onGracePeriodExpired);
-    }
+    _gracePeriodExpirationSubscription?.cancel();
     
     super.dispose();
   }
@@ -76,7 +73,8 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
       _startedGracePeriod = true;
     });
 
-    StrictModeService.instance.addGracePeriodExpirationListener(_onGracePeriodExpired);
+    _gracePeriodExpirationSubscription = StrictModeService.instance.gracePeriodExpirationStream
+        .listen((_) => _onGracePeriodExpired());
     StrictModeService.instance.startExtensionGracePeriod();
 
     _gracePeriodCountdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {

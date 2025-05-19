@@ -25,11 +25,9 @@ class StrictModeService with ChangeNotifier {
   // Timer for grace period expiration
   Timer? _gracePeriodTimer;
   
-  // List of listeners specifically for grace period expiration
-  final List<Function()> _gracePeriodExpirationListeners = [];
-  
-  // Stream controller for effective settings changes
+  // Stream controllers for different event types
   final StreamController<Map<String, bool>> _effectiveSettingsStreamController = StreamController<Map<String, bool>>.broadcast();
+  final StreamController<void> _gracePeriodExpirationController = StreamController<void>.broadcast();
   
   // Private constructor
   StrictModeService._internal() {
@@ -597,7 +595,7 @@ class StrictModeService with ChangeNotifier {
     };
   }
   
-  // Notify all effective settings listeners of changes
+  // Notify all listeners of changes
   void _notifyEffectiveSettingsChanged() {
     final effectiveSettings = getCurrentEffectiveSettings();
     
@@ -610,47 +608,22 @@ class StrictModeService with ChangeNotifier {
   
   // Notify all grace period expiration listeners
   void _notifyGracePeriodExpired() {
-    for (final listener in _gracePeriodExpirationListeners) {
-      listener();
-    }
+    // Notify through the stream
+    _gracePeriodExpirationController.add(null);
+    
+    // Also notify general listeners since this affects app state
+    notifyListeners();
   }
   
-  // The following methods are maintained for backward compatibility
-  // but now use the ChangeNotifier mechanism internally
-  
-  // Add a listener for effective settings changes
-  void addEffectiveSettingsListener(Function(Map<String, bool>) listener) {
-    // This is now handled by ChangeNotifier
-    // Just call the listener with current settings for immediate update
-    listener(getCurrentEffectiveSettings());
-  }
-  
-  // Remove a listener for effective settings changes
-  void removeEffectiveSettingsListener(Function(Map<String, bool>) listener) {
-    // This is now handled by ChangeNotifier
-    // No need to do anything here
-  }
-  
-  // Add a listener for grace period expiration
-  void addGracePeriodExpirationListener(Function() listener) {
-    if (!_gracePeriodExpirationListeners.contains(listener)) {
-      _gracePeriodExpirationListeners.add(listener);
-    }
-  }
-  
-  // Remove a listener for grace period expiration
-  void removeGracePeriodExpirationListener(Function() listener) {
-    _gracePeriodExpirationListeners.remove(listener);
-  }
-  
-  // Get a stream of effective settings changes
+  // Stream getters for different event types
   Stream<Map<String, bool>> get effectiveSettingsStream => _effectiveSettingsStreamController.stream;
+  Stream<void> get gracePeriodExpirationStream => _gracePeriodExpirationController.stream;
   
   // Clean up resources when the service is disposed
   @override
   void dispose() {
-    _gracePeriodExpirationListeners.clear();
     _effectiveSettingsStreamController.close();
+    _gracePeriodExpirationController.close();
     super.dispose();
   }
 }

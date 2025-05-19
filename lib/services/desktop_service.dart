@@ -44,6 +44,12 @@ class DesktopService extends PlatformService {
   List<String> _cachedApps = [];
   List<String> _cachedCategories = [];
   bool _isAllowList = false;
+  
+  // Subscriptions
+  StreamSubscription? _routineSubscription;
+  StreamSubscription? _appSubscription;
+  StreamSubscription? _strictModeSettingsSubscription;
+  StreamSubscription? _gracePeriodExpirationSubscription;
 
   @override
   Future<void> init() async {
@@ -53,16 +59,16 @@ class DesktopService extends PlatformService {
       logger.e('Failed to signal engine ready: $e');
     }
 
-    Routine.watchAll().listen((routines) {
+    _routineSubscription = Routine.watchAll().listen((routines) {
       onRoutinesUpdated(routines);
     });
 
-    BrowserExtensionService.instance.connectionStream.listen((strictMode) async {
+    _appSubscription = BrowserExtensionService.instance.connectionStream.listen((strictMode) async {
       await updateAppList();
       await updateBlockedSites();
     });
 
-    StrictModeService.instance.addEffectiveSettingsListener((settings) {
+    _strictModeSettingsSubscription = StrictModeService.instance.effectiveSettingsStream.listen((settings) {
       if (settings.keys.contains('blockBrowsersWithoutExtension') || 
           settings.keys.contains('isInExtensionGracePeriod') || 
           settings.keys.contains('isInExtensionCooldown')) {
@@ -70,7 +76,7 @@ class DesktopService extends PlatformService {
       }
     });
     
-    StrictModeService.instance.addGracePeriodExpirationListener(() {
+    _gracePeriodExpirationSubscription = StrictModeService.instance.gracePeriodExpirationStream.listen((_) {
       updateAppList();
     });
     
@@ -94,6 +100,20 @@ class DesktopService extends PlatformService {
     });
   }
 
+  // Clean up resources
+  void dispose() {
+    _routineSubscription?.cancel();
+    _appSubscription?.cancel();
+    _strictModeSettingsSubscription?.cancel();
+    _gracePeriodExpirationSubscription?.cancel();
+    
+    // Cancel all scheduled tasks
+    for (final task in _scheduledTasks) {
+      task.cancel();
+    }
+    _scheduledTasks.clear();
+  }
+  
   @override
   Future<void> refresh() async {
     SyncService().setupRealtimeSync();
