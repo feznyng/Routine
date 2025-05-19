@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:Routine/services/auth_service.dart';
 import 'package:Routine/services/strict_mode_service.dart';
@@ -45,10 +46,10 @@ Future<void> setup() async {
 
   SyncService().addJob(SyncJob(remote: false));
 
-  if (dotenv.env['ENV'] == "dev") {
-    Logger.level = Level.trace;
-  } else {
+  if (kReleaseMode) {
     Logger.level = Level.warning;
+  } else {
+    Logger.level = Level.trace;
   }
   
   if (Util.isDesktop()) {
