@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'sync_service.dart';
+import 'package:sentry/sentry.dart';
 
 // MARK:REMOVE
 import 'package:Routine/services/notification_service.dart';
@@ -80,6 +81,10 @@ class AuthService {
       
       // Store or remove refresh token based on auth state
       if (session != null) {
+        Sentry.configureScope(
+          (scope) => scope.setUser(SentryUser(id: session.user.id)),
+        );
+
         try {
           await _storage.write(key: 'supabase_refresh_token', value: session.refreshToken);
         } catch (e) {
@@ -87,6 +92,10 @@ class AuthService {
           // Continue despite storage error
         }
       } else {
+        Sentry.configureScope(
+          (scope) => scope.setUser(SentryUser(id: null)),
+        );
+
         try {
           await _storage.delete(key: 'supabase_refresh_token');
         } catch (e) {

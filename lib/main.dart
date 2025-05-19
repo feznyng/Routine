@@ -23,9 +23,8 @@ void main() async {
   await SentryFlutter.init(
     (options) {
       options.dsn = dotenv.env['SENTRY_DSN'];
-      options.sendDefaultPii = false;
-      options.tracesSampleRate = 1.0;
-      options.profilesSampleRate = 1.0;
+      options.tracesSampleRate = 0.1;
+      options.profilesSampleRate = 0.1;
     },
     appRunner: () => runApp(SentryWidget(child: 
     MultiProvider(
