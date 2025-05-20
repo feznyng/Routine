@@ -39,6 +39,7 @@ import Sentry
             switch call.method {
             case "immediateUpdateRoutines":
                 os_log("updateRoutines: immediate start")
+                SentrySDK.capture(message: "updateRoutines: immediate start")
                 if let args = call.arguments as? [String: Any],
                    let routinesJson = args["routines"] as? [[String: Any]] {
                     do {
@@ -58,6 +59,7 @@ import Sentry
                         self?.manager.update(routines: routines)
                         
                         os_log("updateRoutines: immediate done")
+                        SentrySDK.capture(message: "updateRoutines: immediate done")
                         result(true)
                     } catch {
                         // Return error on main thread
@@ -77,6 +79,7 @@ import Sentry
                    let routinesJson = args["routines"] as? [[String: Any]] {
                     
                     DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                        SentrySDK.capture(message: "updateRoutines: start")
                         os_log("updateRoutines: start")
                         
                         do {
@@ -97,6 +100,7 @@ import Sentry
                             
                             // Return success on main thread
                             DispatchQueue.main.async {
+                                SentrySDK.capture(message: "updateRoutines: done")
                                 os_log("updateRoutines: done")
                                 result(true)
                             }
