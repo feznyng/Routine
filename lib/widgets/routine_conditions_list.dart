@@ -300,7 +300,7 @@ class RoutineConditionsList extends StatelessWidget {
               // NFC tag doesn't match
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Invalid NFC tag. Please try again with the correct tag.')),
+                  const SnackBar(content: Text('Invalid NFC tag. Please try scanning again.')),
                 );
               }
             }
@@ -308,7 +308,7 @@ class RoutineConditionsList extends StatelessWidget {
             // No NDEF data found on the tag
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('No data found on this NFC tag. Please use a tag that was set up for this condition.')),
+                const SnackBar(content: Text('No data found on this NFC tag. Please try scanning again.')),
               );
             }
           }
