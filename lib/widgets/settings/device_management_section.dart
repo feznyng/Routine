@@ -80,7 +80,7 @@ class DeviceManagementSection extends StatelessWidget {
                             Text(
                               device.lastSyncStatus,
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.65),
                               ),
                             ),
                           ],
