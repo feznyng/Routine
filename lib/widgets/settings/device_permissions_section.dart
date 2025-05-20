@@ -131,11 +131,9 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
             ),
           ),
           const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             _buildPermissionTile(
               title: 'Notifications',
               subtitle: 'Required to keep routines updated in the background',
@@ -163,8 +161,7 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
               isGranted: _familyControlsPermission,
               onRequestPermission: _requestFamilyControls,
             ),
-              ],
-            ),
+            ],
           ),
         ],
       ),
