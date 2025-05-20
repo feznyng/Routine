@@ -16,13 +16,13 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
     let store = ManagedSettingsStore(named: ManagedSettingsStore.Name("routineBlockerRestrictions"))
     
     // Log an error to shared UserDefaults for the main app to report to Sentry
-    private func logError(_ context: String, _ error: Error) {
+    private func logError(_ context: String, _ error: Error?) {
         if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker") {
             // Create error entry
             let errorEntry: [String: Any] = [
                 "timestamp": Date().timeIntervalSince1970,
                 "context": "DeviceActivityMonitorExtension: " + context,
-                "error": error.localizedDescription
+                "error": error?.localizedDescription ?? ""
             ]
             
             // Convert to JSON
@@ -78,6 +78,8 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
     
     private func eval() {
         os_log("DeviceActivityMonitorExtension: Evaluating")
+        logError("DeviceActivityMonitorExtension: Evaluating", nil)
+
         // Read routines from shared UserDefaults
         var routines: [Routine] = []
         
