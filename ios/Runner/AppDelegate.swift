@@ -245,53 +245,55 @@ import Sentry
     /// Checks for and reports any errors logged by the extension
     /// - Parameter flush: If true, will force flush Sentry events after reporting
     func checkAndReportExtensionErrors(flush: Bool = false) {
-        if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker") {
-            if let errors = sharedDefaults.array(forKey: "extensionErrors") as? [String], !errors.isEmpty {
-                // Set to track already processed errors (timestamp + error message)
-                var processedErrors = Set<String>()
-                for errorJson in errors {
-                    do {
-                        if let data = errorJson.data(using: .utf8),
-                           let errorDict = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                            
-                            let context = errorDict["context"] as? String ?? "Unknown extension context"
-                            let errorMessage = errorDict["error"] as? String ?? "Unknown extension error"
-                            let timestamp = errorDict["timestamp"] as? Double ?? Date().timeIntervalSince1970
-                            
-                            // Create a unique key for deduplication
-                            let dedupeKey = "\(Int(timestamp))-\(errorMessage)"
-                            
-                            // Skip if we've already processed this error
-                            guard !processedErrors.contains(dedupeKey) else {
-                                os_log("Skipping duplicate error: %{public}s", dedupeKey)
-                                continue
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker") {
+                if let errors = sharedDefaults.array(forKey: "extensionErrors") as? [String], !errors.isEmpty {
+                    // Set to track already processed errors (timestamp + error message)
+                    var processedErrors = Set<String>()
+                    for errorJson in errors {
+                        do {
+                            if let data = errorJson.data(using: .utf8),
+                               let errorDict = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                                
+                                let context = errorDict["context"] as? String ?? "Unknown extension context"
+                                let errorMessage = errorDict["error"] as? String ?? "Unknown extension error"
+                                let timestamp = errorDict["timestamp"] as? Double ?? Date().timeIntervalSince1970
+                                
+                                // Create a unique key for deduplication
+                                let dedupeKey = "\(Int(timestamp))-\(errorMessage)"
+                                
+                                // Skip if we've already processed this error
+                                guard !processedErrors.contains(dedupeKey) else {
+                                    os_log("Skipping duplicate error: %{public}s", dedupeKey)
+                                    continue
+                                }
+                                
+                                // Add to processed set
+                                processedErrors.insert(dedupeKey)
+                                
+                                let event = Event(level: .error)
+                                event.message = SentryMessage(formatted: "\(context): \(errorMessage)")
+                                event.timestamp = Date(timeIntervalSince1970: timestamp)
+                                
+                                SentrySDK.capture(event: event)
+                                os_log("Reported extension error to Sentry: %{public}s", "\(context): \(errorMessage)")
                             }
-                            
-                            // Add to processed set
-                            processedErrors.insert(dedupeKey)
-                            
-                            let event = Event(level: .error)
-                            event.message = SentryMessage(formatted: "\(context): \(errorMessage)")
-                            event.timestamp = Date(timeIntervalSince1970: timestamp)
-                            
-                            SentrySDK.capture(event: event)
-                            os_log("Reported extension error to Sentry: %{public}s", "\(context): \(errorMessage)")
+                        } catch {
+                            os_log("Failed to parse extension error: %{public}s", error.localizedDescription)
                         }
-                    } catch {
-                        os_log("Failed to parse extension error: %{public}s", error.localizedDescription)
                     }
-                }
-                
-                sharedDefaults.removeObject(forKey: "extensionErrors")
-                sharedDefaults.synchronize()
-                
-                if flush {
-                    os_log("Flushing Sentry events")
+                    
+                    sharedDefaults.removeObject(forKey: "extensionErrors")
+                    sharedDefaults.synchronize()
+                    
+                    if flush {
+                        os_log("Flushing Sentry events")
+                        SentrySDK.flush(timeout: 5)
+                    }
+                } else if flush {
+                    os_log("No extension errors found, but flushing any pending Sentry events")
                     SentrySDK.flush(timeout: 5)
                 }
-            } else if flush {
-                os_log("No extension errors found, but flushing any pending Sentry events")
-                SentrySDK.flush(timeout: 5)
             }
         }
     }
