@@ -1,3 +1,4 @@
+import 'package:Routine/setup.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'dart:async';
@@ -78,7 +79,7 @@ class _StrictModeSectionState extends State<StrictModeSection> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) {    
     return Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -99,7 +100,7 @@ class _StrictModeSectionState extends State<StrictModeSection> {
           if (_strictModeService.inStrictMode || _strictModeService.emergencyMode) ...[
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child: ElevatedButton.icon(
+              child: TextButton.icon(
                 onPressed: _strictModeService.emergencyMode || _strictModeService.canStartEmergency
                     ? () async {
                         final newValue = !_strictModeService.emergencyMode;
@@ -125,7 +126,7 @@ class _StrictModeSectionState extends State<StrictModeSection> {
                                 TextButton(
                                   onPressed: () => Navigator.of(context).pop(true),
                                   style: TextButton.styleFrom(
-                                    foregroundColor: Colors.red,
+                                    foregroundColor: Colors.amber,
                                   ),
                                   child: const Text('Enable Emergency Mode'),
                                 ),
@@ -171,9 +172,9 @@ class _StrictModeSectionState extends State<StrictModeSection> {
                     : null,
                 icon: Icon(
                   _strictModeService.emergencyMode ? Icons.warning_amber : Icons.emergency,
-                  color: _strictModeService.emergencyMode ? Colors.amber : Colors.white,
+                  color: Colors.amber
                 ),
-                style: ElevatedButton.styleFrom(
+                style: TextButton.styleFrom(
                   foregroundColor: Colors.amber,
                   side: _strictModeService.emergencyMode ? BorderSide(color: Colors.amber) : null,
                 ),

@@ -78,6 +78,8 @@ class SyncService {
   Future<void> _notifyPeers() async {
     final currDevice = await Device.getCurrent();
 
+    logger.i("notfying peers");
+
     try {
       final channel = _syncChannel;
       if (channel != null) {
@@ -178,6 +180,9 @@ class SyncService {
       final lastPulledAt = full ? DateTime.fromMicrosecondsSinceEpoch(0) : (currDevice.lastPulledAt ?? DateTime.fromMicrosecondsSinceEpoch(0));
       final pulledAt = DateTime.now();
 
+      bool madeRemoteChange = false;
+      bool accidentalDeletion = false;
+
       // sync emergencies first due to criticality
       {
         final userData = await _client.from('users')
@@ -199,65 +204,69 @@ class SyncService {
         }
         final localEvents = StrictModeService().emergencyEvents;
 
-        // First clean up old events (older than a week)
-        final oneWeekAgo = DateTime.now().subtract(const Duration(days: 7));
-        final recentEvents = [...remoteEvents, ...localEvents]
-          .where((e) => !e.startedAt.isBefore(oneWeekAgo))
-          .toList();
-
-        // Merge events, ensuring only one active emergency
-        final mergedEvents = <EmergencyEvent>[];
-
-        // Find the latest active emergency if any
-        final activeEvents = recentEvents.where((e) => e.endedAt == null).toList()
-          ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
-
-        EmergencyEvent? latestActive;
-        if (activeEvents.isNotEmpty) {
-          latestActive = activeEvents.first;
-          // End all other active events at the time the latest one started
-          for (final event in activeEvents.skip(1)) {
-            event.endedAt = latestActive.startedAt;
+         // Create maps for local and remote events (id -> event)
+        final Map<String, EmergencyEvent> localEventMap = {
+          for (final event in localEvents) event.id: event
+        };
+        final Map<String, EmergencyEvent> remoteEventMap = {
+          for (final event in remoteEvents) event.id: event
+        };
+        
+        // Merge events by id, preferring the one with the latest endedAt
+        final Set<String> allEventIds = {...localEventMap.keys, ...remoteEventMap.keys};
+        final List<EmergencyEvent> mergedEvents = [];
+        
+        for (final id in allEventIds) {
+          final localEvent = localEventMap[id];
+          final remoteEvent = remoteEventMap[id];
+          
+          if (localEvent != null && remoteEvent != null) {
+            localEvent.endedAt = localEvent.endedAt ?? remoteEvent.endedAt;
+            mergedEvents.add(localEvent);
+          } else if (localEvent != null) {
+            mergedEvents.add(localEvent);
+          } else if (remoteEvent != null) {
+            mergedEvents.add(remoteEvent);
           }
         }
+        
+        // Filter out events older than one week
+        final oneWeekAgo = DateTime.now().subtract(const Duration(days: 7));
+        mergedEvents.removeWhere((event) => 
+          event.endedAt != null && event.endedAt!.isBefore(oneWeekAgo));
+        
+        // Sort events by startedAt to find the latest
+        mergedEvents.sort((a, b) => a.startedAt.compareTo(b.startedAt));
+        
+        if (mergedEvents.isNotEmpty) {
+          final latestEvent = mergedEvents.last;
+          
+          for (int i = 0; i < mergedEvents.length - 1; i++) {
+            final event = mergedEvents[i];
+            event.endedAt = event.endedAt ?? latestEvent.startedAt;
+          }
+        }
+        
+        logger.i("localEvents: ${localEvents.map((e) => e.toJson())}");
+        logger.i("remoteEvents: ${remoteEvents.map((e) => e.toJson())}");
+        logger.i("mergedEvents: ${mergedEvents.map((e) => e.toJson())}");
 
-        // Now process all events, keeping track of seen IDs
-        final seenIds = <String>{};
-        final processedEvents = <EmergencyEvent>[];
-
-        // Add the latest active event first if it exists
-        if (latestActive != null) {
-          processedEvents.add(latestActive);
-          seenIds.add(latestActive.id);
+        //mergedEvents.clear();
+        
+        madeRemoteChange = madeRemoteChange || (mergedEvents.length != remoteEvents.length);
+        for (final event in mergedEvents) {
+          madeRemoteChange = madeRemoteChange 
+          || event.startedAt != remoteEventMap[event.id]?.startedAt
+          || event.endedAt != remoteEventMap[event.id]?.endedAt;
         }
 
-        // Add all other events, preferring ended versions
-        final eventsByIds = <String, List<EmergencyEvent>>{};
-        for (final event in recentEvents.where((e) => !seenIds.contains(e.id))) {
-          eventsByIds.putIfAbsent(event.id, () => []).add(event);
-        }
 
-        for (final events in eventsByIds.values) {
-          final endedEvent = events.firstWhere(
-            (e) => e.endedAt != null,
-            orElse: () => events.first
-          );
-          processedEvents.add(endedEvent);
-        }
-
-        mergedEvents.addAll(processedEvents);
-
-        // Update local state
         await StrictModeService().updateEmergencyEvents(mergedEvents);
 
-        // Update remote state
         await _client.from('users').update({
           'emergencies': mergedEvents.map((e) => e.toJson()).toList(),
         }).eq('id', userId);
       }
-
-      bool madeRemoteChange = false;
-      bool accidentalDeletion = false;
       
       await db.transaction(() async {
         // pull devices

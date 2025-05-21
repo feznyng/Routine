@@ -49,6 +49,8 @@ class StrictModeService with ChangeNotifier {
   
   void evaluateStrictMode(List<Routine> routines) {
     final activeRoutines = routines.where((r) => r.isActive && !r.isPaused).toList();
+
+    logger.i("activeRoutines: $activeRoutines");
     
     final wasInStrictMode = _inStrictMode;
     _inStrictMode = activeRoutines.any((r) => r.strictMode);
