@@ -112,8 +112,8 @@ class _StrictModeSectionState extends State<StrictModeSection> {
                             builder: (context) => AlertDialog(
                               title: const Text('Enable Emergency Mode'),
                               content: Text(
-                                'This will temporarily suspend all strict mode restrictions. '
-                                'You have ${remainingEmergencies} emergenc${remainingEmergencies == 1 ? 'y' : 'ies'} '
+                                'This will suspend all strict mode restrictions until you disable it. '
+                                'You have $remainingEmergencies emergenc${remainingEmergencies == 1 ? 'y' : 'ies'} '
                                 'remaining.\n\n'
                                 'Are you sure you want to proceed?'
                               ),
@@ -139,7 +139,7 @@ class _StrictModeSectionState extends State<StrictModeSection> {
                           final confirm = await showDialog<bool>(
                             context: context,
                             builder: (context) => AlertDialog(
-                              title: const Text('Disable Emergency Mode'),
+                              title: const Text('End Emergency Mode'),
                               content: Text(
                                 'This will re-enable all strict mode restrictions.\n\n'
                                 'You will have ${_strictModeService.remainingEmergencies} emergenc${_strictModeService.remainingEmergencies == 1 ? 'y' : 'ies'} '
@@ -156,7 +156,7 @@ class _StrictModeSectionState extends State<StrictModeSection> {
                                   style: TextButton.styleFrom(
                                     foregroundColor: Colors.amber,
                                   ),
-                                  child: const Text('Disable Emergency Mode'),
+                                  child: const Text('End Emergency Mode'),
                                 ),
                               ],
                             ),
@@ -174,11 +174,10 @@ class _StrictModeSectionState extends State<StrictModeSection> {
                   color: _strictModeService.emergencyMode ? Colors.amber : Colors.white,
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _strictModeService.emergencyMode ? Colors.white : Colors.red,
-                  foregroundColor: _strictModeService.emergencyMode ? Colors.black : Colors.white,
+                  foregroundColor: Colors.amber,
                   side: _strictModeService.emergencyMode ? BorderSide(color: Colors.amber) : null,
                 ),
-                label: Text(_strictModeService.emergencyMode ? 'Disable Emergency Mode' : 'Enable Emergency Mode'),
+                label: Text(_strictModeService.emergencyMode ? 'End Emergency Mode' : 'Enable Emergency Mode'),
               ),
             ),
 

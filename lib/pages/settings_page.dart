@@ -11,6 +11,7 @@ import '../widgets/settings/browser_extension_section.dart';
 import '../widgets/settings/device_options_bottom_sheet.dart';
 import '../widgets/settings/sync_settings_section.dart';
 import '../widgets/settings/device_permissions_section.dart';
+import '../widgets/settings/feedback_section.dart';
 import '../models/device.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -103,6 +104,10 @@ class _SettingsPageState extends State<SettingsPage> {
           
           // Sync settings section
           const SyncSettingsSection(),
+          const SizedBox(height: 16),
+          
+          // Feedback section
+          const FeedbackSection(),
         ],
       ),
     );
