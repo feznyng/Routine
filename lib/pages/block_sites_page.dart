@@ -23,7 +23,6 @@ class _BlockSitesPageState extends State<BlockSitesPage> {
   late List<String> _selectedSites;
   final TextEditingController _siteController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -88,12 +87,6 @@ class _BlockSitesPageState extends State<BlockSitesPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Filter sites based on search query
-    final filteredSites = _searchQuery.isEmpty
-        ? _selectedSites
-        : _selectedSites.where((site) => 
-            site.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
-
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 80,
@@ -173,7 +166,7 @@ class _BlockSitesPageState extends State<BlockSitesPage> {
                 child: Text('No sites blocked', 
                   style: TextStyle(fontStyle: FontStyle.italic)),
               )
-            else if (filteredSites.isEmpty)
+            else if (_selectedSites.isEmpty)
               const Padding(
                 padding: EdgeInsets.all(8.0),
                 child: Text('No sites match your search', 
@@ -186,7 +179,7 @@ class _BlockSitesPageState extends State<BlockSitesPage> {
                   borderRadius: BorderRadius.circular(4),
                   child: ListView(
                     padding: const EdgeInsets.all(8),
-                    children: filteredSites.map((site) => ListTile(
+                    children: _selectedSites.map((site) => ListTile(
                       title: Text(site),
                       trailing: IconButton(
                         icon: const Icon(Icons.close),
