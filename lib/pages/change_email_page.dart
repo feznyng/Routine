@@ -14,6 +14,7 @@ class _ChangeEmailPageState extends State<ChangeEmailPage> {
   final _newEmailController = TextEditingController();
   final _authService = AuthService();
   String? _errorText;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -33,6 +34,7 @@ class _ChangeEmailPageState extends State<ChangeEmailPage> {
 
     setState(() {
       _errorText = null;
+      _isLoading = true;
     });
 
     try {
@@ -50,7 +52,14 @@ class _ChangeEmailPageState extends State<ChangeEmailPage> {
     } catch (e) {
       setState(() {
         _errorText = e.toString();
+        _isLoading = false;
       });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -97,8 +106,17 @@ class _ChangeEmailPageState extends State<ChangeEmailPage> {
             ],
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: _handleSubmit,
-              child: const Text('Update Email'),
+              onPressed: _isLoading ? null : _handleSubmit,
+              child: _isLoading
+                  ? const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                        SizedBox(width: 12),
+                        Text('Updating...'),
+                      ],
+                    )
+                  : const Text('Update Email'),
             ),
           ],
         ),

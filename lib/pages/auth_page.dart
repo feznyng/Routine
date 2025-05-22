@@ -17,6 +17,8 @@ class _AuthPageState extends State<AuthPage> {
   final _authService = AuthService();
   String? _errorText;
   String? _bannerMessage;
+  bool _isLoading = false;
+  bool _isResendingVerification = false;
 
   @override
   void dispose() {
@@ -29,6 +31,7 @@ class _AuthPageState extends State<AuthPage> {
     setState(() {
       _errorText = null;
       _bannerMessage = null;
+      _isLoading = true;
     });
 
     try {
@@ -51,7 +54,14 @@ class _AuthPageState extends State<AuthPage> {
     } catch (e) {
       setState(() {
         _errorText = e.toString();
+        _isLoading = false;
       });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -117,31 +127,54 @@ class _AuthPageState extends State<AuthPage> {
               if (_errorText == 'Please verify your email address') ...[
                 const SizedBox(height: 8),
                 TextButton(
-                  onPressed: () async {
+                  onPressed: _isResendingVerification ? null : () async {
+                    setState(() {
+                      _isResendingVerification = true;
+                    });
                     try {
                       await _authService.resendVerificationEmail(_emailController.text);
                       if (mounted) {
                         setState(() {
                           _bannerMessage = 'Verification email sent. Please check your inbox.';
                           _errorText = null;
+                          _isResendingVerification = false;
                         });
                       }
                     } catch (e) {
                       if (mounted) {
                         setState(() {
                           _errorText = e.toString();
+                          _isResendingVerification = false;
                         });
                       }
                     }
                   },
-                  child: const Text('Resend verification email'),
+                  child: _isResendingVerification
+                    ? const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+                          SizedBox(width: 8),
+                          Text('Sending...'),
+                        ],
+                      )
+                    : const Text('Resend verification email'),
                 ),
               ],
             ],
             const SizedBox(height: 16),
             FilledButton(
-              onPressed: _handleSubmit,
-              child: Text(_isRegistering ? 'Register' : 'Sign In'),
+              onPressed: _isLoading ? null : _handleSubmit,
+              child: _isLoading
+                ? const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                      SizedBox(width: 12),
+                      Text('Processing...'),
+                    ],
+                  )
+                : Text(_isRegistering ? 'Register' : 'Sign In'),
             ),
             const SizedBox(height: 8),
             if (!_isRegistering) TextButton(

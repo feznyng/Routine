@@ -15,6 +15,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   final _confirmPasswordController = TextEditingController();
   final _authService = AuthService();
   String? _errorText;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -41,6 +42,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
     setState(() {
       _errorText = null;
+      _isLoading = true;
     });
 
     try {
@@ -58,7 +60,14 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     } catch (e) {
       setState(() {
         _errorText = e.toString();
+        _isLoading = false;
       });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -116,8 +125,17 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             ],
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: _handleSubmit,
-              child: const Text('Update Password'),
+              onPressed: _isLoading ? null : _handleSubmit,
+              child: _isLoading
+                  ? const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                        SizedBox(width: 12),
+                        Text('Updating...'),
+                      ],
+                    )
+                  : const Text('Update Password'),
             ),
           ],
         ),
