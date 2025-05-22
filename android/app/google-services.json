@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "395053176251",
-    "project_id": "routine-a2147",
-    "storage_bucket": "routine-a2147.firebasestorage.app"
+    "project_number": "",
+    "project_id": "",
+    "storage_bucket": ""
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:395053176251:android:b1182792a858d44921a09e",
+        "mobilesdk_app_id": "",
         "android_client_info": {
-          "package_name": "com.solidsoft.routine"
+          "package_name": ""
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAQRDYZO-Vn64QA2OJFw9W0X7i1B_Yu554"
+          "current_key": ""
         }
       ],
       "services": {
