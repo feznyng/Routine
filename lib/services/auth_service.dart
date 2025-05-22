@@ -348,4 +348,18 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('signed_in');
   }
+
+  Future<void> resendVerificationEmail(String email) async {
+    if (!_initialized) throw Exception('AuthService not initialized');
+    try {
+      await _client.auth.resend(email: email, type: OtpType.signup);
+      logger.i('Verification email resent to: $email');
+    } on AuthException catch (e) {
+      logger.w('Resend verification email error: ${e.message}');
+      throw 'Unable to resend verification email. Please try again later.';
+    } catch (e, st) {
+      Util.report('Unexpected resend verification failure', e, st);
+      throw 'Unable to resend verification email. Please try again later.';
+    }
+  }
 }

@@ -114,6 +114,29 @@ class _AuthPageState extends State<AuthPage> {
                 _errorText!,
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
+              if (_errorText == 'Please verify your email address') ...[
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () async {
+                    try {
+                      await _authService.resendVerificationEmail(_emailController.text);
+                      if (mounted) {
+                        setState(() {
+                          _bannerMessage = 'Verification email sent. Please check your inbox.';
+                          _errorText = null;
+                        });
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        setState(() {
+                          _errorText = e.toString();
+                        });
+                      }
+                    }
+                  },
+                  child: const Text('Resend verification email'),
+                ),
+              ],
             ],
             const SizedBox(height: 16),
             FilledButton(
