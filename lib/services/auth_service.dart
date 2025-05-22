@@ -177,19 +177,10 @@ class AuthService {
       final response = await _client.auth.signUp(
         email: email,
         password: password,
+        emailRedirectTo: getRedirectLink('confirm')
       );
 
-      logger.i("sign up successful ${response.user}");
-
-      final user = response.user;
-
-      if (user == null) {
-        return false;
-      }
-
-      logger.i("identities: ${user.identities}");
-
-      return true;
+      return response.user != null;
     } on AuthException catch (e) {
       logger.w('Sign up error: ${e.message}');
       if (e.message.contains('already registered')) {
@@ -215,10 +206,14 @@ class AuthService {
     }
   }
 
+  String getRedirectLink(String endpoint) {
+    return "${dotenv.env['SITE_URL']}/$endpoint";
+  }
+
   Future<void> resetPasswordForEmail(String email) async {
     if (!_initialized) throw Exception('AuthService not initialized');
     try {
-      await _client.auth.resetPasswordForEmail(email, redirectTo: "${dotenv.env['SITE_URL']}/reset-password");
+      await _client.auth.resetPasswordForEmail(email, redirectTo: getRedirectLink('reset-password'));
     } on AuthException catch (e) {
       logger.w('Password reset error: ${e.message}');
       if (e.message.contains('not found')) {
@@ -263,12 +258,11 @@ class AuthService {
     try {
       final email = currentUser;
       if (email == null) throw Exception('Current user email not found');
-            
+          
       await _client.auth.updateUser(
         UserAttributes(email: newEmail),
+        emailRedirectTo: getRedirectLink('email-change')
       );
-
-      await signOut();
     } on AuthException catch (e) {
       logger.w('Email update error: ${e.message}');
       if (e.message.contains('Invalid login credentials')) {
@@ -352,7 +346,7 @@ class AuthService {
   Future<void> resendVerificationEmail(String email) async {
     if (!_initialized) throw Exception('AuthService not initialized');
     try {
-      await _client.auth.resend(email: email, type: OtpType.signup);
+      await _client.auth.resend(email: email, type: OtpType.signup, emailRedirectTo: getRedirectLink('confirm'));
       logger.i('Verification email resent to: $email');
     } on AuthException catch (e) {
       logger.w('Resend verification email error: ${e.message}');

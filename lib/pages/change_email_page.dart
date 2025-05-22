@@ -45,7 +45,7 @@ class _ChangeEmailPageState extends State<ChangeEmailPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Email updated successfully')),
+          const SnackBar(content: Text('Email updated. Please confirm your new email.')),
         );
         Navigator.of(context).pop();
       }
