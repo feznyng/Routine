@@ -351,7 +351,7 @@ class SyncService {
           final remoteGroups = await _client.from('groups').select().eq('user_id', userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
           final localGroups = await db.getGroupsById(remoteGroups.map((group) => group['id'] as String).toList());
           final localGroupMap = {for (final group in localGroups) group.id: group};
-          logger.i("remote devices: $remoteGroups");
+          logger.i("remote groups: $remoteGroups");
           for (final group in remoteGroups) {            
             final overwriteMap = {};
             final localGroup = localGroupMap[group['id']];

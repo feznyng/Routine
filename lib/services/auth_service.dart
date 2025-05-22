@@ -12,6 +12,14 @@ import 'package:sentry/sentry.dart';
 // MARK:REMOVE
 import 'package:Routine/services/notification_service.dart';
 
+// Custom AuthState class to match the structure of Supabase's auth state change events
+class CustomAuthState {
+  final AuthChangeEvent event;
+  final Session? session;
+  
+  CustomAuthState({required this.event, this.session});
+}
+
 class AuthService {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
@@ -23,6 +31,10 @@ class AuthService {
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
     mOptions: MacOsOptions(accessibility: KeychainAccessibility.first_unlock)
   );
+  
+  // Custom auth state change controller
+  final _authStateController = StreamController<CustomAuthState>.broadcast();
+  Stream<CustomAuthState> get authStateChange => _authStateController.stream;
   
   AuthService._internal();
 
@@ -128,6 +140,9 @@ class AuthService {
         default:
           logger.i('Auth event: $event');
       }
+      
+      // Emit the auth state change through our custom stream after initializing local variables
+      _authStateController.add(CustomAuthState(event: event, session: session));
     });
   }
 
@@ -207,6 +222,8 @@ class AuthService {
       throw 'Unable to sign out. Please try again later.';
     }
   }
+  
+
 
   String getRedirectLink(String endpoint) {
     return "${dotenv.env['SITE_URL']}/$endpoint";
@@ -344,6 +361,11 @@ class AuthService {
   Future<void> clearSignedInFlag() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('signed_in');
+  }
+  
+  /// Disposes resources used by the AuthService
+  void dispose() {
+    _authStateController.close();
   }
 
   Future<void> resendVerificationEmail(String email) async {

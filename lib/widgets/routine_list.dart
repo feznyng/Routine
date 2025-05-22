@@ -45,8 +45,8 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
     // Check if we need to show the signed out banner
     _checkAuthStatus();
     
-    // Listen for auth state changes
-    authServiceSubscription = _authService.client.auth.onAuthStateChange.listen((data) {
+    // Listen for auth state changes using the custom stream
+    authServiceSubscription = _authService.authStateChange.listen((data) {
       if (mounted) {
         _checkAuthStatus();
       }
