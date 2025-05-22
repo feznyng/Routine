@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:Routine/setup.dart';
 import 'package:Routine/util.dart';
 import 'package:cron/cron.dart';
@@ -162,7 +164,7 @@ class StrictModeService with ChangeNotifier {
     // Remove events older than a week
     final oneWeekAgo = DateTime.now().subtract(const Duration(days: 7));
     _emergencyEvents.removeWhere((e) => e.startedAt.isBefore(oneWeekAgo));
-    return _maxEmergenciesPerWeek - _emergencyEvents.length;
+    return max(0, _maxEmergenciesPerWeek - _emergencyEvents.length);
   }
 
   bool get canStartEmergency {

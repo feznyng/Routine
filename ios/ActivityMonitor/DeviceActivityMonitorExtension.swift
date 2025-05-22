@@ -59,7 +59,7 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
         
         os_log("DeviceActivityMonitorExtension: intervalDidStart %{public}s", activity.rawValue)
         
-        eval()
+        eval(id: activity.rawValue)
     }
     
     override func intervalDidEnd(for activity: DeviceActivityName) {
@@ -73,12 +73,15 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
             return
         }
         
-        eval()
+        eval(id: activity.rawValue)
     }
     
-    private func eval() {
-        os_log("DeviceActivityMonitorExtension: Evaluating")
-        logError("DeviceActivityMonitorExtension: Evaluating", nil)
+    private func eval(id: String) {        
+        // Start timing the eval function
+        let startTime = Date()
+        
+        os_log("DeviceActivityMonitorExtension: Evaluating [ID: %{public}s]", id)
+        //logError("DeviceActivityMonitorExtension: Start Eval [ID: \(evalId)]", nil)
 
         // Read routines from shared UserDefaults
         var routines: [Routine] = []
@@ -197,6 +200,7 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
             } else {
                 os_log("DeviceActivityMonitorExtension: No strict mode data found in shared UserDefaults")
             }
+            
         } else {
             // If strict mode is not enabled, make sure restrictions are removed
             store.application.denyAppInstallation = false
@@ -204,5 +208,11 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
             store.dateAndTime.requireAutomaticDateAndTime = false
             os_log("DeviceActivityMonitorExtension: Strict mode disabled, removing restrictions")
         }
+        
+        // Calculate elapsed time
+        let elapsedTime = Date().timeIntervalSince(startTime)
+        
+        os_log("DeviceActivityMonitorExtension: Eval completed [ID: %{public}s] in %.3f seconds", String(id), elapsedTime)
+        logError("DeviceActivityMonitorExtension: End Eval [ID: \(id)] - Duration: \(String(format: "%.3f", elapsedTime)) seconds", nil)
     }
 }
