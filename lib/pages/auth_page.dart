@@ -36,18 +36,8 @@ class _AuthPageState extends State<AuthPage> {
         // If email is not registered, proceed with signup
         final success = await _authService.signUp(_emailController.text, _passwordController.text);
         if (success && mounted) {
-          // Show snackbar indicating email confirmation is required
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Please check your email to confirm your account before signing in.'),
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              duration: Duration(seconds: 5),
-            ),
-          );
-          // Set banner message for additional visibility
           setState(() {
-            _bannerMessage = 'Please check your email to confirm your account';
-            // Switch to sign in mode since they need to confirm email before signing in
+            _bannerMessage = "Please check your email to confirm your account or try signing in.";
             _isRegistering = false;
           });
         }

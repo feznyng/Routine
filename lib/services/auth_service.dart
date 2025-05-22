@@ -189,12 +189,6 @@ class AuthService {
 
       logger.i("identities: ${user.identities}");
 
-      // if ((user.identities ?? []).isNotEmpty) {
-      //   // please confirm your email, or send again
-      // } else {
-      //   throw 'An account with this email already exists';  
-      // }
-
       return true;
     } on AuthException catch (e) {
       logger.w('Sign up error: ${e.message}');
