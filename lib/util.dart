@@ -146,7 +146,7 @@ class Util {
     logger.e("$context: ${e.toString()}");
 
     final Hint hint = Hint();
-    hint.set('context', context);
+    hint.set('error-context', context);
 
     Sentry.captureException(
       e,

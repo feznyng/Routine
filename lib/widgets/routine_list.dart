@@ -6,9 +6,11 @@ import 'package:flutter/material.dart';
 import '../models/routine.dart';
 import '../services/sync_service.dart';
 import '../services/strict_mode_service.dart';
+import '../services/auth_service.dart';
 import '../pages/routine_page.dart';
 import 'routine_card.dart';
 import 'common/emergency_mode_banner.dart';
+import 'common/signed_out_banner.dart';
 
 class RoutineList extends StatefulWidget {
   const RoutineList({super.key});
@@ -25,10 +27,13 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
   bool _inactiveRoutinesExpanded = true;
   bool _snoozedRoutinesExpanded = true;
   bool _completedRoutinesExpanded = true;
+  bool _showSignedOutBanner = false;
   final cron = Cron();
   final List<ScheduledTask> _scheduledTasks = [];
   final _syncService = SyncService();
   final _strictModeService = StrictModeService.instance;
+  final _authService = AuthService();
+  late final StreamSubscription authServiceSubscription;
 
   @override
   void initState() {
@@ -36,6 +41,16 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
     _routines = [];
     _isLoading = true;
     WidgetsBinding.instance.addObserver(this);
+    
+    // Check if we need to show the signed out banner
+    _checkAuthStatus();
+    
+    // Listen for auth state changes
+    authServiceSubscription = _authService.client.auth.onAuthStateChange.listen((data) {
+      if (mounted) {
+        _checkAuthStatus();
+      }
+    });
    
     _routineSubscription = Routine.watchAll().listen((routines) {
       if (mounted) {
@@ -59,15 +74,27 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _routineSubscription.cancel();
+    authServiceSubscription.cancel();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      // Check auth status when app is resumed
+      _checkAuthStatus();
+      
       // Refresh the list when app is resumed
       setState(() {
         _routines = _routines;
+      });
+    }
+  }
+  
+  Future<void> _checkAuthStatus() async {
+    if ((await _authService.wasSignedOut) == false) {
+      setState(() {
+        _showSignedOutBanner = true;
       });
     }
   }
@@ -204,6 +231,17 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                     // Emergency mode banner
                     if (_strictModeService.emergencyMode)
                       const EmergencyModeBanner(),
+                    // Signed out banner
+                    if (_showSignedOutBanner)
+                      SignedOutBanner(
+                        onDismiss: () {
+                          // Clear the banner and the persistent flag
+                          _authService.clearSignedInFlag();
+                          setState(() {
+                            _showSignedOutBanner = false;
+                          });
+                        },
+                      ),
                     // Active routines section
                     if (activeRoutines.isNotEmpty) ...[  
                       _buildSectionHeader(

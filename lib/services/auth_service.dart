@@ -4,13 +4,13 @@ import 'package:Routine/setup.dart';
 import 'package:Routine/util.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'sync_service.dart';
 import 'package:sentry/sentry.dart';
 
 // MARK:REMOVE
 import 'package:Routine/services/notification_service.dart';
-
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
@@ -37,14 +37,6 @@ class AuthService {
       throw Exception('Missing Supabase credentials. Please check your .env file.');
     }
 
-    // Try to restore the refresh token with error handling
-    String? refreshToken;
-    try {
-      refreshToken = await _storage.read(key: 'supabase_refresh_token');
-    } catch (e) {
-      logger.e('Failed to read refresh token from secure storage: $e');
-    }
-    
     await Supabase.initialize(
       url: url,
       anonKey: anonKey,
@@ -55,6 +47,14 @@ class AuthService {
     );
     
     _client = Supabase.instance.client;
+    
+    // Try to restore the refresh token with error handling
+    String? refreshToken;
+    try {
+      refreshToken = await _storage.read(key: 'supabase_refresh_token');
+    } catch (e) {
+      logger.e('Failed to read refresh token from secure storage: $e');
+    }
     
     if (refreshToken != null) {
       try {
@@ -72,13 +72,17 @@ class AuthService {
         }
       }
     }
+
     // Listen for auth state changes
     _client.auth.onAuthStateChange.listen((data) async {
       final AuthChangeEvent event = data.event;
       final Session? session = data.session;
+      final prefs = await SharedPreferences.getInstance();
       
       // Store or remove refresh token based on auth state
       if (session != null) {
+        // Update signed_in flag
+        await prefs.setBool('signed_in', true);
         Sentry.configureScope(
           (scope) => scope.setUser(SentryUser(id: session.user.id)),
         );
@@ -99,7 +103,6 @@ class AuthService {
           await _storage.delete(key: 'supabase_refresh_token');
         } catch (e) {
           logger.e('Failed to delete refresh token from secure storage: $e');
-          // Continue despite storage error
         }
       }
       
@@ -109,6 +112,9 @@ class AuthService {
           break;
         case AuthChangeEvent.signedOut:
           logger.i('User signed out');
+          if (prefs.getBool('signed_in') ?? false) {
+            await prefs.setBool('signed_in', false);
+          }
           break;
         case AuthChangeEvent.userUpdated:
           logger.i('User updated: ${session?.user.email}');
@@ -126,6 +132,11 @@ class AuthService {
   }
 
   bool get isSignedIn => _initialized ? _client.auth.currentUser != null : false;
+  Future<bool?> get wasSignedOut async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('signed_in');
+  }
+
   String? get currentUser => _initialized ? _client.auth.currentUser?.email : null;
   SupabaseClient get client => _client;
 
@@ -183,6 +194,7 @@ class AuthService {
   Future<void> signOut() async {
     if (!_initialized) throw Exception('AuthService not initialized');
     try {
+      await clearSignedInFlag();
       await _client.auth.signOut();
     } catch (e, st) {
       Util.report('Unexpected sign out failure', e, st);
@@ -266,11 +278,18 @@ class AuthService {
   Future<void> refreshSessionIfNeeded() async {
     if (!_initialized || _client.auth.currentUser == null) return;
     
+    if (isSignedIn) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('signed_in', true);
+    }
+    
     try {
       final session = _client.auth.currentSession;
       if (session != null) {
         final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
         final expiresAt = session.expiresAt;
+
+        logger.i("expires at: ${DateTime.fromMillisecondsSinceEpoch(((expiresAt) ?? 0) * 1000)}");
         
         if (expiresAt != null && (expiresAt < now + 300)) {
           logger.i('Token expired or about to expire, refreshing...');
@@ -280,5 +299,10 @@ class AuthService {
     } catch (e, st) {
       Util.report('Error refreshing session', e, st);
     }
+  }
+  
+  Future<void> clearSignedInFlag() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('signed_in');
   }
 }
