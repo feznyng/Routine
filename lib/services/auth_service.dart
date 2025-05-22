@@ -195,10 +195,12 @@ class AuthService {
     }
   }
 
-  Future<void> signOut() async {
+  Future<void> signOut({bool forced = false}) async {
     if (!_initialized) throw Exception('AuthService not initialized');
     try {
-      await clearSignedInFlag();
+      if (!forced) {
+        await clearSignedInFlag();
+      }
       await _client.auth.signOut();
     } catch (e, st) {
       Util.report('Unexpected sign out failure', e, st);
@@ -234,11 +236,10 @@ class AuthService {
       final email = currentUser;
       if (email == null) throw Exception('Current user email not found');
       
-      await signIn(email, currentPassword);
-      
       await _client.auth.updateUser(
         UserAttributes(password: newPassword),
       );
+      await SyncService().notifyPeersSignOut();
     } on AuthException catch (e) {
       logger.w('Password update error: ${e.message}');
       if (e.message.contains('Invalid login credentials')) {
@@ -311,6 +312,8 @@ class AuthService {
     try {
       final session = _client.auth.currentSession;
       if (session == null) throw Exception('No active session found');
+
+      await SyncService().notifyPeersSignOut();
       
       final response = await _client.functions.invoke(
         'delete-account',

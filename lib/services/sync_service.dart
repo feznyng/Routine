@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:Routine/models/emergency_event.dart';
 import 'package:Routine/models/condition.dart';
 import 'package:Routine/models/device.dart';
+import 'package:Routine/services/auth_service.dart';
 import 'package:Routine/util.dart';
 import '../setup.dart';
 import '../database/database.dart';
@@ -69,22 +70,27 @@ class SyncService {
             addJob(SyncJob(remote: true));
           }
         )
+        .onBroadcast(
+          event: 'sign-out', 
+          callback: (payload, [_]) {
+            logger.i('received remote sign out event');
+            AuthService().signOut(forced: true);
+          }
+        )
         .subscribe();
     } catch (e, st) {
       Util.report('error setting up real time sync', e, st);
     }
   }
 
-  Future<void> _notifyPeers() async {
+  Future<void> _sendRealtimeMessage(String type) async {
     final currDevice = await Device.getCurrent();
-
-    logger.i("notfying peers");
 
     try {
       final channel = _syncChannel;
       if (channel != null) {
         await channel.sendBroadcastMessage(
-          event: 'sync',
+          event: type,
           payload: { 'timestamp': DateTime.now().toIso8601String(), 'source': currDevice.id },
         );
       }
@@ -93,11 +99,24 @@ class SyncService {
       setupRealtimeSync();
     }
 
+  }
+
+  Future<void> _notifyPeers() async {
+    final currDevice = await Device.getCurrent();
+
+    logger.i("notfying peers");
+
+    await _sendRealtimeMessage('sync');
+
     try {
       _client.functions.invoke('push', body: {'content': 'sample message', 'source_id': currDevice.id});
     } catch (e, st) {
       Util.report('error fcm notifying other devices', e, st);
     }
+  }
+
+  Future<void> notifyPeersSignOut() async {
+    await _sendRealtimeMessage('sign-out');
   }
   
   final _jobController = StreamController<SyncJob>();
