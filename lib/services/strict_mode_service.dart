@@ -1,12 +1,13 @@
+import 'package:Routine/setup.dart';
+import 'package:Routine/util.dart';
+import 'package:cron/cron.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../models/routine.dart';
 import '../models/emergency_event.dart';
 import '../services/sync_service.dart';
-import 'package:Routine/setup.dart';
 
 class StrictModeService with ChangeNotifier {
   static final StrictModeService _instance = StrictModeService._internal();
@@ -19,7 +20,8 @@ class StrictModeService with ChangeNotifier {
   DateTime? _extensionCooldownEnd;
   static const int _extensionGracePeriodSeconds = 60;
   static const int _extensionCooldownMinutes = 10;
-  
+  final List<ScheduledTask> _scheduledTasks = [];
+
   Timer? _gracePeriodTimer;
   
   final StreamController<Map<String, bool>> _effectiveSettingsStreamController = StreamController<Map<String, bool>>.broadcast();
@@ -47,16 +49,53 @@ class StrictModeService with ChangeNotifier {
   bool _blockUninstallingApps = false;
   bool _blockInstallingApps = false;
   
-  void evaluateStrictMode(List<Routine> routines) {
-    final activeRoutines = routines.where((r) => r.isActive && !r.isPaused).toList();
-
-    logger.i("activeRoutines: $activeRoutines");
+  Future<void> init() async {
+    if (_initialized) return;
     
+    final prefs = await SharedPreferences.getInstance();
+    
+    // Load desktop settings
+    _blockAppExit = prefs.getBool(_blockAppExitKey) ?? false;
+    _blockDisablingSystemStartup = prefs.getBool(_blockDisablingSystemStartupKey) ?? false;
+    _blockBrowsersWithoutExtension = prefs.getBool(_blockBrowsersWithoutExtensionKey) ?? false;
+    
+    // Load iOS settings
+    _blockChangingTimeSettings = prefs.getBool(_blockChangingTimeSettingsKey) ?? false;
+    _blockUninstallingApps = prefs.getBool(_blockUninstallingAppsKey) ?? false;
+    _blockInstallingApps = prefs.getBool(_blockInstallingAppsKey) ?? false;
+
+    // Load emergency events
+    final eventsJson = prefs.getString(_emergencyEventsKey);
+    if (eventsJson != null) {
+      final List<dynamic> eventsList = jsonDecode(eventsJson);
+      _emergencyEvents = eventsList
+          .map((e) => EmergencyEvent.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    } else {
+      _emergencyEvents = [];
+    }
+    
+    // Store events to ensure they're properly persisted
+    await _storeEmergencyEvents();
+    
+    _initialized = true;
+    
+    _notifyEffectiveSettingsChanged();
+
+    Routine.watchAll().listen((routines) {
+      logger.i("strict mode - refreshing routines");
+      evaluateStrictMode(routines);
+      Util.scheduleEvaluationTimes(routines, _scheduledTasks, () async {
+        evaluateStrictMode(routines);
+      });
+    });
+  }
+  
+  void evaluateStrictMode(List<Routine> routines) {
+    final activeRoutines = routines.where((r) => r.isActive && !r.isPaused).toList();    
     final wasInStrictMode = _inStrictMode;
     _inStrictMode = activeRoutines.any((r) => r.strictMode);
     if (wasInStrictMode != _inStrictMode) {
-      notifyListeners();
-      
       _notifyEffectiveSettingsChanged();
     }
   }
@@ -76,7 +115,6 @@ class StrictModeService with ChangeNotifier {
   }
   
   bool get inStrictMode => _inStrictMode;
-  
   bool get blockAppExit => _blockAppExit && !emergencyMode;
   bool get blockDisablingSystemStartup => _blockDisablingSystemStartup;
   bool get blockBrowsersWithoutExtension => _blockBrowsersWithoutExtension;
@@ -111,6 +149,7 @@ class StrictModeService with ChangeNotifier {
   Future<void> updateEmergencyEvents(List<EmergencyEvent> events) async {
     _emergencyEvents = events;
     await _storeEmergencyEvents();
+    _notifyEffectiveSettingsChanged();
   }
 
   Future<void> _storeEmergencyEvents() async {
@@ -159,14 +198,10 @@ class StrictModeService with ChangeNotifier {
     _gracePeriodTimer = Timer(Duration(seconds: _extensionGracePeriodSeconds), () {
       _extensionGracePeriodEnd = null;
       
-      notifyListeners();
       _notifyEffectiveSettingsChanged();
       _notifyGracePeriodExpired();
     });
     
-    notifyListeners();
-    
-    // Grace period affects effective settings
     _notifyEffectiveSettingsChanged();
   }
   
@@ -175,13 +210,11 @@ class StrictModeService with ChangeNotifier {
     _gracePeriodTimer = null;
     
     _extensionGracePeriodEnd = null;
-    notifyListeners();
     
     _notifyEffectiveSettingsChanged();
   }
   
   void cancelGracePeriodWithCooldown() {
-    logger.i("canceling grace period with cooldown");
     _gracePeriodTimer?.cancel();
     _gracePeriodTimer = null;
     
@@ -189,46 +222,8 @@ class StrictModeService with ChangeNotifier {
     
     _extensionCooldownEnd ??= DateTime.now().add(Duration(minutes: _extensionCooldownMinutes));
     
-    notifyListeners();
     _notifyEffectiveSettingsChanged();
     _notifyGracePeriodExpired();
-  }
-  
-  Future<void> init() async {
-    if (_initialized) return;
-    
-    final prefs = await SharedPreferences.getInstance();
-    
-    // Load desktop settings
-    _blockAppExit = prefs.getBool(_blockAppExitKey) ?? false;
-    _blockDisablingSystemStartup = prefs.getBool(_blockDisablingSystemStartupKey) ?? false;
-    _blockBrowsersWithoutExtension = prefs.getBool(_blockBrowsersWithoutExtensionKey) ?? false;
-    
-    // Load iOS settings
-    _blockChangingTimeSettings = prefs.getBool(_blockChangingTimeSettingsKey) ?? false;
-    _blockUninstallingApps = prefs.getBool(_blockUninstallingAppsKey) ?? false;
-    _blockInstallingApps = prefs.getBool(_blockInstallingAppsKey) ?? false;
-
-    // Load emergency events
-    final eventsJson = prefs.getString(_emergencyEventsKey);
-    if (eventsJson != null) {
-      final List<dynamic> eventsList = jsonDecode(eventsJson);
-      _emergencyEvents = eventsList
-          .map((e) => EmergencyEvent.fromJson(Map<String, dynamic>.from(e)))
-          .toList();
-    } else {
-      _emergencyEvents = [];
-    }
-    
-    // Store events to ensure they're properly persisted
-    await _storeEmergencyEvents();
-    
-    _initialized = true;
-    
-    notifyListeners();
-    
-    // Initial notification of effective settings
-    _notifyEffectiveSettingsChanged();
   }
   
   Future<void> _updateBoolSetting(
@@ -244,7 +239,6 @@ class StrictModeService with ChangeNotifier {
     await prefs.setBool(key, value);
     
     setter(value);
-    notifyListeners();
     
     _notifyEffectiveSettingsChanged();
   }
@@ -317,7 +311,6 @@ class StrictModeService with ChangeNotifier {
     }
     await _storeEmergencyEvents();
 
-    notifyListeners();
     _notifyEffectiveSettingsChanged();
 
     // Notify other devices of the change
@@ -430,7 +423,6 @@ class StrictModeService with ChangeNotifier {
     );
   }
   
-  
   Future<bool?> _showEnableConfirmationDialog(BuildContext context, String title, String message) {
     return showDialog<bool>(
       context: context,
@@ -453,22 +445,6 @@ class StrictModeService with ChangeNotifier {
     );
   }
   
-  bool get isStrictModeEnabled {
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      return _blockAppExit || _blockDisablingSystemStartup || _blockBrowsersWithoutExtension;
-    } else if (Platform.isIOS) {
-      return _blockChangingTimeSettings || _blockUninstallingApps || _blockInstallingApps;
-    }
-    return false;
-  }
-  
-  bool get isEffectiveStrictModeEnabled {
-    if (_inStrictMode) {
-      return true;
-    }
-    return isStrictModeEnabled;
-  }
-  
   Map<String, bool> getCurrentEffectiveSettings() {
     return {
       'blockAppExit': effectiveBlockAppExit,
@@ -478,6 +454,7 @@ class StrictModeService with ChangeNotifier {
       'blockUninstallingApps': effectiveBlockUninstallingApps,
       'blockInstallingApps': effectiveBlockInstallingApps,
       'inStrictMode': inStrictMode,
+      'inEmergencyMode': emergencyMode,
       'isInExtensionGracePeriod': isInExtensionGracePeriod,
       'isInExtensionCooldown': isInExtensionCooldown,
     };

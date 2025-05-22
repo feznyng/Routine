@@ -89,7 +89,7 @@ class Util {
     return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
   }
 
-  static List<Schedule> getEvaluationTimes(List<Routine> routines) {
+  static List<Schedule> _getEvaluationTimes(List<Routine> routines) {
     List<Schedule> evaluationTimes = [];
     Set<int> seen = {}; // dedupe times (minutes) to avoid redundant evals
 
@@ -111,6 +111,27 @@ class Util {
     }
     
     return evaluationTimes;
+  }
+
+  static void scheduleEvaluationTimes(
+    List<Routine> routines, 
+    List<ScheduledTask> scheduledTasks,
+    Future<void> Function() eval,
+    ) async {
+    final List<Schedule> evaluationTimes = _getEvaluationTimes(routines);
+
+    for (final ScheduledTask task in scheduledTasks) {
+      task.cancel();
+    }
+    scheduledTasks.clear();
+
+    for (final Schedule time in evaluationTimes) {
+      ScheduledTask task = Cron().schedule(time, () async {
+        await eval();
+      });
+
+      scheduledTasks.add(task);
+    }
   }
 
   static void _addIfUnseen(List<Schedule> schedules, Set<int> seen, int hour, int minute, int second) {

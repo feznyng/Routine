@@ -122,19 +122,9 @@ class DesktopService extends PlatformService {
   }
   
   void onRoutinesUpdated(List<Routine> routines) async {
-    final List<Schedule> evaluationTimes = Util.getEvaluationTimes(routines);
-
-    for (final ScheduledTask task in _scheduledTasks) {
-      task.cancel();
-    }
-    _scheduledTasks.clear();
-
-    for (final Schedule time in evaluationTimes) {
-      ScheduledTask task = cron.schedule(time, () async {
-        evaluate(routines);
-      });
-      _scheduledTasks.add(task);
-    }
+    Util.scheduleEvaluationTimes(routines, _scheduledTasks, () async {
+      evaluate(routines);
+    });
 
     PackageInfo packageInfo = await PackageInfo.fromPlatform();
 
@@ -184,7 +174,6 @@ class DesktopService extends PlatformService {
     // Update both apps and sites
     updateAppList();
     updateBlockedSites();
-    StrictModeService.instance.evaluateStrictMode(routines);
   }
   
   Future<void> updateAppList() async {

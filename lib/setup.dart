@@ -31,12 +31,12 @@ final logger = Logger(
 
 Future<void> setup() async {
   await dotenv.load(fileName: '.env');
-    
-  await AuthService().initialize();
-  await StrictModeService.instance.init();
 
   final db = AppDatabase();
   getIt.registerSingleton<AppDatabase>(db);
+    
+  await AuthService().init();
+  await StrictModeService().init();
 
   final currDevice = await Device.getCurrent();
 

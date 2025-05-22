@@ -29,7 +29,7 @@ class AuthService {
   
   AuthService._internal();
 
-  Future<void> initialize() async {
+  Future<void> init() async {
     if (_initialized) return;
     _initialized = true;
     

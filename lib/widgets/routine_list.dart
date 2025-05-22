@@ -44,22 +44,13 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
           _isLoading = false;
         });
     
-        for (final task in _scheduledTasks) {
-          task.cancel();
-        }
-
-        final evaluationTimes = Util.getEvaluationTimes(routines);
-        for (final Schedule time in evaluationTimes) {
-          ScheduledTask task = cron.schedule(time, () async {
+        Util.scheduleEvaluationTimes(routines, _scheduledTasks, () async {
             if (mounted) {
               setState(() {
                 _routines = routines;
               });
             }
-          });
-          _scheduledTasks.add(task);
-        }
-      
+        });
       }
     });
   }

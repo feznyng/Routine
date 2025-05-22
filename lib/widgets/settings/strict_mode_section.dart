@@ -1,7 +1,6 @@
-import 'package:Routine/setup.dart';
 import 'package:flutter/material.dart';
-import 'dart:io';
 import 'dart:async';
+import 'dart:io';
 import '../../services/strict_mode_service.dart';
 import '../common/emergency_mode_banner.dart';
 
@@ -20,16 +19,8 @@ class _StrictModeSectionState extends State<StrictModeSection> {
   @override
   void initState() {
     super.initState();
-    _strictModeService.init().then((_) {
-      if (mounted) {
-        setState(() {});
-      }
-    });
     
-    // Listen for changes to strict mode service
     _strictModeService.addListener(_onStrictModeServiceChanged);
-    
-    // Start timers if needed
     _startTimersIfNeeded();
   }
   
@@ -96,102 +87,8 @@ class _StrictModeSectionState extends State<StrictModeSection> {
           ),
           const Divider(height: 1),
           
-          // Emergency mode button and banner
-          if (_strictModeService.inStrictMode || _strictModeService.emergencyMode) ...[
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: TextButton.icon(
-                onPressed: _strictModeService.emergencyMode || _strictModeService.canStartEmergency
-                    ? () async {
-                        final newValue = !_strictModeService.emergencyMode;
-                        
-                        if (newValue) {
-                          // Show confirmation dialog for enabling emergency mode
-                          final remainingEmergencies = _strictModeService.remainingEmergencies;
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Enable Emergency Mode'),
-                              content: Text(
-                                'This will suspend all strict mode restrictions until you disable it. '
-                                'You have $remainingEmergencies emergenc${remainingEmergencies == 1 ? 'y' : 'ies'} '
-                                'remaining.\n\n'
-                                'Are you sure you want to proceed?'
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.of(context).pop(false),
-                                  child: const Text('Cancel'),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.of(context).pop(true),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: Colors.amber,
-                                  ),
-                                  child: const Text('Enable Emergency Mode'),
-                                ),
-                              ],
-                            ),
-                          );
-                          
-                          if (confirm != true) return;
-                        } else {
-                          // Show confirmation dialog for disabling emergency mode
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('End Emergency Mode'),
-                              content: Text(
-                                'This will re-enable all strict mode restrictions.\n\n'
-                                'You will have ${_strictModeService.remainingEmergencies} emergenc${_strictModeService.remainingEmergencies == 1 ? 'y' : 'ies'} '
-                                'remaining this week.\n\n'
-                                'Are you sure you want to proceed?'
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.of(context).pop(false),
-                                  child: const Text('Cancel'),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.of(context).pop(true),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: Colors.amber,
-                                  ),
-                                  child: const Text('End Emergency Mode'),
-                                ),
-                              ],
-                            ),
-                          );
-                          
-                          if (confirm != true) return;
-                        }
-                        
-                        await _strictModeService.setEmergencyMode(newValue);
-                        if (mounted) setState(() {});
-                      }
-                    : null,
-                icon: Icon(
-                  _strictModeService.emergencyMode ? Icons.warning_amber : Icons.emergency,
-                  color: Colors.amber
-                ),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.amber,
-                  side: _strictModeService.emergencyMode ? BorderSide(color: Colors.amber) : null,
-                ),
-                label: Text(_strictModeService.emergencyMode ? 'End Emergency Mode' : 'Enable Emergency Mode'),
-              ),
-            ),
-
-            // Show emergency limit message if needed
-            if (!_strictModeService.emergencyMode && !_strictModeService.canStartEmergency)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'You have reached the limit of 2 emergencies per week',
-                  style: TextStyle(color: Colors.amber[800], fontSize: 14),
-                ),
-              ),
-
+          // Emergency mode banner and warnings
+          if (_strictModeService.inStrictMode || _strictModeService.emergencyMode) ...[  
             // Show emergency mode banner if emergency mode is active, otherwise show strict mode warning if in strict mode
             if (_strictModeService.emergencyMode)
               const EmergencyModeBanner()
@@ -327,6 +224,105 @@ class _StrictModeSectionState extends State<StrictModeSection> {
                     setState(() {});
                   }
                 },
+            ),
+          ],
+          
+          // Emergency mode option at the bottom
+          if (_strictModeService.inStrictMode || _strictModeService.emergencyMode) ...[
+            const Divider(height: 1),
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.amber.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: SwitchListTile(
+                title: Row(
+                  children: [
+                    const Text('Emergency Mode'),
+                  ],
+                ),
+                subtitle: !_strictModeService.canStartEmergency && !_strictModeService.emergencyMode
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 4, bottom: 4),
+                      child: Text(
+                        'You have reached the limit of 2 emergencies per week',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    )
+                  : null,
+                isThreeLine: !_strictModeService.canStartEmergency && !_strictModeService.emergencyMode,
+                value: _strictModeService.emergencyMode,
+                activeColor: Colors.amber,
+                activeTrackColor: Colors.amber.withOpacity(0.5),
+                onChanged: _strictModeService.emergencyMode || _strictModeService.canStartEmergency
+                  ? (value) async {
+                      if (value) {
+                        // Show confirmation dialog for enabling emergency mode
+                        final remainingEmergencies = _strictModeService.remainingEmergencies;
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Enable Emergency Mode'),
+                            content: Text(
+                              'This will suspend all strict mode restrictions until you disable it. '
+                              'You have $remainingEmergencies emergenc${remainingEmergencies == 1 ? 'y' : 'ies'} '
+                              'remaining.\n\n'
+                              'Are you sure you want to proceed?'
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(true),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.amber,
+                                ),
+                                child: const Text('Enable Emergency Mode'),
+                              ),
+                            ],
+                          ),
+                        );
+                        
+                        if (confirm != true) return;
+                      } else {
+                        // Show confirmation dialog for disabling emergency mode
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('End Emergency Mode'),
+                            content: Text(
+                              'This will re-enable all strict mode restrictions.\n\n'
+                              'You will have ${_strictModeService.remainingEmergencies} emergenc${_strictModeService.remainingEmergencies == 1 ? 'y' : 'ies'} '
+                              'remaining this week.\n\n'
+                              'Are you sure you want to proceed?'
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(true),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.amber,
+                                ),
+                                child: const Text('End Emergency Mode'),
+                              ),
+                            ],
+                          ),
+                        );
+                        
+                        if (confirm != true) return;
+                      }
+                      
+                      await _strictModeService.setEmergencyMode(value);
+                      if (mounted) setState(() {});
+                    }
+                  : null,
+              ),
             ),
           ],
         ],

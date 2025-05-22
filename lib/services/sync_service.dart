@@ -250,8 +250,6 @@ class SyncService {
         logger.i("localEvents: ${localEvents.map((e) => e.toJson())}");
         logger.i("remoteEvents: ${remoteEvents.map((e) => e.toJson())}");
         logger.i("mergedEvents: ${mergedEvents.map((e) => e.toJson())}");
-
-        //mergedEvents.clear();
         
         madeRemoteChange = madeRemoteChange || (mergedEvents.length != remoteEvents.length);
         for (final event in mergedEvents) {
@@ -259,8 +257,7 @@ class SyncService {
           || event.startedAt != remoteEventMap[event.id]?.startedAt
           || event.endedAt != remoteEventMap[event.id]?.endedAt;
         }
-
-
+        
         await StrictModeService().updateEmergencyEvents(mergedEvents);
 
         await _client.from('users').update({
