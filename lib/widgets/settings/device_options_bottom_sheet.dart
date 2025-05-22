@@ -26,6 +26,8 @@ class _DeviceOptionsBottomSheetState extends State<DeviceOptionsBottomSheet> {
       case DeviceType.ios:
       case DeviceType.android:
         return Icons.smartphone;
+      case DeviceType.ipad:
+        return Icons.tablet;
     }
   }
   

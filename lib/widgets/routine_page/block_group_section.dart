@@ -34,6 +34,8 @@ class _BlockGroupSectionState extends State<BlockGroupSection> {
       case DeviceType.ios:
       case DeviceType.android:
         return Icons.smartphone;
+      case DeviceType.ipad:
+        return Icons.tablet;
     }
   }
 

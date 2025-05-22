@@ -13,6 +13,7 @@ enum DeviceType {
   linux,
   macos,
   ios,
+  ipad,
   android
 }
 
@@ -52,7 +53,7 @@ class Device implements Syncable {
     return Device._(id: id, currDevice: currDevice);
   }
 
-  void _initDeviceType() {
+  void _initDeviceType() async {
     name = "";
     if (Platform.isMacOS) {
       name = "Macbook";
@@ -64,8 +65,17 @@ class Device implements Syncable {
       name = "Windows";
       _type = DeviceType.windows;
     } else if (Platform.isIOS) {
-      name = "iPhone";
-      _type = DeviceType.ios;
+      final deviceInfo = DeviceInfoPlugin();
+      final iosInfo = await deviceInfo.iosInfo;
+      
+      // Check if the device is an iPad
+      if (iosInfo.model.toLowerCase().contains('ipad')) {
+        name = "iPad";
+        _type = DeviceType.ipad;
+      } else {
+        name = "iPhone";
+        _type = DeviceType.ios;
+      }
     } else if (Platform.isAndroid) {
       name = "Android";
       _type = DeviceType.android;
@@ -114,8 +124,8 @@ class Device implements Syncable {
     String deviceId = '';
 
     if (Platform.isMacOS) {
-      final iosData = await deviceInfo.macOsInfo;
-      deviceId = '${iosData.systemGUID};';
+      final macData = await deviceInfo.macOsInfo;
+      deviceId = '${macData.systemGUID};';
     } else if (Platform.isLinux) {
       final linuxData = await deviceInfo.linuxInfo;
       deviceId = '${linuxData.id};';
@@ -174,6 +184,8 @@ class Device implements Syncable {
         return 'macOS';
       case DeviceType.ios:
         return 'iOS';
+      case DeviceType.ipad:
+        return 'iPad';
       case DeviceType.android:
         return 'Android';
     }

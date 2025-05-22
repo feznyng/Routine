@@ -18,6 +18,8 @@ class DeviceManagementSection extends StatelessWidget {
       case DeviceType.ios:
       case DeviceType.android:
         return Icons.smartphone;
+      case DeviceType.ipad:
+        return Icons.tablet;
     }
   }
 
