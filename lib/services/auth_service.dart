@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:Routine/models/device.dart';
 import 'package:Routine/setup.dart';
 import 'package:Routine/util.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -22,10 +23,6 @@ class AuthService {
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
     mOptions: MacOsOptions(accessibility: KeychainAccessibility.first_unlock)
   );
-  
-  // Add a stream controller to handle app resume events
-  final StreamController<void> _resumeStreamController = StreamController<void>.broadcast();
-  Stream<void> get onResume => _resumeStreamController.stream;
   
   AuthService._internal();
 
@@ -53,12 +50,12 @@ class AuthService {
       anonKey: anonKey,
       authOptions: FlutterAuthClientOptions(
         authFlowType: AuthFlowType.implicit,
+        autoRefreshToken: false
       ),
     );
     
     _client = Supabase.instance.client;
     
-    // If we have a stored refresh token, try to recover the session
     if (refreshToken != null) {
       try {
         final response = await _client.auth.refreshSession();
@@ -72,7 +69,6 @@ class AuthService {
           await _storage.delete(key: 'supabase_refresh_token');
         } catch (storageError) {
           logger.e('Failed to delete refresh token: $storageError');
-          // Continue despite storage error
         }
       }
     }
@@ -93,8 +89,10 @@ class AuthService {
           Util.report('Failed to write refresh token to secure storage', e, st);
         } 
       } else {
+        final currDevice = await Device.getCurrent();
+
         Sentry.configureScope(
-          (scope) => scope.setUser(SentryUser(id: null)),
+          (scope) => scope.setUser(SentryUser(id: currDevice.id)),
         );
 
         try {
@@ -125,9 +123,6 @@ class AuthService {
           logger.i('Auth event: $event');
       }
     });
-    
-    // Add method to handle app resume events
-    _setupResumeListener();
   }
 
   bool get isSignedIn => _initialized ? _client.auth.currentUser != null : false;
@@ -216,13 +211,11 @@ class AuthService {
     if (!isSignedIn) throw Exception('User not signed in');
     
     try {
-      // First verify the current password by attempting to sign in
       final email = currentUser;
       if (email == null) throw Exception('Current user email not found');
       
       await signIn(email, currentPassword);
       
-      // If sign in succeeded, update the password
       await _client.auth.updateUser(
         UserAttributes(password: newPassword),
       );
@@ -243,13 +236,11 @@ class AuthService {
     if (!isSignedIn) throw Exception('User not signed in');
     
     try {
-      // First verify the password by attempting to sign in
       final email = currentUser;
       if (email == null) throw Exception('Current user email not found');
       
       await signIn(email, password);
       
-      // If sign in succeeded, update the email
       await _client.auth.updateUser(
         UserAttributes(email: newEmail),
       );
@@ -266,35 +257,21 @@ class AuthService {
       throw 'Unable to update email. Please try again later.';
     }
   }
-  
-  // Method to handle app resume events
-  void _setupResumeListener() {
-    // This will be called from the app lifecycle state changes
-  }
-  
-  // Method to notify that the app has resumed
-  Future<void> notifyAppResumed() async {
-    _resumeStreamController.add(null);
-    await _refreshSessionIfNeeded();
-  }
 
   void initNotifications() {
     // MARK:REMOVE
     NotificationService().init();
   }
   
-  // Method to refresh the session if needed
-  Future<void> _refreshSessionIfNeeded() async {
+  Future<void> refreshSessionIfNeeded() async {
     if (!_initialized || _client.auth.currentUser == null) return;
     
     try {
-      // Check if we need to refresh the token
       final session = _client.auth.currentSession;
       if (session != null) {
         final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
         final expiresAt = session.expiresAt;
         
-        // If token is expired or about to expire in the next 5 minutes, refresh it
         if (expiresAt != null && (expiresAt < now + 300)) {
           logger.i('Token expired or about to expire, refreshing...');
           await _client.auth.refreshSession();
@@ -303,10 +280,5 @@ class AuthService {
     } catch (e, st) {
       Util.report('Error refreshing session', e, st);
     }
-  }
-  
-  // Clean up resources
-  void dispose() {
-    _resumeStreamController.close();
   }
 }

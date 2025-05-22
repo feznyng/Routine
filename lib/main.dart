@@ -139,7 +139,9 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      AuthService().notifyAppResumed().then((_) {
+      // although supabase should handle this by itself, 
+      // we aren't guaranteed that it will be done before we need to refresh
+      AuthService().refreshSessionIfNeeded().then((_) {
         _platService.refresh();
       });
     }
