@@ -284,18 +284,27 @@ class SyncService {
         }).eq('id', userId);
       }
       
-      await db.transaction(() async {
+      final result = await db.transaction(() async {
         // pull devices
         {
-          final remoteDevices = await _client.from('devices').select().eq('user_id', userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
+          final remoteDevices = await _client.from('devices').select()
+              .eq('user_id', userId)
+              .or('updated_at.gt.${lastPulledAt.toUtc().toIso8601String()},id.eq.${currDevice.id}');
           final localDevices = await db.getDevicesById(remoteDevices.map((device) => device['id'] as String).toList());
           final localDeviceMap = {for (final device in localDevices) device.id: device};
           logger.i("remote devices: $remoteDevices");
+          
+          final deviceSyncedBefore = remoteDevices.any((device) => device['id'] == currDevice.id);
+
+          logger.i("device synced before: $deviceSyncedBefore");
+
+          // if the current device doesn't exist remotely, we need to do a full sync
+          full = full || !deviceSyncedBefore;
 
           for (final device in remoteDevices) {
             final overwriteMap = {};
             final localDevice = localDeviceMap[device['id']];
-            
+
             if (localDevice != null) {
               final localDeviceData = localDevice.toJson();
               for (final change in localDevice.changes) {
@@ -474,8 +483,10 @@ class SyncService {
         ));
       });
 
+      print("sync result: $result");
+
       // push devices
-      final localDevices = await db.getDeviceChanges(lastPulledAt);
+      final localDevices = await db.getDeviceChanges(full ? null : lastPulledAt);
 
       logger.i("local devices: $localDevices");
       final remoteDevices = await _client
@@ -494,7 +505,7 @@ class SyncService {
       }
 
       // push groups    
-      final localGroups = await db.getGroupChanges(lastPulledAt);
+      final localGroups = await db.getGroupChanges(full ? null : lastPulledAt);
       logger.i("local groups: $localGroups");
       final remoteGroups = await _client
         .from('groups')
@@ -513,7 +524,7 @@ class SyncService {
       }
 
       // push routines
-      final localRoutines = await db.getRoutineChanges(lastPulledAt);
+      final localRoutines = await db.getRoutineChanges(full ? null : lastPulledAt);
       logger.i("local routines: $localRoutines");
       final remoteRoutines = await _client
         .from('routines')
@@ -534,7 +545,6 @@ class SyncService {
       bool updatedCurrDevice = false;
       for (final device in localDevices) {
         madeRemoteChange = true;
-        logger.i("syncing device ${device.changes}");
 
         updatedCurrDevice = updatedCurrDevice || device.id == currDevice.id;          
 
@@ -565,7 +575,6 @@ class SyncService {
 
       // persist groups
       for (final group in localGroups) {
-        logger.i("syncing group ${group.changes}");
         madeRemoteChange = true;
         await _client
         .from('groups')
@@ -582,9 +591,7 @@ class SyncService {
       }
 
       // persist routines
-      for (final routine in localRoutines) {       
-        logger.i("syncing routine ${routine.changes}");
-
+      for (final routine in localRoutines) {
         madeRemoteChange = true;
         await _client
         .from('routines')
