@@ -63,8 +63,8 @@ class AuthService {
           logger.i('Restored session for user: ${response.user?.email}');
           initNotifications();
         }
-      } catch (e, st) {
-        Util.report('Failed to refresh session', e, st);
+      } catch (e) {
+        logger.w('Failed to refresh session $e');
         try {
           await _storage.delete(key: 'supabase_refresh_token');
         } catch (storageError) {
