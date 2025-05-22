@@ -41,8 +41,8 @@ class AccountSettingsPage extends StatelessWidget {
           ),
           const Divider(),
           Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: ElevatedButton(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: OutlinedButton(
               onPressed: () async {
                 final shouldSignOut = await showDialog<bool>(
                   context: context,
@@ -75,11 +75,117 @@ class AccountSettingsPage extends StatelessWidget {
                   }
                 }
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error,
-                foregroundColor: Theme.of(context).colorScheme.onError,
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+                side: BorderSide(color: Theme.of(context).colorScheme.error),
               ),
               child: const Text('Sign Out'),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: TextButton(
+              onPressed: () async {
+                // Show confirmation dialog with text field
+                final TextEditingController confirmController = TextEditingController();
+                bool isConfirmationValid = false;
+                
+                final shouldDelete = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => StatefulBuilder(
+                    builder: (context, setState) => AlertDialog(
+                      title: const Text('Delete Account'),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'This action cannot be undone. All your data will be permanently deleted from the cloud. However any data you have on your devices will remain until you uninstall Routine.',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text('To confirm, type "delete me" below:'),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: confirmController,
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              hintText: 'delete me',
+                            ),
+                            onChanged: (value) {
+                              setState(() {
+                                isConfirmationValid = value.trim().toLowerCase() == 'delete me';
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: isConfirmationValid 
+                            ? () => Navigator.of(context).pop(true)
+                            : null,
+                          style: TextButton.styleFrom(
+                            foregroundColor: Theme.of(context).colorScheme.error,
+                          ),
+                          child: const Text('Delete Account'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+
+                if (shouldDelete == true && context.mounted) {
+                  // Show loading indicator
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                  
+                  try {
+                    final success = await authService.deleteAccount();
+                    
+                    if (context.mounted) {
+                      // Close loading dialog
+                      Navigator.of(context).pop();
+                      
+                      if (success) {
+                        // Show success message and navigate back to login
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Account successfully deleted')),
+                        );
+                        Navigator.of(context).popUntil((route) => route.isFirst);
+                      } else {
+                        // Show error message
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Failed to delete account. Please try again later.')),
+                        );
+                      }
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      // Close loading dialog
+                      Navigator.of(context).pop();
+                      
+                      // Show error message
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: ${e.toString()}')),
+                      );
+                    }
+                  }
+                }
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+              ),
+              child: const Text('Delete Account'),
             ),
           ),
         ],

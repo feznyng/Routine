@@ -159,6 +159,8 @@ class AuthService {
       logger.w('Sign in error: ${e.message}');
       if (e.message.contains('Invalid login credentials')) {
         throw 'Incorrect email or password';
+      } else if (e.message.contains('missing email or phone')) {
+        throw 'Please enter your email address';
       } else if (e.message.contains('Email not confirmed')) {
         throw 'Please verify your email address';
       }
@@ -285,20 +287,46 @@ class AuthService {
     
     try {
       final session = _client.auth.currentSession;
-      if (session != null) {
-        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-        final expiresAt = session.expiresAt;
-
-        logger.i("expires at: ${DateTime.fromMillisecondsSinceEpoch(((expiresAt) ?? 0) * 1000)}");
-        
-        if (expiresAt != null && (expiresAt < now + 300)) {
-          logger.i('Token expired or about to expire, refreshing...');
-          await _client.auth.refreshSession();
-        }
+      if (session != null) {        
+        await _client.auth.refreshSession();
       }
     } catch (e, st) {
       Util.report('Error refreshing session', e, st);
     }
+  }
+
+  Future<bool> deleteAccount() async {
+    if (!_initialized) throw Exception('AuthService not initialized');
+    if (!isSignedIn) throw Exception('User not signed in');
+    
+    try {
+      final session = _client.auth.currentSession;
+      if (session == null) throw Exception('No active session found');
+      
+      final response = await _client.functions.invoke(
+        'delete-account',
+        headers: {'Authorization': 'Bearer ${session.accessToken}'},
+      );
+      
+      if (response.status != 200) {
+        final error = response.data['error'] ?? 'Unknown error';
+        final message = response.data['message'] ?? 'Failed to delete account';
+        logger.e('Account deletion error: $error - $message');
+        throw 'Failed to delete account: $message';
+      }
+      
+      logger.i('Account successfully deleted');
+      
+      // Sign out the user after successful account deletion
+      await clearSignedInFlag();
+      await _client.auth.signOut();
+
+      return true;
+    } catch (e, st) {
+      Util.report('Unexpected account deletion failure', e, st);
+    }
+
+    return false;
   }
   
   Future<void> clearSignedInFlag() async {
