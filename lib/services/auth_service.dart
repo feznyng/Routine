@@ -178,6 +178,9 @@ class AuthService {
         email: email,
         password: password,
       );
+
+      logger.i("sign up successful ${response.user}");
+
       return response.user != null;
     } on AuthException catch (e) {
       logger.w('Sign up error: ${e.message}');

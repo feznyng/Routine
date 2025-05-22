@@ -1,3 +1,4 @@
+import 'package:Routine/services/auth_service.dart';
 import 'package:Routine/services/platform_service.dart';
 import 'package:Routine/util.dart';
 import 'package:flutter/services.dart';
@@ -53,6 +54,8 @@ class DesktopService extends PlatformService {
 
   @override
   Future<void> init() async {
+    _stopWatching();
+
     try {
       await platform.invokeMethod('engineReady');
     } catch (e, st) {
@@ -85,8 +88,12 @@ class DesktopService extends PlatformService {
       switch (call.method) {
         case 'systemWake':
           logger.i('=== SYSTEM WAKE EVENT ===');
-          await SyncService().sync();
-          await refresh();
+          await AuthService().refreshSessionIfNeeded().then((_) async {
+            _stopWatching();
+            await SyncService().sync();
+            await init();
+          });
+          
           logger.i('=== SYSTEM WAKE EVENT PROCESSING COMPLETE ===');
 
           return null;
@@ -102,16 +109,20 @@ class DesktopService extends PlatformService {
 
   // Clean up resources
   void dispose() {
-    _routineSubscription?.cancel();
-    _appSubscription?.cancel();
-    _strictModeSettingsSubscription?.cancel();
-    _gracePeriodExpirationSubscription?.cancel();
+    _stopWatching();
     
     // Cancel all scheduled tasks
     for (final task in _scheduledTasks) {
       task.cancel();
     }
     _scheduledTasks.clear();
+  }
+
+  Future<void> _stopWatching() async {
+    await _routineSubscription?.cancel();
+    await _appSubscription?.cancel();
+    await _strictModeSettingsSubscription?.cancel();
+    await _gracePeriodExpirationSubscription?.cancel();
   }
   
   @override
