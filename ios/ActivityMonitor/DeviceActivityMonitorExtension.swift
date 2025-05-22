@@ -21,7 +21,7 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
             // Create error entry
             let errorEntry: [String: Any] = [
                 "timestamp": Date().timeIntervalSince1970,
-                "context": "DeviceActivityMonitorExtension: " + context,
+                "context": context,
                 "error": error?.localizedDescription ?? ""
             ]
             
@@ -78,7 +78,7 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
     
     private func eval() {
         os_log("DeviceActivityMonitorExtension: Evaluating")
-        logError("DeviceActivityMonitorExtension: Evaluating", nil)
+        logError("DeviceActivityMonitorExtension: Evaluating \(Date())", nil)
 
         // Read routines from shared UserDefaults
         var routines: [Routine] = []

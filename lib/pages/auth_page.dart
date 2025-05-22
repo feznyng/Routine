@@ -32,12 +32,36 @@ class _AuthPageState extends State<AuthPage> {
     });
 
     try {
-      final success = _isRegistering
-          ? await _authService.signUp(_emailController.text, _passwordController.text)
-          : await _authService.signIn(_emailController.text, _passwordController.text);
-
-      if (success && mounted) {
-        Navigator.of(context).pop();
+      if (_isRegistering) {
+        // Check if email is already registered before attempting to sign up
+        final emailExists = await _authService.isEmailRegistered(_emailController.text);
+        if (emailExists) {
+          if (!mounted) return;
+          // Show snackbar indicating the email is already registered
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('An account with this email already exists. Please sign in instead.'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              duration: Duration(seconds: 3),
+            ),
+          );
+          setState(() {
+            _errorText = 'An account with this email already exists';
+          });
+          return;
+        }
+        
+        // If email is not registered, proceed with signup
+        final success = await _authService.signUp(_emailController.text, _passwordController.text);
+        if (success && mounted) {
+          Navigator.of(context).pop();
+        }
+      } else {
+        // Handle sign in
+        final success = await _authService.signIn(_emailController.text, _passwordController.text);
+        if (success && mounted) {
+          Navigator.of(context).pop();
+        }
       }
     } catch (e) {
       setState(() {

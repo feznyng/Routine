@@ -192,7 +192,7 @@ class SyncService {
           await _client.from('users').insert({
             'id': userId,
             'emergencies': [],
-          }).select() as Map<String, dynamic>;
+          }).maybeSingle() as Map<String, dynamic>;
 
         // Parse remote and local events
         final remoteEvents = <EmergencyEvent>[];

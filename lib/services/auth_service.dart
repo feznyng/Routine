@@ -171,6 +171,29 @@ class AuthService {
     }
   }
 
+  Future<bool> isEmailRegistered(String email) async {
+    if (!_initialized) throw Exception('AuthService not initialized');
+    try {
+      // Use the Supabase auth.resetPasswordForEmail method to check if the email exists
+      // This is a non-destructive way to check if an email is registered
+      // If the email doesn't exist, it will throw an AuthException
+      await _client.auth.resetPasswordForEmail(email);
+      // If we get here, the email exists
+      return true;
+    } on AuthException catch (e) {
+      // If the error message indicates the user doesn't exist, return false
+      if (e.message.contains('User not found') || e.message.contains('Invalid user')) {
+        return false;
+      }
+      // For other auth exceptions, assume the email might exist
+      return true;
+    } catch (e) {
+      // For any other exceptions, assume the email might exist to be safe
+      logger.w('Error checking email registration: $e');
+      return true;
+    }
+  }
+
   Future<bool> signUp(String email, String password) async {
     if (!_initialized) throw Exception('AuthService not initialized');
     try {
@@ -255,12 +278,12 @@ class AuthService {
     try {
       final email = currentUser;
       if (email == null) throw Exception('Current user email not found');
-      
-      await signIn(email, password);
-      
+            
       await _client.auth.updateUser(
         UserAttributes(email: newEmail),
       );
+
+      await signOut();
     } on AuthException catch (e) {
       logger.w('Email update error: ${e.message}');
       if (e.message.contains('Invalid login credentials')) {
@@ -270,6 +293,10 @@ class AuthService {
       }
       throw 'Unable to update email. Please try again later.';
     } catch (e, st) {
+      if (e.toString().contains('Incorrect email or password')) {
+        throw 'Incorrect email or password';
+      }
+
       Util.report('Unexpected email change failure', e, st);
       throw 'Unable to update email. Please try again later.';
     }
