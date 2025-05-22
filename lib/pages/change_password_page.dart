@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
 
 class ChangePasswordPage extends StatefulWidget {
@@ -80,6 +81,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               ),
               obscureText: true,
               autofillHints: const [AutofillHints.password],
+              onSubmitted: (_) => _handleSubmit(),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -90,6 +92,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               ),
               obscureText: true,
               autofillHints: const [AutofillHints.newPassword],
+              onSubmitted: (_) => _handleSubmit(),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -100,6 +103,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               ),
               obscureText: true,
               autofillHints: const [AutofillHints.newPassword],
+              onSubmitted: (_) => _handleSubmit(),
             ),
             if (_errorText != null) ...[
               const SizedBox(height: 16),

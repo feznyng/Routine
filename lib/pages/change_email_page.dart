@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
 
 class ChangeEmailPage extends StatefulWidget {
@@ -72,6 +73,7 @@ class _ChangeEmailPageState extends State<ChangeEmailPage> {
               ),
               keyboardType: TextInputType.emailAddress,
               autofillHints: const [AutofillHints.email],
+              onSubmitted: (_) => _handleSubmit(),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -82,6 +84,7 @@ class _ChangeEmailPageState extends State<ChangeEmailPage> {
               ),
               obscureText: true,
               autofillHints: const [AutofillHints.password],
+              onSubmitted: (_) => _handleSubmit(),
             ),
             if (_errorText != null) ...[
               const SizedBox(height: 16),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
 import 'forgot_password_page.dart';
 
@@ -84,6 +85,7 @@ class _AuthPageState extends State<AuthPage> {
               ),
               keyboardType: TextInputType.emailAddress,
               autofillHints: const [AutofillHints.email],
+              onSubmitted: (_) => _handleSubmit(),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -94,6 +96,7 @@ class _AuthPageState extends State<AuthPage> {
               ),
               obscureText: true,
               autofillHints: const [AutofillHints.password],
+              onSubmitted: (_) => _handleSubmit(),
             ),
 
             if (_errorText != null) ...[
