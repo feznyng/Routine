@@ -57,7 +57,7 @@ class _StartupSettingsSectionState extends State<StartupSettingsSection> {
             )
           : Switch(
               value: _startOnLogin,
-              onChanged: _strictModeService.inStrictMode
+              onChanged: (_strictModeService.effectiveBlockDisablingSystemStartup && _startOnLogin)
                 ? null  // Disable the switch completely when in strict mode
                 : (value) async {
                     // If trying to disable while effective block is on, show dialog
