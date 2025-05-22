@@ -78,7 +78,7 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
     
     private func eval() {
         os_log("DeviceActivityMonitorExtension: Evaluating")
-        logError("DeviceActivityMonitorExtension: Evaluating \(Date())", nil)
+        logError("DeviceActivityMonitorExtension: Evaluating", nil)
 
         // Read routines from shared UserDefaults
         var routines: [Routine] = []
