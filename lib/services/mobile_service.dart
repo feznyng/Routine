@@ -21,7 +21,7 @@ class MobileService extends PlatformService {
   
   @override
   Future<void> init() async {        
-    checkAndRequestFamilyControlsAuthorization();
+    checkAndRequestBlockingPermissions();
     
     _routineSubscription = Routine.watchAll().listen((routines) {
       _sendRoutines(routines, false);
@@ -114,38 +114,44 @@ class MobileService extends PlatformService {
   
   static MobileService get instance => _instance;
   
-  Future<bool> checkFamilyControlsAuthorization() async {
-    if (!Platform.isIOS) return false;
-    
-    try {
-      final bool isAuthorized = await _channel.invokeMethod('checkFamilyControlsAuthorization');
-      return isAuthorized;
-    } catch (e, st) {
-      Util.report('error retrieving family controls authorization', e, st);
-      return false;
-    }
-  }
-  
-  Future<bool> requestFamilyControlsAuthorization() async {
-    if (!Platform.isIOS) return false;
-    
-    try {
-      final bool isAuthorized = await _channel.invokeMethod('requestFamilyControlsAuthorization');
-      return isAuthorized;
-    } catch (e, st) {
-      Util.report('error requesting family controls auth', e, st);
-      return false;
-    }
-  }
-  
-  Future<bool> checkAndRequestFamilyControlsAuthorization() async {
-    if (!Platform.isIOS) return false;
-    
-    final bool isAuthorized = await checkFamilyControlsAuthorization();
-    if (isAuthorized) {
-      return true;
+  Future<bool> checkBlockPermissions() async {
+    if (Platform.isIOS) {
+      try {
+        final bool isAuthorized = await _channel.invokeMethod('checkFamilyControlsAuthorization');
+        return isAuthorized;
+      } catch (e, st) {
+        Util.report('error retrieving family controls authorization', e, st);
+        return false;
+      }
     } else {
-      return await requestFamilyControlsAuthorization();
+      throw "Unsupported platform";
+    }
+  }
+  
+  Future<bool> requestBlockingPermissions() async {    
+    if (Platform.isIOS) {
+      try {
+        final bool isAuthorized = await _channel.invokeMethod('requestFamilyControlsAuthorization');
+        return isAuthorized;
+      } catch (e, st) {
+        Util.report('error requesting family controls auth', e, st);
+        return false;
+      }
+    } else {
+      throw "Unsupported platform";
+    }
+  }
+  
+  Future<bool> checkAndRequestBlockingPermissions() async {
+    if (Platform.isIOS) {
+      final bool isAuthorized = await checkBlockPermissions();
+      if (isAuthorized) {
+        return true;
+      } else {
+        return await requestBlockingPermissions();
+      }
+    } else {
+      throw "Unsupported platform";
     }
   }
   
