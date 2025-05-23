@@ -1,3 +1,4 @@
+import 'package:Routine/util.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import '../services/auth_service.dart';
@@ -59,54 +60,44 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isMobile = Platform.isAndroid || Platform.isIOS;
+    final bool isDesktop = Util.isDesktop();
     
     return Scaffold(
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          // Authentication section (moved to top)
           AuthSection(
             onSignInTap: _showAuthPage,
           ),
           const SizedBox(height: 16),
           
-          // Theme Settings
           const ThemeSettingsSection(),
           const SizedBox(height: 16),
           
-          // Start on login option (desktop only)
           if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) ...[            
             const StartupSettingsSection(),
             const SizedBox(height: 16),
           ],
           
-          // Strict Mode section
           const StrictModeSection(),
           const SizedBox(height: 16),
           
-          // Device Management section
           DeviceManagementSection(onDeviceOptionsTap: _showDeviceOptions),
           const SizedBox(height: 16),
           
-          // Browser Extension section (hidden on mobile)
-          if (!isMobile) ...[  
+          if (isDesktop) ...[  
             BrowserExtensionSection(
               onRestartOnboarding: _restartBrowserExtensionOnboarding,
             ),
             const SizedBox(height: 16),
-          ],
-          
-          if (Platform.isIOS) ...{
+          ] else ...{
             const DevicePermissionsSection(),
             const SizedBox(height: 16),
           },
           
-          // Sync settings section
           const SyncSettingsSection(),
           const SizedBox(height: 16),
           
-          // Feedback section
           const FeedbackSection(),
         ],
       ),

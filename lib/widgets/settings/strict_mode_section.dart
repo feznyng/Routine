@@ -1,3 +1,4 @@
+import 'package:Routine/util.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:io';
@@ -179,7 +180,7 @@ class _StrictModeSectionState extends State<StrictModeSection> {
           ],
           
           // iOS strict mode options
-          if (Platform.isIOS) ...[
+          if (!Util.isDesktop()) ...[
             SwitchListTile(
               title: const Text('Block changing time settings'),
               value: _strictModeService.blockChangingTimeSettings,

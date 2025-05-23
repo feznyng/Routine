@@ -115,37 +115,43 @@ class MobileService extends PlatformService {
   static MobileService get instance => _instance;
   
   Future<bool> checkBlockPermissions() async {
-    if (!Platform.isIOS) return false;
-    
-    try {
-      final bool isAuthorized = await _channel.invokeMethod('checkFamilyControlsAuthorization');
-      return isAuthorized;
-    } catch (e, st) {
-      Util.report('error retrieving family controls authorization', e, st);
-      return false;
+    if (Platform.isIOS) {
+      try {
+        final bool isAuthorized = await _channel.invokeMethod('checkFamilyControlsAuthorization');
+        return isAuthorized;
+      } catch (e, st) {
+        Util.report('error retrieving family controls authorization', e, st);
+        return false;
+      }
+    } else {
+      throw "Unsupported platform";
     }
   }
   
-  Future<bool> requestBlockingPermissions() async {
-    if (!Platform.isIOS) return false;
-    
-    try {
-      final bool isAuthorized = await _channel.invokeMethod('requestFamilyControlsAuthorization');
-      return isAuthorized;
-    } catch (e, st) {
-      Util.report('error requesting family controls auth', e, st);
-      return false;
+  Future<bool> requestBlockingPermissions() async {    
+    if (Platform.isIOS) {
+      try {
+        final bool isAuthorized = await _channel.invokeMethod('requestFamilyControlsAuthorization');
+        return isAuthorized;
+      } catch (e, st) {
+        Util.report('error requesting family controls auth', e, st);
+        return false;
+      }
+    } else {
+      throw "Unsupported platform";
     }
   }
   
   Future<bool> checkAndRequestBlockingPermissions() async {
-    if (!Platform.isIOS) return false;
-    
-    final bool isAuthorized = await checkBlockPermissions();
-    if (isAuthorized) {
-      return true;
+    if (Platform.isIOS) {
+      final bool isAuthorized = await checkBlockPermissions();
+      if (isAuthorized) {
+        return true;
+      } else {
+        return await requestBlockingPermissions();
+      }
     } else {
-      return await requestBlockingPermissions();
+      throw "Unsupported platform";
     }
   }
 }

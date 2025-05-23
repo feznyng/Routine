@@ -1,7 +1,6 @@
-import 'dart:io';
+import 'package:Routine/util.dart';
 import 'package:Routine/widgets/routine_page/condition_type_utils.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:geolocator/geolocator.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import '../models/routine.dart';
@@ -144,7 +143,7 @@ class RoutineConditionsList extends StatelessWidget {
 
   void _handleQrCondition(BuildContext context, Condition condition) {
     // Check if running on a mobile device
-    bool isMobileDevice = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+    bool isMobileDevice = !Util.isDesktop();
     
     if (isMobileDevice) {
       // Navigate to the QR scanner page on mobile devices
@@ -206,7 +205,7 @@ class RoutineConditionsList extends StatelessWidget {
 
   void _handleNfcCondition(BuildContext context, Condition condition) async {
     // Check if running on a mobile device
-    bool isMobileDevice = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+    bool isMobileDevice = !Util.isDesktop();
     
     if (!isMobileDevice) {
       // Show a dialog on desktop platforms
