@@ -87,16 +87,14 @@ class ForegroundAppDetectionService : Service() {
             
             lastForegroundApp
         } else {
-            // Fallback for older devices
-            val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            activityManager.runningAppProcesses?.firstOrNull { 
-                it.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND 
-            }?.processName
+            ""
         }
     }
     
     private fun showBlockOverlay(packageName: String) {
         // Start the overlay activity
+        Log.d(TAG, "Showing block overlay");
+
         val intent = Intent(this, BlockOverlayActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             putExtra("blockedPackage", packageName)

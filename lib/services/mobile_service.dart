@@ -124,7 +124,7 @@ class MobileService extends PlatformService {
         return false;
       }
     } else {
-      throw "Unsupported platform";
+      return true;
     }
   }
   
@@ -138,7 +138,7 @@ class MobileService extends PlatformService {
         return false;
       }
     } else {
-      throw "Unsupported platform";
+      throw true;
     }
   }
   
@@ -151,28 +151,7 @@ class MobileService extends PlatformService {
         return await requestBlockingPermissions();
       }
     } else {
-      throw "Unsupported platform";
-    }
-  }
-  
-  // YouTube blocking methods
-  Future<bool> startYouTubeBlocking() async {
-    try {
-      final bool result = await _channel.invokeMethod('startYouTubeBlocking');
-      return result;
-    } catch (e, st) {
-      Util.report('error starting YouTube blocking', e, st);
-      return false;
-    }
-  }
-  
-  Future<bool> stopYouTubeBlocking() async {
-    try {
-      final bool result = await _channel.invokeMethod('stopYouTubeBlocking');
-      return result;
-    } catch (e, st) {
-      Util.report('error stopping YouTube blocking', e, st);
-      return false;
+      return true;
     }
   }
 }

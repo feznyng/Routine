@@ -71,24 +71,6 @@ class MainActivity: FlutterActivity() {
                     Log.d(TAG, "requestFamilyControlsAuthorization called (iOS-specific)")
                     result.success(false)
                 }
-                "startYouTubeBlocking" -> {
-                    try {
-                        startBlockingYouTube()
-                        result.success(true)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error starting YouTube blocking: ${e.message}", e)
-                        result.error("YOUTUBE_BLOCK_ERROR", "Failed to start YouTube blocking", e.message)
-                    }
-                }
-                "stopYouTubeBlocking" -> {
-                    try {
-                        startBlockingYouTube()
-                        result.success(true)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error stopping YouTube blocking: ${e.message}", e)
-                        result.error("YOUTUBE_BLOCK_ERROR", "Failed to stop YouTube blocking", e.message)
-                    }
-                }
                 else -> {
                     result.notImplemented()
                 }
@@ -126,14 +108,6 @@ class MainActivity: FlutterActivity() {
             val allow = routine["allow"] as Boolean
             
             Log.d(TAG, "Routine: id=$id, name=$name, strictMode=$strictMode, apps=$apps, allow=$allow")
-            
-            // Check if this routine should block YouTube
-            if (!allow && apps.contains("youtube")) {
-                shouldBlockYouTube = true
-                if (!newBlockedApps.contains(YOUTUBE_PACKAGE)) {
-                    newBlockedApps.add(YOUTUBE_PACKAGE)
-                }
-            }
         }
         
         // Update blocked apps and service
