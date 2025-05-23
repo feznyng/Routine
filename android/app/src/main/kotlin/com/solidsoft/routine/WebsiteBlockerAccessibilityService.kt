@@ -2,7 +2,9 @@ package com.solidsoft.routine
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.net.Uri
+import android.os.Build
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -14,7 +16,9 @@ import java.util.concurrent.CopyOnWriteArrayList
  */
 class WebsiteBlockerAccessibilityService : AccessibilityService() {
     private val TAG = "WebsiteBlocker"
-    
+
+    private var blockOverlayView: BlockOverlayView? = null
+
     // List of blocked domains
     private var blockedDomains = CopyOnWriteArrayList<String>()
     
@@ -31,6 +35,11 @@ class WebsiteBlockerAccessibilityService : AccessibilityService() {
     // Track the last processed URL timestamp to avoid rapid redirects
     private var lastProcessedTime = 0L
     private val MIN_PROCESS_INTERVAL = 1000L
+
+    override fun onCreate() {
+        super.onCreate()
+        blockOverlayView = BlockOverlayView(this)
+    }
     
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -50,11 +59,22 @@ class WebsiteBlockerAccessibilityService : AccessibilityService() {
         // Initialize focus state
         isEditableFieldFocused = false
     }
-    
+
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         val eventType = event.eventType
         val currentTime = System.currentTimeMillis()
         val packageName = event.packageName?.toString() ?: return
+
+        Log.d(TAG, "Accessibility event: $eventType, package: $packageName")
+
+        if (packageName.contains("youtube")) {
+            showBlockOverlay(packageName)
+            return
+        } else if (blockOverlayView?.isShowing() == true) {
+            if (packageName != "com.solidsoft.routine") {
+                hideBlockOverlay()
+            }
+        }
         
         // Check if this is a supported browser first
         val browserConfig = getSupportedBrowsers().find { it.packageName == packageName }
@@ -76,7 +96,6 @@ class WebsiteBlockerAccessibilityService : AccessibilityService() {
                     Log.d(TAG, "Editable field focused: $isEditableFieldFocused (address bar: $isAddressBar)")
                 }
                 
-                source.recycle()
                 return
             }
         }
@@ -318,6 +337,29 @@ class WebsiteBlockerAccessibilityService : AccessibilityService() {
         super.onDestroy()
         Log.d(TAG, "Website blocker accessibility service destroyed")
         instance = null
+        blockOverlayView?.hide()
+        blockOverlayView = null
+    }
+
+    private fun showBlockOverlay(packageName: String) {
+        try {
+            // Update notification to inform the user that an app is being blocked
+            Log.d(TAG, "App blocked: $packageName")
+
+            // Show the overlay window using SYSTEM_ALERT_WINDOW permission
+            blockOverlayView?.show(packageName)
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling blocked app: ${e.message}", e)
+        }
+    }
+
+    private fun hideBlockOverlay() {
+        try {
+            blockOverlayView?.hide()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error hiding block overlay: ${e.message}", e)
+        }
     }
     
     /**

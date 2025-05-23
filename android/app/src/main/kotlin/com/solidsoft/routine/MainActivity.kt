@@ -171,7 +171,6 @@ class MainActivity: FlutterActivity() {
     }
 
     private fun updateBlockedApps() {
-        ForegroundAppDetectionService.updateBlockedPackages(this, blockedApps)
     }
     
     /**

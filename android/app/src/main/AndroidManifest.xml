@@ -41,13 +41,6 @@
             android:name="flutterEmbedding"
             android:value="2" />
             
-        <!-- App blocking components -->
-        <service
-            android:name=".ForegroundAppDetectionService"
-            android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
-            
         <!-- Website Blocker Accessibility Service -->
         <service
             android:name=".WebsiteBlockerAccessibilityService"
