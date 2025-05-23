@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:app_settings/app_settings.dart';
@@ -134,33 +136,35 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-            _buildPermissionTile(
-              title: 'Notifications',
-              subtitle: 'Required to keep routines updated in the background',
-              isGranted: _notificationPermission,
-              onRequestPermission: () => _requestPermission(Permission.notification),
-            ),
-            const Divider(),
-            _buildPermissionTile(
-              title: 'Camera',
-              subtitle: 'Required for scanning QR codes',
-              isGranted: _cameraPermission,
-              onRequestPermission: () => _requestPermission(Permission.camera),
-            ),
-            const Divider(),
-            _buildPermissionTile(
-              title: 'Location',
-              subtitle: 'Required for creating and completing location conditions',
-              isGranted: _locationPermission,
-              onRequestPermission: () => _requestPermission(Permission.location),
-            ),
-            const Divider(),
-            _buildPermissionTile(
-              title: 'Screen Time Restrictions',
-              subtitle: 'Required to block apps and websites',
-              isGranted: _familyControlsPermission,
-              onRequestPermission: _requestFamilyControls,
-            ),
+              _buildPermissionTile(
+                title: 'Notifications',
+                subtitle: 'Required to keep routines updated in the background',
+                isGranted: _notificationPermission,
+                onRequestPermission: () => _requestPermission(Permission.notification),
+              ),
+              const Divider(),
+              _buildPermissionTile(
+                title: 'Camera',
+                subtitle: 'Required for scanning QR codes',
+                isGranted: _cameraPermission,
+                onRequestPermission: () => _requestPermission(Permission.camera),
+              ),
+              const Divider(),
+              _buildPermissionTile(
+                title: 'Location',
+                subtitle: 'Required for creating and completing location conditions',
+                isGranted: _locationPermission,
+                onRequestPermission: () => _requestPermission(Permission.location),
+              ),
+              if (Platform.isIOS) ...[
+                const Divider(),
+                _buildPermissionTile(
+                  title: 'Screen Time Restrictions',
+                  subtitle: 'Required to block apps and websites',
+                  isGranted: _familyControlsPermission,
+                  onRequestPermission: _requestFamilyControls,
+                )
+              ]
             ],
           ),
         ],
