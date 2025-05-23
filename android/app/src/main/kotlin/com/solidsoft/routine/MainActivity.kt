@@ -62,11 +62,29 @@ class MainActivity: FlutterActivity() {
                     }
                 }
                 "checkOverlayPermission" -> {
-                    result.success(false)
+                    result.success(checkOverlayPermission())
                 }
                 "requestOverlayPermission" -> {
                     requestOverlayPermission();
                     result.success(checkOverlayPermission())
+                }
+                "checkAccessibilityPermission" -> {
+                    result.success(isAccessibilityServiceEnabled())
+                }
+                "requestAccessibilityPermission" -> {
+                    requestAccessibilityPermission()
+                    result.success(true)
+                }
+                "updateBlockedWebsites" -> {
+                    try {
+                        val arguments = call.arguments as Map<String, Any>
+                        val websites = arguments["websites"] as? List<String> ?: listOf()
+                        updateBlockedWebsites(websites)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error updating blocked websites: ${e.message}", e)
+                        result.error("WEBSITE_BLOCK_ERROR", "Failed to update blocked websites", e.message)
+                    }
                 }
                 else -> {
                     result.notImplemented()
@@ -154,5 +172,43 @@ class MainActivity: FlutterActivity() {
 
     private fun updateBlockedApps() {
         ForegroundAppDetectionService.updateBlockedPackages(this, blockedApps)
+    }
+    
+    /**
+     * Checks if the accessibility service is enabled
+     */
+    private fun isAccessibilityServiceEnabled(): Boolean {
+        val accessibilityManager = getSystemService(Context.ACCESSIBILITY_SERVICE) as android.view.accessibility.AccessibilityManager
+        val enabledServices = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: return false
+        
+        val serviceName = packageName + "/" + WebsiteBlockerAccessibilityService::class.java.canonicalName
+        return enabledServices.contains(serviceName)
+    }
+    
+    /**
+     * Opens the accessibility settings screen for the user to enable the service
+     */
+    private fun requestAccessibilityPermission() {
+        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        startActivity(intent)
+        
+        // Show a toast to guide the user
+        android.widget.Toast.makeText(
+            this,
+            "Please enable 'Website Blocker' in the Accessibility settings",
+            android.widget.Toast.LENGTH_LONG
+        ).show()
+    }
+    
+    /**
+     * Updates the list of blocked websites in the accessibility service
+     */
+    private fun updateBlockedWebsites(websites: List<String>) {
+        Log.d(TAG, "Updating blocked websites: $websites")
+        WebsiteBlockerAccessibilityService.updateBlockedDomains(websites)
     }
 }

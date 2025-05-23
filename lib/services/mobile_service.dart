@@ -151,7 +151,107 @@ class MobileService extends PlatformService {
         return await requestBlockingPermissions();
       }
     } else {
-      return await _channel.invokeMethod('requestOverlayPermission');
+      // For Android, we need both overlay permission and accessibility permission
+      final bool hasOverlayPermission = await checkOverlayPermission();
+      final bool hasAccessibilityPermission = await checkAccessibilityPermission();
+      
+      if (!hasOverlayPermission) {
+        await requestOverlayPermission();
+      }
+      
+      if (!hasAccessibilityPermission) {
+        await requestAccessibilityPermission();
+      }
+      
+      return hasOverlayPermission && hasAccessibilityPermission;
     }
+  }
+  
+  // Website blocking methods
+  
+  /// Check if the accessibility service is enabled
+  Future<bool> checkAccessibilityPermission() async {
+    if (!Platform.isAndroid) return true;
+    
+    try {
+      final bool hasPermission = await _channel.invokeMethod('checkAccessibilityPermission');
+      return hasPermission;
+    } catch (e, st) {
+      Util.report('error checking accessibility permission', e, st);
+      return false;
+    }
+  }
+  
+  /// Request the user to enable the accessibility service
+  Future<bool> requestAccessibilityPermission() async {
+    if (!Platform.isAndroid) return true;
+    
+    try {
+      final bool result = await _channel.invokeMethod('requestAccessibilityPermission');
+      return result;
+    } catch (e, st) {
+      Util.report('error requesting accessibility permission', e, st);
+      return false;
+    }
+  }
+  
+  /// Check if the app has permission to draw overlays
+  Future<bool> checkOverlayPermission() async {
+    if (!Platform.isAndroid) return true;
+    
+    try {
+      final bool hasPermission = await _channel.invokeMethod('checkOverlayPermission');
+      return hasPermission;
+    } catch (e, st) {
+      Util.report('error checking overlay permission', e, st);
+      return false;
+    }
+  }
+  
+  /// Request permission to draw overlays
+  Future<bool> requestOverlayPermission() async {
+    if (!Platform.isAndroid) return true;
+    
+    try {
+      final bool result = await _channel.invokeMethod('requestOverlayPermission');
+      return result;
+    } catch (e, st) {
+      Util.report('error requesting overlay permission', e, st);
+      return false;
+    }
+  }
+  
+  /// Update the list of blocked websites
+  Future<bool> updateBlockedWebsites(List<String> websites) async {
+    if (!Platform.isAndroid) return true;
+    
+    try {
+      final bool result = await _channel.invokeMethod('updateBlockedWebsites', {
+        'websites': websites,
+      });
+      return result;
+    } catch (e, st) {
+      Util.report('error updating blocked websites', e, st);
+      return false;
+    }
+  }
+  
+  /// Block YouTube website
+  Future<bool> blockYouTubeWebsite() async {
+    if (!Platform.isAndroid) return true;
+    
+    // First ensure we have the necessary permissions
+    final bool hasPermissions = await checkAndRequestBlockingPermissions();
+    if (!hasPermissions) {
+      return false;
+    }
+    
+    // Update the list of blocked websites to include YouTube domains
+    return await updateBlockedWebsites([
+      'youtube.com',
+      'm.youtube.com',
+      'youtu.be',
+      'youtube-nocookie.com'
+    ]);
   }
 }

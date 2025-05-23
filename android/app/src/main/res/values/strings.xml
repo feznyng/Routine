@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="website_blocker_accessibility_service_description">Blocks access to specific websites like YouTube when they are restricted by your routines.</string>
+</resources>
