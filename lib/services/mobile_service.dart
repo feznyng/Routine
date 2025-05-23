@@ -21,7 +21,7 @@ class MobileService extends PlatformService {
   
   @override
   Future<void> init() async {        
-    checkAndRequestFamilyControlsAuthorization();
+    checkAndRequestBlockingPermissions();
     
     _routineSubscription = Routine.watchAll().listen((routines) {
       _sendRoutines(routines, false);
@@ -114,7 +114,7 @@ class MobileService extends PlatformService {
   
   static MobileService get instance => _instance;
   
-  Future<bool> checkFamilyControlsAuthorization() async {
+  Future<bool> checkBlockPermissions() async {
     if (!Platform.isIOS) return false;
     
     try {
@@ -126,7 +126,7 @@ class MobileService extends PlatformService {
     }
   }
   
-  Future<bool> requestFamilyControlsAuthorization() async {
+  Future<bool> requestBlockingPermissions() async {
     if (!Platform.isIOS) return false;
     
     try {
@@ -138,14 +138,14 @@ class MobileService extends PlatformService {
     }
   }
   
-  Future<bool> checkAndRequestFamilyControlsAuthorization() async {
+  Future<bool> checkAndRequestBlockingPermissions() async {
     if (!Platform.isIOS) return false;
     
-    final bool isAuthorized = await checkFamilyControlsAuthorization();
+    final bool isAuthorized = await checkBlockPermissions();
     if (isAuthorized) {
       return true;
     } else {
-      return await requestFamilyControlsAuthorization();
+      return await requestBlockingPermissions();
     }
   }
 }

@@ -118,7 +118,7 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
       StrictModeService.instance.addListener(_updateTrayMenu);
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        MobileService().checkAndRequestFamilyControlsAuthorization();
+        MobileService().checkAndRequestBlockingPermissions();
       });
     }
   }
