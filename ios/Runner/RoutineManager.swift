@@ -16,6 +16,8 @@ class RoutineManager {
     var routines: [Routine] = []
     
     func update(routines: [Routine]) {
+        SentrySDK.capture(message: "updateRoutines: internal start")
+        
         // Store routines immediately on main thread since it's just an array assignment
         self.routines = routines
         
@@ -37,6 +39,7 @@ class RoutineManager {
                 try self.center.startMonitoring(name, during: schedule)
             } catch {
                 print("failed to register device activity \(error.localizedDescription)")
+                SentrySDK.capture(message: "failed to register all day routine")
             }
         }
         
@@ -55,9 +58,7 @@ class RoutineManager {
                     try self.center.startMonitoring(name, during: schedule)
                 } catch {
                     print("failed to register routine schedule \(error.localizedDescription)")
-                    SentrySDK.capture(error: error) { (scope) in
-                        scope.setTag(value: "failed to register routine schedule from \(startTime) to \(endTime)", key: "context")
-                    }
+                    SentrySDK.capture(error: error)
                 }
             }
             
@@ -69,6 +70,8 @@ class RoutineManager {
         }
         
         print("finished updating routines")
+        SentrySDK.capture(message: "updateRoutines: internal done")
+        SentrySDK.flush(timeout: 1000)
     }
     
     private func scheduleOneTimeActivity(for routine: Routine, startDate: Date, activityType: String) {
@@ -96,9 +99,7 @@ class RoutineManager {
         do {
             try center.startMonitoring(name, during: schedule)
         } catch {
-            SentrySDK.capture(error: error) { (scope) in
-                scope.setTag(value: "failed to register one time break for \(startDate)", key: "context")
-            }
+            SentrySDK.capture(error: error)
         }
     }
     
