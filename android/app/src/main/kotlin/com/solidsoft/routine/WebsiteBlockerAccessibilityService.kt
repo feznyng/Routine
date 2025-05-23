@@ -25,14 +25,11 @@ class WebsiteBlockerAccessibilityService : AccessibilityService() {
         Log.d(TAG, "Website blocker accessibility service connected")
         
         // Add YouTube as a blocked domain by default for testing
-        if (!blockedDomains.contains("youtube.com")) {
-            blockedDomains.add("youtube.com")
+        if (!blockedDomains.contains("reddit.com")) {
+            blockedDomains.add("reddit.com")
         }
-        if (!blockedDomains.contains("m.youtube.com")) {
-            blockedDomains.add("m.youtube.com")
-        }
-        if (!blockedDomains.contains("youtu.be")) {
-            blockedDomains.add("youtu.be")
+        if (!blockedDomains.contains("m.reddit.com")) {
+            blockedDomains.add("m.reddit.com")
         }
     }
     
