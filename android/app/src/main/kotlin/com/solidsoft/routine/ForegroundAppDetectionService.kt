@@ -42,7 +42,7 @@ class ForegroundAppDetectionService : Service() {
                 
                 // Log less frequently to avoid log spam
                 if (foregroundApp != null && foregroundApp != currentlyBlockedApp) {
-                    Log.d(TAG, "Current foreground app: $foregroundApp")
+                    //Log.d(TAG, "Current foreground app: $foregroundApp")
                 }
                 
                 // Check if we need to show or hide the overlay
