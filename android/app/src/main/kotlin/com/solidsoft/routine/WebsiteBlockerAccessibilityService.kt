@@ -6,8 +6,6 @@ import android.net.Uri
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
-import android.os.Handler
-import android.os.Looper
 import java.util.ArrayList
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -26,25 +24,9 @@ class WebsiteBlockerAccessibilityService : AccessibilityService() {
     // Track current browser app and URL to avoid redundant processing
     private var currentBrowserApp = ""
     private var currentBrowserUrl = ""
-    
-    // Flag to track if user is currently typing
-    private var isUserTyping = false
-    
-    // Track the last time user was typing
-    private var lastTypingTime = 0L
-    
-    // Handler for delayed URL checking
-    private val handler = Handler(Looper.getMainLooper())
-    private var pendingUrlCheck: Runnable? = null
-    
-    // Delay in milliseconds before checking a URL after typing stops
-    private val URL_CHECK_DELAY = 2500L
-    
-    // Minimum time to consider between typing and URL check
-    private val MIN_TYPING_COOLDOWN = 5000L
-    
-    // Track if we're in an address bar
-    private var isInAddressBar = false
+
+    // Flag to track if an editable text field is focused
+    private var isEditableFieldFocused = false
     
     // Track the last processed URL timestamp to avoid rapid redirects
     private var lastProcessedTime = 0L
@@ -65,8 +47,8 @@ class WebsiteBlockerAccessibilityService : AccessibilityService() {
         // Set the instance for companion object access
         instance = this
         
-        // Initialize typing state
-        isUserTyping = false
+        // Initialize focus state
+        isEditableFieldFocused = false
     }
     
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
@@ -76,63 +58,109 @@ class WebsiteBlockerAccessibilityService : AccessibilityService() {
         
         // Check if this is a supported browser first
         val browserConfig = getSupportedBrowsers().find { it.packageName == packageName }
+            ?: return
         
-        // Only proceed with browser-related processing if this is a supported browser
-        if (browserConfig != null) {
-            // Handle typing detection
-            if (eventType == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED) {
-                // Update typing state and timestamp
-                isUserTyping = true
-                lastTypingTime = currentTime
-                cancelPendingUrlCheck()
+        // Handle focus changes to detect when user is editing text
+        if (eventType == AccessibilityEvent.TYPE_VIEW_FOCUSED || 
+            eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
+            val source = event.source
+            if (source != null) {
+                // Check if the focused element is editable
+                val isFocused = source.isFocused
+                val isEditable = source.isEditable || source.className?.contains("EditText") == true
+                val isAddressBar = isAddressBarNode(source, browserConfig)
                 
-                // Check if we're in an address bar
-                val source = event.source
-                if (source != null) {
-                    val nodeId = source.viewIdResourceName
-                    isInAddressBar = nodeId != null && browserConfig.addressBarId.contains(nodeId)
-                    source.recycle()
+                isEditableFieldFocused = isFocused && (isEditable || isAddressBar)
+                
+                if (isEditableFieldFocused) {
+                    Log.d(TAG, "Editable field focused: $isEditableFieldFocused (address bar: $isAddressBar)")
                 }
                 
-                Log.d(TAG, "User typing detected in address bar: $isInAddressBar")
+                source.recycle()
+                return
+            }
+        }
+        
+        // Check for typing events
+        if (eventType == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED) {
+            // User is typing, update focus state
+            isEditableFieldFocused = true
+            Log.d(TAG, "Text changed event detected, marking editable field as focused")
+            return
+        }
+        
+        // Only process content and window change events
+        if (eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+            eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED ||
+            eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+            
+            val parentNodeInfo = event.source ?: return
+            
+            // Check for focus state in the current view hierarchy
+            updateFocusState(parentNodeInfo, browserConfig)
+            
+            // Capture URL from the browser
+            val capturedUrl = captureUrl(parentNodeInfo, browserConfig)
+            parentNodeInfo.recycle()
+            
+            if (capturedUrl == null || !android.util.Patterns.WEB_URL.matcher(capturedUrl).matches()) {
                 return
             }
             
-            // Check if enough time has passed since last typing
-            if (isUserTyping && (currentTime - lastTypingTime) > MIN_TYPING_COOLDOWN) {
-                Log.d(TAG, "Typing cooldown period expired after ${currentTime - lastTypingTime}ms")
-                isUserTyping = false
-            }
-            
-            // Only process relevant event types
-            when (eventType) {
-                AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
-                AccessibilityEvent.TYPE_WINDOWS_CHANGED,
-                AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
-                    val parentNodeInfo = event.source ?: return
-                    
-                    // Capture URL from the browser
-                    val capturedUrl = captureUrl(parentNodeInfo, browserConfig)
-                    parentNodeInfo.recycle()
-                    
-                    if (capturedUrl == null || !android.util.Patterns.WEB_URL.matcher(capturedUrl).matches()) {
-                        return
-                    }
-                    
-                    // Check if we should process this URL
-                    if (shouldProcessUrl(capturedUrl, currentTime)) {
-                        // If user was typing recently or we're in an address bar, schedule a delayed check
-                        if (isUserTyping || isInAddressBar || (currentTime - lastTypingTime < MIN_TYPING_COOLDOWN * 2)) {
-                            Log.d(TAG, "Scheduling delayed URL check for: $capturedUrl")
-                            scheduleUrlCheck(packageName, capturedUrl)
-                        } else {
-                            // Process the URL immediately if user is not typing
-                            processUrl(packageName, capturedUrl)
-                        }
-                    }
-                }
+            // Only process URL if no editable field is focused and it passes validation
+            if (!isEditableFieldFocused && shouldProcessUrl(capturedUrl, currentTime)) {
+                processUrl(packageName, capturedUrl)
             }
         }
+    }
+    
+    /**
+     * Updates the focus state by checking the view hierarchy
+     */
+    private fun updateFocusState(rootNode: AccessibilityNodeInfo, browserConfig: SupportedBrowserConfig) {
+        try {
+            // Check if any editable field is focused in the hierarchy
+            val focusedNode = findFocusedEditableNode(rootNode, browserConfig)
+            isEditableFieldFocused = focusedNode != null
+            
+            if (isEditableFieldFocused) {
+                Log.d(TAG, "Found focused editable node in view hierarchy")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating focus state: ${e.message}")
+        }
+    }
+    
+    /**
+     * Finds a focused editable node in the view hierarchy
+     */
+    private fun findFocusedEditableNode(rootNode: AccessibilityNodeInfo, browserConfig: SupportedBrowserConfig): AccessibilityNodeInfo? {
+        // Check if this node is focused and editable
+        if (rootNode.isFocused && (rootNode.isEditable || 
+                                  rootNode.className?.contains("EditText") == true ||
+                                  isAddressBarNode(rootNode, browserConfig))) {
+            return rootNode
+        }
+        
+        // Check children recursively
+        for (i in 0 until rootNode.childCount) {
+            val child = rootNode.getChild(i) ?: continue
+            val result = findFocusedEditableNode(child, browserConfig)
+            if (result != null) {
+                return result
+            }
+            child.recycle()
+        }
+        
+        return null
+    }
+    
+    /**
+     * Checks if a node is an address bar
+     */
+    private fun isAddressBarNode(node: AccessibilityNodeInfo, browserConfig: SupportedBrowserConfig): Boolean {
+        val nodeId = node.viewIdResourceName ?: return false
+        return nodeId.contains(browserConfig.addressBarId.substringAfterLast("/"))
     }
     
     /**
@@ -163,16 +191,14 @@ class WebsiteBlockerAccessibilityService : AccessibilityService() {
     private fun processUrl(packageName: String, capturedUrl: String) {
         val currentTime = System.currentTimeMillis()
         
-        // Reset typing flag since we're now processing a URL
-        isUserTyping = false
-        isInAddressBar = false
+        // Update tracking variables
         lastProcessedTime = currentTime
+        currentBrowserApp = packageName
+        currentBrowserUrl = capturedUrl
         
-        // Skip processing if URL doesn't look valid
-        if (!android.util.Patterns.WEB_URL.matcher(capturedUrl).matches()) {
-            return
-        }
-
+        Log.d(TAG, "Processing URL: $capturedUrl in $packageName")
+        
+        // Check if URL is blocked
         if (isBlockedUrl(capturedUrl)) {
             Log.d(TAG, "Blocked URL detected: $capturedUrl, redirecting...")
             redirectToBrowser(redirectUrl)
@@ -240,8 +266,7 @@ class WebsiteBlockerAccessibilityService : AccessibilityService() {
             
             // Check if the address bar is focused - this could indicate editing
             if (addressBarNodeInfo.isFocused) {
-                isInAddressBar = true
-                lastTypingTime = System.currentTimeMillis() // Reset typing timer when address bar is focused
+                isEditableFieldFocused = true
             }
             
             addressBarNodeInfo.recycle()
@@ -292,41 +317,7 @@ class WebsiteBlockerAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "Website blocker accessibility service destroyed")
-        cancelPendingUrlCheck()
         instance = null
-    }
-    
-    /**
-     * Schedules a delayed URL check after typing has stopped
-     */
-    private fun scheduleUrlCheck(packageName: String, capturedUrl: String) {
-        // Cancel any existing scheduled checks
-        cancelPendingUrlCheck()
-        
-        // Create a new runnable for delayed processing
-        pendingUrlCheck = Runnable {
-            // Double-check that enough time has passed since typing
-            val currentTime = System.currentTimeMillis()
-            if (currentTime - lastTypingTime >= MIN_TYPING_COOLDOWN) {
-                Log.d(TAG, "Processing URL after typing delay: $capturedUrl")
-                processUrl(packageName, capturedUrl)
-            } else {
-                Log.d(TAG, "Skipping URL check, user typed too recently")
-            }
-        }
-        
-        // Schedule the check after the delay
-        handler.postDelayed(pendingUrlCheck!!, URL_CHECK_DELAY)
-    }
-    
-    /**
-     * Cancels any pending URL checks
-     */
-    private fun cancelPendingUrlCheck() {
-        pendingUrlCheck?.let {
-            handler.removeCallbacks(it)
-            pendingUrlCheck = null
-        }
     }
     
     /**
