@@ -25,6 +25,7 @@ void main() async {
       options.dsn = dotenv.env['SENTRY_DSN'];
       options.tracesSampleRate = 0.1;
       options.profilesSampleRate = 0.1;
+      options.diagnosticLevel = SentryLevel.error;
 
       final exclusionList = [
         'ClientException: Bad file descriptor',

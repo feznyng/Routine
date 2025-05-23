@@ -148,4 +148,25 @@ class MobileService extends PlatformService {
       return await requestFamilyControlsAuthorization();
     }
   }
+  
+  // YouTube blocking methods
+  Future<bool> startYouTubeBlocking() async {
+    try {
+      final bool result = await _channel.invokeMethod('startYouTubeBlocking');
+      return result;
+    } catch (e, st) {
+      Util.report('error starting YouTube blocking', e, st);
+      return false;
+    }
+  }
+  
+  Future<bool> stopYouTubeBlocking() async {
+    try {
+      final bool result = await _channel.invokeMethod('stopYouTubeBlocking');
+      return result;
+    } catch (e, st) {
+      Util.report('error stopping YouTube blocking', e, st);
+      return false;
+    }
+  }
 }

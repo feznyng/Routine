@@ -1,16 +1,29 @@
 package com.solidsoft.routine
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import org.json.JSONObject
+import android.app.usage.UsageStatsManager
+import android.content.Context
+import android.provider.Settings
 
 class MainActivity: FlutterActivity() {
     private val CHANNEL = "com.routine.ios_channel"
     private val TAG = "RoutineAndroid"
+    
+    // YouTube package name
+    private val YOUTUBE_PACKAGE = "com.google.android.youtube"
+    private var blockedApps = mutableListOf<String>()
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        checkUsageStatsPermission()
+    }
+    
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         
@@ -58,6 +71,24 @@ class MainActivity: FlutterActivity() {
                     Log.d(TAG, "requestFamilyControlsAuthorization called (iOS-specific)")
                     result.success(false)
                 }
+                "startYouTubeBlocking" -> {
+                    try {
+                        startBlockingYouTube()
+                        result.success(true)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error starting YouTube blocking: ${e.message}", e)
+                        result.error("YOUTUBE_BLOCK_ERROR", "Failed to start YouTube blocking", e.message)
+                    }
+                }
+                "stopYouTubeBlocking" -> {
+                    try {
+                        startBlockingYouTube()
+                        result.success(true)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error stopping YouTube blocking: ${e.message}", e)
+                        result.error("YOUTUBE_BLOCK_ERROR", "Failed to stop YouTube blocking", e.message)
+                    }
+                }
                 else -> {
                     result.notImplemented()
                 }
@@ -83,14 +114,77 @@ class MainActivity: FlutterActivity() {
         // Placeholder implementation for handling routine updates
         Log.d(TAG, "Received ${routines.size} routines to update (immediate=$immediate)")
         
+        // Update blocked apps list based on routines
+        val newBlockedApps = mutableListOf<String>()
+        var shouldBlockYouTube = false
+        
         for (routine in routines) {
             val id = routine["id"] as String
             val name = routine["name"] as String
             val strictMode = routine["strictMode"] as Boolean
+            val apps = routine["apps"] as? List<String> ?: emptyList()
+            val allow = routine["allow"] as Boolean
             
-            Log.d(TAG, "Routine: id=$id, name=$name, strictMode=$strictMode")
+            Log.d(TAG, "Routine: id=$id, name=$name, strictMode=$strictMode, apps=$apps, allow=$allow")
+            
+            // Check if this routine should block YouTube
+            if (!allow && apps.contains("youtube")) {
+                shouldBlockYouTube = true
+                if (!newBlockedApps.contains(YOUTUBE_PACKAGE)) {
+                    newBlockedApps.add(YOUTUBE_PACKAGE)
+                }
+            }
         }
         
-        // TODO: Implement actual handling of routines for Android
+        // Update blocked apps and service
+        blockedApps = newBlockedApps
+        updateBlockedApps()
+        
+        // Start or stop YouTube blocking based on routines
+        if (shouldBlockYouTube) {
+            startBlockingYouTube()
+        } else {
+            startBlockingYouTube()
+        }
+        
+        // TODO: Implement more comprehensive routine handling for Android
+    }
+    
+    private fun checkUsageStatsPermission() {
+        val appOpsManager = getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+        val mode = appOpsManager.checkOpNoThrow(
+            android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+            android.os.Process.myUid(),
+            packageName
+        )
+        
+        if (mode != android.app.AppOpsManager.MODE_ALLOWED) {
+            // Need to request permission
+            Log.d(TAG, "Usage stats permission not granted, requesting...")
+            val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+            startActivity(intent)
+        }
+    }
+    
+    private fun startBlockingYouTube() {
+        Log.d(TAG, "Starting YouTube blocking")
+        if (!blockedApps.contains(YOUTUBE_PACKAGE)) {
+            blockedApps.add(YOUTUBE_PACKAGE)
+        }
+        updateBlockedApps()
+        ForegroundAppDetectionService.startService(this)
+    }
+    
+    private fun stopBlockingYouTube() {
+        Log.d(TAG, "Stopping YouTube blocking")
+        blockedApps.remove(YOUTUBE_PACKAGE)
+        updateBlockedApps()
+        if (blockedApps.isEmpty()) {
+            ForegroundAppDetectionService.stopService(this)
+        }
+    }
+    
+    private fun updateBlockedApps() {
+        ForegroundAppDetectionService.updateBlockedPackages(this, blockedApps)
     }
 }

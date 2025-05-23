@@ -3,6 +3,10 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.NFC"/>
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:label="Routine"
@@ -35,6 +39,20 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+            
+        <!-- App blocking components -->
+        <service
+            android:name=".ForegroundAppDetectionService"
+            android:enabled="true"
+            android:exported="false" />
+            
+        <activity
+            android:name=".BlockOverlayActivity"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:taskAffinity=""
+            android:exported="false" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
