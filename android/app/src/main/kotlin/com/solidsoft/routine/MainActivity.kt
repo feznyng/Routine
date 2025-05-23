@@ -7,10 +7,7 @@ import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import org.json.JSONObject
-import android.app.usage.UsageStatsManager
 import android.content.Context
-import android.content.pm.ServiceInfo
 import android.os.Build
 import android.provider.Settings
 
@@ -64,15 +61,12 @@ class MainActivity: FlutterActivity() {
                         result.error("IMMEDIATE_ROUTINES_ERROR", "Failed to immediately update routines", e.message)
                     }
                 }
-                "checkFamilyControlsAuthorization" -> {
-                    // This is iOS-specific, but we'll add a placeholder for Android
-                    Log.d(TAG, "checkFamilyControlsAuthorization called (iOS-specific)")
+                "checkOverlayPermission" -> {
                     result.success(false)
                 }
-                "requestFamilyControlsAuthorization" -> {
-                    // This is iOS-specific, but we'll add a placeholder for Android
-                    Log.d(TAG, "requestFamilyControlsAuthorization called (iOS-specific)")
-                    result.success(false)
+                "requestOverlayPermission" -> {
+                    requestOverlayPermission();
+                    result.success(checkOverlayPermission())
                 }
                 else -> {
                     result.notImplemented()
@@ -92,7 +86,7 @@ class MainActivity: FlutterActivity() {
                 "blockUninstallingApps=$blockUninstallingApps, blockInstallingApps=$blockInstallingApps, " +
                 "inStrictMode=$inStrictMode")
         
-        // TODO: Implement actual handling of strict mode settings for Android
+        // TODO: Implement actual handling of strict mode settings for Android using DevicePolicyManager
     }
 
     private fun handleUpdateRoutines(routines: List<Map<String, Any>>, immediate: Boolean) {
@@ -101,7 +95,6 @@ class MainActivity: FlutterActivity() {
         
         // Update blocked apps list based on routines
         val newBlockedApps = mutableListOf<String>()
-        var shouldBlockYouTube = false
         
         for (routine in routines) {
             val id = routine["id"] as String
@@ -115,16 +108,12 @@ class MainActivity: FlutterActivity() {
         
         // Update blocked apps and service
         blockedApps = newBlockedApps
-        updateBlockedApps()
-        
-        // Start or stop YouTube blocking based on routines
-        if (shouldBlockYouTube) {
-            startBlockingYouTube()
-        } else {
-            startBlockingYouTube()
+
+        if (!blockedApps.contains(YOUTUBE_PACKAGE)) {
+            blockedApps.add(YOUTUBE_PACKAGE)
         }
-        
-        // TODO: Implement more comprehensive routine handling for Android
+
+        updateBlockedApps()
     }
     
     private fun checkUsageStatsPermission() {
@@ -162,25 +151,7 @@ class MainActivity: FlutterActivity() {
             }
         }
     }
-    
-    private fun startBlockingYouTube() {
-        Log.d(TAG, "Starting YouTube blocking")
-        if (!blockedApps.contains(YOUTUBE_PACKAGE)) {
-            blockedApps.add(YOUTUBE_PACKAGE)
-        }
-        updateBlockedApps()
-        ForegroundAppDetectionService.startService(this)
-    }
-    
-    private fun stopBlockingYouTube() {
-        Log.d(TAG, "Stopping YouTube blocking")
-        blockedApps.remove(YOUTUBE_PACKAGE)
-        updateBlockedApps()
-        if (blockedApps.isEmpty()) {
-            ForegroundAppDetectionService.stopService(this)
-        }
-    }
-    
+
     private fun updateBlockedApps() {
         ForegroundAppDetectionService.updateBlockedPackages(this, blockedApps)
     }
