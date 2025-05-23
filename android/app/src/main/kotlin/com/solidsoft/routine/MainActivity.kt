@@ -183,7 +183,7 @@ class MainActivity: FlutterActivity() {
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
         ) ?: return false
         
-        val serviceName = packageName + "/" + WebsiteBlockerAccessibilityService::class.java.canonicalName
+        val serviceName = packageName + "/" + BlockManager::class.java.canonicalName
         return enabledServices.contains(serviceName)
     }
     
@@ -208,6 +208,6 @@ class MainActivity: FlutterActivity() {
      */
     private fun updateBlockedWebsites(websites: List<String>) {
         Log.d(TAG, "Updating blocked websites: $websites")
-        WebsiteBlockerAccessibilityService.updateBlockedDomains(websites)
+        BlockManager.updateBlockedDomains(websites)
     }
 }

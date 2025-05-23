@@ -2,9 +2,7 @@ package com.solidsoft.routine
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
-import android.content.pm.ServiceInfo
 import android.net.Uri
-import android.os.Build
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -14,7 +12,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 /**
  * Accessibility service that monitors web browsing activity and blocks access to specific websites.
  */
-class WebsiteBlockerAccessibilityService : AccessibilityService() {
+class BlockManager : AccessibilityService() {
     private val TAG = "WebsiteBlocker"
 
     private var blockOverlayView: BlockOverlayView? = null
@@ -71,7 +69,7 @@ class WebsiteBlockerAccessibilityService : AccessibilityService() {
             showBlockOverlay(packageName)
             return
         } else if (blockOverlayView?.isShowing() == true) {
-            if (packageName != "com.solidsoft.routine") {
+            if (packageName != this.packageName) {
                 hideBlockOverlay()
             }
         }
@@ -373,9 +371,9 @@ class WebsiteBlockerAccessibilityService : AccessibilityService() {
     
     companion object {
         // Static reference to the active service instance
-        private var instance: WebsiteBlockerAccessibilityService? = null
+        private var instance: BlockManager? = null
         
-        fun getInstance(): WebsiteBlockerAccessibilityService? {
+        fun getInstance(): BlockManager? {
             return instance
         }
         
