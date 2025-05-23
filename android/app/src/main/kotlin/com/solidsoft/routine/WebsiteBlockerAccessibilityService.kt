@@ -6,6 +6,8 @@ import android.net.Uri
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.os.Handler
+import android.os.Looper
 import java.util.ArrayList
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -25,6 +27,29 @@ class WebsiteBlockerAccessibilityService : AccessibilityService() {
     private var currentBrowserApp = ""
     private var currentBrowserUrl = ""
     
+    // Flag to track if user is currently typing
+    private var isUserTyping = false
+    
+    // Track the last time user was typing
+    private var lastTypingTime = 0L
+    
+    // Handler for delayed URL checking
+    private val handler = Handler(Looper.getMainLooper())
+    private var pendingUrlCheck: Runnable? = null
+    
+    // Delay in milliseconds before checking a URL after typing stops
+    private val URL_CHECK_DELAY = 2500L
+    
+    // Minimum time to consider between typing and URL check
+    private val MIN_TYPING_COOLDOWN = 5000L
+    
+    // Track if we're in an address bar
+    private var isInAddressBar = false
+    
+    // Track the last processed URL timestamp to avoid rapid redirects
+    private var lastProcessedTime = 0L
+    private val MIN_PROCESS_INTERVAL = 1000L
+    
     override fun onServiceConnected() {
         super.onServiceConnected()
         Log.d(TAG, "Website blocker accessibility service connected")
@@ -39,69 +64,118 @@ class WebsiteBlockerAccessibilityService : AccessibilityService() {
         
         // Set the instance for companion object access
         instance = this
+        
+        // Initialize typing state
+        isUserTyping = false
     }
     
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         val eventType = event.eventType
+        val currentTime = System.currentTimeMillis()
+        val packageName = event.packageName?.toString() ?: return
         
-        // Only process relevant event types
-        when (eventType) {
-            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
-            AccessibilityEvent.TYPE_WINDOWS_CHANGED,
-            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
-                val parentNodeInfo = event.source ?: return
+        // Check if this is a supported browser first
+        val browserConfig = getSupportedBrowsers().find { it.packageName == packageName }
+        
+        // Only proceed with browser-related processing if this is a supported browser
+        if (browserConfig != null) {
+            // Handle typing detection
+            if (eventType == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED) {
+                // Update typing state and timestamp
+                isUserTyping = true
+                lastTypingTime = currentTime
+                cancelPendingUrlCheck()
                 
-                val packageName = event.packageName?.toString() ?: return
-                
-                // Check if this is a supported browser
-                val browserConfig = getSupportedBrowsers().find { it.packageName == packageName }
-                    ?: return
-                
-                // Capture URL from the browser
-                val capturedUrl = captureUrl(parentNodeInfo, browserConfig)
-                parentNodeInfo.recycle()
-                
-                if (capturedUrl == null) {
-                    return
+                // Check if we're in an address bar
+                val source = event.source
+                if (source != null) {
+                    val nodeId = source.viewIdResourceName
+                    isInAddressBar = nodeId != null && browserConfig.addressBarId.contains(nodeId)
+                    source.recycle()
                 }
                 
-                // Process the captured URL
-                processUrl(packageName, capturedUrl)
+                Log.d(TAG, "User typing detected in address bar: $isInAddressBar")
+                return
+            }
+            
+            // Check if enough time has passed since last typing
+            if (isUserTyping && (currentTime - lastTypingTime) > MIN_TYPING_COOLDOWN) {
+                Log.d(TAG, "Typing cooldown period expired after ${currentTime - lastTypingTime}ms")
+                isUserTyping = false
+            }
+            
+            // Only process relevant event types
+            when (eventType) {
+                AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
+                AccessibilityEvent.TYPE_WINDOWS_CHANGED,
+                AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
+                    val parentNodeInfo = event.source ?: return
+                    
+                    // Capture URL from the browser
+                    val capturedUrl = captureUrl(parentNodeInfo, browserConfig)
+                    parentNodeInfo.recycle()
+                    
+                    if (capturedUrl == null || !android.util.Patterns.WEB_URL.matcher(capturedUrl).matches()) {
+                        return
+                    }
+                    
+                    // Check if we should process this URL
+                    if (shouldProcessUrl(capturedUrl, currentTime)) {
+                        // If user was typing recently or we're in an address bar, schedule a delayed check
+                        if (isUserTyping || isInAddressBar || (currentTime - lastTypingTime < MIN_TYPING_COOLDOWN * 2)) {
+                            Log.d(TAG, "Scheduling delayed URL check for: $capturedUrl")
+                            scheduleUrlCheck(packageName, capturedUrl)
+                        } else {
+                            // Process the URL immediately if user is not typing
+                            processUrl(packageName, capturedUrl)
+                        }
+                    }
+                }
             }
         }
+    }
+    
+    /**
+     * Determines if a URL should be processed based on various heuristics
+     */
+    private fun shouldProcessUrl(url: String, currentTime: Long): Boolean {
+        // Don't process the same URL too frequently
+        if (url == currentBrowserUrl && (currentTime - lastProcessedTime) < MIN_PROCESS_INTERVAL) {
+            return false
+        }
+        
+        // Don't process very short URLs that might be incomplete
+        if (url.length < 5) {
+            return false
+        }
+        
+        // Don't process URLs that look like they're being edited
+        if (url.endsWith("|") || url.contains("|")) {
+            return false
+        }
+        
+        return true
     }
     
     /**
      * Process a captured URL from a browser
      */
     private fun processUrl(packageName: String, capturedUrl: String) {
-        // Check if this is a new browser app
-        if (packageName != currentBrowserApp) {
-            if (android.util.Patterns.WEB_URL.matcher(capturedUrl).matches()) {
-                Log.d(TAG, "New browser detected: $packageName with URL: $capturedUrl")
-                currentBrowserApp = packageName
-                currentBrowserUrl = capturedUrl
-                
-                // Check if URL is blocked
-                if (isBlockedUrl(capturedUrl)) {
-                    Log.d(TAG, "Blocked URL detected: $capturedUrl, redirecting...")
-                    redirectToBrowser(redirectUrl)
-                }
-            }
-        } else {
-            // Same browser, check if URL changed
-            if (capturedUrl != currentBrowserUrl) {
-                if (android.util.Patterns.WEB_URL.matcher(capturedUrl).matches()) {
-                    currentBrowserUrl = capturedUrl
-                    Log.d(TAG, "URL changed in $packageName to: $capturedUrl")
-                    
-                    // Check if URL is blocked
-                    if (isBlockedUrl(capturedUrl)) {
-                        Log.d(TAG, "Blocked URL detected: $capturedUrl, redirecting...")
-                        redirectToBrowser(redirectUrl)
-                    }
-                }
-            }
+        val currentTime = System.currentTimeMillis()
+        
+        // Reset typing flag since we're now processing a URL
+        isUserTyping = false
+        isInAddressBar = false
+        lastProcessedTime = currentTime
+        
+        // Skip processing if URL doesn't look valid
+        if (!android.util.Patterns.WEB_URL.matcher(capturedUrl).matches()) {
+            return
+        }
+
+        if (isBlockedUrl(capturedUrl)) {
+            Log.d(TAG, "Blocked URL detected: $capturedUrl, redirecting...")
+            redirectToBrowser(redirectUrl)
         }
     }
     
@@ -155,16 +229,34 @@ class WebsiteBlockerAccessibilityService : AccessibilityService() {
      * Captures the URL from a browser's address bar
      */
     private fun captureUrl(info: AccessibilityNodeInfo, config: SupportedBrowserConfig): String? {
-        val nodes = info.findAccessibilityNodeInfosByViewId(config.addressBarId)
-        if (nodes.isEmpty()) {
+        try {
+            val nodes = info.findAccessibilityNodeInfosByViewId(config.addressBarId)
+            if (nodes.isEmpty()) {
+                return null
+            }
+            
+            val addressBarNodeInfo = nodes[0]
+            val url = addressBarNodeInfo.text?.toString()
+            
+            // Check if the address bar is focused - this could indicate editing
+            if (addressBarNodeInfo.isFocused) {
+                isInAddressBar = true
+                lastTypingTime = System.currentTimeMillis() // Reset typing timer when address bar is focused
+            }
+            
+            addressBarNodeInfo.recycle()
+            
+            // Clean up the URL if needed
+            if (url != null) {
+                // Remove any editing indicators or cursor markers
+                return url.replace("|", "").trim()
+            }
+            
+            return url
+        } catch (e: Exception) {
+            Log.e(TAG, "Error capturing URL: ${e.message}")
             return null
         }
-        
-        val addressBarNodeInfo = nodes[0]
-        val url = addressBarNodeInfo.text?.toString()
-        addressBarNodeInfo.recycle()
-        
-        return url
     }
     
     /**
@@ -200,7 +292,41 @@ class WebsiteBlockerAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "Website blocker accessibility service destroyed")
+        cancelPendingUrlCheck()
         instance = null
+    }
+    
+    /**
+     * Schedules a delayed URL check after typing has stopped
+     */
+    private fun scheduleUrlCheck(packageName: String, capturedUrl: String) {
+        // Cancel any existing scheduled checks
+        cancelPendingUrlCheck()
+        
+        // Create a new runnable for delayed processing
+        pendingUrlCheck = Runnable {
+            // Double-check that enough time has passed since typing
+            val currentTime = System.currentTimeMillis()
+            if (currentTime - lastTypingTime >= MIN_TYPING_COOLDOWN) {
+                Log.d(TAG, "Processing URL after typing delay: $capturedUrl")
+                processUrl(packageName, capturedUrl)
+            } else {
+                Log.d(TAG, "Skipping URL check, user typed too recently")
+            }
+        }
+        
+        // Schedule the check after the delay
+        handler.postDelayed(pendingUrlCheck!!, URL_CHECK_DELAY)
+    }
+    
+    /**
+     * Cancels any pending URL checks
+     */
+    private fun cancelPendingUrlCheck() {
+        pendingUrlCheck?.let {
+            handler.removeCallbacks(it)
+            pendingUrlCheck = null
+        }
     }
     
     /**
