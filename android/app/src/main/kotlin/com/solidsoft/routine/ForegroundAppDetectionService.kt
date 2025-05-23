@@ -22,12 +22,15 @@ import androidx.core.app.NotificationCompat
 class ForegroundAppDetectionService : Service() {
     private val TAG = "ForegroundDetection"
     private val handler = Handler(Looper.getMainLooper())
-    private val CHECK_INTERVAL_MS = 1000L // Check more frequently (every 500ms)
+    private val CHECK_INTERVAL_MS = 1000L // Check every second
     private var isRunning = false
     private var blockedPackages = listOf<String>()
     private var currentlyBlockedApp: String? = null
     private var overlayShowing = false
     private var wakeLock: PowerManager.WakeLock? = null
+    
+    // Overlay view for blocking apps
+    private var blockOverlayView: BlockOverlayView? = null
     
     // YouTube package name
     private val YOUTUBE_PACKAGE = "com.google.android.youtube"
@@ -53,6 +56,9 @@ class ForegroundAppDetectionService : Service() {
                     }
                 } else {
                     // App is no longer in foreground or not blocked
+                    if (overlayShowing) {
+                        hideBlockOverlay()
+                    }
                     currentlyBlockedApp = null
                     overlayShowing = false
                 }
@@ -73,6 +79,9 @@ class ForegroundAppDetectionService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        
+        // Initialize the overlay view
+        blockOverlayView = BlockOverlayView(this)
         
         // For Android 14+ (API 34+), we need to specify a foreground service type
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -112,6 +121,11 @@ class ForegroundAppDetectionService : Service() {
         isRunning = false
         handler.removeCallbacks(checkForegroundRunnable)
         releaseWakeLock()
+        
+        // Hide the overlay if it's showing
+        blockOverlayView?.hide()
+        blockOverlayView = null
+        
         Log.d(TAG, "Service destroyed")
     }
     
@@ -176,8 +190,7 @@ class ForegroundAppDetectionService : Service() {
     
     private fun showBlockOverlay(packageName: String) {
         try {
-            // Instead of starting an activity directly, update the notification
-            // to inform the user that an app is being blocked
+            // Update notification to inform the user that an app is being blocked
             Log.d(TAG, "App blocked: $packageName")
             
             // Get app name for better user experience
@@ -186,14 +199,20 @@ class ForegroundAppDetectionService : Service() {
             // Update notification to show blocked app
             updateNotification("Blocking $appName")
             
-            // Send the user back to home screen
-            val homeIntent = Intent(Intent.ACTION_MAIN)
-            homeIntent.addCategory(Intent.CATEGORY_HOME)
-            homeIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            startActivity(homeIntent)
+            // Show the overlay window using SYSTEM_ALERT_WINDOW permission
+            blockOverlayView?.show(packageName)
             
         } catch (e: Exception) {
             Log.e(TAG, "Error handling blocked app: ${e.message}", e)
+        }
+    }
+    
+    private fun hideBlockOverlay() {
+        try {
+            blockOverlayView?.hide()
+            updateNotification()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error hiding block overlay: ${e.message}", e)
         }
     }
     

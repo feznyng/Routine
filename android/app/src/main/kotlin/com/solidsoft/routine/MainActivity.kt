@@ -1,6 +1,7 @@
 package com.solidsoft.routine
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
@@ -9,6 +10,8 @@ import io.flutter.plugin.common.MethodChannel
 import org.json.JSONObject
 import android.app.usage.UsageStatsManager
 import android.content.Context
+import android.content.pm.ServiceInfo
+import android.os.Build
 import android.provider.Settings
 
 class MainActivity: FlutterActivity() {
@@ -137,6 +140,26 @@ class MainActivity: FlutterActivity() {
             Log.d(TAG, "Usage stats permission not granted, requesting...")
             val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
             startActivity(intent)
+        }
+    }
+    
+    private fun checkOverlayPermission(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return Settings.canDrawOverlays(this)
+        }
+        return true // On older versions, the permission is granted at install time
+    }
+    
+    private fun requestOverlayPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(this)) {
+                Log.d(TAG, "Overlay permission not granted, requesting...")
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:$packageName")
+                )
+                startActivity(intent)
+            }
         }
     }
     

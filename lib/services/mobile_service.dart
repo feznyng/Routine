@@ -154,4 +154,59 @@ class MobileService extends PlatformService {
       return true;
     }
   }
+  
+  // YouTube blocking methods
+  Future<bool> startYouTubeBlocking() async {
+    try {
+      // First check if we have overlay permission
+      if (!await checkOverlayPermission()) {
+        // We need to request permission first
+        await requestOverlayPermission();
+        // Return false to indicate that the caller should try again after permission is granted
+        return false;
+      }
+      
+      final bool result = await _channel.invokeMethod('startYouTubeBlocking');
+      return result;
+    } catch (e, st) {
+      Util.report('error starting YouTube blocking', e, st);
+      return false;
+    }
+  }
+  
+  Future<bool> stopYouTubeBlocking() async {
+    try {
+      final bool result = await _channel.invokeMethod('stopYouTubeBlocking');
+      return result;
+    } catch (e, st) {
+      Util.report('error stopping YouTube blocking', e, st);
+      return false;
+    }
+  }
+  
+  // Check if the app has permission to draw overlays
+  Future<bool> checkOverlayPermission() async {
+    if (!Platform.isAndroid) return true;
+    
+    try {
+      final bool hasPermission = await _channel.invokeMethod('checkOverlayPermission');
+      return hasPermission;
+    } catch (e, st) {
+      Util.report('error checking overlay permission', e, st);
+      return false;
+    }
+  }
+  
+  // Request permission to draw overlays
+  Future<bool> requestOverlayPermission() async {
+    if (!Platform.isAndroid) return true;
+    
+    try {
+      final bool result = await _channel.invokeMethod('requestOverlayPermission');
+      return result;
+    } catch (e, st) {
+      Util.report('error requesting overlay permission', e, st);
+      return false;
+    }
+  }
 }
