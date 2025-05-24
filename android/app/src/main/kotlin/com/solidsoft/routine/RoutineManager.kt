@@ -9,13 +9,13 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import java.util.ArrayList
 import org.json.JSONArray
-import android.app.AlarmManager
-import android.app.PendingIntent
-import android.content.BroadcastReceiver
-import android.content.IntentFilter
-import androidx.core.content.ContextCompat
 import java.util.Calendar
 import java.util.HashSet
+import android.os.Handler
+import android.os.Looper
+import java.util.Date
+
+private const val SYSTEM_UI_PACKAGE = "com.android.systemui"
 
 /**
  * Accessibility service that monitors web browsing activity and blocks access to specific websites.
@@ -48,12 +48,19 @@ class RoutineManager : AccessibilityService() {
     // Track the last processed URL timestamp to avoid rapid redirects
     private var lastProcessedTime = 0L
     private val MIN_PROCESS_INTERVAL = 1000L
+    
+    // Handler for scheduling evaluations
+    private val handler = Handler(Looper.getMainLooper())
+    private var evaluationRunnable: Runnable? = null
+    
+    // List of evaluation times sorted by timestamp
+    private var evaluationTimes = ArrayList<EvaluationTime>()
+    private var currentEvaluationIndex = 0
 
     override fun onCreate() {
         Log.d(TAG, "RoutineManager service onCreate")
         super.onCreate()
         blockOverlayView = BlockOverlayView(this)
-        registerEvaluateReceiver()
         
         // Restore state from shared preferences when service is created
         updateRoutines()
@@ -118,16 +125,17 @@ class RoutineManager : AccessibilityService() {
         val packageName = event.packageName?.toString() ?: return
         val changeType = event.contentChangeTypes;
 
-        Log.d(TAG, "Accessibility event: " +
-                "$eventType, package: $packageName, action: ${event.contentChangeTypes}")
+//        Log.d(TAG, "Accessibility event: " +
+//                "$eventType, package: $packageName, action: ${event.contentChangeTypes}")
 
         // Get the launcher package name
         val launcherPackage = getDefaultLauncherPackageName()
         
         // Update last seen app - skip system UI and launcher
         if (packageName != this.packageName && 
-            packageName != "com.android.systemui") {
-            Log.d(TAG, "Last seen app updated: $packageName")
+            packageName != SYSTEM_UI_PACKAGE
+        ) {
+            //Log.d(TAG, "Last seen app updated: $packageName")
             lastSeenApp = packageName
             lastSeenTimestamp = currentTime
         }
@@ -388,21 +396,6 @@ class RoutineManager : AccessibilityService() {
         Log.d(TAG, "Website blocker accessibility service interrupted")
     }
     
-    override fun onDestroy() {
-        super.onDestroy()
-        Log.d(TAG, "Website blocker accessibility service destroyed")
-        instance = null
-        blockOverlayView?.hide()
-        blockOverlayView = null
-        
-        // Unregister the broadcast receiver
-        try {
-            applicationContext.unregisterReceiver(evaluateReceiver)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error unregistering evaluate receiver: ${e.message}")
-        }
-    }
-
     private fun showBlockOverlay(packageName: String) {
         try {
             // Update notification to inform the user that an app is being blocked
@@ -424,203 +417,206 @@ class RoutineManager : AccessibilityService() {
         }
     }
 
+    /**
+     * Represents a scheduled evaluation time
+     */
+    private data class EvaluationTime(
+        val timestamp: Long,
+        val reason: String,
+        val routineId: String
+    ) : Comparable<EvaluationTime> {
+        override fun compareTo(other: EvaluationTime): Int {
+            return timestamp.compareTo(other.timestamp)
+        }
+    }
+
     private fun scheduleEvaluations() {
-        // Cancel any existing alarms
+        // Cancel any existing scheduled evaluations
         cancelScheduledEvaluations()
+
+        // Create a set to store unique evaluation times
+        val evaluationTimeSet = HashSet<Long>()
+        val newEvaluationTimes = ArrayList<EvaluationTime>()
+
+        val allDayRoutine = routines.find { it.allDay }
+
+        if (allDayRoutine != null) {
+            // Add all day evaluation time
+            val midnight = convertMinutesToTimestamp(1)
+            newEvaluationTimes.add(EvaluationTime(midnight, "all_day", allDayRoutine.id))
+            Log.d(TAG, "Added evaluation time for all day")
+        }
         
-        // Get the alarm manager
-        val alarmManager = applicationContext.getSystemService(ALARM_SERVICE) as AlarmManager
-        
-        // Set of minutes of day to schedule evaluations (to avoid duplicates)
-        val scheduledMinutes = HashSet<Int>()
-        
-        // Current calendar instance
-        val calendar = Calendar.getInstance()
-        
-        // Get today's date components
-        val year = calendar.get(Calendar.YEAR)
-        val month = calendar.get(Calendar.MONTH)
-        val day = calendar.get(Calendar.DAY_OF_MONTH)
-        
-        // For each routine, schedule evaluations at start and end times
-        for (routine in routines) {
-            // Schedule for paused and snoozed times
+        // For each routine, collect evaluation times
+        for (routine in routines.filter { !it.allDay }) {
+            // Add pausedUntil time if it's in the future
             val now = System.currentTimeMillis()
             
-            // Schedule for pausedUntil if it's in the future
             routine.pausedUntil?.let { pausedUntil ->
                 val pausedUntilTime = pausedUntil.time
-                if (pausedUntilTime > now) {
-                    scheduleEvaluationAtExactTime(
-                        alarmManager,
-                        pausedUntilTime,
-                        "paused_${routine.id}".hashCode(),
-                        "paused_until_expired",
-                        routine.id
+                if (pausedUntilTime > now && !evaluationTimeSet.contains(pausedUntilTime)) {
+                    evaluationTimeSet.add(pausedUntilTime)
+                    newEvaluationTimes.add(
+                        EvaluationTime(
+                            pausedUntilTime,
+                            "paused_until_expired",
+                            routine.id
+                        )
                     )
-                    Log.d(TAG, "Scheduled evaluation for routine ${routine.name} when pause expires at ${pausedUntil}")
+                    Log.d(TAG, "Added evaluation time for routine ${routine.name} when pause expires at ${pausedUntil}")
                 }
             }
             
-            // Schedule for snoozedUntil if it's in the future
+            // Add snoozedUntil time if it's in the future
             routine.snoozedUntil?.let { snoozedUntil ->
                 val snoozedUntilTime = snoozedUntil.time
-                if (snoozedUntilTime > now) {
-                    scheduleEvaluationAtExactTime(
-                        alarmManager,
-                        snoozedUntilTime,
-                        "snoozed_${routine.id}".hashCode(),
-                        "snoozed_until_expired",
-                        routine.id
+                if (snoozedUntilTime > now && !evaluationTimeSet.contains(snoozedUntilTime)) {
+                    evaluationTimeSet.add(snoozedUntilTime)
+                    newEvaluationTimes.add(
+                        EvaluationTime(
+                            snoozedUntilTime,
+                            "snoozed_until_expired",
+                            routine.id
+                        )
                     )
-                    Log.d(TAG, "Scheduled evaluation for routine ${routine.name} when snooze expires at ${snoozedUntil}")
+                    Log.d(TAG, "Added evaluation time for routine ${routine.name} when snooze expires at ${snoozedUntil}")
                 }
             }
             
             // Skip if routine doesn't have time constraints
-            if (routine.allDay || (routine.startTime == null && routine.endTime == null)) {
+            if (routine.startTime == null && routine.endTime == null) {
                 continue
             }
             
-            // Schedule evaluation at start time if defined
+            // Add start time if defined
             routine.startTime?.let { startTime ->
-                scheduleEvaluationAtTime(alarmManager, startTime, scheduledMinutes, year, month, day)
+                val startTimeMillis = convertMinutesToTimestamp(startTime)
+                if (!evaluationTimeSet.contains(startTimeMillis)) {
+                    evaluationTimeSet.add(startTimeMillis)
+                    newEvaluationTimes.add(
+                        EvaluationTime(
+                            startTimeMillis,
+                            "daily_start_time",
+                            routine.id
+                        )
+                    )
+                    Log.d(TAG, "Added evaluation time for routine ${routine.name} at start time: ${startTime / 60}:${startTime % 60}")
+                }
             }
             
-            // Schedule evaluation at end time if defined
+            // Add end time if defined
             routine.endTime?.let { endTime ->
-                scheduleEvaluationAtTime(alarmManager, endTime, scheduledMinutes, year, month, day)
+                val endTimeMillis = convertMinutesToTimestamp(endTime)
+                if (!evaluationTimeSet.contains(endTimeMillis)) {
+                    evaluationTimeSet.add(endTimeMillis)
+                    newEvaluationTimes.add(
+                        EvaluationTime(
+                            endTimeMillis,
+                            "daily_end_time",
+                            routine.id
+                        )
+                    )
+                    Log.d(TAG, "Added evaluation time for routine ${routine.name} at end time: ${endTime / 60}:${endTime % 60}")
+                }
             }
         }
+        
+        // Get current time for sorting
+        val now = System.currentTimeMillis()
+        
+        // Sort evaluation times by proximity to current time (next upcoming first)
+        newEvaluationTimes.sortWith(compareBy { 
+            // For times in the future, use their actual time
+            // For times in the past, add a day to schedule for tomorrow
+            val timeToUse = if (it.timestamp > now) {
+                it.timestamp
+            } else {
+                it.timestamp + 24 * 60 * 60 * 1000 // Add one day in milliseconds
+            }
+            timeToUse
+        })
+        
+        // Store the sorted list
+        evaluationTimes = newEvaluationTimes
+        
+        // Log the sorted evaluation times
+        if (evaluationTimes.isNotEmpty()) {
+            Log.d(TAG, "Sorted evaluation times:")
+            for (i in evaluationTimes.indices) {
+                val evalTime = evaluationTimes[i]
+                val routine = routines.find { it.id == evalTime.routineId }
+                val routineName = routine?.name ?: "Unknown"
+                Log.d(TAG, "$i: ${Date(evalTime.timestamp)} - ${evalTime.reason} - $routineName")
+            }
+        }
+        
+        // Schedule the first evaluation if there are any
+        if (evaluationTimes.isNotEmpty()) {
+            currentEvaluationIndex = 0
+            scheduleNextEvaluation()
+        }
+    }
+
+    private fun convertMinutesToTimestamp(minutes: Int): Long {
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.HOUR_OF_DAY, minutes / 60)
+        calendar.set(Calendar.MINUTE, minutes % 60)
+        calendar.set(Calendar.SECOND, 10)
+        return calendar.timeInMillis
     }
     
-    /**
-     * Schedules an evaluation at a specific time (in minutes of day)
-     */
-    private fun scheduleEvaluationAtTime(
-        alarmManager: AlarmManager,
-        timeInMinutes: Int,
-        scheduledMinutes: HashSet<Int>,
-        year: Int,
-        month: Int,
-        day: Int
-    ) {
-        // Only schedule if this time hasn't been scheduled yet
-        if (!scheduledMinutes.contains(timeInMinutes)) {
-            // Add to set of scheduled minutes
-            scheduledMinutes.add(timeInMinutes)
-            
-            // Create calendar for the specified time
-            val calendar = Calendar.getInstance()
-            
-            // Set calendar to today at the specified time
-            calendar.set(year, month, day, timeInMinutes / 60, timeInMinutes % 60, 0)
-            
-            // If the time has already passed today, schedule for tomorrow
-            if (calendar.timeInMillis < System.currentTimeMillis()) {
-                calendar.add(Calendar.DAY_OF_YEAR, 1)
+    private fun scheduleNextEvaluation() {
+        // Cancel any existing evaluation
+        evaluationRunnable?.let {
+            handler.removeCallbacks(it)
+        }
+        
+        if (evaluationTimes.isEmpty() || currentEvaluationIndex >= evaluationTimes.size) {
+            Log.d(TAG, "No more evaluations to schedule")
+            return
+        }
+        
+        val nextEval = evaluationTimes[currentEvaluationIndex]
+        val now = System.currentTimeMillis()
+        val delay = Math.max(0, nextEval.timestamp - now)
+        
+        Log.d(TAG, "Scheduling next evaluation in ${delay/1000} seconds (${Date(nextEval.timestamp)}), reason: ${nextEval.reason}")
+        
+        evaluationRunnable = Runnable {
+            Log.d(TAG, "Running scheduled evaluation. Reason: ${nextEval.reason}, RoutineId: ${nextEval.routineId}")
+
+            val routine = routines.find { it.id == nextEval.routineId }
+            if (routine != null) {
+                Log.d(TAG, "Re-evaluating after ${nextEval.reason} expired for routine: ${routine.name}")
             }
             
-            // Schedule at the calculated time
-            scheduleEvaluationAtExactTime(
-                alarmManager,
-                calendar.timeInMillis,
-                timeInMinutes,
-                "daily_schedule",
-                null
-            )
-            
-            Log.d(TAG, "Scheduled evaluation at time: ${timeInMinutes / 60}:${timeInMinutes % 60}")
-        }
-    }
-    
-    /**
-     * Schedules an evaluation at an exact timestamp
-     */
-    private fun scheduleEvaluationAtExactTime(
-        alarmManager: AlarmManager,
-        triggerTimeMillis: Long,
-        requestCode: Int,
-        reason: String,
-        routineId: String?
-    ) {
-        // Create intent for the alarm
-        val intent = Intent(EVALUATE_ACTION)
-        if (reason.isNotEmpty()) {
-            intent.putExtra("reason", reason)
-        }
-        if (routineId != null) {
-            intent.putExtra("routineId", routineId)
+            evaluate()
+
+            currentEvaluationIndex++
+
+            if (currentEvaluationIndex >= evaluationTimes.size) {
+                Log.d(TAG, "All evaluations completed for today, rescheduling for tomorrow")
+                scheduleEvaluations()
+            } else {
+                scheduleNextEvaluation()
+            }
         }
         
-        val pendingIntent = PendingIntent.getBroadcast(
-            applicationContext,
-            requestCode,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        
-        // Schedule the alarm based on Android version and permissions
-        scheduleAlarm(alarmManager, triggerTimeMillis, pendingIntent)
+        handler.postDelayed(evaluationRunnable!!, delay)
     }
 
     private fun cancelScheduledEvaluations() {
-        val alarmManager = applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        // Remove any pending evaluation callbacks
+        evaluationRunnable?.let {
+            handler.removeCallbacks(it)
+            evaluationRunnable = null
+        }
         
-        // Cancel all possible alarms (for all minutes of the day)
-        for (minute in 0 until 24 * 60) {
-            val intent = Intent(EVALUATE_ACTION)
-            val pendingIntent = PendingIntent.getBroadcast(
-                applicationContext,
-                minute,
-                intent,
-                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
-            )
-            
-            // If the pending intent exists, cancel it
-            pendingIntent?.let {
-                alarmManager.cancel(it)
-                it.cancel()
-            }
-        }
+        // Clear the evaluation times list
+        evaluationTimes.clear()
+        currentEvaluationIndex = 0
     }
 
-    private fun registerEvaluateReceiver() {
-        // Create and register the broadcast receiver
-        val filter = IntentFilter(EVALUATE_ACTION)
-        ContextCompat.registerReceiver(
-            applicationContext,
-            evaluateReceiver,
-            filter,
-            ContextCompat.RECEIVER_NOT_EXPORTED
-        )
-    }
-    
-    private val evaluateReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            if (intent.action == EVALUATE_ACTION) {
-                val reason = intent.getStringExtra("reason") ?: "scheduled_time"
-                val routineId = intent.getStringExtra("routineId")
-                
-                Log.d(TAG, "Received scheduled evaluation broadcast. Reason: $reason, RoutineId: $routineId")
-                
-                // If this is for a specific routine that was paused/snoozed, log it
-                if (routineId != null) {
-                    val routine = routines.find { it.id == routineId }
-                    if (routine != null) {
-                        Log.d(TAG, "Re-evaluating after ${reason} expired for routine: ${routine.name}")
-                    }
-                }
-                
-                // Evaluate all routines
-                evaluate()
-            }
-        }
-    }
-
-    /**
-     * Gets the package name of the device's default launcher (home screen app)
-     */
     private fun getDefaultLauncherPackageName(): String? {
         val intent = Intent(Intent.ACTION_MAIN)
         intent.addCategory(Intent.CATEGORY_HOME)
@@ -714,60 +710,20 @@ class RoutineManager : AccessibilityService() {
         }
     }
 
-    /**
-     * Schedules an alarm using the appropriate method based on Android version and permissions
-     */
-    private fun scheduleAlarm(alarmManager: AlarmManager, triggerTime: Long, pendingIntent: PendingIntent) {
-        try {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                // Android 12 (API 31) and above requires SCHEDULE_EXACT_ALARM permission
-                if (alarmManager.canScheduleExactAlarms()) {
-                    alarmManager.setExactAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        triggerTime,
-                        pendingIntent
-                    )
-                } else {
-                    // Fall back to inexact alarm if we don't have permission
-                    Log.w(TAG, "Cannot schedule exact alarms. Using inexact alarm instead.")
-                    alarmManager.set(
-                        AlarmManager.RTC_WAKEUP,
-                        triggerTime,
-                        pendingIntent
-                    )
-                }
-            } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                // Android 6.0 (API 23) to Android 11 (API 30)
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerTime,
-                    pendingIntent
-                )
-            } else {
-                // Below Android 6.0
-                alarmManager.setExact(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerTime,
-                    pendingIntent
-                )
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error scheduling alarm: ${e.message}")
-            // Fall back to inexact alarm as a last resort
-            alarmManager.set(
-                AlarmManager.RTC_WAKEUP,
-                triggerTime,
-                pendingIntent
-            )
-        }
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.d(TAG, "Website blocker accessibility service destroyed")
+        instance = null
+        blockOverlayView?.hide()
+        blockOverlayView = null
+        
+        // Cancel any scheduled evaluations
+        cancelScheduledEvaluations()
     }
 
     companion object {
         // Static reference to the active service instance
         private var instance: RoutineManager? = null
-        
-        // Action for the broadcast receiver
-        private const val EVALUATE_ACTION = "com.solidsoft.routine.EVALUATE_ACTION"
         
         fun updateRoutines() {
             instance?.updateRoutines()

@@ -1,5 +1,6 @@
 import 'package:Routine/models/installed_app.dart';
 import 'package:Routine/services/mobile_service.dart';
+import 'package:Routine/setup.dart';
 import 'package:Routine/util.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -37,11 +38,12 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
   final TextEditingController _appSearchController = TextEditingController();
   final TextEditingController _folderSearchController = TextEditingController();
   late TabController _tabController;
-  final bool _showFoldersTab = !Util.isDesktop() || !Platform.isMacOS;
+  final bool _showFoldersTab = Platform.isWindows;
 
   @override
   void initState() {
     super.initState();
+    logger.i("show folders tab: $_showFoldersTab");
     _selectedApps = List.from(widget.selectedApps);
     _selectedCategories = List.from(widget.selectedCategories);
     _tabController = TabController(
