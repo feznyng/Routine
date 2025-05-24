@@ -27,7 +27,7 @@ class RoutineManager : AccessibilityService() {
 
     private var routines = ArrayList<Routine>();
 
-    private var sites = HashSet<String>()
+    private var sites = ArrayList<String>()
     private var apps = HashSet<String>()
     private var allow = false
 
