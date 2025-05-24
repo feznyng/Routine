@@ -36,6 +36,11 @@ class RoutineManager : AccessibilityService() {
 
     // Track current browser app and URL to avoid redundant processing
     private var currentBrowserUrl = ""
+    
+    // Cache the last seen app and site to handle block sessions that come into effect
+    private var lastSeenApp = ""
+    private var lastSeenSite = ""
+    private var lastSeenTimestamp = 0L
 
     // Flag to track if an editable text field is focused
     private var isEditableFieldFocused = false
@@ -71,6 +76,12 @@ class RoutineManager : AccessibilityService() {
 
         Log.d(TAG, "Accessibility event: " +
                 "$eventType, package: $packageName, action: ${event.contentChangeTypes}")
+
+        // Update last seen app
+        if (packageName != this.packageName) {
+            lastSeenApp = packageName
+            lastSeenTimestamp = currentTime
+        }
 
         // block apps
         if (isBlockedApp(packageName) &&
@@ -209,12 +220,16 @@ class RoutineManager : AccessibilityService() {
         lastProcessedTime = currentTime
         currentBrowserUrl = capturedUrl
         
+        // Update last seen site
+        lastSeenSite = capturedUrl
+        lastSeenTimestamp = currentTime
+        
         Log.d(TAG, "Processing URL: $capturedUrl in $packageName")
         
         // Check if URL is blocked
         if (isBlockedUrl(capturedUrl)) {
             Log.d(TAG, "Blocked URL detected: $capturedUrl, redirecting...")
-            redirectToBrowser(redirectUrl)
+            redirectTo(redirectUrl)
         }
     }
 
@@ -308,7 +323,7 @@ class RoutineManager : AccessibilityService() {
         return (allow && !inList) || (!allow && inList)
     }
 
-    private fun redirectToBrowser(url: String) {
+    private fun redirectTo(url: String) {
         try {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -636,12 +651,42 @@ class RoutineManager : AccessibilityService() {
             }
         }
 
+        // Check if the last seen app or site is now blocked
+        checkLastSeenForBlocking()
+
         // Calculate elapsed time
         val elapsedTime = System.currentTimeMillis() - startTime
         
         Log.d(TAG, "Eval completed in ${elapsedTime}ms, blocked apps: ${apps.size}, blocked domains: ${sites.size}")
     }
     
+    /**
+     * Checks if the last seen app or site is now blocked and takes appropriate action
+     */
+    private fun checkLastSeenForBlocking() {
+        // Only check if we have a recently seen app or site (within last 5 minutes)
+        val currentTime = System.currentTimeMillis()
+        val maxAge = 5 * 60 * 1000L // 5 minutes
+        
+        if (currentTime - lastSeenTimestamp > maxAge) {
+            return
+        }
+        
+        // Check if the last seen app is now blocked
+        if (lastSeenApp.isNotEmpty() && isBlockedApp(lastSeenApp)) {
+            Log.d(TAG, "Last seen app is now blocked: $lastSeenApp")
+            showBlockOverlay(lastSeenApp)
+        }
+        
+        // Check if the last seen site is now blocked
+        if (lastSeenSite.isNotEmpty() && isBlockedUrl(lastSeenSite)) {
+            if (getSupportedBrowsers().find { it.packageName == lastSeenApp } != null) {
+                Log.d(TAG, "Last seen site is now blocked: $lastSeenSite")
+                redirectTo(redirectUrl)
+            }
+        }
+    }
+
     /**
      * Schedules an alarm using the appropriate method based on Android version and permissions
      */
