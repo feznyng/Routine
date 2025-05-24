@@ -100,15 +100,15 @@ function blockRequest(details) {
   if (allowList) {
     // In allowList mode, allow only sites in the list
     const isAllowed = matchesDomain(hostname, blockedSites);
-    if (!isAllowed) {
+    if (!url.contains('routineblocker.com') && !isAllowed) {
       console.log("Blocking non-allowed site:", hostname);
-      return { redirectUrl: chrome.runtime.getURL('blocked.html') };
+      return { redirectUrl: 'https://www.routineblocker.com/blocked' };
     }
   } else {
     // In blockgroup mode, block only sites in the list
     if (matchesDomain(hostname, blockedSites)) {
       console.log("Blocking blocked site:", hostname);
-      return { redirectUrl: chrome.runtime.getURL('blocked.html') };
+      return { redirectUrl: 'https://www.routineblocker.com/blocked' };
     }
   }
 }
