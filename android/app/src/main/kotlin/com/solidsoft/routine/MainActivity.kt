@@ -141,8 +141,37 @@ class MainActivity: FlutterActivity() {
         return enabledServices.contains(serviceName)
     }
 
-    private fun retrieveAllApps() {
-        // TODO: Implement retrieval of all apps
+    private fun retrieveAllApps(): List<Map<String, Any>> {
+        val packageManager = packageManager
+        val installedApps = packageManager.getInstalledApplications(0)
+        val appsList = mutableListOf<Map<String, Any>>()
+        
+        for (appInfo in installedApps) {
+            try {
+                // Skip system apps if they don't have a launcher
+                val intent = packageManager.getLaunchIntentForPackage(appInfo.packageName)
+                if (intent == null && (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0) {
+                    continue
+                }
+                
+                // Get app name
+                val appName = packageManager.getApplicationLabel(appInfo).toString()
+                
+                // Create app info map
+                val appMap = mapOf(
+                    "packageName" to appInfo.packageName,
+                    "appName" to appName,
+                    "isSystemApp" to ((appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0)
+                )
+                
+                appsList.add(appMap)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error retrieving app info for ${appInfo.packageName}: ${e.message}")
+            }
+        }
+        
+        // Sort apps by name
+        return appsList.sortedBy { it["appName"].toString().lowercase() }
     }
 
     private fun requestAccessibilityPermission() {
