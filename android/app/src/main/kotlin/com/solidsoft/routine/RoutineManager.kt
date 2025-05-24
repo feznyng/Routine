@@ -1,12 +1,14 @@
 package com.solidsoft.routine
 
 import android.accessibilityservice.AccessibilityService
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import java.util.ArrayList
+import org.json.JSONArray
 
 /**
  * Accessibility service that monitors web browsing activity and blocks access to specific websites.
@@ -16,15 +18,16 @@ class RoutineManager : AccessibilityService() {
 
     private var blockOverlayView: BlockOverlayView? = null
 
-    // List of blocked domains
-    private var blockedDomains = HashSet<String>()
-    private var blockedApps = HashSet<String>()
+    private var routines = ArrayList<Routine>();
+
+    private var sites = HashSet<String>()
+    private var apps = HashSet<String>()
+    private var allow = false
 
     // Default redirect URL
     private val redirectUrl = "https://www.google.com"
-    
+
     // Track current browser app and URL to avoid redundant processing
-    private var currentBrowserApp = ""
     private var currentBrowserUrl = ""
 
     // Flag to track if an editable text field is focused
@@ -44,9 +47,9 @@ class RoutineManager : AccessibilityService() {
         Log.d(TAG, "Website blocker accessibility service connected")
         
         // TODO: remove after testing
-        blockedDomains.add("reddit.com")
-        blockedDomains.add("m.reddit.com")
-        blockedApps.add("com.google.android.youtube")
+        sites.add("reddit.com")
+        sites.add("m.reddit.com")
+        apps.add("com.google.android.youtube")
 
         instance = this
         isEditableFieldFocused = false
@@ -62,7 +65,7 @@ class RoutineManager : AccessibilityService() {
                 "$eventType, package: $packageName, action: ${event.contentChangeTypes}")
 
         // block apps
-        if (blockedApps.contains(packageName) &&
+        if (isBlockedApp(packageName) &&
             changeType == AccessibilityEvent.CONTENT_CHANGE_TYPE_UNDEFINED) {
             showBlockOverlay(packageName)
             return
@@ -196,7 +199,6 @@ class RoutineManager : AccessibilityService() {
         
         // Update tracking variables
         lastProcessedTime = currentTime
-        currentBrowserApp = packageName
         currentBrowserUrl = capturedUrl
         
         Log.d(TAG, "Processing URL: $capturedUrl in $packageName")
@@ -278,14 +280,24 @@ class RoutineManager : AccessibilityService() {
         }
     }
 
-    private fun isBlockedUrl(url: String): Boolean {
+    private fun isUrlInList(url: String): Boolean {
         val lowerUrl = url.lowercase()
-        for (domain in blockedDomains) {
+        for (domain in sites) {
             if (lowerUrl.contains(domain)) {
                 return true
             }
         }
         return false
+    }
+
+    private fun isBlockedUrl(url: String): Boolean {
+        val inList = isUrlInList(url)
+        return (allow && !inList) || (!allow && inList)
+    }
+
+    private fun isBlockedApp(packageName: String): Boolean {
+        val inList = apps.contains(packageName)
+        return (allow && !inList) || (!allow && inList)
     }
 
     private fun redirectToBrowser(url: String) {
@@ -331,22 +343,98 @@ class RoutineManager : AccessibilityService() {
         }
     }
 
-    fun updateRoutines(domains: List<Routine>) {
-        blockedDomains.clear()
-        Log.d(TAG, "Updated blocked domains: $blockedDomains")
+    fun updateRoutines() {
+        // Use applicationContext instead of appContext
+        val sharedPreferences = applicationContext.getSharedPreferences("com.solidsoft.routine.preferences", Context.MODE_PRIVATE)
+        
+        // Get the JSON string from shared preferences
+        val routinesJsonString = sharedPreferences.getString("routines", null) ?: return
+        
+        try {
+            // Parse the JSON array string
+            val routinesJsonArray: JSONArray = JSONArray(routinesJsonString)
+            val routinesList = mutableListOf<Routine>()
+            
+            // Convert each JSON object to a Routine
+            for (i in 0 until routinesJsonArray.length()) {
+                val routineJson = routinesJsonArray.getJSONObject(i)
+                val routine = Routine(routineJson)
+                routinesList.add(routine)
+            }
+            
+            // Update the routines list
+            routines.clear()
+            routines.addAll(routinesList)
+
+            evaluate()
+            
+            Log.d(TAG, "Updated ${routines.size} routines from shared preferences")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating routines from shared preferences: ${e.message}")
+        }
+    }
+
+    private fun evaluate() {
+        // Start timing the eval function
+        val startTime = System.currentTimeMillis()
+        
+        Log.d(TAG, "Evaluating routines")
+        
+        // Filter routines: active and conditions not met
+        val filteredRoutines = routines.filter { it.isActive() && !it.areConditionsMet() }
+        Log.d(TAG, "Filtered routine count = ${filteredRoutines.size}")
+        
+        // Check if any routine is an allow list
+        allow = filteredRoutines.any { it.allow }
+        
+        // Sets to hold excluded items (for allow list mode)
+        val excludeApps = HashSet<String>()
+        val excludeSites = HashSet<String>()
+        
+        // If in allow list mode, collect all items from block lists to exclude
+        if (allow) {
+            for (routine in filteredRoutines.filter { !it.allow }) {
+                excludeApps.addAll(routine.getApps())
+                excludeSites.addAll(routine.getSites())
+            }
+            
+            // Only keep allow list routines
+            val allowRoutines = filteredRoutines.filter { it.allow }
+            
+            // Process allow lists
+            apps.clear()
+            sites.clear()
+            
+            // In allow list mode, everything is blocked except what's in the allow lists
+            // and not in any block list
+            for (routine in allowRoutines) {
+                apps.addAll(routine.getApps().filter { it !in excludeApps })
+                sites.addAll(routine.getSites().filter { it !in excludeSites })
+            }
+        } else {
+            // Process block lists
+            apps.clear()
+            sites.clear()
+            
+            // Collect all apps and domains to block
+            for (routine in filteredRoutines) {
+                apps.addAll(routine.getApps())
+                sites.addAll(routine.getSites())
+            }
+        }
+
+        // Calculate elapsed time
+        val elapsedTime = System.currentTimeMillis() - startTime
+        
+        Log.d(TAG, "Eval completed in ${elapsedTime}ms, blocked apps: ${apps.size}, blocked domains: ${sites.size}")
     }
     
     companion object {
         // Static reference to the active service instance
         private var instance: RoutineManager? = null
         
-        fun getInstance(): RoutineManager? {
-            return instance
-        }
-        
-        fun updateRoutines(domains: List<Routine>) {
-            // TODO: write to shared preferences so it can be read in case of restart
-            instance?.updateRoutines(domains)
+        fun updateRoutines() {
+            instance?.updateRoutines()
         }
     }
 }

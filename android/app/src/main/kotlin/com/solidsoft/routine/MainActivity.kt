@@ -10,6 +10,9 @@ import android.content.Context
 import android.os.Build
 import android.provider.Settings
 import androidx.core.net.toUri
+import org.json.JSONArray
+import kotlin.apply
+import androidx.core.content.edit
 
 class MainActivity: FlutterActivity() {
     private val CHANNEL = "com.routine.ios_channel"
@@ -92,8 +95,19 @@ class MainActivity: FlutterActivity() {
         // Placeholder implementation for handling routine updates
         Log.d(TAG, "Received ${routines.size} routines to update")
 
-        val newRoutines: List<Routine> = routines.map { Routine() }
-        RoutineManager.updateRoutines(newRoutines)
+        val sharedPreferences = getSharedPreferences("com.solidsoft.routine.preferences", Context.MODE_PRIVATE)
+        sharedPreferences.edit {
+            // Convert routines to JSON array
+            val routinesJsonArray = JSONArray()
+            for (routine in routines) {
+                routinesJsonArray.put(routine)
+            }
+
+            // Save JSON array as string
+            putString("routines", routinesJsonArray.toString())
+        }
+
+        RoutineManager.updateRoutines()
     }
     
     private fun checkOverlayPermission(): Boolean {
