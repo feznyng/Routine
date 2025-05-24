@@ -38,7 +38,7 @@
             
         <!-- Website Blocker Accessibility Service -->
         <service
-            android:name=".BlockManager"
+            android:name=".RoutineManager"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="false">
             <intent-filter>

@@ -1,7 +1,6 @@
 package com.solidsoft.routine
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
@@ -10,20 +9,16 @@ import io.flutter.plugin.common.MethodChannel
 import android.content.Context
 import android.os.Build
 import android.provider.Settings
+import androidx.core.net.toUri
 
 class MainActivity: FlutterActivity() {
     private val CHANNEL = "com.routine.ios_channel"
     private val TAG = "RoutineAndroid"
-    
-    // YouTube package name
-    private val YOUTUBE_PACKAGE = "com.google.android.youtube"
-    private var blockedApps = mutableListOf<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        checkUsageStatsPermission()
     }
-    
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         
@@ -43,48 +38,34 @@ class MainActivity: FlutterActivity() {
                     try {
                         val arguments = call.arguments as Map<String, Any>
                         val routines = arguments["routines"] as List<Map<String, Any>>
-                        handleUpdateRoutines(routines, false)
+                        handleUpdateRoutines(routines)
                         result.success(true)
                     } catch (e: Exception) {
                         Log.e(TAG, "Error updating routines: ${e.message}", e)
                         result.error("ROUTINES_ERROR", "Failed to update routines", e.message)
                     }
                 }
-                "immediateUpdateRoutines" -> {
-                    try {
-                        val arguments = call.arguments as Map<String, Any>
-                        val routines = arguments["routines"] as List<Map<String, Any>>
-                        handleUpdateRoutines(routines, true)
-                        result.success(true)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error immediately updating routines: ${e.message}", e)
-                        result.error("IMMEDIATE_ROUTINES_ERROR", "Failed to immediately update routines", e.message)
-                    }
+                "retrieveAllApps" -> {
+                    val allApps = retrieveAllApps()
+                    result.success(allApps)
                 }
                 "checkOverlayPermission" -> {
+                    Log.d(TAG, "Check overlay permission")
                     result.success(checkOverlayPermission())
                 }
                 "requestOverlayPermission" -> {
+                    Log.d(TAG, "Request overlay permission")
                     requestOverlayPermission();
                     result.success(checkOverlayPermission())
                 }
                 "checkAccessibilityPermission" -> {
+                    Log.d(TAG, "Check accessibility permission")
                     result.success(isAccessibilityServiceEnabled())
                 }
                 "requestAccessibilityPermission" -> {
+                    Log.d(TAG, "Request accessibility permission")
                     requestAccessibilityPermission()
                     result.success(true)
-                }
-                "updateBlockedWebsites" -> {
-                    try {
-                        val arguments = call.arguments as Map<String, Any>
-                        val websites = arguments["websites"] as? List<String> ?: listOf()
-                        updateBlockedWebsites(websites)
-                        result.success(true)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error updating blocked websites: ${e.message}", e)
-                        result.error("WEBSITE_BLOCK_ERROR", "Failed to update blocked websites", e.message)
-                    }
                 }
                 else -> {
                     result.notImplemented()
@@ -107,47 +88,12 @@ class MainActivity: FlutterActivity() {
         // TODO: Implement actual handling of strict mode settings for Android using DevicePolicyManager
     }
 
-    private fun handleUpdateRoutines(routines: List<Map<String, Any>>, immediate: Boolean) {
+    private fun handleUpdateRoutines(routines: List<Map<String, Any>>) {
         // Placeholder implementation for handling routine updates
-        Log.d(TAG, "Received ${routines.size} routines to update (immediate=$immediate)")
-        
-        // Update blocked apps list based on routines
-        val newBlockedApps = mutableListOf<String>()
-        
-        for (routine in routines) {
-            val id = routine["id"] as String
-            val name = routine["name"] as String
-            val strictMode = routine["strictMode"] as Boolean
-            val apps = routine["apps"] as? List<String> ?: emptyList()
-            val allow = routine["allow"] as Boolean
-            
-            Log.d(TAG, "Routine: id=$id, name=$name, strictMode=$strictMode, apps=$apps, allow=$allow")
-        }
-        
-        // Update blocked apps and service
-        blockedApps = newBlockedApps
+        Log.d(TAG, "Received ${routines.size} routines to update")
 
-        if (!blockedApps.contains(YOUTUBE_PACKAGE)) {
-            blockedApps.add(YOUTUBE_PACKAGE)
-        }
-
-        updateBlockedApps()
-    }
-    
-    private fun checkUsageStatsPermission() {
-        val appOpsManager = getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
-        val mode = appOpsManager.checkOpNoThrow(
-            android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
-            android.os.Process.myUid(),
-            packageName
-        )
-        
-        if (mode != android.app.AppOpsManager.MODE_ALLOWED) {
-            // Need to request permission
-            Log.d(TAG, "Usage stats permission not granted, requesting...")
-            val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-            startActivity(intent)
-        }
+        val newRoutines: List<Routine> = routines.map { Routine() }
+        RoutineManager.updateRoutines(newRoutines)
     }
     
     private fun checkOverlayPermission(): Boolean {
@@ -163,19 +109,13 @@ class MainActivity: FlutterActivity() {
                 Log.d(TAG, "Overlay permission not granted, requesting...")
                 val intent = Intent(
                     Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:$packageName")
+                    "package:$packageName".toUri()
                 )
                 startActivity(intent)
             }
         }
     }
 
-    private fun updateBlockedApps() {
-    }
-    
-    /**
-     * Checks if the accessibility service is enabled
-     */
     private fun isAccessibilityServiceEnabled(): Boolean {
         val accessibilityManager = getSystemService(Context.ACCESSIBILITY_SERVICE) as android.view.accessibility.AccessibilityManager
         val enabledServices = Settings.Secure.getString(
@@ -183,13 +123,14 @@ class MainActivity: FlutterActivity() {
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
         ) ?: return false
         
-        val serviceName = packageName + "/" + BlockManager::class.java.canonicalName
+        val serviceName = packageName + "/" + RoutineManager::class.java.canonicalName
         return enabledServices.contains(serviceName)
     }
-    
-    /**
-     * Opens the accessibility settings screen for the user to enable the service
-     */
+
+    private fun retrieveAllApps() {
+        // TODO: Implement retrieval of all apps
+    }
+
     private fun requestAccessibilityPermission() {
         val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -201,13 +142,5 @@ class MainActivity: FlutterActivity() {
             "Please enable 'Website Blocker' in the Accessibility settings",
             android.widget.Toast.LENGTH_LONG
         ).show()
-    }
-    
-    /**
-     * Updates the list of blocked websites in the accessibility service
-     */
-    private fun updateBlockedWebsites(websites: List<String>) {
-        Log.d(TAG, "Updating blocked websites: $websites")
-        BlockManager.updateBlockedDomains(websites)
     }
 }

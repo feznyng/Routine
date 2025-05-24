@@ -7,19 +7,19 @@ import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import java.util.ArrayList
-import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * Accessibility service that monitors web browsing activity and blocks access to specific websites.
  */
-class BlockManager : AccessibilityService() {
-    private val TAG = "WebsiteBlocker"
+class RoutineManager : AccessibilityService() {
+    private val TAG = "RoutineManager"
 
     private var blockOverlayView: BlockOverlayView? = null
 
     // List of blocked domains
-    private var blockedDomains = CopyOnWriteArrayList<String>()
-    
+    private var blockedDomains = HashSet<String>()
+    private var blockedApps = HashSet<String>()
+
     // Default redirect URL
     private val redirectUrl = "https://www.google.com"
     
@@ -43,18 +43,12 @@ class BlockManager : AccessibilityService() {
         super.onServiceConnected()
         Log.d(TAG, "Website blocker accessibility service connected")
         
-        // Add default blocked domains for testing
-        if (!blockedDomains.contains("reddit.com")) {
-            blockedDomains.add("reddit.com")
-        }
-        if (!blockedDomains.contains("m.reddit.com")) {
-            blockedDomains.add("m.reddit.com")
-        }
-        
-        // Set the instance for companion object access
+        // TODO: remove after testing
+        blockedDomains.add("reddit.com")
+        blockedDomains.add("m.reddit.com")
+        blockedApps.add("com.google.android.youtube")
+
         instance = this
-        
-        // Initialize focus state
         isEditableFieldFocused = false
     }
 
@@ -62,10 +56,14 @@ class BlockManager : AccessibilityService() {
         val eventType = event.eventType
         val currentTime = System.currentTimeMillis()
         val packageName = event.packageName?.toString() ?: return
+        val changeType = event.contentChangeTypes;
 
-        Log.d(TAG, "Accessibility event: $eventType, package: $packageName")
+        Log.d(TAG, "Accessibility event: " +
+                "$eventType, package: $packageName, action: ${event.contentChangeTypes}")
 
-        if (packageName.contains("youtube")) {
+        // block apps
+        if (blockedApps.contains(packageName) &&
+            changeType == AccessibilityEvent.CONTENT_CHANGE_TYPE_UNDEFINED) {
             showBlockOverlay(packageName)
             return
         } else if (blockOverlayView?.isShowing() == true) {
@@ -74,7 +72,7 @@ class BlockManager : AccessibilityService() {
             }
         }
         
-        // Check if this is a supported browser first
+        // block sites
         val browserConfig = getSupportedBrowsers().find { it.packageName == packageName }
             ?: return
         
@@ -147,10 +145,7 @@ class BlockManager : AccessibilityService() {
             Log.e(TAG, "Error updating focus state: ${e.message}")
         }
     }
-    
-    /**
-     * Finds a focused editable node in the view hierarchy
-     */
+
     private fun findFocusedEditableNode(rootNode: AccessibilityNodeInfo, browserConfig: SupportedBrowserConfig): AccessibilityNodeInfo? {
         // Check if this node is focused and editable
         if (rootNode.isFocused && (rootNode.isEditable || 
@@ -171,18 +166,12 @@ class BlockManager : AccessibilityService() {
         
         return null
     }
-    
-    /**
-     * Checks if a node is an address bar
-     */
+
     private fun isAddressBarNode(node: AccessibilityNodeInfo, browserConfig: SupportedBrowserConfig): Boolean {
         val nodeId = node.viewIdResourceName ?: return false
         return nodeId.contains(browserConfig.addressBarId.substringAfterLast("/"))
     }
-    
-    /**
-     * Determines if a URL should be processed based on various heuristics
-     */
+
     private fun shouldProcessUrl(url: String, currentTime: Long): Boolean {
         // Don't process the same URL too frequently
         if (url == currentBrowserUrl && (currentTime - lastProcessedTime) < MIN_PROCESS_INTERVAL) {
@@ -201,10 +190,7 @@ class BlockManager : AccessibilityService() {
         
         return true
     }
-    
-    /**
-     * Process a captured URL from a browser
-     */
+
     private fun processUrl(packageName: String, capturedUrl: String) {
         val currentTime = System.currentTimeMillis()
         
@@ -221,18 +207,12 @@ class BlockManager : AccessibilityService() {
             redirectToBrowser(redirectUrl)
         }
     }
-    
-    /**
-     * Defines a supported browser configuration with package name and address bar ID
-     */
+
     private data class SupportedBrowserConfig(
         val packageName: String, 
         val addressBarId: String
     )
-    
-    /**
-     * Returns a list of supported browsers with their address bar IDs
-     */
+
     private fun getSupportedBrowsers(): List<SupportedBrowserConfig> {
         val browsers = ArrayList<SupportedBrowserConfig>()
         
@@ -267,10 +247,7 @@ class BlockManager : AccessibilityService() {
         
         return browsers
     }
-    
-    /**
-     * Captures the URL from a browser's address bar
-     */
+
     private fun captureUrl(info: AccessibilityNodeInfo, config: SupportedBrowserConfig): String? {
         try {
             val nodes = info.findAccessibilityNodeInfosByViewId(config.addressBarId)
@@ -300,10 +277,7 @@ class BlockManager : AccessibilityService() {
             return null
         }
     }
-    
-    /**
-     * Checks if a URL contains any of the blocked domains
-     */
+
     private fun isBlockedUrl(url: String): Boolean {
         val lowerUrl = url.lowercase()
         for (domain in blockedDomains) {
@@ -313,10 +287,7 @@ class BlockManager : AccessibilityService() {
         }
         return false
     }
-    
-    /**
-     * Redirects to a different URL by opening a new browser intent
-     */
+
     private fun redirectToBrowser(url: String) {
         try {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
@@ -359,26 +330,23 @@ class BlockManager : AccessibilityService() {
             Log.e(TAG, "Error hiding block overlay: ${e.message}", e)
         }
     }
-    
-    /**
-     * Updates the list of blocked domains
-     */
-    fun updateBlockedDomains(domains: List<String>) {
+
+    fun updateRoutines(domains: List<Routine>) {
         blockedDomains.clear()
-        blockedDomains.addAll(domains)
         Log.d(TAG, "Updated blocked domains: $blockedDomains")
     }
     
     companion object {
         // Static reference to the active service instance
-        private var instance: BlockManager? = null
+        private var instance: RoutineManager? = null
         
-        fun getInstance(): BlockManager? {
+        fun getInstance(): RoutineManager? {
             return instance
         }
         
-        fun updateBlockedDomains(domains: List<String>) {
-            instance?.updateBlockedDomains(domains)
+        fun updateRoutines(domains: List<Routine>) {
+            // TODO: write to shared preferences so it can be read in case of restart
+            instance?.updateRoutines(domains)
         }
     }
 }
