@@ -64,7 +64,7 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
 
   Future<void> _handleAppSiteSelection() async {
     if (Platform.isIOS) {
-      final status = await MobileService.instance.checkAndRequestBlockingPermissions();
+      final status = await MobileService.instance.getBlockPermissions(true);
       if (!status) {
         if (!mounted) return;
         await showDialog(

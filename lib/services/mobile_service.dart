@@ -22,20 +22,13 @@ class MobileService extends PlatformService {
   StreamSubscription? _strictModeSubscription;
   
   @override
-  Future<void> init() async {        
-    checkAndRequestBlockingPermissions();
+  Future<void> init() async {    
+    _routineSubscription = Routine
+      .watchAll()
+      .listen((routines) => _sendRoutines(routines, false));
     
-    _routineSubscription = Routine.watchAll().listen((routines) {
-      _sendRoutines(routines, false);
-
-      // we need to evaluate strict mode in case a strict routine is active after changes
-      _sendStrictModeSettings();
-    });
-    
-    _strictModeSubscription = StrictModeService.instance.effectiveSettingsStream.listen((_) {
-      _sendStrictModeSettings();
-    });
-    
+    _strictModeSubscription = StrictModeService.instance.effectiveSettingsStream
+      .listen((_) => _sendStrictModeSettings());
   }
 
   @override
@@ -132,144 +125,32 @@ class MobileService extends PlatformService {
   
   static MobileService get instance => _instance;
   
-  Future<bool> checkBlockPermissions() async {
+  Future<bool> getBlockPermissions(bool request) async {
     if (Platform.isIOS) {
-      try {
-        final bool isAuthorized = await _channel.invokeMethod('checkFamilyControlsAuthorization');
-        return isAuthorized;
-      } catch (e, st) {
-        Util.report('error retrieving family controls authorization', e, st);
-        return false;
-      }
-    } else {
-      return await _channel.invokeMethod('checkOverlayPermission');
-    }
-  }
-  
-  Future<bool> requestBlockingPermissions() async {    
-    if (Platform.isIOS) {
-      try {
-        final bool isAuthorized = await _channel.invokeMethod('requestFamilyControlsAuthorization');
-        return isAuthorized;
-      } catch (e, st) {
-        Util.report('error requesting family controls auth', e, st);
-        return false;
-      }
-    } else {
-      return await _channel.invokeMethod('requestOverlayPermission');
-    }
-  }
-  
-  Future<bool> checkAndRequestBlockingPermissions() async {
-    if (Platform.isIOS) {
-      final bool isAuthorized = await checkBlockPermissions();
+      final bool isAuthorized = await _channel.invokeMethod('checkFamilyControlsAuthorization');
+
       if (isAuthorized) {
         return true;
+      } else if (request) {
+        return await _channel.invokeMethod('requestFamilyControlsAuthorization');
       } else {
-        return await requestBlockingPermissions();
+        return false;
       }
     } else {
-      // For Android, we need both overlay permission and accessibility permission
-      final bool hasOverlayPermission = await checkOverlayPermission();
-      final bool hasAccessibilityPermission = await checkAccessibilityPermission();
+      bool hasOverlayPermission = await _channel.invokeMethod('checkAccessibilityPermission');
+      bool hasAccessibilityPermission = await _channel.invokeMethod('requestAccessibilityPermission');
       
-      if (!hasOverlayPermission) {
-        await requestOverlayPermission();
-      }
-      
-      if (!hasAccessibilityPermission) {
-        await requestAccessibilityPermission();
+      if (request) {
+        if (!hasOverlayPermission) {
+          hasOverlayPermission = await _channel.invokeMethod('requestOverlayPermission');
+        }
+        
+        if (!hasAccessibilityPermission) {
+          hasAccessibilityPermission = await _channel.invokeMethod('requestAccessibilityPermission');
+        }
       }
       
       return hasOverlayPermission && hasAccessibilityPermission;
     }
-  }
-  
-  // Website blocking methods
-  
-  /// Check if the accessibility service is enabled
-  Future<bool> checkAccessibilityPermission() async {
-    if (!Platform.isAndroid) return true;
-    
-    try {
-      final bool hasPermission = await _channel.invokeMethod('checkAccessibilityPermission');
-      return hasPermission;
-    } catch (e, st) {
-      Util.report('error checking accessibility permission', e, st);
-      return false;
-    }
-  }
-  
-  /// Request the user to enable the accessibility service
-  Future<bool> requestAccessibilityPermission() async {
-    if (!Platform.isAndroid) return true;
-    
-    try {
-      final bool result = await _channel.invokeMethod('requestAccessibilityPermission');
-      return result;
-    } catch (e, st) {
-      Util.report('error requesting accessibility permission', e, st);
-      return false;
-    }
-  }
-  
-  /// Check if the app has permission to draw overlays
-  Future<bool> checkOverlayPermission() async {
-    if (!Platform.isAndroid) return true;
-    
-    try {
-      final bool hasPermission = await _channel.invokeMethod('checkOverlayPermission');
-      return hasPermission;
-    } catch (e, st) {
-      Util.report('error checking overlay permission', e, st);
-      return false;
-    }
-  }
-  
-  /// Request permission to draw overlays
-  Future<bool> requestOverlayPermission() async {
-    if (!Platform.isAndroid) return true;
-    
-    try {
-      final bool result = await _channel.invokeMethod('requestOverlayPermission');
-      return result;
-    } catch (e, st) {
-      Util.report('error requesting overlay permission', e, st);
-      return false;
-    }
-  }
-  
-  /// Update the list of blocked websites
-  Future<bool> updateBlockedWebsites(List<String> websites) async {
-    if (!Platform.isAndroid) return true;
-    
-    try {
-      final bool result = await _channel.invokeMethod('updateBlockedWebsites', {
-        'websites': websites,
-      });
-      return result;
-    } catch (e, st) {
-      Util.report('error updating blocked websites', e, st);
-      return false;
-    }
-  }
-  
-  /// Block YouTube website
-  Future<bool> blockYouTubeWebsite() async {
-    if (!Platform.isAndroid) return true;
-    
-    // First ensure we have the necessary permissions
-    final bool hasPermissions = await checkAndRequestBlockingPermissions();
-    if (!hasPermissions) {
-      return false;
-    }
-    
-    // Update the list of blocked websites to include YouTube domains
-    return await updateBlockedWebsites([
-      'youtube.com',
-      'm.youtube.com',
-      'youtu.be',
-      'youtube-nocookie.com'
-    ]);
   }
 }

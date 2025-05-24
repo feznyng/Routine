@@ -51,7 +51,7 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
     final locationStatus = await Permission.location.status;
     
     // Check family controls authorization
-    final familyControlsStatus = await MobileService.instance.checkBlockPermissions();
+    final familyControlsStatus = await MobileService.instance.getBlockPermissions(false);
 
     if (!mounted) return;
 
@@ -76,7 +76,7 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
   }
 
   Future<void> _requestFamilyControls() async {
-    final granted = await MobileService.instance.requestBlockingPermissions();
+    final granted = await MobileService.instance.getBlockPermissions(true);
     if (mounted) {
       await _checkPermissions();
     }

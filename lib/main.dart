@@ -117,10 +117,6 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
       
       // Use the ChangeNotifier mechanism for UI updates
       StrictModeService.instance.addListener(_updateTrayMenu);
-    } else {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        MobileService().checkAndRequestBlockingPermissions();
-      });
     }
   }
 
