@@ -95,12 +95,11 @@ import Sentry
                             
                             let decoder = JSONDecoder()
                             let routines = try decoder.decode([Routine].self, from: jsonString.data(using: .utf8)!)
-                            
-                            do {
-                                try self?.manager.update(routines: routines)
-                            } catch {
-                                os_log("updateRoutines: failed")
-                                SentrySDK.capture(message: "updateRoutines: failed")
+
+                            self?.manager.update(routines: routines)
+
+                            if (self?.manager == nil) {
+                                SentrySDK.capture(message: "updateRoutines: manager is nil")
                             }
                             
                             // Return success on main thread
