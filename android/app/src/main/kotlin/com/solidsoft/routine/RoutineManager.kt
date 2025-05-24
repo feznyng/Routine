@@ -72,14 +72,20 @@ class RoutineManager : AccessibilityService() {
         Log.d(TAG, "Accessibility event: " +
                 "$eventType, package: $packageName, action: ${event.contentChangeTypes}")
 
-        // Update last seen app
-        if (packageName != this.packageName) {
+        // Get the launcher package name
+        val launcherPackage = getDefaultLauncherPackageName()
+        
+        // Update last seen app - skip system UI and launcher
+        if (packageName != this.packageName && 
+            packageName != "com.android.systemui") {
+            Log.d(TAG, "Last seen app updated: $packageName")
             lastSeenApp = packageName
             lastSeenTimestamp = currentTime
         }
 
-        // block apps
-        if (isBlockedApp(packageName) &&
+        // block apps - never block the launcher
+        if (packageName != launcherPackage && 
+            isBlockedApp(packageName) &&
             changeType != AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED) {
             showBlockOverlay(packageName)
             return
@@ -311,12 +317,12 @@ class RoutineManager : AccessibilityService() {
 
     private fun isBlockedUrl(url: String): Boolean {
         val inList = isUrlInList(url)
-        return (allow && !inList) || (!allow && inList)
+        return url != redirectUrl && (allow && !inList) || (!allow && inList)
     }
 
     private fun isBlockedApp(packageName: String): Boolean {
         val inList = apps.contains(packageName)
-        return (allow && !inList) || (!allow && inList)
+        return packageName != this.packageName && (allow && !inList) || (!allow && inList)
     }
 
     private fun redirectTo(url: String) {
@@ -596,6 +602,17 @@ class RoutineManager : AccessibilityService() {
                 evaluate()
             }
         }
+    }
+
+    /**
+     * Gets the package name of the device's default launcher (home screen app)
+     */
+    private fun getDefaultLauncherPackageName(): String? {
+        val intent = Intent(Intent.ACTION_MAIN)
+        intent.addCategory(Intent.CATEGORY_HOME)
+        
+        val resolveInfo = packageManager.resolveActivity(intent, 0)
+        return resolveInfo?.activityInfo?.packageName
     }
 
     private fun evaluate() {

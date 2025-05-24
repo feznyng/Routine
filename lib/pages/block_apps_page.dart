@@ -37,7 +37,7 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
   final TextEditingController _appSearchController = TextEditingController();
   final TextEditingController _folderSearchController = TextEditingController();
   late TabController _tabController;
-  final bool _showFoldersTab = !Platform.isMacOS;
+  final bool _showFoldersTab = !Util.isDesktop() || !Platform.isMacOS;
 
   @override
   void initState() {
