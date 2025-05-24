@@ -50,19 +50,68 @@ class RoutineManager : AccessibilityService() {
     private val MIN_PROCESS_INTERVAL = 1000L
 
     override fun onCreate() {
+        Log.d(TAG, "RoutineManager service onCreate")
         super.onCreate()
         blockOverlayView = BlockOverlayView(this)
         registerEvaluateReceiver()
+        
+        // Restore state from shared preferences when service is created
+        updateRoutines()
     }
     
     override fun onServiceConnected() {
+        Log.d(TAG, "RoutineManager accessibility service connected")
         super.onServiceConnected()
-        Log.d(TAG, "Website blocker accessibility service connected")
 
         instance = this
         isEditableFieldFocused = false
     }
+    
+    /**
+     * Updates routines from shared preferences and evaluates them
+     * This is used both when routines are updated from the Flutter app
+     * and when the service is restarted
+     */
+    fun updateRoutines() {
+        Log.d(TAG, "Updating routines from shared preferences")
+        // Use applicationContext instead of appContext
+        val sharedPreferences = applicationContext.getSharedPreferences("com.solidsoft.routine.preferences", Context.MODE_PRIVATE)
+        
+        // Get the JSON string from shared preferences
+        val routinesJsonString = sharedPreferences.getString("routines", null)
+        if (routinesJsonString == null) {
+            Log.d(TAG, "No routines found in shared preferences")
+            return
+        }
+        
+        try {
+            // Parse the JSON array string
+            val routinesJsonArray = JSONArray(routinesJsonString)
+            val routinesList = mutableListOf<Routine>()
+            
+            // Convert each JSON object to a Routine
+            for (i in 0 until routinesJsonArray.length()) {
+                val routineJson = routinesJsonArray.getJSONObject(i)
+                val routine = Routine(routineJson)
+                routinesList.add(routine)
+            }
+            
+            // Update the routines list
+            routines.clear()
+            routines.addAll(routinesList)
 
+            // Immediately evaluate routines
+            evaluate()
+            
+            // Schedule evaluations at start and end times
+            scheduleEvaluations()
+            
+            Log.d(TAG, "Updated ${routines.size} routines from shared preferences")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating routines from shared preferences: ${e.message}", e)
+        }
+    }
+    
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         val eventType = event.eventType
         val currentTime = System.currentTimeMillis()
@@ -372,41 +421,6 @@ class RoutineManager : AccessibilityService() {
             blockOverlayView?.hide()
         } catch (e: Exception) {
             Log.e(TAG, "Error hiding block overlay: ${e.message}", e)
-        }
-    }
-
-    fun updateRoutines() {
-        // Use applicationContext instead of appContext
-        val sharedPreferences = applicationContext.getSharedPreferences("com.solidsoft.routine.preferences", Context.MODE_PRIVATE)
-        
-        // Get the JSON string from shared preferences
-        val routinesJsonString = sharedPreferences.getString("routines", null) ?: return
-        
-        try {
-            // Parse the JSON array string
-            val routinesJsonArray = JSONArray(routinesJsonString)
-            val routinesList = mutableListOf<Routine>()
-            
-            // Convert each JSON object to a Routine
-            for (i in 0 until routinesJsonArray.length()) {
-                val routineJson = routinesJsonArray.getJSONObject(i)
-                val routine = Routine(routineJson)
-                routinesList.add(routine)
-            }
-            
-            // Update the routines list
-            routines.clear()
-            routines.addAll(routinesList)
-
-            // Immediately evaluate routines
-            evaluate()
-            
-            // Schedule evaluations at start and end times
-            scheduleEvaluations()
-            
-            Log.d(TAG, "Updated ${routines.size} routines from shared preferences")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error updating routines from shared preferences: ${e.message}")
         }
     }
 
