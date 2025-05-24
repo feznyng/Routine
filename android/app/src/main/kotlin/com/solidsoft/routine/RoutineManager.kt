@@ -9,6 +9,13 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import java.util.ArrayList
 import org.json.JSONArray
+import android.app.AlarmManager
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
+import androidx.core.content.ContextCompat
+import java.util.Calendar
+import java.util.HashSet
 
 /**
  * Accessibility service that monitors web browsing activity and blocks access to specific websites.
@@ -40,6 +47,7 @@ class RoutineManager : AccessibilityService() {
     override fun onCreate() {
         super.onCreate()
         blockOverlayView = BlockOverlayView(this)
+        registerEvaluateReceiver()
     }
     
     override fun onServiceConnected() {
@@ -320,6 +328,13 @@ class RoutineManager : AccessibilityService() {
         instance = null
         blockOverlayView?.hide()
         blockOverlayView = null
+        
+        // Unregister the broadcast receiver
+        try {
+            applicationContext.unregisterReceiver(evaluateReceiver)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error unregistering evaluate receiver: ${e.message}")
+        }
     }
 
     private fun showBlockOverlay(packageName: String) {
@@ -352,7 +367,7 @@ class RoutineManager : AccessibilityService() {
         
         try {
             // Parse the JSON array string
-            val routinesJsonArray: JSONArray = JSONArray(routinesJsonString)
+            val routinesJsonArray = JSONArray(routinesJsonString)
             val routinesList = mutableListOf<Routine>()
             
             // Convert each JSON object to a Routine
@@ -366,11 +381,209 @@ class RoutineManager : AccessibilityService() {
             routines.clear()
             routines.addAll(routinesList)
 
+            // Immediately evaluate routines
             evaluate()
+            
+            // Schedule evaluations at start and end times
+            scheduleEvaluations()
             
             Log.d(TAG, "Updated ${routines.size} routines from shared preferences")
         } catch (e: Exception) {
             Log.e(TAG, "Error updating routines from shared preferences: ${e.message}")
+        }
+    }
+
+    private fun scheduleEvaluations() {
+        // Cancel any existing alarms
+        cancelScheduledEvaluations()
+        
+        // Get the alarm manager
+        val alarmManager = applicationContext.getSystemService(ALARM_SERVICE) as AlarmManager
+        
+        // Set of minutes of day to schedule evaluations (to avoid duplicates)
+        val scheduledMinutes = HashSet<Int>()
+        
+        // Current calendar instance
+        val calendar = Calendar.getInstance()
+        
+        // Get today's date components
+        val year = calendar.get(Calendar.YEAR)
+        val month = calendar.get(Calendar.MONTH)
+        val day = calendar.get(Calendar.DAY_OF_MONTH)
+        
+        // For each routine, schedule evaluations at start and end times
+        for (routine in routines) {
+            // Schedule for paused and snoozed times
+            val now = System.currentTimeMillis()
+            
+            // Schedule for pausedUntil if it's in the future
+            routine.pausedUntil?.let { pausedUntil ->
+                val pausedUntilTime = pausedUntil.time
+                if (pausedUntilTime > now) {
+                    scheduleEvaluationAtExactTime(
+                        alarmManager,
+                        pausedUntilTime,
+                        "paused_${routine.id}".hashCode(),
+                        "paused_until_expired",
+                        routine.id
+                    )
+                    Log.d(TAG, "Scheduled evaluation for routine ${routine.name} when pause expires at ${pausedUntil}")
+                }
+            }
+            
+            // Schedule for snoozedUntil if it's in the future
+            routine.snoozedUntil?.let { snoozedUntil ->
+                val snoozedUntilTime = snoozedUntil.time
+                if (snoozedUntilTime > now) {
+                    scheduleEvaluationAtExactTime(
+                        alarmManager,
+                        snoozedUntilTime,
+                        "snoozed_${routine.id}".hashCode(),
+                        "snoozed_until_expired",
+                        routine.id
+                    )
+                    Log.d(TAG, "Scheduled evaluation for routine ${routine.name} when snooze expires at ${snoozedUntil}")
+                }
+            }
+            
+            // Skip if routine doesn't have time constraints
+            if (routine.allDay || (routine.startTime == null && routine.endTime == null)) {
+                continue
+            }
+            
+            // Schedule evaluation at start time if defined
+            routine.startTime?.let { startTime ->
+                scheduleEvaluationAtTime(alarmManager, startTime, scheduledMinutes, year, month, day)
+            }
+            
+            // Schedule evaluation at end time if defined
+            routine.endTime?.let { endTime ->
+                scheduleEvaluationAtTime(alarmManager, endTime, scheduledMinutes, year, month, day)
+            }
+        }
+    }
+    
+    /**
+     * Schedules an evaluation at a specific time (in minutes of day)
+     */
+    private fun scheduleEvaluationAtTime(
+        alarmManager: AlarmManager,
+        timeInMinutes: Int,
+        scheduledMinutes: HashSet<Int>,
+        year: Int,
+        month: Int,
+        day: Int
+    ) {
+        // Only schedule if this time hasn't been scheduled yet
+        if (!scheduledMinutes.contains(timeInMinutes)) {
+            // Add to set of scheduled minutes
+            scheduledMinutes.add(timeInMinutes)
+            
+            // Create calendar for the specified time
+            val calendar = Calendar.getInstance()
+            
+            // Set calendar to today at the specified time
+            calendar.set(year, month, day, timeInMinutes / 60, timeInMinutes % 60, 0)
+            
+            // If the time has already passed today, schedule for tomorrow
+            if (calendar.timeInMillis < System.currentTimeMillis()) {
+                calendar.add(Calendar.DAY_OF_YEAR, 1)
+            }
+            
+            // Schedule at the calculated time
+            scheduleEvaluationAtExactTime(
+                alarmManager,
+                calendar.timeInMillis,
+                timeInMinutes,
+                "daily_schedule",
+                null
+            )
+            
+            Log.d(TAG, "Scheduled evaluation at time: ${timeInMinutes / 60}:${timeInMinutes % 60}")
+        }
+    }
+    
+    /**
+     * Schedules an evaluation at an exact timestamp
+     */
+    private fun scheduleEvaluationAtExactTime(
+        alarmManager: AlarmManager,
+        triggerTimeMillis: Long,
+        requestCode: Int,
+        reason: String,
+        routineId: String?
+    ) {
+        // Create intent for the alarm
+        val intent = Intent(EVALUATE_ACTION)
+        if (reason.isNotEmpty()) {
+            intent.putExtra("reason", reason)
+        }
+        if (routineId != null) {
+            intent.putExtra("routineId", routineId)
+        }
+        
+        val pendingIntent = PendingIntent.getBroadcast(
+            applicationContext,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        // Schedule the alarm based on Android version and permissions
+        scheduleAlarm(alarmManager, triggerTimeMillis, pendingIntent)
+    }
+
+    private fun cancelScheduledEvaluations() {
+        val alarmManager = applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        
+        // Cancel all possible alarms (for all minutes of the day)
+        for (minute in 0 until 24 * 60) {
+            val intent = Intent(EVALUATE_ACTION)
+            val pendingIntent = PendingIntent.getBroadcast(
+                applicationContext,
+                minute,
+                intent,
+                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+            )
+            
+            // If the pending intent exists, cancel it
+            pendingIntent?.let {
+                alarmManager.cancel(it)
+                it.cancel()
+            }
+        }
+    }
+
+    private fun registerEvaluateReceiver() {
+        // Create and register the broadcast receiver
+        val filter = IntentFilter(EVALUATE_ACTION)
+        ContextCompat.registerReceiver(
+            applicationContext,
+            evaluateReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+    }
+    
+    private val evaluateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == EVALUATE_ACTION) {
+                val reason = intent.getStringExtra("reason") ?: "scheduled_time"
+                val routineId = intent.getStringExtra("routineId")
+                
+                Log.d(TAG, "Received scheduled evaluation broadcast. Reason: $reason, RoutineId: $routineId")
+                
+                // If this is for a specific routine that was paused/snoozed, log it
+                if (routineId != null) {
+                    val routine = routines.find { it.id == routineId }
+                    if (routine != null) {
+                        Log.d(TAG, "Re-evaluating after ${reason} expired for routine: ${routine.name}")
+                    }
+                }
+                
+                // Evaluate all routines
+                evaluate()
+            }
         }
     }
 
@@ -429,9 +642,60 @@ class RoutineManager : AccessibilityService() {
         Log.d(TAG, "Eval completed in ${elapsedTime}ms, blocked apps: ${apps.size}, blocked domains: ${sites.size}")
     }
     
+    /**
+     * Schedules an alarm using the appropriate method based on Android version and permissions
+     */
+    private fun scheduleAlarm(alarmManager: AlarmManager, triggerTime: Long, pendingIntent: PendingIntent) {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                // Android 12 (API 31) and above requires SCHEDULE_EXACT_ALARM permission
+                if (alarmManager.canScheduleExactAlarms()) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerTime,
+                        pendingIntent
+                    )
+                } else {
+                    // Fall back to inexact alarm if we don't have permission
+                    Log.w(TAG, "Cannot schedule exact alarms. Using inexact alarm instead.")
+                    alarmManager.set(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerTime,
+                        pendingIntent
+                    )
+                }
+            } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                // Android 6.0 (API 23) to Android 11 (API 30)
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerTime,
+                    pendingIntent
+                )
+            } else {
+                // Below Android 6.0
+                alarmManager.setExact(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerTime,
+                    pendingIntent
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error scheduling alarm: ${e.message}")
+            // Fall back to inexact alarm as a last resort
+            alarmManager.set(
+                AlarmManager.RTC_WAKEUP,
+                triggerTime,
+                pendingIntent
+            )
+        }
+    }
+
     companion object {
         // Static reference to the active service instance
         private var instance: RoutineManager? = null
+        
+        // Action for the broadcast receiver
+        private const val EVALUATE_ACTION = "com.solidsoft.routine.EVALUATE_ACTION"
         
         fun updateRoutines() {
             instance?.updateRoutines()
