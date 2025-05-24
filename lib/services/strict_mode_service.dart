@@ -27,6 +27,7 @@ class StrictModeService with ChangeNotifier {
   Timer? _gracePeriodTimer;
   
   final StreamController<Map<String, bool>> _effectiveSettingsStreamController = StreamController<Map<String, bool>>.broadcast();
+  final StreamController<Map<String, bool>> _settingsStreamController = StreamController<Map<String, bool>>.broadcast();
   final StreamController<void> _gracePeriodExpirationController = StreamController<void>.broadcast();
   
   StrictModeService._internal();
@@ -242,6 +243,7 @@ class StrictModeService with ChangeNotifier {
     
     setter(value);
     
+    _notifySettingsChanged();
     _notifyEffectiveSettingsChanged();
   }
   
@@ -462,10 +464,31 @@ class StrictModeService with ChangeNotifier {
     };
   }
   
+  Map<String, bool> getCurrentSettings() {
+    return {
+      'blockAppExit': blockAppExit,
+      'blockDisablingSystemStartup': blockDisablingSystemStartup,
+      'blockBrowsersWithoutExtension': blockBrowsersWithoutExtension,
+      'blockChangingTimeSettings': blockChangingTimeSettings,
+      'blockUninstallingApps': blockUninstallingApps,
+      'blockInstallingApps': blockInstallingApps,
+      'inStrictMode': inStrictMode,
+      'inEmergencyMode': emergencyMode,
+      'isInExtensionGracePeriod': isInExtensionGracePeriod,
+      'isInExtensionCooldown': isInExtensionCooldown,
+    };
+  }
+  
   void _notifyEffectiveSettingsChanged() {
     final effectiveSettings = getCurrentEffectiveSettings();
     _effectiveSettingsStreamController.add(effectiveSettings);
     notifyListeners();
+  }
+  
+  void _notifySettingsChanged() {
+    final settings = getCurrentSettings();
+    _settingsStreamController.add(settings);
+    // we don't need to notify listeners since _notifyEffectiveSettingsChanged will do that for us
   }
   
   void _notifyGracePeriodExpired() {
@@ -474,11 +497,13 @@ class StrictModeService with ChangeNotifier {
   }
   
   Stream<Map<String, bool>> get effectiveSettingsStream => _effectiveSettingsStreamController.stream;
+  Stream<Map<String, bool>> get settingsStream => _settingsStreamController.stream;
   Stream<void> get gracePeriodExpirationStream => _gracePeriodExpirationController.stream;
   
   @override
   void dispose() {
     _effectiveSettingsStreamController.close();
+    _settingsStreamController.close();
     _gracePeriodExpirationController.close();
     super.dispose();
   }

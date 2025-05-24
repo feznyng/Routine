@@ -27,8 +27,8 @@ class MobileService extends PlatformService {
       .watchAll()
       .listen((routines) => _sendRoutines(routines, false));
     
-    _strictModeSubscription = StrictModeService.instance.effectiveSettingsStream
-      .listen((_) => _sendStrictModeSettings());
+    _strictModeSubscription = StrictModeService.instance.settingsStream
+      .listen(_sendStrictModeSettings);
   }
 
   @override
@@ -46,17 +46,8 @@ class MobileService extends PlatformService {
     _strictModeSubscription = null;
   }
   
-  Future<void> _sendStrictModeSettings() async {
+  Future<void> _sendStrictModeSettings(Map<String, bool> settings) async {
     try {
-      final strictModeService = StrictModeService.instance;
-      
-      final Map<String, dynamic> settings = {
-        'blockChangingTimeSettings': strictModeService.blockChangingTimeSettings,
-        'blockUninstallingApps': strictModeService.blockUninstallingApps,
-        'blockInstallingApps': strictModeService.blockInstallingApps,
-        'inStrictMode': strictModeService.inStrictMode,
-      };
-      
       await _channel.invokeMethod('updateStrictModeSettings', settings);
     } catch (e, st) {
       Util.report('error sending strict mode settings', e, st);
