@@ -14,7 +14,6 @@ import java.util.HashSet
 import android.os.Handler
 import android.os.Looper
 import java.util.Date
-import android.os.Build
 
 class RoutineManager : AccessibilityService() {
     private val TAG = "RoutineManager"
@@ -121,25 +120,14 @@ class RoutineManager : AccessibilityService() {
         val packageName = event.packageName?.toString() ?: return
         val changeType = event.contentChangeTypes;
 
-//        Log.d(TAG, "Accessibility event: " +
-//                "$eventType, package: $packageName, action: ${event.contentChangeTypes}")
-
-        // Get the launcher package name
-        val launcherPackage = getDefaultLauncherPackageName()
-        
-        // Update last seen app - skip system UI and launcher
-        if (packageName != this.packageName && 
-            packageName !in Constants.ESSENTIAL_PACKAGES
-        ) {
-            //Log.d(TAG, "Last seen app updated: $packageName")
+        if (changeType != AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED) {
+            // Update the last seen app and timestamp
             lastSeenApp = packageName
             lastSeenTimestamp = currentTime
         }
 
-        // block apps - never block the launcher or essential apps
-        if (packageName != launcherPackage && 
-            packageName !in Constants.ESSENTIAL_PACKAGES &&
-            isBlockedApp(packageName) &&
+        // block apps or remove overlay
+        if (isBlockedApp(packageName) &&
             changeType != AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED) {
             showBlockOverlay(packageName)
             return
@@ -374,38 +362,10 @@ class RoutineManager : AccessibilityService() {
     }
 
     private fun isBlockedApp(packageName: String): Boolean {
-        // Never block essential apps
-        if (packageName == this.packageName || packageName in Constants.ESSENTIAL_PACKAGES) {
+        if (!Util.isBlockable(packageManager, packageName)) {
             return false
         }
-        
-        // Check if it's an essential app by category (Android 8.0+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            try {
-                val packageManager = applicationContext.packageManager
-                val appInfo = packageManager.getApplicationInfo(packageName, 0)
-                if (appInfo.category in Constants.ESSENTIAL_CATEGORIES) {
-                    return false
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error checking app category: ${e.message}")
-            }
-        }
-        
-        // Check if it's an essential app by intent actions
-        try {
-            val packageManager = applicationContext.packageManager
-            for (action in Constants.ESSENTIAL_INTENT_ACTIONS) {
-                val intent = Intent(action)
-                val resolveInfo = packageManager.resolveActivity(intent, 0)
-                if (resolveInfo != null && resolveInfo.activityInfo.packageName == packageName) {
-                    return false
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error checking app intent actions: ${e.message}")
-        }
-        
+
         val inList = apps.contains(packageName)
         return (allow && !inList) || (!allow && inList)
     }
@@ -641,14 +601,6 @@ class RoutineManager : AccessibilityService() {
         currentEvaluationIndex = 0
     }
 
-    private fun getDefaultLauncherPackageName(): String? {
-        val intent = Intent(Intent.ACTION_MAIN)
-        intent.addCategory(Intent.CATEGORY_HOME)
-        
-        val resolveInfo = packageManager.resolveActivity(intent, 0)
-        return resolveInfo?.activityInfo?.packageName
-    }
-
     private fun evaluate() {
         // Start timing the eval function
         val startTime = System.currentTimeMillis()
@@ -706,31 +658,17 @@ class RoutineManager : AccessibilityService() {
         
         Log.d(TAG, "Eval completed in ${elapsedTime}ms, blocked apps: ${apps.size}, blocked domains: ${sites.size}")
     }
-    
-    /**
-     * Checks if the last seen app or site is now blocked and takes appropriate action
-     */
+
     private fun checkLastSeenForBlocking() {
-        // Only check if we have a recently seen app or site (within last 5 minutes)
-        val currentTime = System.currentTimeMillis()
-        val maxAge = 5 * 60 * 1000L // 5 minutes
-        
-        if (currentTime - lastSeenTimestamp > maxAge) {
-            return
-        }
-        
-        // Check if the last seen app is now blocked
         if (lastSeenApp.isNotEmpty() && isBlockedApp(lastSeenApp)) {
             Log.d(TAG, "Last seen app is now blocked: $lastSeenApp")
             showBlockOverlay(lastSeenApp)
         }
         
-        // Check if the last seen site is now blocked
-        if (lastSeenSite.isNotEmpty() && isBlockedUrl(lastSeenSite)) {
-            if (getSupportedBrowsers().find { it.packageName == lastSeenApp } != null) {
-                Log.d(TAG, "Last seen site is now blocked: $lastSeenSite")
-                redirectTo(redirectUrl)
-            }
+        if (getSupportedBrowsers().find { it.packageName == lastSeenApp } != null &&
+            lastSeenSite.isNotEmpty() && isBlockedUrl(lastSeenSite)) {
+            Log.d(TAG, "Last seen site on current browser is now blocked: $lastSeenSite")
+            redirectTo(redirectUrl)
         }
     }
 
