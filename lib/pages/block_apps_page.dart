@@ -267,15 +267,17 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
                   },
                 ),
               ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: widget.inLockdown && !widget.blockSelected ? null : _pickCustomApp,
-                icon: const Icon(Icons.add_circle_outline),
-                label: const Text('Select'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
+              if (Util.isDesktop()) ...[
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: widget.inLockdown && !widget.blockSelected ? null : _pickCustomApp,
+                  icon: const Icon(Icons.add_circle_outline),
+                  label: const Text('Select'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                )
+              ]
             ],
           ),
         ),

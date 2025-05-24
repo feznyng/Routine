@@ -12,8 +12,10 @@ import android.provider.Settings
 import androidx.core.net.toUri
 import org.json.JSONArray
 import org.json.JSONObject
-import kotlin.apply
 import androidx.core.content.edit
+import com.solidsoft.routine.Constants
+import com.solidsoft.routine.Constants.ALLOWED_SYSTEM_PACKAGES
+import com.solidsoft.routine.Constants.ESSENTIAL_CATEGORIES
 
 class MainActivity: FlutterActivity() {
     private val CHANNEL = "com.solidsoft.routine"
@@ -180,25 +182,56 @@ class MainActivity: FlutterActivity() {
 
         Log.d(TAG, "Retrieving all apps = ${installedApps.size}")
 
+        // Create a set of essential packages including this app
+        val essentialPackages = Constants.ESSENTIAL_PACKAGES + this.packageName
+
         for (appInfo in installedApps) {
             try {
-                if (appInfo.packageName == this.packageName) {
+                if (appInfo.packageName in essentialPackages) {
                     continue
                 }
 
-                // Skip system apps if they don't have a launcher
-                val intent = packageManager.getLaunchIntentForPackage(appInfo.packageName)
-                if (intent == null && (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0) {
+                // Skip system apps unless they're in the allowed list
+                if ((appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0 &&
+                    !ALLOWED_SYSTEM_PACKAGES.contains(appInfo.packageName)) {
+                    Log.d(TAG, "Skipping system app ${appInfo.packageName}")
                     continue
                 }
                 
                 // Get app name
                 val appName = packageManager.getApplicationLabel(appInfo).toString()
                 
+                // Get app category if available (Android 8.0+)
+                var category = "Unknown"
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    category = when (appInfo.category) {
+                        android.content.pm.ApplicationInfo.CATEGORY_AUDIO -> "Audio"
+                        android.content.pm.ApplicationInfo.CATEGORY_VIDEO -> "Video"
+                        android.content.pm.ApplicationInfo.CATEGORY_IMAGE -> "Image"
+                        android.content.pm.ApplicationInfo.CATEGORY_SOCIAL -> "Social"
+                        android.content.pm.ApplicationInfo.CATEGORY_NEWS -> "News"
+                        android.content.pm.ApplicationInfo.CATEGORY_MAPS -> "Maps"
+                        android.content.pm.ApplicationInfo.CATEGORY_PRODUCTIVITY -> "Productivity"
+                        android.content.pm.ApplicationInfo.CATEGORY_ACCESSIBILITY -> "Accessibility"
+                        android.content.pm.ApplicationInfo.CATEGORY_GAME -> "Game"
+                        else -> "Other"
+                    }
+                }
+                
+                // Skip essential system categories that shouldn't be blocked
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    if (appInfo.category in ESSENTIAL_CATEGORIES) {
+                        Log.d(TAG, "Skipping essential category app: ${appInfo.packageName}, category: $category")
+                        continue
+                    }
+                }
+                
                 // Create app info map
                 val appMap = mapOf(
                     "filePath" to appInfo.packageName,
                     "name" to appName,
+                    "category" to category,
+                    "isSystemApp" to ((appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0)
                 )
                 
                 appsList.add(appMap)
@@ -207,8 +240,8 @@ class MainActivity: FlutterActivity() {
             }
         }
         
-        // Sort apps by name
-        val result = appsList.sortedBy { it["appName"].toString().lowercase() }
+        // Sort apps by name (fixed to use the correct key)
+        val result = appsList.sortedBy { it["name"].toString().lowercase() }
         Log.d(TAG, "retrieveAllApps: Completed with ${result.size} apps")
         return result
     }

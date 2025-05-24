@@ -14,12 +14,8 @@ import java.util.HashSet
 import android.os.Handler
 import android.os.Looper
 import java.util.Date
+import android.os.Build
 
-private const val SYSTEM_UI_PACKAGE = "com.android.systemui"
-
-/**
- * Accessibility service that monitors web browsing activity and blocks access to specific websites.
- */
 class RoutineManager : AccessibilityService() {
     private val TAG = "RoutineManager"
 
@@ -133,15 +129,16 @@ class RoutineManager : AccessibilityService() {
         
         // Update last seen app - skip system UI and launcher
         if (packageName != this.packageName && 
-            packageName != SYSTEM_UI_PACKAGE
+            packageName !in Constants.ESSENTIAL_PACKAGES
         ) {
             //Log.d(TAG, "Last seen app updated: $packageName")
             lastSeenApp = packageName
             lastSeenTimestamp = currentTime
         }
 
-        // block apps - never block the launcher
+        // block apps - never block the launcher or essential apps
         if (packageName != launcherPackage && 
+            packageName !in Constants.ESSENTIAL_PACKAGES &&
             isBlockedApp(packageName) &&
             changeType != AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED) {
             showBlockOverlay(packageName)
@@ -363,7 +360,6 @@ class RoutineManager : AccessibilityService() {
 
     private fun isUrlInList(url: String): Boolean {
         val lowerUrl = url.lowercase()
-        Log.d(TAG, "lowerUrl: $lowerUrl sites: $sites")
         for (site in sites) {
             if (site == lowerUrl || lowerUrl.contains(site)) {
                 return true
@@ -378,10 +374,42 @@ class RoutineManager : AccessibilityService() {
     }
 
     private fun isBlockedApp(packageName: String): Boolean {
+        // Never block essential apps
+        if (packageName == this.packageName || packageName in Constants.ESSENTIAL_PACKAGES) {
+            return false
+        }
+        
+        // Check if it's an essential app by category (Android 8.0+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                val packageManager = applicationContext.packageManager
+                val appInfo = packageManager.getApplicationInfo(packageName, 0)
+                if (appInfo.category in Constants.ESSENTIAL_CATEGORIES) {
+                    return false
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error checking app category: ${e.message}")
+            }
+        }
+        
+        // Check if it's an essential app by intent actions
+        try {
+            val packageManager = applicationContext.packageManager
+            for (action in Constants.ESSENTIAL_INTENT_ACTIONS) {
+                val intent = Intent(action)
+                val resolveInfo = packageManager.resolveActivity(intent, 0)
+                if (resolveInfo != null && resolveInfo.activityInfo.packageName == packageName) {
+                    return false
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking app intent actions: ${e.message}")
+        }
+        
         val inList = apps.contains(packageName)
-        return packageName != this.packageName && (allow && !inList) || (!allow && inList)
+        return (allow && !inList) || (!allow && inList)
     }
-
+    
     private fun redirectTo(url: String) {
         try {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
@@ -393,7 +421,7 @@ class RoutineManager : AccessibilityService() {
     }
     
     override fun onInterrupt() {
-        Log.d(TAG, "Website blocker accessibility service interrupted")
+        Log.d(TAG, "RoutineManager service interrupted")
     }
     
     private fun showBlockOverlay(packageName: String) {
@@ -434,6 +462,8 @@ class RoutineManager : AccessibilityService() {
         // Cancel any existing scheduled evaluations
         cancelScheduledEvaluations()
 
+        val now = System.currentTimeMillis()
+
         // Create a set to store unique evaluation times
         val evaluationTimeSet = HashSet<Long>()
         val newEvaluationTimes = ArrayList<EvaluationTime>()
@@ -442,7 +472,7 @@ class RoutineManager : AccessibilityService() {
 
         if (allDayRoutine != null) {
             // Add all day evaluation time
-            val midnight = convertMinutesToTimestamp(1)
+            val midnight = convertMinutesToTimestamp(now, 1)
             newEvaluationTimes.add(EvaluationTime(midnight, "all_day", allDayRoutine.id))
             Log.d(TAG, "Added evaluation time for all day")
         }
@@ -490,7 +520,7 @@ class RoutineManager : AccessibilityService() {
             
             // Add start time if defined
             routine.startTime?.let { startTime ->
-                val startTimeMillis = convertMinutesToTimestamp(startTime)
+                val startTimeMillis = convertMinutesToTimestamp(now, startTime)
                 if (!evaluationTimeSet.contains(startTimeMillis)) {
                     evaluationTimeSet.add(startTimeMillis)
                     newEvaluationTimes.add(
@@ -506,7 +536,7 @@ class RoutineManager : AccessibilityService() {
             
             // Add end time if defined
             routine.endTime?.let { endTime ->
-                val endTimeMillis = convertMinutesToTimestamp(endTime)
+                val endTimeMillis = convertMinutesToTimestamp(now, endTime)
                 if (!evaluationTimeSet.contains(endTimeMillis)) {
                     evaluationTimeSet.add(endTimeMillis)
                     newEvaluationTimes.add(
@@ -520,23 +550,9 @@ class RoutineManager : AccessibilityService() {
                 }
             }
         }
+
+        newEvaluationTimes.sort()
         
-        // Get current time for sorting
-        val now = System.currentTimeMillis()
-        
-        // Sort evaluation times by proximity to current time (next upcoming first)
-        newEvaluationTimes.sortWith(compareBy { 
-            // For times in the future, use their actual time
-            // For times in the past, add a day to schedule for tomorrow
-            val timeToUse = if (it.timestamp > now) {
-                it.timestamp
-            } else {
-                it.timestamp + 24 * 60 * 60 * 1000 // Add one day in milliseconds
-            }
-            timeToUse
-        })
-        
-        // Store the sorted list
         evaluationTimes = newEvaluationTimes
         
         // Log the sorted evaluation times
@@ -545,11 +561,11 @@ class RoutineManager : AccessibilityService() {
             for (i in evaluationTimes.indices) {
                 val evalTime = evaluationTimes[i]
                 val routine = routines.find { it.id == evalTime.routineId }
-                val routineName = routine?.name ?: "Unknown"
+                val routineName = routine?.name ?: evalTime.routineId
                 Log.d(TAG, "$i: ${Date(evalTime.timestamp)} - ${evalTime.reason} - $routineName")
             }
         }
-        
+
         // Schedule the first evaluation if there are any
         if (evaluationTimes.isNotEmpty()) {
             currentEvaluationIndex = 0
@@ -557,11 +573,19 @@ class RoutineManager : AccessibilityService() {
         }
     }
 
-    private fun convertMinutesToTimestamp(minutes: Int): Long {
+    private fun convertMinutesToTimestamp(now: Long, minutes: Int): Long {
         val calendar = Calendar.getInstance()
         calendar.set(Calendar.HOUR_OF_DAY, minutes / 60)
         calendar.set(Calendar.MINUTE, minutes % 60)
-        calendar.set(Calendar.SECOND, 10)
+        calendar.set(Calendar.SECOND, 0)
+
+        if (calendar.timeInMillis < now) {
+            calendar.add(Calendar.DAY_OF_MONTH, 1)
+        } else {
+            Log.d(TAG, "Did not add a day: " +
+                    "minutes: $minutes, now: $now, timestamp: ${calendar.timeInMillis}")
+        }
+
         return calendar.timeInMillis
     }
     
@@ -578,7 +602,7 @@ class RoutineManager : AccessibilityService() {
         
         val nextEval = evaluationTimes[currentEvaluationIndex]
         val now = System.currentTimeMillis()
-        val delay = Math.max(0, nextEval.timestamp - now)
+        val delay = Math.max(0, (nextEval.timestamp + 10000) - now) // add 10s to avoid timing issues
         
         Log.d(TAG, "Scheduling next evaluation in ${delay/1000} seconds (${Date(nextEval.timestamp)}), reason: ${nextEval.reason}")
         
@@ -712,7 +736,7 @@ class RoutineManager : AccessibilityService() {
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.d(TAG, "Website blocker accessibility service destroyed")
+        Log.d(TAG, "RoutineManager service destroyed")
         instance = null
         blockOverlayView?.hide()
         blockOverlayView = null
