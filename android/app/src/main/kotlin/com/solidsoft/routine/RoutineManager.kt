@@ -74,8 +74,8 @@ class RoutineManager : AccessibilityService() {
         val packageName = event.packageName?.toString() ?: return
         val changeType = event.contentChangeTypes;
 
-        Log.d(TAG, "Accessibility event: " +
-                "$eventType, package: $packageName, action: ${event.contentChangeTypes}")
+        //Log.d(TAG, "Accessibility event: " +
+        //        "$eventType, package: $packageName, action: ${event.contentChangeTypes}")
 
         // Update last seen app
         if (packageName != this.packageName) {

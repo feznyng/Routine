@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:io' show Platform;
+import 'package:Routine/models/installed_app.dart';
 import 'package:Routine/services/platform_service.dart';
 import 'package:Routine/services/sync_service.dart';
+import 'package:Routine/setup.dart';
 import 'package:Routine/util.dart';
 import 'package:flutter/services.dart';
 import '../models/routine.dart';
@@ -71,6 +73,22 @@ class MobileService extends PlatformService {
   Future<void> updateRoutines({bool immediate = false}) async {
     final routines = await Routine.getAll();
     _sendRoutines(routines, immediate);
+  }
+
+  Future<List<InstalledApp>> getInstalledApps() async {
+    List<InstalledApp> installedApps = [];
+
+    logger.i("retrieving apps");
+
+    final List<Map<String, dynamic>> appList = await _channel.invokeMethod('retrieveAllApps');
+
+    logger.i("finished retrieving apps = ${appList.length}");
+
+    for (final app in appList) {
+      installedApps.add(InstalledApp(name: app['name'], filePath: app['filePath']));
+    }
+
+    return installedApps;
   }
   
   Future<void> _sendRoutines(List<Routine> routines, bool immediate) async {

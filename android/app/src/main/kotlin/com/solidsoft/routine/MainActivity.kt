@@ -50,6 +50,7 @@ class MainActivity: FlutterActivity() {
                 }
                 "retrieveAllApps" -> {
                     val allApps = retrieveAllApps()
+                    Log.d(TAG, "Retrieved ${allApps.size} apps")
                     result.success(allApps)
                 }
                 "checkOverlayPermission" -> {
@@ -145,23 +146,18 @@ class MainActivity: FlutterActivity() {
         val packageManager = packageManager
         val installedApps = packageManager.getInstalledApplications(0)
         val appsList = mutableListOf<Map<String, Any>>()
-        
+
+        Log.d(TAG, "Retrieving all apps = ${installedApps.size}")
+
         for (appInfo in installedApps) {
             try {
-                // Skip system apps if they don't have a launcher
-                val intent = packageManager.getLaunchIntentForPackage(appInfo.packageName)
-                if (intent == null && (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0) {
-                    continue
-                }
-                
                 // Get app name
                 val appName = packageManager.getApplicationLabel(appInfo).toString()
                 
                 // Create app info map
                 val appMap = mapOf(
-                    "packageName" to appInfo.packageName,
-                    "appName" to appName,
-                    "isSystemApp" to ((appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0)
+                    "filePath" to appInfo.packageName,
+                    "name" to appName,
                 )
                 
                 appsList.add(appMap)
@@ -169,9 +165,11 @@ class MainActivity: FlutterActivity() {
                 Log.e(TAG, "Error retrieving app info for ${appInfo.packageName}: ${e.message}")
             }
         }
-        
+
+        Log.d(TAG, "Finished retrieving all apps = ${appsList.size}")
+
         // Sort apps by name
-        return appsList.sortedBy { it["appName"].toString().lowercase() }
+        return appsList.sortedBy { it["name"].toString().lowercase() }
     }
 
     private fun requestAccessibilityPermission() {

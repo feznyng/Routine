@@ -1,3 +1,6 @@
+import 'package:Routine/models/installed_app.dart';
+import 'package:Routine/services/mobile_service.dart';
+import 'package:Routine/util.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io' show Platform;
@@ -27,7 +30,7 @@ class BlockAppsPage extends StatefulWidget {
 class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProviderStateMixin {
   late List<String> _selectedApps;
   late List<String> _selectedCategories;
-  List<InstalledApplication> _availableApps = [];
+  List<InstalledApp> _availableApps = [];
   bool _isLoadingApps = true;
   String _appSearchQuery = '';
   String _folderSearchQuery = '';
@@ -62,7 +65,7 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
       _isLoadingApps = true;
     });
 
-    final List<InstalledApplication> apps = await DesktopService.getInstalledApplications();
+    final List<InstalledApp> apps = Util.isDesktop() ? await DesktopService.getInstalledApps() : await MobileService().getInstalledApps();
     setState(() {
       _availableApps = apps;
       _isLoadingApps = false;
@@ -188,18 +191,17 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
 
   Widget _buildApplicationsTab() {
     // Create two lists: one for selected apps and one for unselected apps
-    List<InstalledApplication> selectedAppObjects = [];
-    List<InstalledApplication> unselectedAppObjects = [];
+    List<InstalledApp> selectedAppObjects = [];
+    List<InstalledApp> unselectedAppObjects = [];
     
     // First, handle all selected apps (including those not in _availableApps)
     for (final appPath in _selectedApps) {
       // Check if this app is in the available apps list
       final existingApp = _availableApps.firstWhere(
         (app) => app.filePath == appPath,
-        orElse: () => InstalledApplication(
+        orElse: () => InstalledApp(
           name: appPath.split('\\').last.replaceAll('.exe', ''),
           filePath: appPath,
-          displayName: null,
         ),
       );
       selectedAppObjects.add(existingApp);
@@ -213,8 +215,8 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
     }
     
     // Sort both lists by name
-    selectedAppObjects.sort((a, b) => (a.displayName ?? a.name).compareTo(b.displayName ?? b.name));
-    unselectedAppObjects.sort((a, b) => (a.displayName ?? a.name).compareTo(b.displayName ?? b.name));
+    selectedAppObjects.sort((a, b) => (a.name).compareTo(b.name));
+    unselectedAppObjects.sort((a, b) => (a.name).compareTo(b.name));
     
     return Column(
       children: [
@@ -354,19 +356,19 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
     }
   }
 
-  Widget _buildAppLists(List<InstalledApplication> selectedApps, List<InstalledApplication> unselectedApps) {
+  Widget _buildAppLists(List<InstalledApp> selectedApps, List<InstalledApp> unselectedApps) {
     // Filter apps based on search query
     final filteredSelectedApps = _appSearchQuery.isEmpty
         ? selectedApps
         : selectedApps.where((app) {
-            final name = (app.displayName ?? app.name).toLowerCase();
+            final name = (app.name).toLowerCase();
             return name.contains(_appSearchQuery);
           }).toList();
           
     final filteredUnselectedApps = _appSearchQuery.isEmpty
         ? unselectedApps
         : unselectedApps.where((app) {
-            final name = (app.displayName ?? app.name).toLowerCase();
+            final name = (app.name).toLowerCase();
             return name.contains(_appSearchQuery);
           }).toList();
     
@@ -407,12 +409,12 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
     );
   }
 
-  Widget _buildAppTile(InstalledApplication app, bool isSelected) {
+  Widget _buildAppTile(InstalledApp app, bool isSelected) {
     return ListTile(
       leading: isSelected
           ? const Icon(Icons.check_circle, color: Colors.green)
           : const Icon(Icons.circle_outlined),
-      title: Text(app.displayName ?? _getFileNameWithoutExt(app.name)),
+      title: Text(_getFileNameWithoutExt(app.name)),
       subtitle: Text(
         app.filePath,
         overflow: TextOverflow.ellipsis,

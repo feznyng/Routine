@@ -107,7 +107,7 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
     
     try {
       // Get installed applications
-      final installedApps = await DesktopService.getInstalledApplications();
+      final installedApps = await DesktopService.getInstalledApps();
       
       // Filter for supported browsers (only Firefox for now)
       final browsers = installedApps

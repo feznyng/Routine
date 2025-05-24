@@ -1,3 +1,4 @@
+import 'package:Routine/models/installed_app.dart';
 import 'package:Routine/services/auth_service.dart';
 import 'package:Routine/services/platform_service.dart';
 import 'package:Routine/util.dart';
@@ -12,21 +13,6 @@ import 'package:cron/cron.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:Routine/setup.dart';
-
-class InstalledApplication {
-  final String name;
-  final String filePath;
-  final String? displayName;
-
-  InstalledApplication({
-    required this.name,
-    required this.filePath,
-    this.displayName,
-  });
-
-  @override
-  String toString() => 'InstalledApplication(name: $name, displayName: $displayName, filePath: $filePath)';
-}
 
 class DesktopService extends PlatformService {
   // Singleton instance
@@ -276,8 +262,8 @@ class DesktopService extends PlatformService {
   }
 
   
-  static Future<List<InstalledApplication>> getInstalledApplications() async {
-    List<InstalledApplication> installedApps = [];
+  static Future<List<InstalledApp>> getInstalledApps() async {
+    List<InstalledApp> installedApps = [];
 
     if (Platform.isWindows) {
       try {
@@ -300,10 +286,9 @@ class DesktopService extends PlatformService {
           
           // Add to the list if not already present
           if (!installedApps.any((existingApp) => existingApp.filePath == path)) {
-            installedApps.add(InstalledApplication(
-              name: name,
-              filePath: path,
-              displayName: displayName,
+            installedApps.add(InstalledApp(
+              name: displayName ?? name,
+              filePath: path
             ));
           }
         }
@@ -317,7 +302,7 @@ class DesktopService extends PlatformService {
           if (entity is Directory && entity.path.endsWith('.app')) {
             String appName = entity.path.split('/').last.replaceAll('.app', '');
             if (!installedApps.any((app) => app.name == appName)) {
-              installedApps.add(InstalledApplication(
+              installedApps.add(InstalledApp(
                 name: appName,
                 filePath: entity.path,
               ));
@@ -327,7 +312,7 @@ class DesktopService extends PlatformService {
       }
     }
 
-    installedApps.sort((a, b) => (a.displayName ?? a.name).compareTo(b.displayName ?? b.name));
+    installedApps.sort((a, b) => (a.name).compareTo(b.name));
     return installedApps;
   }
 }
