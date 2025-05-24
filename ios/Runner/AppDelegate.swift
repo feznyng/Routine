@@ -32,7 +32,7 @@ import Sentry
         )
         
         // Setup iOS routine channel
-        let routineChannel = FlutterMethodChannel(name: "com.routine.ios_channel",
+        let routineChannel = FlutterMethodChannel(name: "com.solidsoft.routine",
                                                   binaryMessenger: controller.binaryMessenger)
         routineChannel.setMethodCallHandler { [weak self] (call, result) in
             os_log("AppDelegate: %{public}s", call.method)

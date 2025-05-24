@@ -300,7 +300,7 @@ bool FlutterWindow::OnCreate() {
   RegisterPlugins(flutter_controller_->engine());
 
   flutter::MethodChannel<> channel(
-      flutter_controller_->engine()->messenger(), "com.routine.applist",
+      flutter_controller_->engine()->messenger(), "com.solidsoft.routine",
       &flutter::StandardMethodCodec::GetInstance());
   channel.SetMethodCallHandler(
       [](const flutter::MethodCall<>& call, std::unique_ptr<flutter::MethodResult<>> result) {
@@ -422,7 +422,7 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
         if (flutter_controller_ && flutter_controller_->engine()) {
           LogToFile(L"[Routine] Sending systemWake event to Flutter");
           flutter::MethodChannel<> channel(
-              flutter_controller_->engine()->messenger(), "com.routine.applist",
+              flutter_controller_->engine()->messenger(), "com.solidsoft.routine",
               &flutter::StandardMethodCodec::GetInstance());
           channel.InvokeMethod("systemWake", std::make_unique<flutter::EncodableValue>(arguments));
         } else {

@@ -15,7 +15,7 @@ import kotlin.apply
 import androidx.core.content.edit
 
 class MainActivity: FlutterActivity() {
-    private val CHANNEL = "com.routine.ios_channel"
+    private val CHANNEL = "com.solidsoft.routine"
     private val TAG = "RoutineAndroid"
 
     override fun onCreate(savedInstanceState: Bundle?) {

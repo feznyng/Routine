@@ -16,7 +16,7 @@ class MobileService extends PlatformService {
   
   MobileService._internal();
   
-  final MethodChannel _channel = const MethodChannel('com.routine.ios_channel');
+  final MethodChannel _channel = const MethodChannel('com.solidsoft.routine');
   
   StreamSubscription? _routineSubscription;
   StreamSubscription? _strictModeSubscription;

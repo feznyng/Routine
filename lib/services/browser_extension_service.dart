@@ -16,7 +16,7 @@ class BrowserExtensionService {
   static final BrowserExtensionService _instance = BrowserExtensionService._internal();
   
   // Platform channel for native methods
-  static const MethodChannel _channel = MethodChannel('com.routine.applist');
+  static const MethodChannel _channel = MethodChannel('com.solidsoft.routine');
   
   // Socket connection to Native Messaging Host
   Socket? _socket;

@@ -25,7 +25,7 @@ class DesktopService extends PlatformService {
 
   static DesktopService get instance => _instance;
 
-  final platform = const MethodChannel('com.routine.applist');
+  final platform = const MethodChannel('com.solidsoft.routine');
   // Cache fields for blocked items
   List<String> _cachedSites = [];
   List<String> _cachedApps = [];
@@ -268,7 +268,7 @@ class DesktopService extends PlatformService {
     if (Platform.isWindows) {
       try {
         // Call the native method to get running applications
-        final MethodChannel platform = const MethodChannel('com.routine.applist');
+        final MethodChannel platform = const MethodChannel('com.solidsoft.routine');
         final List<dynamic> runningApps = await platform.invokeMethod('getRunningApplications');
         
         // Convert the result to InstalledApplication objects
