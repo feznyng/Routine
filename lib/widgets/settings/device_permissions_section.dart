@@ -16,7 +16,7 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
   bool _notificationPermission = false;
   bool _cameraPermission = false;
   bool _locationPermission = false;
-  bool _familyControlsPermission = false;
+  bool _blockPermission = false;
 
   @override
   void initState() {
@@ -41,17 +41,10 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
   Future<void> _checkPermissions() async {
     if (!mounted) return;
 
-    // Check notifications permission
-    final notificationStatus = await Permission.notification.status;
-    
-    // Check camera permission
+    final notificationStatus = await Permission.notification.status;    
     final cameraStatus = await Permission.camera.status;
-    
-    // Check location permission
     final locationStatus = await Permission.location.status;
-    
-    // Check family controls authorization
-    final familyControlsStatus = await MobileService.instance.getBlockPermissions(false);
+    final blockStatus = await MobileService.instance.getBlockPermissions(false);
 
     if (!mounted) return;
 
@@ -59,7 +52,7 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
       _notificationPermission = notificationStatus.isGranted;
       _cameraPermission = cameraStatus.isGranted;
       _locationPermission = locationStatus.isGranted;
-      _familyControlsPermission = familyControlsStatus;
+      _blockPermission = blockStatus;
     });
   }
 
@@ -75,7 +68,7 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
     }
   }
 
-  Future<void> _requestFamilyControls() async {
+  Future<void> _requestBlockPermissions() async {
     final granted = await MobileService.instance.getBlockPermissions(true);
     if (mounted) {
       await _checkPermissions();
@@ -156,15 +149,13 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
                 isGranted: _locationPermission,
                 onRequestPermission: () => _requestPermission(Permission.location),
               ),
-              if (Platform.isIOS) ...[
-                const Divider(),
-                _buildPermissionTile(
-                  title: 'Screen Time Restrictions',
-                  subtitle: 'Required to block apps and websites',
-                  isGranted: _familyControlsPermission,
-                  onRequestPermission: _requestFamilyControls,
-                )
-              ]
+              const Divider(),
+              _buildPermissionTile(
+                title: Platform.isIOS ? 'Screen Time Restrictions' : 'Accessibility',
+                subtitle: 'Required to block apps and websites',
+                isGranted: _blockPermission,
+                onRequestPermission: _requestBlockPermissions,
+              )
             ],
           ),
         ],
