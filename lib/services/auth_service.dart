@@ -53,8 +53,7 @@ class AuthService {
       url: url,
       anonKey: anonKey,
       authOptions: FlutterAuthClientOptions(
-        authFlowType: AuthFlowType.implicit,
-        autoRefreshToken: false
+        authFlowType: AuthFlowType.implicit
       ),
     );
     
