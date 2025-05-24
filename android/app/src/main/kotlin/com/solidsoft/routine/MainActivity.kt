@@ -11,6 +11,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.core.net.toUri
 import org.json.JSONArray
+import org.json.JSONObject
 import kotlin.apply
 import androidx.core.content.edit
 
@@ -120,7 +121,8 @@ class MainActivity: FlutterActivity() {
             // Convert routines to JSON array
             val routinesJsonArray = JSONArray()
             for (routine in routines) {
-                routinesJsonArray.put(routine)
+                // Convert each routine map to a JSONObject before adding to the array
+                routinesJsonArray.put(JSONObject(routine))
             }
 
             // Save JSON array as string

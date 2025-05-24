@@ -58,11 +58,6 @@ class RoutineManager : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         Log.d(TAG, "Website blocker accessibility service connected")
-        
-        // TODO: remove after testing
-        sites.add("reddit.com")
-        sites.add("m.reddit.com")
-        apps.add("com.google.android.youtube")
 
         instance = this
         isEditableFieldFocused = false
@@ -74,8 +69,8 @@ class RoutineManager : AccessibilityService() {
         val packageName = event.packageName?.toString() ?: return
         val changeType = event.contentChangeTypes;
 
-        //Log.d(TAG, "Accessibility event: " +
-        //        "$eventType, package: $packageName, action: ${event.contentChangeTypes}")
+        Log.d(TAG, "Accessibility event: " +
+                "$eventType, package: $packageName, action: ${event.contentChangeTypes}")
 
         // Update last seen app
         if (packageName != this.packageName) {
@@ -85,7 +80,7 @@ class RoutineManager : AccessibilityService() {
 
         // block apps
         if (isBlockedApp(packageName) &&
-            changeType == AccessibilityEvent.CONTENT_CHANGE_TYPE_UNDEFINED) {
+            changeType != AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED) {
             showBlockOverlay(packageName)
             return
         } else if (blockOverlayView?.isShowing() == true) {
@@ -305,8 +300,9 @@ class RoutineManager : AccessibilityService() {
 
     private fun isUrlInList(url: String): Boolean {
         val lowerUrl = url.lowercase()
-        for (domain in sites) {
-            if (lowerUrl.contains(domain)) {
+        Log.d(TAG, "lowerUrl: $lowerUrl sites: $sites")
+        for (site in sites) {
+            if (site == lowerUrl || lowerUrl.contains(site)) {
                 return true
             }
         }

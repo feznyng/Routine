@@ -82,63 +82,15 @@ class Routine(
                 apps.add(appsArray.getString(i))
             }
         }
-        
-        // Parse sites array
+
         if (json.has(KEY_SITES) && !json.isNull(KEY_SITES)) {
             val sitesArray = json.getJSONArray(KEY_SITES)
             for (i in 0 until sitesArray.length()) {
-                val siteString = sitesArray.getString(i)
-                try {
-                    // Try to parse as JSON to check if it's a token
-                    JSONObject(siteString)
-                    sites.add(siteString)
-                } catch (e: Exception) {
-                }
+                sites.add(sitesArray.getString(i))
             }
         }
     }
-    
-    /**
-     * Secondary constructor that creates a Routine from a Map<String, Any>
-     * This is useful for Flutter method channel integration
-     */
-    @Suppress("UNCHECKED_CAST")
-    constructor(map: Map<String, Any>) : this(
-        id = map[KEY_ID] as String,
-        name = map[KEY_NAME] as String,
-        days = (map[KEY_DAYS] as List<*>).map { it as Boolean },
-        startTime = map[KEY_START_TIME] as? Int,
-        endTime = map[KEY_END_TIME] as? Int,
-        allDay = map[KEY_ALL_DAY] as Boolean,
-        pausedUntil = (map[KEY_PAUSED_UNTIL] as? String)?.let { iso8601Formatter.parse(it) },
-        snoozedUntil = (map[KEY_SNOOZED_UNTIL] as? String)?.let { iso8601Formatter.parse(it) },
-        conditionsLastMet = (map[KEY_CONDITIONS_LAST_MET] as? String)?.let { iso8601Formatter.parse(it) },
-        allow = map[KEY_ALLOW] as Boolean
-    ) {
-        // Parse apps array
-        (map[KEY_APPS] as? List<*>)?.forEach { appItem ->
-            when (appItem) {
-                is String -> apps.add(appItem)
-                is Map<*, *> -> apps.add(JSONObject(appItem as Map<String, Any>).toString())
-            }
-        }
-        
-        // Parse sites array
-        (map[KEY_SITES] as? List<*>)?.forEach { siteItem ->
-            when (siteItem) {
-                is String -> {
-                    try {
-                        // Try to parse as JSON to check if it's a token
-                        JSONObject(siteItem)
-                        sites.add(siteItem)
-                    } catch (e: Exception) {
-                    }
-                }
-                is Map<*, *> -> sites.add(JSONObject(siteItem as Map<String, Any>).toString())
-            }
-        }
-    }
-    
+
     fun isActive(): Boolean {
         // Add 45 seconds buffer to match Swift implementation
         val now = Date(System.currentTimeMillis() + 45000)
