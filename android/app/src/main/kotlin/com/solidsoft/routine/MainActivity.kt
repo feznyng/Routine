@@ -15,7 +15,7 @@ import kotlin.apply
 import androidx.core.content.edit
 
 class MainActivity: FlutterActivity() {
-    private val CHANNEL = "com.routine.ios_channel"
+    private val CHANNEL = "com.solidsoft.routine"
     private val TAG = "RoutineAndroid"
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -180,6 +180,10 @@ class MainActivity: FlutterActivity() {
 
         for (appInfo in installedApps) {
             try {
+                if (appInfo.packageName == this.packageName) {
+                    continue
+                }
+
                 // Skip system apps if they don't have a launcher
                 val intent = packageManager.getLaunchIntentForPackage(appInfo.packageName)
                 if (intent == null && (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0) {

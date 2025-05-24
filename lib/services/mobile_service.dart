@@ -80,12 +80,12 @@ class MobileService extends PlatformService {
 
     logger.i("retrieving apps");
 
-    final List<Map<String, dynamic>> appList = await _channel.invokeMethod('retrieveAllApps');
+    final dynamic appList = await _channel.invokeMethod('retrieveAllApps');
 
     logger.i("finished retrieving apps = ${appList.length}");
 
     for (final app in appList) {
-      installedApps.add(InstalledApp(name: app['name'], filePath: app['filePath']));
+      installedApps.add(InstalledApp(name: app['name']!, filePath: app['filePath']!));
     }
 
     return installedApps;
