@@ -14,12 +14,21 @@ object Util {
         ApplicationInfo.CATEGORY_GAME
     )
 
+    private val PACKAGE_INSTALLER_PACKAGES = setOf(
+        "com.google.android.packageinstaller",
+        "com.android.packageinstaller"
+    )
+
     fun isBlockable(appInfo: ApplicationInfo): Boolean {
         if (appInfo.packageName == "com.solidsoft.routine") {
             return false
         }
 
         return appInfo.category in BLOCKABLE_CATEGORIES
+    }
+
+    fun isPackageInstaller(packageName: String): Boolean {
+        return packageName in PACKAGE_INSTALLER_PACKAGES
     }
 
     fun isBlockable(packageManager: PackageManager, packageName: String): Boolean {

@@ -154,6 +154,9 @@ class RoutineManager : AccessibilityService() {
         val packageName = event.packageName?.toString() ?: return
         val changeType = event.contentChangeTypes;
 
+        Log.d(TAG, "onAccessibilityEvent: eventType=$eventType, packageName=$packageName, " +
+                "changeType=$changeType")
+
         if (changeType != AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED &&
             packageName != SYSTEM_UI_PACKAGE) {
             lastSeenApp = packageName
@@ -163,7 +166,8 @@ class RoutineManager : AccessibilityService() {
         // Check strict mode restrictions
         if (strictModeEnabled) {
             // Block uninstalling apps
-            if (blockUninstallingApps && isAppInfoOrAccessibilitySettingsForRoutine(event)) {
+            if (blockUninstallingApps &&
+                (isUninstallDialog(event) || isAccessibilitySettingsForRoutine(event))) {
                 Log.d(TAG, "Blocking access to app info or accessibility settings for Routine")
                 goBack()
                 return
@@ -742,56 +746,26 @@ class RoutineManager : AccessibilityService() {
     }
 
     /**
-     * Navigates to the home screen
-     */
-    private fun goToHomeScreen() {
-        val homeIntent = Intent(Intent.ACTION_MAIN)
-        homeIntent.addCategory(Intent.CATEGORY_HOME)
-        homeIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        startActivity(homeIntent)
-    }
-    
-    /**
      * Checks if the current screen is the app info or accessibility settings page for Routine
      */
-    private fun isAppInfoOrAccessibilitySettingsForRoutine(event: AccessibilityEvent): Boolean {
+    private fun isAccessibilitySettingsForRoutine(event: AccessibilityEvent): Boolean {
         val packageName = event.packageName?.toString() ?: return false
-        val eventType = event.eventType
-        
-        // Check if we're in the Settings app
+
         if (packageName != "com.android.settings") {
             return false
         }
 
-        // Get the root node to examine the content
         val rootNode = event.source ?: return false
 
         try {
-            Log.d(TAG, "Checking if current screen is app info or accessibility settings for Routine")
+            Log.d(TAG, "Checking if current screen is accessibility settings for Routine")
             
-            // Dump node hierarchy for debugging
-            dumpNodeHierarchy(rootNode, 0)
-            
-            // Check for app info page by traversing the node hierarchy
-            if (isAppInfoPageByNodePattern(rootNode)) {
-                Log.d(TAG, "Detected Routine app info page by node pattern")
-                return true
-            }
-            
-            // Check for uninstall dialog by traversing the node hierarchy
-            if (isUninstallDialogByNodePattern(rootNode)) {
-                Log.d(TAG, "Detected uninstall dialog by node pattern")
-                return true
-            }
-            
-            // Check for accessibility settings page - using original working logic
             val accessibilityTexts = rootNode.findAccessibilityNodeInfosByText("Accessibility")
             val routineServiceTexts = rootNode.findAccessibilityNodeInfosByText("Routine")
             
-            // Original working logic for accessibility settings detection
             if (accessibilityTexts.isNotEmpty() && routineServiceTexts.isNotEmpty()) {
                 Log.d(TAG, "Detected Routine accessibility settings page")
-                return true
+                return false
             }
             
             return false
@@ -801,84 +775,18 @@ class RoutineManager : AccessibilityService() {
         
         return false
     }
-    
-    /**
-     * Dumps the node hierarchy to the log for debugging
-     */
-    private fun dumpNodeHierarchy(node: AccessibilityNodeInfo?, depth: Int) {
-        if (node == null) return
-        
-        val indent = "  ".repeat(depth)
-        val className = node.className ?: "null"
-        val text = node.text ?: "null"
-        val contentDesc = node.contentDescription ?: "null"
-        val viewId = node.viewIdResourceName ?: "null"
-        
-        Log.d(TAG, "$indent Node: class=$className, text=$text, contentDesc=$contentDesc, id=$viewId")
-        
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i)
-            if (child != null) {
-                dumpNodeHierarchy(child, depth + 1)
-                child.recycle()
-            }
+
+    private fun isUninstallDialog(event: AccessibilityEvent): Boolean {
+        Log.d(TAG, "isUninstallDialog: Starting")
+
+        val packageName = event.packageName?.toString() ?: return false
+
+        if (Util.isPackageInstaller(packageName)) {
+            return false
         }
-    }
-    
-    /**
-     * Checks if the current screen is an app info page by looking for specific node patterns
-     */
-    private fun isAppInfoPageByNodePattern(rootNode: AccessibilityNodeInfo): Boolean {
-        try {
-            // Look for switches and buttons that are typically on app info pages
-            var hasForceStopButton = false
-            var hasUninstallButton = false
-            var hasRoutineReference = false
-            
-            // Traverse the node hierarchy to look for specific patterns
-            traverseNodes(rootNode) { node ->
-                val className = node.className?.toString() ?: ""
-                val text = node.text?.toString() ?: ""
-                val contentDesc = node.contentDescription?.toString() ?: ""
-                
-                // Check for force stop button
-                if ((text.contains("Force stop", ignoreCase = true) || 
-                     contentDesc.contains("Force stop", ignoreCase = true)) &&
-                    (className.contains("Button") || className.contains("TextView"))) {
-                    hasForceStopButton = true
-                    Log.d(TAG, "Found Force Stop button")
-                }
-                
-                // Check for uninstall button
-                if ((text.contains("Uninstall", ignoreCase = true) || 
-                     contentDesc.contains("Uninstall", ignoreCase = true)) &&
-                    (className.contains("Button") || className.contains("TextView"))) {
-                    hasUninstallButton = true
-                    Log.d(TAG, "Found Uninstall button")
-                }
-                
-                // Check for Routine reference
-                if (text.contains("Routine") || contentDesc.contains("Routine") || 
-                    text.contains(this.packageName) || contentDesc.contains(this.packageName)) {
-                    hasRoutineReference = true
-                    Log.d(TAG, "Found Routine reference")
-                }
-                
-                !hasUninstallButton || !hasForceStopButton || !hasRoutineReference
-            }
-            
-            return hasForceStopButton && hasUninstallButton && hasRoutineReference
-        } catch (e: Exception) {
-            Log.e(TAG, "Error in isAppInfoPageByNodePattern: ${e.message}", e)
-        }
-        
-        return false
-    }
-    
-    /**
-     * Checks if the current screen is an uninstall dialog by looking for specific node patterns
-     */
-    private fun isUninstallDialogByNodePattern(rootNode: AccessibilityNodeInfo): Boolean {
+
+        val rootNode = event.source ?: return false
+
         try {
             var hasUninstallText = false
             var hasRoutineReference = false
@@ -928,7 +836,8 @@ class RoutineManager : AccessibilityService() {
                 // Continue traversal
                 true
             }
-            
+            Log.d(TAG, "isUninstallDialog: Result = ${hasUninstallText && hasRoutineReference && (hasOkButton || hasCancelButton)}")
+
             // If we found uninstall text, Routine reference, and at least one button, it's likely an uninstall dialog
             return hasUninstallText && hasRoutineReference && (hasOkButton || hasCancelButton)
         } catch (e: Exception) {
