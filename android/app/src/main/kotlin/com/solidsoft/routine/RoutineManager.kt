@@ -15,6 +15,8 @@ import java.util.HashSet
 import org.json.JSONArray
 import java.util.Date
 
+private const val SYSTEM_UI_PACKAGE = "com.android.systemui"
+
 class RoutineManager : AccessibilityService() {
     private val TAG = "RoutineManager"
 
@@ -150,13 +152,13 @@ class RoutineManager : AccessibilityService() {
         val packageName = event.packageName?.toString() ?: return
         val changeType = event.contentChangeTypes;
 
-        if (changeType != AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED) {
-            // Update the last seen app and timestamp
+        if (changeType != AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED &&
+            packageName != SYSTEM_UI_PACKAGE) {
             lastSeenApp = packageName
             lastSeenTimestamp = currentTime
         }
 
-        // block apps or remove overlay
+        // block apps
         if (isBlockedApp(packageName) &&
             changeType != AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED) {
             showBlockOverlay(packageName)
