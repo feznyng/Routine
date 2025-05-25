@@ -44,7 +44,7 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
     final notificationStatus = await Permission.notification.status;    
     final cameraStatus = await Permission.camera.status;
     final locationStatus = await Permission.location.status;
-    final blockStatus = await MobileService.instance.getBlockPermissions(false);
+    final blockStatus = await MobileService.instance.getBlockPermissions();
 
     if (!mounted) return;
 
@@ -69,7 +69,7 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
   }
 
   Future<void> _requestBlockPermissions() async {
-    final granted = await MobileService.instance.getBlockPermissions(true);
+    final granted = await MobileService.instance.getBlockPermissions(request: true);
     if (mounted) {
       await _checkPermissions();
     }

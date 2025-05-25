@@ -116,7 +116,7 @@ class MobileService extends PlatformService {
   
   static MobileService get instance => _instance;
   
-  Future<bool> getBlockPermissions(bool request) async {
+  Future<bool> getBlockPermissions({bool request = false}) async {
     if (Platform.isIOS) {
       final bool isAuthorized = await _channel.invokeMethod('checkFamilyControlsAuthorization');
 
@@ -128,8 +128,8 @@ class MobileService extends PlatformService {
         return false;
       }
     } else {
-      bool hasOverlayPermission = await _channel.invokeMethod('checkAccessibilityPermission');
-      bool hasAccessibilityPermission = await _channel.invokeMethod('requestAccessibilityPermission');
+      bool hasOverlayPermission = await _channel.invokeMethod('checkOverlayPermission');
+      bool hasAccessibilityPermission = await _channel.invokeMethod('checkAccessibilityPermission');
       
       if (request) {
         if (!hasOverlayPermission) {
