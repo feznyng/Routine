@@ -154,9 +154,6 @@ class RoutineManager : AccessibilityService() {
         val packageName = event.packageName?.toString() ?: return
         val changeType = event.contentChangeTypes;
 
-        Log.d(TAG, "onAccessibilityEvent: eventType=$eventType, packageName=$packageName, " +
-                "changeType=$changeType")
-
         if (changeType != AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED &&
             packageName != SYSTEM_UI_PACKAGE) {
             lastSeenApp = packageName
@@ -760,14 +757,13 @@ class RoutineManager : AccessibilityService() {
         try {
             Log.d(TAG, "Checking if current screen is accessibility settings for Routine")
             
-            val accessibilityTexts = rootNode.findAccessibilityNodeInfosByText("Accessibility")
-            val routineServiceTexts = rootNode.findAccessibilityNodeInfosByText("Routine")
+            val accessibilityTexts = rootNode.findAccessibilityNodeInfosByText("Routine")
+            val routineServiceTexts = rootNode.findAccessibilityNodeInfosByText("Use Routine")
             
             if (accessibilityTexts.isNotEmpty() && routineServiceTexts.isNotEmpty()) {
-                Log.d(TAG, "Detected Routine accessibility settings page")
-                return false
+                return true
             }
-            
+
             return false
         } catch (e: Exception) {
             Log.e(TAG, "Error checking app info page: ${e.message}", e)
@@ -777,11 +773,9 @@ class RoutineManager : AccessibilityService() {
     }
 
     private fun isUninstallDialog(event: AccessibilityEvent): Boolean {
-        Log.d(TAG, "isUninstallDialog: Starting")
-
         val packageName = event.packageName?.toString() ?: return false
 
-        if (Util.isPackageInstaller(packageName)) {
+        if (!Util.isPackageInstaller(packageName)) {
             return false
         }
 
@@ -836,7 +830,6 @@ class RoutineManager : AccessibilityService() {
                 // Continue traversal
                 true
             }
-            Log.d(TAG, "isUninstallDialog: Result = ${hasUninstallText && hasRoutineReference && (hasOkButton || hasCancelButton)}")
 
             // If we found uninstall text, Routine reference, and at least one button, it's likely an uninstall dialog
             return hasUninstallText && hasRoutineReference && (hasOkButton || hasCancelButton)
