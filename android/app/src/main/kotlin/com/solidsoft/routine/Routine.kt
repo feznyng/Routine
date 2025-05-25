@@ -40,27 +40,13 @@ class Routine(
         const val KEY_ALLOW = "allow"
         const val KEY_APPS = "apps"
         const val KEY_SITES = "sites"
-        const val KEY_CATEGORIES = "categories"
-        
+
         // Date formatter matching Swift's ISO8601DateFormatter with fractional seconds
         val iso8601Formatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("UTC")
         }
-        
-        fun fromJson(jsonString: String): Routine? {
-            return try {
-                val json = JSONObject(jsonString)
-                Routine(json)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error parsing routine JSON: ${e.message}")
-                null
-            }
-        }
     }
-    
-    /**
-     * Secondary constructor that creates a Routine from a JSONObject
-     */
+
     constructor(json: JSONObject) : this(
         id = json.getString(KEY_ID),
         name = json.getString(KEY_NAME),
@@ -159,6 +145,9 @@ class Routine(
         val now = Date()
         val calendar = Calendar.getInstance()
         
+        // Check if this is an overnight routine (end time < start time)
+        val isOvernightRoutine = endTime != null && startTime != null && endTime < startTime
+        
         // Reset calendar to today at midnight
         calendar.time = now
         calendar.set(Calendar.HOUR_OF_DAY, 0)
@@ -177,6 +166,24 @@ class Routine(
         calendar.set(Calendar.MINUTE, startMinute)
         
         val todayAtStartTime = calendar.time
+        
+        // For overnight routines, we also need to check yesterday's start time
+        if (isOvernightRoutine) {
+            // Get current time in minutes since midnight
+            val currMins = Calendar.getInstance().apply { time = now }.let { 
+                it.get(Calendar.HOUR_OF_DAY) * 60 + it.get(Calendar.MINUTE) 
+            }
+            
+            // If current time is after midnight but before end time
+            if (currMins < (endTime ?: 0)) {
+                // Set calendar to yesterday at start time
+                calendar.add(Calendar.DAY_OF_YEAR, -1)
+                val yesterdayAtStartTime = calendar.time
+                
+                // Return true if conditionsLastMet is after yesterday's start time
+                return lastMet.after(yesterdayAtStartTime)
+            }
+        }
         
         // Return true if conditionsLastMet is after today's start time (completed during routine)
         return lastMet.after(todayAtStartTime)

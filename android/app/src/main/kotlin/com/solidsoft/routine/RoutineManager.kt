@@ -33,7 +33,6 @@ class RoutineManager : AccessibilityService() {
     private var blockChangingTimeSettings = false
     private var blockUninstallingApps = false
     private var blockInstallingApps = false
-    private var inStrictMode = false
 
     // Default redirect URL
     private val redirectUrl = "https://www.google.com"
@@ -138,11 +137,9 @@ class RoutineManager : AccessibilityService() {
         blockChangingTimeSettings = sharedPreferences.getBoolean("blockChangingTimeSettings", false)
         blockUninstallingApps = sharedPreferences.getBoolean("blockUninstallingApps", false)
         blockInstallingApps = sharedPreferences.getBoolean("blockInstallingApps", false)
-        inStrictMode = sharedPreferences.getBoolean("inStrictMode", false)
-        
+
         Log.d(TAG, "Updated strict mode settings: blockChangingTimeSettings=$blockChangingTimeSettings, " +
-                "blockUninstallingApps=$blockUninstallingApps, blockInstallingApps=$blockInstallingApps, " +
-                "inStrictMode=$inStrictMode")
+                "blockUninstallingApps=$blockUninstallingApps, blockInstallingApps=$blockInstallingApps")
 
         evaluate()
     }
@@ -157,6 +154,30 @@ class RoutineManager : AccessibilityService() {
             packageName != SYSTEM_UI_PACKAGE) {
             lastSeenApp = packageName
             lastSeenTimestamp = currentTime
+        }
+
+        // Check strict mode restrictions
+        if (strictModeEnabled) {
+            // Block uninstalling apps
+            if (blockUninstallingApps && isAppInfoOrAccessibilitySettingsForRoutine(event)) {
+                Log.d(TAG, "Blocking access to app info or accessibility settings for Routine")
+                goBack()
+                return
+            }
+            
+            // Block installing apps
+            if (blockInstallingApps && isAppStore(packageName)) {
+                Log.d(TAG, "Blocking access to app store: $packageName")
+                goBack()
+                return
+            }
+            
+            // Block changing time settings
+            if (blockChangingTimeSettings && isTimeSettingsPage(event)) {
+                Log.d(TAG, "Blocking access to time settings")
+                goBack()
+                return
+            }
         }
 
         // block apps
@@ -702,6 +723,103 @@ class RoutineManager : AccessibilityService() {
         cancelScheduledEvaluations()
     }
 
+    /**
+     * Navigates to the home screen
+     */
+    private fun goToHomeScreen() {
+        val homeIntent = Intent(Intent.ACTION_MAIN)
+        homeIntent.addCategory(Intent.CATEGORY_HOME)
+        homeIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        startActivity(homeIntent)
+    }
+    
+    /**
+     * Performs a back button press action
+     */
+    private fun goBack() {
+        performGlobalAction(GLOBAL_ACTION_BACK)
+    }
+
+    /**
+     * Checks if the current screen is the app info or accessibility settings page for Routine
+     */
+    private fun isAppInfoOrAccessibilitySettingsForRoutine(event: AccessibilityEvent): Boolean {
+        val packageName = event.packageName?.toString() ?: return false
+        
+        // Check if we're in the Settings app
+        if (packageName != "com.android.settings") {
+            return false
+        }
+
+        // Get the root node to examine the content
+        val rootNode = event.source ?: return false
+
+        try {
+            val appInfoTexts = rootNode.findAccessibilityNodeInfosByText("App Info")
+            val uninstallButtons = rootNode.findAccessibilityNodeInfosByText("Uninstall")
+            val forceStopButtons = rootNode.findAccessibilityNodeInfosByText("Force stop")
+
+            if ((appInfoTexts.isNotEmpty() &&
+                        (uninstallButtons.isNotEmpty() || forceStopButtons.isNotEmpty()))) {
+                return true
+            } else {
+                Log.d(TAG, "Not in app info page text = ${appInfoTexts.size}, uninstall buttons = ${uninstallButtons.size}, force stop buttons = ${forceStopButtons.size}")
+            }
+
+            val accessibilityTexts = rootNode.findAccessibilityNodeInfosByText("Accessibility")
+            val routineServiceTexts = rootNode.findAccessibilityNodeInfosByText("Routine")
+
+            return accessibilityTexts.isNotEmpty() && routineServiceTexts.isNotEmpty()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking app info page: ${e.message}", e)
+        } finally {
+            rootNode.recycle()
+        }
+        
+        return false
+    }
+    
+    /**
+     * Checks if the current app is an app store (Play Store or F-Droid)
+     */
+    private fun isAppStore(packageName: String): Boolean {
+        return packageName == "com.android.vending" || // Google Play Store
+               packageName == "org.fdroid.fdroid"      // F-Droid
+    }
+    
+    /**
+     * Checks if the current screen is the date/time settings page
+     */
+    private fun isTimeSettingsPage(event: AccessibilityEvent): Boolean {
+        val packageName = event.packageName?.toString() ?: return false
+        
+        // Check if we're in the Settings app
+        if (packageName != "com.android.settings") {
+            return false
+        }
+        
+        // Get the root node to examine the content
+        val rootNode = event.source ?: return false
+        
+        try {
+            // Look for indicators of the date & time settings page
+            val dateTimeTexts = rootNode.findAccessibilityNodeInfosByText("Date & time")
+            val timeTexts = rootNode.findAccessibilityNodeInfosByText("Set time")
+            val dateTexts = rootNode.findAccessibilityNodeInfosByText("Set date")
+            val timezoneTexts = rootNode.findAccessibilityNodeInfosByText("Select time zone")
+            val automaticTexts = rootNode.findAccessibilityNodeInfosByText("Automatic date & time")
+            
+            return dateTimeTexts.isNotEmpty() || 
+                   timeTexts.isNotEmpty() || 
+                   dateTexts.isNotEmpty() || 
+                   timezoneTexts.isNotEmpty() || 
+                   automaticTexts.isNotEmpty()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking time settings page: ${e.message}", e)
+        }
+        
+        return false
+    }
 
     companion object {
         // Static reference to the active service instance
