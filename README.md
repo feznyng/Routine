@@ -10,13 +10,13 @@ App/site blocker for iOS, Android, macOS, and Windows.
 - **Flexible**: Supports both block and allow lists and multiple active lists at the same time. 
 - **Strict**: Provides strict mode settings to add friction to modifying routines and common bypass methods like the task manager or settings changes. 
 
-| Platform | Support | Tested On 
-| -------- | ------- | ----- 
-| macOS    | ✅      | 14.6.1      
-| iOS      | ✅      | 18.4.1      
-| Windows  | ✅      | 11 Version 24H2      
-| Android  | ✅      | 16 (Emulator)
-| Linux    | 🚧      |       
+| Platform | Support | Minimum Version | Tested On 
+| -------- | ------- | --------------- | ----- 
+| macOS    | ✅      | 13.5           | 14.6.1      
+| iOS      | ✅      | 15             | 18.4.1      
+| Windows  | ✅      | 10             | 11 Version 24H2      
+| Android  | ✅      | 8              | 16 (Emulator)
+| Linux    | 🚧      |                |       
 
 ## Development
 
