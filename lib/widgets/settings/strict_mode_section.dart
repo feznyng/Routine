@@ -193,7 +193,7 @@ class _StrictModeSectionState extends State<StrictModeSection> {
                 },
             ),
             SwitchListTile(
-              title: const Text('Block uninstalling apps'),
+              title: Text('Block uninstalling ${Platform.isAndroid ? 'Routine' : 'apps'}'),
               value: _strictModeService.blockUninstallingApps,
               onChanged: (_strictModeService.inStrictMode && _strictModeService.blockUninstallingApps)
                 ? null // Disable the switch when trying to turn it off in strict mode

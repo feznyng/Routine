@@ -79,10 +79,8 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: 16),
           ],
           
-          if (!Platform.isAndroid) ...[
-            const StrictModeSection(),
-            const SizedBox(height: 16),
-          ],
+          const StrictModeSection(),
+          const SizedBox(height: 16),
           
           DeviceManagementSection(onDeviceOptionsTap: _showDeviceOptions),
           const SizedBox(height: 16),
