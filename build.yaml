@@ -4,5 +4,6 @@ targets:
       drift_dev:
         options:
           store_date_time_values_as_text: true
+          schema_dir: lib/database/drift_schemas/ 
           databases:
             routine_db: lib/database/database.dart
