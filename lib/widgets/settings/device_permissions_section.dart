@@ -19,6 +19,7 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
   bool _cameraPermission = false;
   bool _locationPermission = false;
   bool _blockPermission = false;
+  bool _devicePolicyPermission = false;
 
   @override
   void initState() {
@@ -47,6 +48,7 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
     final cameraStatus = await Permission.camera.status;
     final locationStatus = await Permission.location.status;
     final blockStatus = await MobileService.instance.getBlockPermissions();
+    final devicePolicyStatus = Platform.isAndroid ? await MobileService.instance.getStrictModePermission() : false;
 
     if (!mounted) return;
 
@@ -55,6 +57,7 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
       _cameraPermission = cameraStatus.isGranted;
       _locationPermission = locationStatus.isGranted;
       _blockPermission = blockStatus;
+      _devicePolicyPermission = devicePolicyStatus;
     });
   }
 
@@ -112,6 +115,15 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
         if (mounted) {
           await _checkPermissions();
         }
+      }
+    }
+  }
+
+  Future<void> _requestDevicePolicyPermission() async {
+    if (Platform.isAndroid) {
+      await MobileService.instance.getStrictModePermission(request: true);
+      if (mounted) {
+        await _checkPermissions();
       }
     }
   }
@@ -193,7 +205,16 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
                 subtitle: 'Required to block apps and websites',
                 isGranted: _blockPermission,
                 onRequestPermission: _requestBlockPermissions,
-              )
+              ),
+              if (Platform.isAndroid) ...[  
+                const Divider(),
+                _buildPermissionTile(
+                  title: 'Device Administrator',
+                  subtitle: 'Required for strict mode features',
+                  isGranted: _devicePolicyPermission,
+                  onRequestPermission: _requestDevicePolicyPermission,
+                )
+              ]
             ],
           ),
         ],

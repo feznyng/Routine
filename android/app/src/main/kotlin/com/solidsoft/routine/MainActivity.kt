@@ -13,6 +13,8 @@ import androidx.core.net.toUri
 import org.json.JSONArray
 import org.json.JSONObject
 import androidx.core.content.edit
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
 
 class MainActivity: FlutterActivity() {
     private val CHANNEL = "com.solidsoft.routine"
@@ -85,6 +87,18 @@ class MainActivity: FlutterActivity() {
                     result.success(true)
                     Log.d(TAG, "requestAccessibilityPermission: Completed")
                 }
+                "checkDeviceManagerPolicyPermission" -> {
+                    Log.d(TAG, "checkDeviceManagerPolicyPermission: Starting")
+                    val permissionResult = isDeviceAdminActive()
+                    result.success(permissionResult)
+                    Log.d(TAG, "checkDeviceManagerPolicyPermission: Completed")
+                }
+                "requestDeviceManagerPolicyPermission" -> {
+                    Log.d(TAG, "requestDeviceManagerPolicyPermission: Starting")
+                    requestDeviceAdminPrivileges()
+                    result.success(true)
+                    Log.d(TAG, "requestDeviceManagerPolicyPermission: Completed")
+                }
                 else -> {
                     Log.d(TAG, "Unknown method call: ${call.method}")
                     result.notImplemented()
@@ -96,7 +110,8 @@ class MainActivity: FlutterActivity() {
 
     private fun handleUpdateStrictModeSettings(settings: Map<String, Any>) {
         Log.d(TAG, "handleUpdateStrictModeSettings: Starting")
-        // Placeholder implementation for handling strict mode settings
+        
+        // Extract strict mode settings
         val blockChangingTimeSettings = settings["blockChangingTimeSettings"] as Boolean
         val blockUninstallingApps = settings["blockUninstallingApps"] as Boolean
         val blockInstallingApps = settings["blockInstallingApps"] as Boolean
@@ -106,7 +121,24 @@ class MainActivity: FlutterActivity() {
                 "blockUninstallingApps=$blockUninstallingApps, blockInstallingApps=$blockInstallingApps, " +
                 "inStrictMode=$inStrictMode")
         
-        // TODO: Implement actual handling of strict mode settings for Android using DevicePolicyManager
+        // Persist strict mode settings to shared preferences
+        val sharedPreferences = getSharedPreferences("com.solidsoft.routine.preferences", Context.MODE_PRIVATE)
+        sharedPreferences.edit {
+            putBoolean("blockChangingTimeSettings", blockChangingTimeSettings)
+            putBoolean("blockUninstallingApps", blockUninstallingApps)
+            putBoolean("blockInstallingApps", blockInstallingApps)
+            putBoolean("inStrictMode", inStrictMode)
+        }
+
+
+        // If strict mode is enabled, request device admin privileges
+        if (inStrictMode) {
+            requestDeviceAdminPrivileges()
+        }
+        
+        // Update strict mode settings in RoutineManager
+        RoutineManager.updateStrictMode()
+        
         Log.d(TAG, "handleUpdateStrictModeSettings: Completed")
     }
 
@@ -218,5 +250,42 @@ class MainActivity: FlutterActivity() {
             android.widget.Toast.LENGTH_LONG
         ).show()
         Log.d(TAG, "requestAccessibilityPermission: Completed")
+    }
+
+    /**
+     * Requests device admin privileges if not already granted
+     */
+    private fun requestDeviceAdminPrivileges() {
+        val devicePolicyManager = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val adminComponentName = ComponentName(this, DeviceAdminReceiver::class.java)
+        
+        // Check if the app is already a device admin
+        if (!devicePolicyManager.isAdminActive(adminComponentName)) {
+            Log.d(TAG, "Requesting device admin privileges")
+            
+            // Create intent to launch the add device admin activity
+            val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponentName)
+                putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, getString(R.string.device_admin_description))
+            }
+            
+            // Start the activity to request device admin privileges
+            startActivity(intent)
+        } else {
+            Log.d(TAG, "Device admin privileges already granted")
+        }
+    }
+
+    /**
+     * Checks if the app has active device admin privileges
+     * @return Boolean indicating if the app is an active device admin
+     */
+    private fun isDeviceAdminActive(): Boolean {
+        val devicePolicyManager = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val adminComponentName = ComponentName(this, DeviceAdminReceiver::class.java)
+        
+        val isAdmin = devicePolicyManager.isAdminActive(adminComponentName)
+        Log.d(TAG, "Device admin active: $isAdmin")
+        return isAdmin
     }
 }

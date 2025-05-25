@@ -19,6 +19,7 @@ class Routine(
     val snoozedUntil: Date?,
     val conditionsLastMet: Date?,
     val allow: Boolean,
+    val strictMode: Boolean = false,
     private val apps: MutableList<String> = mutableListOf(),
     private val sites: MutableList<String> = mutableListOf()
 ) {
@@ -73,7 +74,8 @@ class Routine(
             iso8601Formatter.parse(json.getString(KEY_SNOOZED_UNTIL)) else null,
         conditionsLastMet = if (json.has(KEY_CONDITIONS_LAST_MET) && !json.isNull(KEY_CONDITIONS_LAST_MET)) 
             iso8601Formatter.parse(json.getString(KEY_CONDITIONS_LAST_MET)) else null,
-        allow = json.getBoolean(KEY_ALLOW)
+        allow = json.getBoolean(KEY_ALLOW),
+        strictMode = if (json.has(KEY_STRICT_MODE) && !json.isNull(KEY_STRICT_MODE)) json.getBoolean(KEY_STRICT_MODE) else false
     ) {
         // Parse apps array
         if (json.has(KEY_APPS) && !json.isNull(KEY_APPS)) {

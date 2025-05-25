@@ -164,4 +164,18 @@ class MobileService extends PlatformService {
     if (!Platform.isAndroid) return false;
     return await _channel.invokeMethod('requestAccessibilityPermission');
   }
+
+  Future<bool> getStrictModePermission({bool request = false}) async {
+    if (Platform.isIOS) {
+      return getBlockPermissions(request: request);
+    } else {
+      bool granted = await _channel.invokeMethod('checkDeviceManagerPolicyPermission');
+
+      if (!granted && request) { 
+        granted = await _channel.invokeMethod('requestDeviceManagerPolicyPermission');
+      }
+
+      return granted;
+    }
+  }
 }

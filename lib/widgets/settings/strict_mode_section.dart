@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:io';
 import '../../services/strict_mode_service.dart';
+import '../../services/mobile_service.dart';
 import '../common/emergency_mode_banner.dart';
 
 class StrictModeSection extends StatefulWidget {
@@ -180,8 +181,7 @@ class _StrictModeSectionState extends State<StrictModeSection> {
           ],
           
           // iOS strict mode options
-          if (!Util.isDesktop()) ...[
-            SwitchListTile(
+          if (!Util.isDesktop()) ...[            SwitchListTile(
               title: const Text('Block changing time settings'),
               value: _strictModeService.blockChangingTimeSettings,
               onChanged: (_strictModeService.inStrictMode && _strictModeService.blockChangingTimeSettings && !_strictModeService.emergencyMode)
@@ -189,6 +189,9 @@ class _StrictModeSectionState extends State<StrictModeSection> {
                 : (value) async {
                   // Only prevent turning off in strict mode when not in emergency mode
                   if (_strictModeService.inStrictMode && !value && !_strictModeService.emergencyMode) return;
+                  
+                  final hasPermission = await MobileService.instance.getStrictModePermission(request: true);
+                  if (!hasPermission) return;
                   
                   final success = await _strictModeService.setBlockChangingTimeSettingsWithConfirmation(context, value);
                   if (success && mounted) {
@@ -205,6 +208,9 @@ class _StrictModeSectionState extends State<StrictModeSection> {
                   // Only prevent turning off in strict mode when not in emergency mode
                   if (_strictModeService.inStrictMode && !value && !_strictModeService.emergencyMode) return;
                   
+                  final hasPermission = await MobileService.instance.getStrictModePermission(request: true);
+                  if (!hasPermission) return;
+                  
                   final success = await _strictModeService.setBlockUninstallingAppsWithConfirmation(context, value);
                   if (success && mounted) {
                     setState(() {});
@@ -219,6 +225,9 @@ class _StrictModeSectionState extends State<StrictModeSection> {
                 : (value) async {
                   // Only prevent turning off in strict mode when not in emergency mode
                   if (_strictModeService.inStrictMode && !value && !_strictModeService.emergencyMode) return;
+                  
+                  final hasPermission = await MobileService.instance.getStrictModePermission(request: true);
+                  if (!hasPermission) return;
                   
                   final success = await _strictModeService.setBlockInstallingAppsWithConfirmation(context, value);
                   if (success && mounted) {

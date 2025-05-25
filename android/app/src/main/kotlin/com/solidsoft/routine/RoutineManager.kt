@@ -14,6 +14,8 @@ import java.util.HashSet
 import android.os.Handler
 import android.os.Looper
 import java.util.Date
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
 
 class RoutineManager : AccessibilityService() {
     private val TAG = "RoutineManager"
@@ -25,6 +27,12 @@ class RoutineManager : AccessibilityService() {
     private var sites = ArrayList<String>()
     private var apps = HashSet<String>()
     private var allow = false
+    
+    // Strict mode settings
+    private var blockChangingTimeSettings = false
+    private var blockUninstallingApps = false
+    private var blockInstallingApps = false
+    private var inStrictMode = false
 
     // Default redirect URL
     private val redirectUrl = "https://www.google.com"
@@ -59,6 +67,7 @@ class RoutineManager : AccessibilityService() {
         
         // Restore state from shared preferences when service is created
         updateRoutines()
+        updateStrictMode()
     }
     
     override fun onServiceConnected() {
@@ -112,6 +121,29 @@ class RoutineManager : AccessibilityService() {
         } catch (e: Exception) {
             Log.e(TAG, "Error updating routines from shared preferences: ${e.message}", e)
         }
+    }
+    
+    /**
+     * Updates strict mode settings from shared preferences
+     * This is used both when strict mode settings are updated from the Flutter app
+     * and when the service is restarted
+     */
+    fun updateStrictMode() {
+        Log.d(TAG, "Updating strict mode settings from shared preferences")
+        // Use applicationContext instead of appContext
+        val sharedPreferences = applicationContext.getSharedPreferences("com.solidsoft.routine.preferences", Context.MODE_PRIVATE)
+        
+        // Get the strict mode settings from shared preferences
+        blockChangingTimeSettings = sharedPreferences.getBoolean("blockChangingTimeSettings", false)
+        blockUninstallingApps = sharedPreferences.getBoolean("blockUninstallingApps", false)
+        blockInstallingApps = sharedPreferences.getBoolean("blockInstallingApps", false)
+        inStrictMode = sharedPreferences.getBoolean("inStrictMode", false)
+        
+        Log.d(TAG, "Updated strict mode settings: blockChangingTimeSettings=$blockChangingTimeSettings, " +
+                "blockUninstallingApps=$blockUninstallingApps, blockInstallingApps=$blockInstallingApps, " +
+                "inStrictMode=$inStrictMode")
+
+        evaluate()
     }
     
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
@@ -608,11 +640,11 @@ class RoutineManager : AccessibilityService() {
         Log.d(TAG, "Evaluating routines")
         
         // Filter routines: active and conditions not met
-        val filteredRoutines = routines.filter { it.isActive() && !it.areConditionsMet() }
-        Log.d(TAG, "Filtered routine count = ${filteredRoutines.size}")
+        val activeRoutines = routines.filter { it.isActive() && !it.areConditionsMet() }
+        Log.d(TAG, "Filtered routine count = ${activeRoutines.size}")
         
         // Check if any routine is an allow list
-        allow = filteredRoutines.any { it.allow }
+        allow = activeRoutines.any { it.allow }
         
         // Sets to hold excluded items (for allow list mode)
         val excludeApps = HashSet<String>()
@@ -620,13 +652,13 @@ class RoutineManager : AccessibilityService() {
         
         // If in allow list mode, collect all items from block lists to exclude
         if (allow) {
-            for (routine in filteredRoutines.filter { !it.allow }) {
+            for (routine in activeRoutines.filter { !it.allow }) {
                 excludeApps.addAll(routine.getApps())
                 excludeSites.addAll(routine.getSites())
             }
             
             // Only keep allow list routines
-            val allowRoutines = filteredRoutines.filter { it.allow }
+            val allowRoutines = activeRoutines.filter { it.allow }
             
             // Process allow lists
             apps.clear()
@@ -644,10 +676,23 @@ class RoutineManager : AccessibilityService() {
             sites.clear()
             
             // Collect all apps and domains to block
-            for (routine in filteredRoutines) {
+            for (routine in activeRoutines) {
                 apps.addAll(routine.getApps())
                 sites.addAll(routine.getSites())
             }
+        }
+
+        // Check if any active routine has strict mode enabled
+        val shouldEnforceStrictMode = activeRoutines.any { it.strictMode }
+
+        Log.d(TAG, "Enforce strict mode: $shouldEnforceStrictMode")
+
+        // Enforce strict mode settings if any active routine has strict mode enabled
+        if (shouldEnforceStrictMode && inStrictMode) {
+            enforceStrictModeSettings()
+        } else {
+            // Disable strict mode enforcement if no active routines have strict mode enabled
+            disableStrictModeSettings()
         }
 
         // Check if the last seen app or site is now blocked
@@ -657,6 +702,57 @@ class RoutineManager : AccessibilityService() {
         val elapsedTime = System.currentTimeMillis() - startTime
         
         Log.d(TAG, "Eval completed in ${elapsedTime}ms, blocked apps: ${apps.size}, blocked domains: ${sites.size}")
+    }
+    
+    /**
+     * Enforces strict mode settings using DevicePolicyManager
+     */
+    private fun enforceStrictModeSettings() {
+        Log.d(TAG, "Enforcing strict mode settings")
+        
+        try {
+            val devicePolicyManager = applicationContext.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val adminComponentName = ComponentName(applicationContext, DeviceAdminReceiver::class.java)
+            
+            // Check if the app is a device admin
+            if (devicePolicyManager.isAdminActive(adminComponentName)) {
+                // Log information about limitations
+                Log.i(TAG, "Device admin is active, but strict mode enforcement is limited")
+                Log.i(TAG, "Full strict mode enforcement requires device owner privileges, which are only available to MDM solutions")
+                
+                // We can still perform some device admin actions like locking the screen
+                // but we can't block uninstallation or control time settings without device owner privileges
+                
+                // For now, we'll just log that strict mode is active but with limited enforcement
+                Log.d(TAG, "Strict mode is active with limited enforcement capabilities")
+            } else {
+                Log.w(TAG, "Cannot enforce strict mode settings: app is not a device admin")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error enforcing strict mode settings: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * Disables strict mode settings enforcement
+     */
+    private fun disableStrictModeSettings() {
+        Log.d(TAG, "Disabling strict mode settings enforcement")
+        
+        try {
+            val devicePolicyManager = applicationContext.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val adminComponentName = ComponentName(applicationContext, DeviceAdminReceiver::class.java)
+            
+            // Check if the app is a device admin
+            if (devicePolicyManager.isAdminActive(adminComponentName)) {
+                // Log that strict mode is disabled
+                Log.d(TAG, "Strict mode settings disabled")
+            } else {
+                Log.w(TAG, "App is not a device admin")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error disabling strict mode settings: ${e.message}", e)
+        }
     }
 
     private fun checkLastSeenForBlocking() {
@@ -671,7 +767,7 @@ class RoutineManager : AccessibilityService() {
             redirectTo(redirectUrl)
         }
     }
-
+    
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "RoutineManager service destroyed")
@@ -683,12 +779,17 @@ class RoutineManager : AccessibilityService() {
         cancelScheduledEvaluations()
     }
 
+
     companion object {
         // Static reference to the active service instance
         private var instance: RoutineManager? = null
         
         fun updateRoutines() {
             instance?.updateRoutines()
+        }
+
+        fun updateStrictMode() {
+            instance?.updateStrictMode()
         }
     }
 }
