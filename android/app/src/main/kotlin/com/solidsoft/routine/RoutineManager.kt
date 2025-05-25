@@ -29,6 +29,7 @@ class RoutineManager : AccessibilityService() {
     private var allow = false
     
     // Strict mode settings
+    private var strictModeEnabled = false
     private var blockChangingTimeSettings = false
     private var blockUninstallingApps = false
     private var blockInstallingApps = false
@@ -220,7 +221,7 @@ class RoutineManager : AccessibilityService() {
             }
             
             // Only process URL if no editable field is focused and it passes validation
-            if (!isEditableFieldFocused && shouldProcessUrl(capturedUrl, currentTime)) {
+            if (!isEditableFieldFocused) {
                 processUrl(packageName, capturedUrl)
             }
         }
@@ -267,25 +268,6 @@ class RoutineManager : AccessibilityService() {
     private fun isAddressBarNode(node: AccessibilityNodeInfo, browserConfig: SupportedBrowserConfig): Boolean {
         val nodeId = node.viewIdResourceName ?: return false
         return nodeId.contains(browserConfig.addressBarId.substringAfterLast("/"))
-    }
-
-    private fun shouldProcessUrl(url: String, currentTime: Long): Boolean {
-        // Don't process the same URL too frequently
-        if (url == currentBrowserUrl && (currentTime - lastProcessedTime) < MIN_PROCESS_INTERVAL) {
-            return false
-        }
-        
-        // Don't process very short URLs that might be incomplete
-        if (url.length < 5) {
-            return false
-        }
-        
-        // Don't process URLs that look like they're being edited
-        if (url.endsWith("|") || url.contains("|")) {
-            return false
-        }
-        
-        return true
     }
 
     private fun processUrl(packageName: String, capturedUrl: String) {
@@ -683,33 +665,17 @@ class RoutineManager : AccessibilityService() {
         }
 
         // Check if any active routine has strict mode enabled
-        val shouldEnforceStrictMode = activeRoutines.any { it.strictMode }
+        strictModeEnabled = activeRoutines.any { it.strictMode }
 
-        Log.d(TAG, "Enforce strict mode: $shouldEnforceStrictMode")
+        Log.d(TAG, "Strict mode enabled: $strictModeEnabled")
 
-        // Enforce strict mode settings if any active routine has strict mode enabled
-        if (shouldEnforceStrictMode && inStrictMode) {
-            enforceStrictModeSettings()
-        } else {
-            // Disable strict mode enforcement if no active routines have strict mode enabled
-            disableStrictModeSettings()
-        }
-
-        // Check if the last seen app or site is now blocked
         checkLastSeenForBlocking()
 
         // Calculate elapsed time
         val elapsedTime = System.currentTimeMillis() - startTime
         
-        Log.d(TAG, "Eval completed in ${elapsedTime}ms, blocked apps: ${apps.size}, blocked domains: ${sites.size}")
-    }
-
-    private fun enforceStrictModeSettings() {
-        Log.d(TAG, "Enforcing strict mode settings")
-    }
-
-    private fun disableStrictModeSettings() {
-        Log.d(TAG, "Disabling strict mode settings enforcement")
+        Log.d(TAG, "Eval completed in ${elapsedTime}ms, blocked apps: ${apps.size}, " +
+                "blocked domains: ${sites.size}")
     }
 
     private fun checkLastSeenForBlocking() {
