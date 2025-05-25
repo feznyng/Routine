@@ -1,6 +1,6 @@
 # Routine
 
-App/site blocker for Windows, MacOS, and iOS.
+App/site blocker for iOS, Android, macOS, and Windows.
 
 ## Features
 
@@ -8,23 +8,23 @@ App/site blocker for Windows, MacOS, and iOS.
 - **Conditions**: Allows you to define special conditions on lists like needing to visit a location or scan an NFC tag/QR Code before unlocking your apps, allowing you to incentivize good habits like going to the gym.
 - **Local-First**: Routine can run entirely offline on your device with optional remote sync. Specifically blocked apps/sites never leave your device.
 - **Flexible**: Supports both block and allow lists and multiple active lists at the same time. 
-- **Strict**: Provides strict mode settings to add friction to modifying routines and can block common bypass methods like the task manager or settings changes. 
+- **Strict**: Provides strict mode settings to add friction to modifying routines and common bypass methods like the task manager or settings changes. 
 
-| Platform | Support 
-| -------- | ------- 
-| MacOS    | ✅         
-| iOS      | ✅        
-| Windows  | ✅        
-| Android  | 🚧        
-| Linux    | 🚧     
+| Platform | Support | Tested On 
+| -------- | ------- | ----- 
+| macOS    | ✅      | 14.6.1      
+| iOS      | ✅      | 18.4.1      
+| Windows  | ✅      | 11 Version 24H2      
+| Android  | ✅      | 16 (Emulator)
+| Linux    | 🚧      |       
 
 ## Development
 
 Docs are WIP - please open an issue if you think something needs further explanation. 
 
-Routine is a Flutter application. Business logic and UI is written in Dart with platform-specific blocking logic written in Swift (MacOS, iOS) and C++ (Windows). 
+Routine is a Flutter application. Business logic and UI is written in Dart with platform-specific blocking logic written in Swift (MacOS, iOS), Kotlin (Android), C++ (Windows). 
 
-To get started with Routine development, follow [Flutter Get Started](https://docs.flutter.dev/get-started/install) for the platform(s) you'd like to develop for. After you have that set up, you can use the standard commands to run/build/develop Routine.
+To get started with Routine development, follow [Flutter Get Started](https://docs.flutter.dev/get-started/install) for the platform(s) you'd like to develop for. After you have that set up, you can use the standard commands to run/build/develop Routine. The following sections describe platform-specific considerations.
 
 ### iOS and MacOS
 iOS and MacOS development will require an [Apple Developer account](https://developer.apple.com/programs/enroll/) due to required entitlements (Family Controls, etc.). 
