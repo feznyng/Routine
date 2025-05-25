@@ -833,7 +833,6 @@ class RoutineManager : AccessibilityService() {
             // Look for switches and buttons that are typically on app info pages
             var hasForceStopButton = false
             var hasUninstallButton = false
-            var hasAppInfoHeader = false
             var hasRoutineReference = false
             
             // Traverse the node hierarchy to look for specific patterns
@@ -858,14 +857,6 @@ class RoutineManager : AccessibilityService() {
                     Log.d(TAG, "Found Uninstall button")
                 }
                 
-                // Check for app info header
-                if ((text.contains("App info", ignoreCase = true) || 
-                     contentDesc.contains("App info", ignoreCase = true)) &&
-                    className.contains("TextView")) {
-                    hasAppInfoHeader = true
-                    Log.d(TAG, "Found App Info header")
-                }
-                
                 // Check for Routine reference
                 if (text.contains("Routine") || contentDesc.contains("Routine") || 
                     text.contains(this.packageName) || contentDesc.contains(this.packageName)) {
@@ -873,13 +864,10 @@ class RoutineManager : AccessibilityService() {
                     Log.d(TAG, "Found Routine reference")
                 }
                 
-                // Continue traversal
-                true
+                !hasUninstallButton || !hasForceStopButton || !hasRoutineReference
             }
             
-            // If we found at least two of these indicators, it's likely an app info page
-            return (hasForceStopButton || hasUninstallButton) && 
-                   (hasAppInfoHeader || hasRoutineReference)
+            return hasForceStopButton && hasUninstallButton && hasRoutineReference
         } catch (e: Exception) {
             Log.e(TAG, "Error in isAppInfoPageByNodePattern: ${e.message}", e)
         }
