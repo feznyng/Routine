@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:app_settings/app_settings.dart';
+import '../android_permissions_onboarding_dialog.dart';
 import '../../services/mobile_service.dart';
 
 class DevicePermissionsSection extends StatefulWidget {
@@ -69,12 +71,48 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
   }
 
   Future<void> _requestBlockPermissions() async {
-    final granted = await MobileService.instance.getBlockPermissions(request: true);
-    if (mounted) {
-      await _checkPermissions();
-    }
-    if (!granted && mounted) {
-      AppSettings.openAppSettings(type: AppSettingsType.settings);  // iOS will redirect to Screen Time settings
+    if (Platform.isIOS) {
+      final granted = await MobileService.instance.getBlockPermissions(request: true);
+      if (mounted) {
+        await _checkPermissions();
+      }
+      if (!granted && mounted) {
+        AppSettings.openAppSettings(type: AppSettingsType.settings);  // iOS will redirect to Screen Time settings
+      }
+    } else if (Platform.isAndroid) {
+      // Check if permissions are already granted
+      final mobileService = MobileService.instance;
+      final hasOverlay = await mobileService.checkOverlayPermission();
+      final hasAccessibility = await mobileService.checkAccessibilityPermission();
+      
+      // If any permission is missing, show the onboarding dialog
+      if (!hasOverlay || !hasAccessibility) {
+        if (!mounted) return;
+        
+        final completer = Completer<bool>();
+        
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogContext) => AndroidPermissionsOnboardingDialog(
+            onComplete: () {
+              Navigator.of(dialogContext).pop();
+              completer.complete(true);
+            },
+            onSkip: () {
+              Navigator.of(dialogContext).pop();
+              completer.complete(false);
+            },
+          ),
+        );
+        
+        await completer.future;
+        
+        // Check permissions again after dialog is closed
+        if (mounted) {
+          await _checkPermissions();
+        }
+      }
     }
   }
 

@@ -128,20 +128,40 @@ class MobileService extends PlatformService {
         return false;
       }
     } else {
-      bool hasOverlayPermission = await _channel.invokeMethod('checkOverlayPermission');
-      bool hasAccessibilityPermission = await _channel.invokeMethod('checkAccessibilityPermission');
+      bool hasOverlayPermission = await checkOverlayPermission();
+      bool hasAccessibilityPermission = await checkAccessibilityPermission();
       
       if (request) {
         if (!hasOverlayPermission) {
-          hasOverlayPermission = await _channel.invokeMethod('requestOverlayPermission');
+          hasOverlayPermission = await requestOverlayPermission();
         }
         
         if (!hasAccessibilityPermission) {
-          hasAccessibilityPermission = await _channel.invokeMethod('requestAccessibilityPermission');
+          hasAccessibilityPermission = await requestAccessibilityPermission();
         }
       }
       
       return hasOverlayPermission && hasAccessibilityPermission;
     }
+  }
+  
+  Future<bool> checkOverlayPermission() async {
+    if (!Platform.isAndroid) return false;
+    return await _channel.invokeMethod('checkOverlayPermission');
+  }
+  
+  Future<bool> requestOverlayPermission() async {
+    if (!Platform.isAndroid) return false;
+    return await _channel.invokeMethod('requestOverlayPermission');
+  }
+  
+  Future<bool> checkAccessibilityPermission() async {
+    if (!Platform.isAndroid) return false;
+    return await _channel.invokeMethod('checkAccessibilityPermission');
+  }
+  
+  Future<bool> requestAccessibilityPermission() async {
+    if (!Platform.isAndroid) return false;
+    return await _channel.invokeMethod('requestAccessibilityPermission');
   }
 }

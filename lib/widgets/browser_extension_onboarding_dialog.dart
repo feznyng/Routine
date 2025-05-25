@@ -607,7 +607,7 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
                         widget.onSkip();
                       }
                     },
-                    child: const Text('Skip Setup'),
+                    child: const Text('Cancel'),
                   ),
                   Row(
                     children: [

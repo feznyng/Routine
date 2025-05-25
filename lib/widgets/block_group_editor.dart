@@ -1,7 +1,9 @@
 import 'package:Routine/services/strict_mode_service.dart';
 import 'package:flutter/material.dart';
-import 'dart:io' show Platform;
+import 'dart:async';
+import 'dart:io';
 import 'package:app_settings/app_settings.dart';
+import 'android_permissions_onboarding_dialog.dart';
 import '../pages/block_apps_page.dart';
 import '../pages/block_sites_page.dart';
 import 'app_site_selector.dart';
@@ -89,7 +91,40 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
         );
         return;
       }
+    } else if (Platform.isAndroid) {
+      // Check if permissions are already granted
+      final mobileService = MobileService.instance;
+      final hasOverlay = await mobileService.checkOverlayPermission();
+      final hasAccessibility = await mobileService.checkAccessibilityPermission();
+      
+      // If any permission is missing, show the onboarding dialog
+      if (!hasOverlay || !hasAccessibility) {
+        if (!mounted) return;
+        
+        final completer = Completer<bool>();
+        
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogContext) => AndroidPermissionsOnboardingDialog(
+            onComplete: () {
+              Navigator.of(dialogContext).pop();
+              completer.complete(true);
+            },
+            onSkip: () {
+              Navigator.of(dialogContext).pop();
+              completer.complete(false);
+            },
+          ),
+        );
+        
+        final permissionsGranted = await completer.future;
+        if (!permissionsGranted) {
+          return; // User skipped the permissions setup
+        }
+      }
     }
+    
     
     if (!mounted) return;
     await Navigator.of(context).push(
