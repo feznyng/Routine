@@ -4,18 +4,20 @@ import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import java.util.ArrayList
-import org.json.JSONArray
 import java.util.Calendar
 import java.util.HashSet
-import android.os.Handler
-import android.os.Looper
+import org.json.JSONArray
 import java.util.Date
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
+import android.os.UserManager
 
 class RoutineManager : AccessibilityService() {
     private val TAG = "RoutineManager"
@@ -716,15 +718,35 @@ class RoutineManager : AccessibilityService() {
             
             // Check if the app is a device admin
             if (devicePolicyManager.isAdminActive(adminComponentName)) {
-                // Log information about limitations
-                Log.i(TAG, "Device admin is active, but strict mode enforcement is limited")
-                Log.i(TAG, "Full strict mode enforcement requires device owner privileges, which are only available to MDM solutions")
+                Log.i(TAG, "Device admin is active, applying strict mode settings")
                 
-                // We can still perform some device admin actions like locking the screen
-                // but we can't block uninstallation or control time settings without device owner privileges
+                // Apply each strict mode setting based on configuration
+                if (blockChangingTimeSettings) {
+                    try {
+                        devicePolicyManager.addUserRestriction(adminComponentName, UserManager.DISALLOW_CONFIG_DATE_TIME)
+                        Log.d(TAG, "Blocked changing time settings")
+                    } catch (e: SecurityException) {
+                        Log.w(TAG, "Failed to block time settings: ${e.message}.")
+                    }
+                }
                 
-                // For now, we'll just log that strict mode is active but with limited enforcement
-                Log.d(TAG, "Strict mode is active with limited enforcement capabilities")
+                if (blockUninstallingApps) {
+                    try {
+                        devicePolicyManager.addUserRestriction(adminComponentName, UserManager.DISALLOW_UNINSTALL_APPS)
+                        Log.d(TAG, "Blocked uninstalling apps")
+                    } catch (e: SecurityException) {
+                        Log.w(TAG, "Failed to block uninstalling apps: ${e.message}. This requires device owner privileges.")
+                    }
+                }
+                
+                if (blockInstallingApps) {
+                    try {
+                        devicePolicyManager.addUserRestriction(adminComponentName, UserManager.DISALLOW_INSTALL_APPS)
+                        Log.d(TAG, "Blocked installing apps")
+                    } catch (e: SecurityException) {
+                        Log.w(TAG, "Failed to block installing apps: ${e.message}. This requires device owner privileges.")
+                    }
+                }
             } else {
                 Log.w(TAG, "Cannot enforce strict mode settings: app is not a device admin")
             }
@@ -745,7 +767,26 @@ class RoutineManager : AccessibilityService() {
             
             // Check if the app is a device admin
             if (devicePolicyManager.isAdminActive(adminComponentName)) {
-                // Log that strict mode is disabled
+                // Disable each strict mode setting
+                if (devicePolicyManager.isDeviceOwnerApp(packageName)) {
+                    try {
+                        // Remove time settings restriction
+                        devicePolicyManager.clearUserRestriction(adminComponentName, UserManager.DISALLOW_CONFIG_DATE_TIME)
+                        
+                        // Remove uninstall apps restriction
+                        devicePolicyManager.clearUserRestriction(adminComponentName, UserManager.DISALLOW_UNINSTALL_APPS)
+                        
+                        // Remove install apps restriction
+                        devicePolicyManager.clearUserRestriction(adminComponentName, UserManager.DISALLOW_INSTALL_APPS)
+                        
+                        Log.d(TAG, "Disabled all strict mode settings")
+                    } catch (e: SecurityException) {
+                        Log.w(TAG, "Failed to disable some restrictions: ${e.message}. This may require device owner privileges.")
+                    }
+                } else {
+                    Log.w(TAG, "Disabling restrictions requires device owner privileges")
+                }
+                
                 Log.d(TAG, "Strict mode settings disabled")
             } else {
                 Log.w(TAG, "App is not a device admin")

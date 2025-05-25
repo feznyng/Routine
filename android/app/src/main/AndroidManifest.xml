@@ -10,6 +10,7 @@
     <!-- Permissions for device administration -->
     <uses-permission android:name="android.permission.BIND_DEVICE_ADMIN"
         tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.MANAGE_DEVICE_POLICY_APPS_CONTROL"/>
 
     <application
         android:label="Routine"
