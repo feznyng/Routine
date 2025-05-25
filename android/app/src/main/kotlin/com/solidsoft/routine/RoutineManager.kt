@@ -4,7 +4,6 @@ import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -15,9 +14,6 @@ import java.util.Calendar
 import java.util.HashSet
 import org.json.JSONArray
 import java.util.Date
-import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
-import android.os.UserManager
 
 class RoutineManager : AccessibilityService() {
     private val TAG = "RoutineManager"
@@ -705,95 +701,13 @@ class RoutineManager : AccessibilityService() {
         
         Log.d(TAG, "Eval completed in ${elapsedTime}ms, blocked apps: ${apps.size}, blocked domains: ${sites.size}")
     }
-    
-    /**
-     * Enforces strict mode settings using DevicePolicyManager
-     */
+
     private fun enforceStrictModeSettings() {
         Log.d(TAG, "Enforcing strict mode settings")
-        
-        try {
-            val devicePolicyManager = applicationContext.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-            val adminComponentName = ComponentName(applicationContext, DeviceAdminReceiver::class.java)
-            
-            // Check if the app is a device admin
-            if (devicePolicyManager.isAdminActive(adminComponentName)) {
-                Log.i(TAG, "Device admin is active, applying strict mode settings")
-                
-                // Apply each strict mode setting based on configuration
-                if (blockChangingTimeSettings) {
-                    try {
-                        devicePolicyManager.addUserRestriction(adminComponentName, UserManager.DISALLOW_CONFIG_DATE_TIME)
-                        Log.d(TAG, "Blocked changing time settings")
-                    } catch (e: SecurityException) {
-                        Log.w(TAG, "Failed to block time settings: ${e.message}.")
-                    }
-                }
-                
-                if (blockUninstallingApps) {
-                    try {
-                        devicePolicyManager.addUserRestriction(adminComponentName, UserManager.DISALLOW_UNINSTALL_APPS)
-                        Log.d(TAG, "Blocked uninstalling apps")
-                    } catch (e: SecurityException) {
-                        Log.w(TAG, "Failed to block uninstalling apps: ${e.message}. This requires device owner privileges.")
-                    }
-                }
-                
-                if (blockInstallingApps) {
-                    try {
-                        devicePolicyManager.addUserRestriction(adminComponentName, UserManager.DISALLOW_INSTALL_APPS)
-                        Log.d(TAG, "Blocked installing apps")
-                    } catch (e: SecurityException) {
-                        Log.w(TAG, "Failed to block installing apps: ${e.message}. This requires device owner privileges.")
-                    }
-                }
-            } else {
-                Log.w(TAG, "Cannot enforce strict mode settings: app is not a device admin")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error enforcing strict mode settings: ${e.message}", e)
-        }
     }
-    
-    /**
-     * Disables strict mode settings enforcement
-     */
+
     private fun disableStrictModeSettings() {
         Log.d(TAG, "Disabling strict mode settings enforcement")
-        
-        try {
-            val devicePolicyManager = applicationContext.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-            val adminComponentName = ComponentName(applicationContext, DeviceAdminReceiver::class.java)
-            
-            // Check if the app is a device admin
-            if (devicePolicyManager.isAdminActive(adminComponentName)) {
-                // Disable each strict mode setting
-                if (devicePolicyManager.isDeviceOwnerApp(packageName)) {
-                    try {
-                        // Remove time settings restriction
-                        devicePolicyManager.clearUserRestriction(adminComponentName, UserManager.DISALLOW_CONFIG_DATE_TIME)
-                        
-                        // Remove uninstall apps restriction
-                        devicePolicyManager.clearUserRestriction(adminComponentName, UserManager.DISALLOW_UNINSTALL_APPS)
-                        
-                        // Remove install apps restriction
-                        devicePolicyManager.clearUserRestriction(adminComponentName, UserManager.DISALLOW_INSTALL_APPS)
-                        
-                        Log.d(TAG, "Disabled all strict mode settings")
-                    } catch (e: SecurityException) {
-                        Log.w(TAG, "Failed to disable some restrictions: ${e.message}. This may require device owner privileges.")
-                    }
-                } else {
-                    Log.w(TAG, "Disabling restrictions requires device owner privileges")
-                }
-                
-                Log.d(TAG, "Strict mode settings disabled")
-            } else {
-                Log.w(TAG, "App is not a device admin")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error disabling strict mode settings: ${e.message}", e)
-        }
     }
 
     private fun checkLastSeenForBlocking() {
