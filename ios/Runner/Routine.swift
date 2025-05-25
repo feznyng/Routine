@@ -184,24 +184,69 @@ class Routine: Codable {
         // Get the current date and extract the time components
         let now = Date()
         let calendar = Calendar.current
-        let components = calendar.dateComponents([.year, .month, .day], from: now)
         
-        // Use startTime if defined, otherwise use 0 (midnight)
-        // This assumes all-day routines start at midnight
-        let effectiveStartTime = startTime ?? 0
+        // Handle all-day routines
+        if allDay || (startTime == nil && endTime == nil) {
+            // For all-day routines, just check if conditionsLastMet is today
+            return calendar.isDateInToday(lastMet)
+        }
         
-        let startHour = effectiveStartTime / 60
-        let startMinute = effectiveStartTime % 60
+        // Unwrap optional startTime and endTime with defaults
+        guard let start = startTime, let end = endTime else {
+            return false
+        }
         
-        var startComponents = components
-        startComponents.hour = startHour
-        startComponents.minute = startMinute
+        // Get current time components
+        let nowComponents = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: now)
+        let currDate = calendar.date(from: nowComponents) ?? now
+        
+        // Get today's date at start time
+        var startComponents = calendar.dateComponents([.year, .month, .day], from: now)
+        startComponents.hour = start / 60
+        startComponents.minute = start % 60
         startComponents.second = 0
-        
         guard let todayAtStartTime = calendar.date(from: startComponents) else {
             return false
         }
         
+        // If this is an overnight routine (start time > end time)
+        if end < start {
+            // Get yesterday's date at start time
+            guard let yesterdayDate = calendar.date(byAdding: .day, value: -1, to: currDate) else {
+                return false
+            }
+            var yesterdayComponents = calendar.dateComponents([.year, .month, .day], from: yesterdayDate)
+            yesterdayComponents.hour = start / 60
+            yesterdayComponents.minute = start % 60
+            yesterdayComponents.second = 0
+            
+            guard let yesterdayAtStartTime = calendar.date(from: yesterdayComponents) else {
+                return false
+            }
+            
+            // Get today's date at end time
+            var endComponents = calendar.dateComponents([.year, .month, .day], from: now)
+            endComponents.hour = end / 60
+            endComponents.minute = end % 60
+            endComponents.second = 0
+            guard let todayAtEndTime = calendar.date(from: endComponents) else {
+                return false
+            }
+            
+            // Current time is after midnight but before end time
+            if now < todayAtEndTime {
+                // Check if conditions were met after yesterday's start time
+                return yesterdayAtStartTime.compare(lastMet) == .orderedAscending
+            }
+            // Current time is after start time but before midnight
+            else if now >= todayAtStartTime {
+                // Check if conditions were met after today's start time
+                return todayAtStartTime.compare(lastMet) == .orderedAscending
+            }
+            return false
+        }
+        
+        // Normal case: start time is before end time
         // Return true if conditionsLastMet is after today's start time (completed during routine)
         return todayAtStartTime.compare(lastMet) == .orderedAscending
     }
