@@ -96,7 +96,8 @@ class MainActivity: FlutterActivity() {
 
     private fun handleUpdateStrictModeSettings(settings: Map<String, Any>) {
         Log.d(TAG, "handleUpdateStrictModeSettings: Starting")
-        // Placeholder implementation for handling strict mode settings
+        
+        // Extract strict mode settings
         val blockChangingTimeSettings = settings["blockChangingTimeSettings"] as Boolean
         val blockUninstallingApps = settings["blockUninstallingApps"] as Boolean
         val blockInstallingApps = settings["blockInstallingApps"] as Boolean
@@ -106,7 +107,17 @@ class MainActivity: FlutterActivity() {
                 "blockUninstallingApps=$blockUninstallingApps, blockInstallingApps=$blockInstallingApps, " +
                 "inStrictMode=$inStrictMode")
         
-        // TODO: Implement actual handling of strict mode settings for Android using DevicePolicyManager
+        // Persist strict mode settings to shared preferences
+        val sharedPreferences = getSharedPreferences("com.solidsoft.routine.preferences", Context.MODE_PRIVATE)
+        sharedPreferences.edit {
+            putBoolean("blockChangingTimeSettings", blockChangingTimeSettings)
+            putBoolean("blockUninstallingApps", blockUninstallingApps)
+            putBoolean("blockInstallingApps", blockInstallingApps)
+            putBoolean("inStrictMode", inStrictMode)
+        }
+
+        RoutineManager.updateStrictMode()
+        
         Log.d(TAG, "handleUpdateStrictModeSettings: Completed")
     }
 
@@ -134,26 +145,18 @@ class MainActivity: FlutterActivity() {
     
     private fun checkOverlayPermission(): Boolean {
         Log.d(TAG, "checkOverlayPermission: Starting")
-        var result = true
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            result = Settings.canDrawOverlays(this)
-        }
+        val result = Settings.canDrawOverlays(this)
         Log.d(TAG, "checkOverlayPermission: Completed with result=$result")
         return result // On older versions, the permission is granted at install time
     }
     
     private fun requestOverlayPermission() {
         Log.d(TAG, "requestOverlayPermission: Starting")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (!Settings.canDrawOverlays(this)) {
-                Log.d(TAG, "Overlay permission not granted, requesting...")
-                val intent = Intent(
-                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    "package:$packageName".toUri()
-                )
-                startActivity(intent)
-            }
-        }
+        val intent = Intent(
+            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            "package:$packageName".toUri()
+        )
+        startActivity(intent)
         Log.d(TAG, "requestOverlayPermission: Completed")
     }
 

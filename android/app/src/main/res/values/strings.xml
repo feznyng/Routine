@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="website_blocker_accessibility_service_description">Performs blocking based on your routines.</string>
+    <string name="routine_accessibility_service_description">Performs blocking based on your routines.</string>
+    <string name="device_admin_label">Routine Device Admin</string>
+    <string name="device_admin_description">Allows Routine to enforce strict mode settings such as blocking time changes, app installations, and uninstallations.</string>
 </resources>

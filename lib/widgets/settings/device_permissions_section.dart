@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:Routine/services/mobile_service.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:app_settings/app_settings.dart';
 import '../android_permissions_onboarding_dialog.dart';
-import '../../services/mobile_service.dart';
 
 class DevicePermissionsSection extends StatefulWidget {
   const DevicePermissionsSection({super.key});

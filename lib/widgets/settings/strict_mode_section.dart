@@ -180,16 +180,12 @@ class _StrictModeSectionState extends State<StrictModeSection> {
           ],
           
           // iOS strict mode options
-          if (!Util.isDesktop()) ...[
-            SwitchListTile(
+          if (!Util.isDesktop()) ...[            SwitchListTile(
               title: const Text('Block changing time settings'),
               value: _strictModeService.blockChangingTimeSettings,
               onChanged: (_strictModeService.inStrictMode && _strictModeService.blockChangingTimeSettings && !_strictModeService.emergencyMode)
                 ? null // Disable the switch when trying to turn it off in strict mode (unless in emergency mode)
                 : (value) async {
-                  // Only prevent turning off in strict mode when not in emergency mode
-                  if (_strictModeService.inStrictMode && !value && !_strictModeService.emergencyMode) return;
-                  
                   final success = await _strictModeService.setBlockChangingTimeSettingsWithConfirmation(context, value);
                   if (success && mounted) {
                     setState(() {});
@@ -202,9 +198,6 @@ class _StrictModeSectionState extends State<StrictModeSection> {
               onChanged: (_strictModeService.inStrictMode && _strictModeService.blockUninstallingApps)
                 ? null // Disable the switch when trying to turn it off in strict mode
                 : (value) async {
-                  // Only prevent turning off in strict mode when not in emergency mode
-                  if (_strictModeService.inStrictMode && !value && !_strictModeService.emergencyMode) return;
-                  
                   final success = await _strictModeService.setBlockUninstallingAppsWithConfirmation(context, value);
                   if (success && mounted) {
                     setState(() {});
@@ -217,9 +210,6 @@ class _StrictModeSectionState extends State<StrictModeSection> {
               onChanged: (_strictModeService.inStrictMode && _strictModeService.blockInstallingApps)
                 ? null // Disable the switch when trying to turn it off in strict mode
                 : (value) async {
-                  // Only prevent turning off in strict mode when not in emergency mode
-                  if (_strictModeService.inStrictMode && !value && !_strictModeService.emergencyMode) return;
-                  
                   final success = await _strictModeService.setBlockInstallingAppsWithConfirmation(context, value);
                   if (success && mounted) {
                     setState(() {});

@@ -4,16 +4,18 @@ import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import java.util.ArrayList
-import org.json.JSONArray
 import java.util.Calendar
 import java.util.HashSet
-import android.os.Handler
-import android.os.Looper
+import org.json.JSONArray
 import java.util.Date
+
+private const val SYSTEM_UI_PACKAGE = "com.android.systemui"
 
 class RoutineManager : AccessibilityService() {
     private val TAG = "RoutineManager"
@@ -25,6 +27,12 @@ class RoutineManager : AccessibilityService() {
     private var sites = ArrayList<String>()
     private var apps = HashSet<String>()
     private var allow = false
+    
+    // Strict mode settings
+    private var strictModeEnabled = false
+    private var blockChangingTimeSettings = false
+    private var blockUninstallingApps = false
+    private var blockInstallingApps = false
 
     // Default redirect URL
     private val redirectUrl = "https://www.google.com"
@@ -52,6 +60,10 @@ class RoutineManager : AccessibilityService() {
     private var evaluationTimes = ArrayList<EvaluationTime>()
     private var currentEvaluationIndex = 0
 
+    // Add these properties at the class level
+    private var lastBackPressTime = 0L
+    private val BACK_PRESS_DEBOUNCE_MS = 1000L // 1 second debounce
+
     override fun onCreate() {
         Log.d(TAG, "RoutineManager service onCreate")
         super.onCreate()
@@ -59,6 +71,7 @@ class RoutineManager : AccessibilityService() {
         
         // Restore state from shared preferences when service is created
         updateRoutines()
+        updateStrictMode()
     }
     
     override fun onServiceConnected() {
@@ -114,19 +127,65 @@ class RoutineManager : AccessibilityService() {
         }
     }
     
+    /**
+     * Updates strict mode settings from shared preferences
+     * This is used both when strict mode settings are updated from the Flutter app
+     * and when the service is restarted
+     */
+    fun updateStrictMode() {
+        Log.d(TAG, "Updating strict mode settings from shared preferences")
+        // Use applicationContext instead of appContext
+        val sharedPreferences = applicationContext.getSharedPreferences("com.solidsoft.routine.preferences", Context.MODE_PRIVATE)
+        
+        // Get the strict mode settings from shared preferences
+        blockChangingTimeSettings = sharedPreferences.getBoolean("blockChangingTimeSettings", false)
+        blockUninstallingApps = sharedPreferences.getBoolean("blockUninstallingApps", false)
+        blockInstallingApps = sharedPreferences.getBoolean("blockInstallingApps", false)
+
+        Log.d(TAG, "Updated strict mode settings: blockChangingTimeSettings=$blockChangingTimeSettings, " +
+                "blockUninstallingApps=$blockUninstallingApps, blockInstallingApps=$blockInstallingApps")
+
+        evaluate()
+    }
+    
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         val eventType = event.eventType
         val currentTime = System.currentTimeMillis()
         val packageName = event.packageName?.toString() ?: return
         val changeType = event.contentChangeTypes;
 
-        if (changeType != AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED) {
-            // Update the last seen app and timestamp
+        if (changeType != AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED &&
+            packageName != SYSTEM_UI_PACKAGE) {
             lastSeenApp = packageName
             lastSeenTimestamp = currentTime
         }
 
-        // block apps or remove overlay
+        // Check strict mode restrictions
+        if (strictModeEnabled) {
+            // Block uninstalling apps
+            if (blockUninstallingApps &&
+                (isUninstallDialog(event) || isAccessibilitySettingsForRoutine(event))) {
+                Log.d(TAG, "Blocking access to app info or accessibility settings for Routine")
+                goBack()
+                return
+            }
+            
+            // Block installing apps
+            if (blockInstallingApps && isAppStore(packageName)) {
+                Log.d(TAG, "Blocking access to app store: $packageName")
+                goBack()
+                return
+            }
+            
+            // Block changing time settings
+            if (blockChangingTimeSettings && isTimeSettingsPage(event)) {
+                Log.d(TAG, "Blocking access to time settings")
+                goBack()
+                return
+            }
+        }
+
+        // block apps
         if (isBlockedApp(packageName) &&
             changeType != AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED) {
             showBlockOverlay(packageName)
@@ -188,7 +247,7 @@ class RoutineManager : AccessibilityService() {
             }
             
             // Only process URL if no editable field is focused and it passes validation
-            if (!isEditableFieldFocused && shouldProcessUrl(capturedUrl, currentTime)) {
+            if (!isEditableFieldFocused) {
                 processUrl(packageName, capturedUrl)
             }
         }
@@ -235,25 +294,6 @@ class RoutineManager : AccessibilityService() {
     private fun isAddressBarNode(node: AccessibilityNodeInfo, browserConfig: SupportedBrowserConfig): Boolean {
         val nodeId = node.viewIdResourceName ?: return false
         return nodeId.contains(browserConfig.addressBarId.substringAfterLast("/"))
-    }
-
-    private fun shouldProcessUrl(url: String, currentTime: Long): Boolean {
-        // Don't process the same URL too frequently
-        if (url == currentBrowserUrl && (currentTime - lastProcessedTime) < MIN_PROCESS_INTERVAL) {
-            return false
-        }
-        
-        // Don't process very short URLs that might be incomplete
-        if (url.length < 5) {
-            return false
-        }
-        
-        // Don't process URLs that look like they're being edited
-        if (url.endsWith("|") || url.contains("|")) {
-            return false
-        }
-        
-        return true
     }
 
     private fun processUrl(packageName: String, capturedUrl: String) {
@@ -384,6 +424,20 @@ class RoutineManager : AccessibilityService() {
         Log.d(TAG, "RoutineManager service interrupted")
     }
     
+    /**
+     * Navigates back using the global back action
+     */
+    private fun goBack() {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastBackPressTime > BACK_PRESS_DEBOUNCE_MS) {
+            Log.d(TAG, "Navigating back")
+            performGlobalAction(GLOBAL_ACTION_BACK)
+            lastBackPressTime = currentTime
+        } else {
+            Log.d(TAG, "Ignoring back press due to debounce (last press was ${currentTime - lastBackPressTime}ms ago)")
+        }
+    }
+
     private fun showBlockOverlay(packageName: String) {
         try {
             // Update notification to inform the user that an app is being blocked
@@ -608,11 +662,11 @@ class RoutineManager : AccessibilityService() {
         Log.d(TAG, "Evaluating routines")
         
         // Filter routines: active and conditions not met
-        val filteredRoutines = routines.filter { it.isActive() && !it.areConditionsMet() }
-        Log.d(TAG, "Filtered routine count = ${filteredRoutines.size}")
+        val activeRoutines = routines.filter { it.isActive() && !it.areConditionsMet() }
+        Log.d(TAG, "Filtered routine count = ${activeRoutines.size}")
         
         // Check if any routine is an allow list
-        allow = filteredRoutines.any { it.allow }
+        allow = activeRoutines.any { it.allow }
         
         // Sets to hold excluded items (for allow list mode)
         val excludeApps = HashSet<String>()
@@ -620,13 +674,13 @@ class RoutineManager : AccessibilityService() {
         
         // If in allow list mode, collect all items from block lists to exclude
         if (allow) {
-            for (routine in filteredRoutines.filter { !it.allow }) {
+            for (routine in activeRoutines.filter { !it.allow }) {
                 excludeApps.addAll(routine.getApps())
                 excludeSites.addAll(routine.getSites())
             }
             
             // Only keep allow list routines
-            val allowRoutines = filteredRoutines.filter { it.allow }
+            val allowRoutines = activeRoutines.filter { it.allow }
             
             // Process allow lists
             apps.clear()
@@ -644,19 +698,24 @@ class RoutineManager : AccessibilityService() {
             sites.clear()
             
             // Collect all apps and domains to block
-            for (routine in filteredRoutines) {
+            for (routine in activeRoutines) {
                 apps.addAll(routine.getApps())
                 sites.addAll(routine.getSites())
             }
         }
 
-        // Check if the last seen app or site is now blocked
+        // Check if any active routine has strict mode enabled
+        strictModeEnabled = activeRoutines.any { it.strictMode }
+
+        Log.d(TAG, "Strict mode enabled: $strictModeEnabled")
+
         checkLastSeenForBlocking()
 
         // Calculate elapsed time
         val elapsedTime = System.currentTimeMillis() - startTime
         
-        Log.d(TAG, "Eval completed in ${elapsedTime}ms, blocked apps: ${apps.size}, blocked domains: ${sites.size}")
+        Log.d(TAG, "Eval completed in ${elapsedTime}ms, blocked apps: ${apps.size}, " +
+                "blocked domains: ${sites.size}")
     }
 
     private fun checkLastSeenForBlocking() {
@@ -671,7 +730,7 @@ class RoutineManager : AccessibilityService() {
             redirectTo(redirectUrl)
         }
     }
-
+    
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "RoutineManager service destroyed")
@@ -683,12 +742,181 @@ class RoutineManager : AccessibilityService() {
         cancelScheduledEvaluations()
     }
 
+    /**
+     * Checks if the current screen is the app info or accessibility settings page for Routine
+     */
+    private fun isAccessibilitySettingsForRoutine(event: AccessibilityEvent): Boolean {
+        val packageName = event.packageName?.toString() ?: return false
+
+        if (packageName != "com.android.settings") {
+            return false
+        }
+
+        val rootNode = event.source ?: return false
+
+        try {
+            Log.d(TAG, "Checking if current screen is accessibility settings for Routine")
+            
+            val accessibilityTexts = rootNode.findAccessibilityNodeInfosByText("Routine")
+            val routineServiceTexts = rootNode.findAccessibilityNodeInfosByText("Use Routine")
+            
+            if (accessibilityTexts.isNotEmpty() && routineServiceTexts.isNotEmpty()) {
+                return true
+            }
+
+            return false
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking app info page: ${e.message}", e)
+        }
+        
+        return false
+    }
+
+    private fun isUninstallDialog(event: AccessibilityEvent): Boolean {
+        val packageName = event.packageName?.toString() ?: return false
+
+        if (!Util.isPackageInstaller(packageName)) {
+            return false
+        }
+
+        val rootNode = event.source ?: return false
+
+        try {
+            var hasUninstallText = false
+            var hasRoutineReference = false
+            var hasOkButton = false
+            var hasCancelButton = false
+            
+            // Traverse the node hierarchy to look for specific patterns
+            traverseNodes(rootNode) { node ->
+                val className = node.className?.toString() ?: ""
+                val text = node.text?.toString() ?: ""
+                val contentDesc = node.contentDescription?.toString() ?: ""
+                
+                // Check for uninstall text
+                if (text.contains("Uninstall", ignoreCase = true) || 
+                    contentDesc.contains("Uninstall", ignoreCase = true)) {
+                    hasUninstallText = true
+                    Log.d(TAG, "Found Uninstall text")
+                }
+                
+                // Check for Routine reference
+                if (text.contains("Routine") || contentDesc.contains("Routine") || 
+                    text.contains(this.packageName) || contentDesc.contains(this.packageName)) {
+                    hasRoutineReference = true
+                    Log.d(TAG, "Found Routine reference in dialog")
+                }
+                
+                // Check for OK button
+                if ((text.equals("OK", ignoreCase = true) || 
+                     text.equals("Yes", ignoreCase = true) ||
+                     contentDesc.equals("OK", ignoreCase = true) ||
+                     contentDesc.equals("Yes", ignoreCase = true)) &&
+                    className.contains("Button")) {
+                    hasOkButton = true
+                    Log.d(TAG, "Found OK/Yes button")
+                }
+                
+                // Check for Cancel button
+                if ((text.equals("Cancel", ignoreCase = true) || 
+                     text.equals("No", ignoreCase = true) ||
+                     contentDesc.equals("Cancel", ignoreCase = true) ||
+                     contentDesc.equals("No", ignoreCase = true)) &&
+                    className.contains("Button")) {
+                    hasCancelButton = true
+                    Log.d(TAG, "Found Cancel/No button")
+                }
+                
+                // Continue traversal
+                true
+            }
+
+            // If we found uninstall text, Routine reference, and at least one button, it's likely an uninstall dialog
+            return hasUninstallText && hasRoutineReference && (hasOkButton || hasCancelButton)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in isUninstallDialogByNodePattern: ${e.message}", e)
+        }
+        
+        return false
+    }
+    
+    /**
+     * Traverses the node hierarchy and calls the provided function for each node
+     * Returns early if the function returns false
+     */
+    private fun traverseNodes(node: AccessibilityNodeInfo?, action: (AccessibilityNodeInfo) -> Boolean): Boolean {
+        if (node == null) return true
+        
+        // Process this node
+        if (!action(node)) {
+            return false
+        }
+        
+        // Process children
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            val shouldContinue = traverseNodes(child, action)
+            child.recycle()
+            if (!shouldContinue) {
+                return false
+            }
+        }
+        
+        return true
+    }
+
+    /**
+     * Checks if the current app is an app store (Play Store or F-Droid)
+     */
+    private fun isAppStore(packageName: String): Boolean {
+        return packageName == "com.android.vending" || // Google Play Store
+               packageName == "org.fdroid.fdroid"      // F-Droid
+    }
+    
+    /**
+     * Checks if the current screen is the date/time settings page
+     */
+    private fun isTimeSettingsPage(event: AccessibilityEvent): Boolean {
+        val packageName = event.packageName?.toString() ?: return false
+        
+        // Check if we're in the Settings app
+        if (packageName != "com.android.settings") {
+            return false
+        }
+        
+        // Get the root node to examine the content
+        val rootNode = event.source ?: return false
+        
+        try {
+            // Look for indicators of the date & time settings page
+            val dateTimeTexts = rootNode.findAccessibilityNodeInfosByText("Date & time")
+            val timeTexts = rootNode.findAccessibilityNodeInfosByText("Set time")
+            val dateTexts = rootNode.findAccessibilityNodeInfosByText("Set date")
+            val timezoneTexts = rootNode.findAccessibilityNodeInfosByText("Select time zone")
+            val automaticTexts = rootNode.findAccessibilityNodeInfosByText("Automatic date & time")
+            
+            return dateTimeTexts.isNotEmpty() || 
+                   timeTexts.isNotEmpty() || 
+                   dateTexts.isNotEmpty() || 
+                   timezoneTexts.isNotEmpty() || 
+                   automaticTexts.isNotEmpty()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking time settings page: ${e.message}", e)
+        }
+        
+        return false
+    }
+
     companion object {
         // Static reference to the active service instance
         private var instance: RoutineManager? = null
         
         fun updateRoutines() {
             instance?.updateRoutines()
+        }
+
+        fun updateStrictMode() {
+            instance?.updateStrictMode()
         }
     }
 }
