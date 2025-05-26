@@ -35,7 +35,7 @@ class RoutineManager : AccessibilityService() {
     private var blockInstallingApps = false
 
     // Default redirect URL
-    private val redirectUrl = "https://www.routineblocker.com/blocked"
+    private val redirectUrl = "https://www.routineblocker.com/blocked.html"
 
     // Track current browser app and URL to avoid redundant processing
     private var currentBrowserUrl = ""

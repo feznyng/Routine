@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' show Platform;
 import 'package:nfc_manager/nfc_manager.dart';
 import '../../../models/condition.dart';
+import '../../common/mobile_required_callout.dart';
 
 class NfcConditionWidget extends StatefulWidget {
   final Condition condition;
@@ -53,6 +54,12 @@ class _NfcConditionWidgetState extends State<NfcConditionWidget> {
             'The condition name will be written to the NFC tag. You can use the same tag in another condition by entering the same name.',
           ),
         ),
+        // Show callout for desktop users
+        if (!kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux))
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: MobileRequiredCallout(feature: 'NFC scanning'),
+          ),
         Row(
           children: [
             Expanded(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:file_selector/file_selector.dart';
 import '../../../models/condition.dart';
+import '../../common/mobile_required_callout.dart';
 
 class QrConditionEditor extends StatefulWidget {
   final Condition condition;
@@ -159,6 +160,19 @@ class _QrConditionEditorState extends State<QrConditionEditor> {
           child: Text(
             'The name will be encoded in the QR code. You can reuse this QR code in a different condition by entering the same name.',
           ),
+        ),
+        // Show callout for desktop users
+        FutureBuilder<bool>(
+          future: _isDesktopPlatform(),
+          builder: (context, snapshot) {
+            if (snapshot.hasData && snapshot.data == true) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: MobileRequiredCallout(feature: 'QR code scanning'),
+              );
+            }
+            return const SizedBox.shrink();
+          },
         ),
         const SizedBox(height: 8),
         Center(

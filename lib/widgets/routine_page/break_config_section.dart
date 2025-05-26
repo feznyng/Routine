@@ -5,6 +5,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
+import '../common/mobile_required_callout.dart';
 
 class BreakConfigSection extends StatelessWidget {
   final Routine routine;
@@ -194,6 +195,11 @@ class BreakConfigSection extends StatelessWidget {
                     ],
                     if (routine.maxBreaks != 0 && routine.friction == 'nfc') ...[                
                       const SizedBox(height: 16),
+                      // Show callout for desktop users
+                      if (!kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux)) ...[                
+                        const MobileRequiredCallout(feature: 'NFC scanning'),
+                        const SizedBox(height: 16),
+                      ],
                       TextButton.icon(
                         onPressed: enabled ? () async {
                           // Check if we're on desktop
@@ -287,6 +293,11 @@ class BreakConfigSection extends StatelessWidget {
                     ],
                     if (routine.maxBreaks != 0 && routine.friction == 'qr') ...[                
                       const SizedBox(height: 16),
+                      // Show callout for desktop users
+                      if (!kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux)) ...[                
+                        const MobileRequiredCallout(feature: 'QR code scanning'),
+                        const SizedBox(height: 16),
+                      ],
                       TextButton.icon(
                         onPressed: () async {
                           final path = await getSaveLocation(
