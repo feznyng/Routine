@@ -18,17 +18,24 @@ class BrowserExtensionService {
   // Platform channel for native methods
   static const MethodChannel _channel = MethodChannel('com.solidsoft.routine');
   
-  // Socket connection to Native Messaging Host
-  Socket? _socket;
-  List<int> _messageBuffer = [];
-  int? _expectedLength;
+  // Socket connections to Native Messaging Host for multiple browsers
+  final Map<String, Socket> _browserSockets = {};
+  final Map<String, List<int>> _messageBuffers = {};
+  final Map<String, int?> _expectedLengths = {};
   
-  // Flag to track browser extension connection status
-  // Since the extension starts the NMH, this also indicates if NMH is connected
-  bool _extensionConnected = false;
+  // Track connection status for each browser
+  final Map<String, bool> _browserConnectionStatus = {};
   
+  // Flag to track if any browser extension is connected
+  bool _anyExtensionConnected = false;
+  
+  // Set of supported browser names
   final Set<String> _browserNames = {
-    'firefox'
+    'firefox',
+    'chrome',
+    'edge',
+    'brave',
+    'opera'
   };
   
   // Stream controller for extension connection status changes
@@ -42,13 +49,25 @@ class BrowserExtensionService {
   
   static BrowserExtensionService get instance => _instance;
   
-  // Get current extension connection status
-  // Since the extension starts the NMH, this also indicates if NMH is connected
-  bool get isExtensionConnected => _extensionConnected;
+  // Get current extension connection status for any browser
+  bool get isExtensionConnected => _anyExtensionConnected;
+  
+  // Get connection status for a specific browser
+  bool isBrowserConnected(String browserName) {
+    return _browserConnectionStatus[browserName.toLowerCase()] ?? false;
+  }
+  
+  // Get list of connected browsers
+  List<String> get connectedBrowsers {
+    return _browserConnectionStatus.entries
+        .where((entry) => entry.value)
+        .map((entry) => entry.key)
+        .toList();
+  }
   
   // Launch the browser extension onboarding process
   Future<void> launchOnboardingProcess() async {
-    await connectToNMH();
+    await connectToAllBrowsers();
   }
   
   // Get a list of installed browsers that are supported
@@ -57,36 +76,71 @@ class BrowserExtensionService {
     
     try {
       if (Platform.isMacOS) {
-        // Check for Firefox in Applications folder
+        // Check for supported browsers in Applications folder
         final Directory appDir = Directory('/Applications');
         if (await appDir.exists()) {
           final entities = await appDir.list().toList();
           for (var entity in entities) {
-            if (entity is Directory && entity.path.toLowerCase().contains('firefox') && entity.path.endsWith('.app')) {
-              supportedBrowsers.add(entity.path);
-              break;
+            if (entity is Directory && entity.path.endsWith('.app')) {
+              final lowerPath = entity.path.toLowerCase();
+              
+              // Check for each supported browser
+              if (lowerPath.contains('firefox')) {
+                supportedBrowsers.add('Firefox');
+              } else if (lowerPath.contains('chrome') && !lowerPath.contains('chromium')) {
+                supportedBrowsers.add('Chrome');
+              } else if (lowerPath.contains('edge')) {
+                supportedBrowsers.add('Edge');
+              } else if (lowerPath.contains('brave')) {
+                supportedBrowsers.add('Brave');
+              } else if (lowerPath.contains('opera')) {
+                supportedBrowsers.add('Opera');
+              }
             }
           }
         }
       } else if (Platform.isWindows) {
-        // Check for Firefox in Program Files
-        final List<String> possiblePaths = [
-          'C:\\Program Files\\Mozilla Firefox',
-          'C:\\Program Files (x86)\\Mozilla Firefox',
+        // Check for supported browsers in Program Files
+        final List<Map<String, dynamic>> possibleBrowsers = [
+          {'name': 'Firefox', 'paths': ['C:\\Program Files\\Mozilla Firefox', 'C:\\Program Files (x86)\\Mozilla Firefox']},
+          {'name': 'Chrome', 'paths': ['C:\\Program Files\\Google\\Chrome\\Application', 'C:\\Program Files (x86)\\Google\\Chrome\\Application']},
+          {'name': 'Edge', 'paths': ['C:\\Program Files\\Microsoft\\Edge\\Application', 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application']},
+          {'name': 'Brave', 'paths': ['C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application', 'C:\\Program Files (x86)\\BraveSoftware\\Brave-Browser\\Application']},
+          {'name': 'Opera', 'paths': ['C:\\Program Files\\Opera', 'C:\\Program Files (x86)\\Opera']}
         ];
         
-        for (var path in possiblePaths) {
-          final dir = Directory(path);
-          if (await dir.exists()) {
-            supportedBrowsers.add(path);
-            break;
+        for (var browser in possibleBrowsers) {
+          for (var path in browser['paths']!) {
+            final dir = Directory(path);
+            if (await dir.exists()) {
+              supportedBrowsers.add(browser['name']!);
+              break;
+            }
           }
         }
       } else if (Platform.isLinux) {
-        // Check if Firefox is installed using 'which'
-        final result = await Process.run('which', ['firefox']);
-        if (result.exitCode == 0 && result.stdout.toString().trim().isNotEmpty) {
-          supportedBrowsers.add(result.stdout.toString().trim());
+        // Check if supported browsers are installed using 'which'
+        final List<String> browserCommands = ['firefox', 'google-chrome', 'microsoft-edge', 'brave-browser', 'opera'];
+        
+        for (var command in browserCommands) {
+          final result = await Process.run('which', [command]);
+          if (result.exitCode == 0 && result.stdout.toString().trim().isNotEmpty) {
+            String browserName;
+            if (command == 'firefox') {
+              browserName = 'Firefox';
+            } else if (command == 'google-chrome') {
+              browserName = 'Chrome';
+            } else if (command == 'microsoft-edge') {
+              browserName = 'Edge';
+            } else if (command == 'brave-browser') {
+              browserName = 'Brave';
+            } else if (command == 'opera') {
+              browserName = 'Opera';
+            } else {
+              continue;
+            }
+            supportedBrowsers.add(browserName);
+          }
         }
       }
     } catch (e, st) {
@@ -289,21 +343,56 @@ class BrowserExtensionService {
   // Install browser extension
   Future<bool> installBrowserExtension(String browserName) async {
     try {
-      // This is a placeholder for the actual implementation
-      // In a real implementation, this would open the browser with the extension URL
+      final browser = browserName.toLowerCase();
+      String extensionUrl = '';
       
-      if (browserName.toLowerCase().contains('firefox')) {
-        // Firefox extension URL (this would be your actual extension URL)        
-        if (Platform.isMacOS) {
-          await Process.run('open', ['-a', 'Firefox']);
-          return true;
-        } else if (Platform.isWindows) {
-          await Process.run('start', ['firefox'], runInShell: true);
-          return true;
-        } else if (Platform.isLinux) {
-          await Process.run('firefox', []);
-          return true;
+      // Set the appropriate extension URL based on the browser
+      if (browser.contains('firefox')) {
+        extensionUrl = 'https://addons.mozilla.org/firefox/addon/routineblocker/';
+      } else if (browser.contains('chrome')) {
+        extensionUrl = 'https://chrome.google.com/webstore/detail/routineblocker/extension-id';
+      } else if (browser.contains('edge')) {
+        extensionUrl = 'https://microsoftedge.microsoft.com/addons/detail/routineblocker/extension-id';
+      } else if (browser.contains('brave')) {
+        // Brave uses Chrome Web Store
+        extensionUrl = 'https://chrome.google.com/webstore/detail/routineblocker/extension-id';
+      } else if (browser.contains('opera')) {
+        extensionUrl = 'https://addons.opera.com/extensions/details/routineblocker/';
+      } else {
+        logger.w('Unsupported browser: $browserName');
+        return false;
+      }
+      
+      // Open the browser with the extension URL
+      if (Platform.isMacOS) {
+        await Process.run('open', ['-a', browserName, extensionUrl]);
+        return true;
+      } else if (Platform.isWindows) {
+        if (browser.contains('firefox')) {
+          await Process.run('start', ['firefox', extensionUrl], runInShell: true);
+        } else if (browser.contains('chrome')) {
+          await Process.run('start', ['chrome', extensionUrl], runInShell: true);
+        } else if (browser.contains('edge')) {
+          await Process.run('start', ['msedge', extensionUrl], runInShell: true);
+        } else if (browser.contains('brave')) {
+          await Process.run('start', ['brave', extensionUrl], runInShell: true);
+        } else if (browser.contains('opera')) {
+          await Process.run('start', ['opera', extensionUrl], runInShell: true);
         }
+        return true;
+      } else if (Platform.isLinux) {
+        if (browser.contains('firefox')) {
+          await Process.run('firefox', [extensionUrl]);
+        } else if (browser.contains('chrome')) {
+          await Process.run('google-chrome', [extensionUrl]);
+        } else if (browser.contains('edge')) {
+          await Process.run('microsoft-edge', [extensionUrl]);
+        } else if (browser.contains('brave')) {
+          await Process.run('brave-browser', [extensionUrl]);
+        } else if (browser.contains('opera')) {
+          await Process.run('opera', [extensionUrl]);
+        }
+        return true;
       }
       
       return false;
@@ -315,45 +404,81 @@ class BrowserExtensionService {
   
   // Initialize the browser extension service
   Future<void> init() async {
-    await connectToNMH();
+    await connectToAllBrowsers();
   }
   
-  // Connect to the Native Messaging Host
-  Future<void> connectToNMH() async {
+  // Connect to the Native Messaging Host for a specific browser
+  Future<void> connectToNMH({String browserName = 'default'}) async {
+    final browser = browserName.toLowerCase();
+    
     try {
-      _socket = await Socket.connect('127.0.0.1', 54322);
-      logger.i('Connected to NMH TCP server');
-
-      setExtensionConnected(true);
-
-      _socket?.listen(
+      // Use different ports for different browsers
+      // Base port is 54322, and we'll use offsets for different browsers
+      int port = 54322;
+      if (browser != 'default') {
+        if (browser.contains('firefox')) {
+          port = 54322;
+        } else if (browser.contains('chrome')) {
+          port = 54323;
+        } else if (browser.contains('edge')) {
+          port = 54324;
+        } else if (browser.contains('brave')) {
+          port = 54325;
+        } else if (browser.contains('opera')) {
+          port = 54326;
+        }
+      }
+      
+      // Initialize message buffer for this browser if not exists
+      if (!_messageBuffers.containsKey(browser)) {
+        _messageBuffers[browser] = [];
+      }
+      
+      // Initialize expected length for this browser if not exists
+      if (!_expectedLengths.containsKey(browser)) {
+        _expectedLengths[browser] = null;
+      }
+      
+      // Connect to the NMH for this browser
+      final socket = await Socket.connect('127.0.0.1', port);
+      logger.i('Connected to NMH TCP server for $browser on port $port');
+      
+      // Store the socket for this browser
+      _browserSockets[browser] = socket;
+      
+      // Update connection status for this browser
+      setBrowserConnected(browser, true);
+      
+      // Listen for messages from this browser's NMH
+      socket.listen(
         (List<int> data) {
-          _messageBuffer.addAll(data);
+          _messageBuffers[browser]?.addAll(data);
           
-          while (_messageBuffer.isNotEmpty) {
-            if (_expectedLength == null) {
-              if (_messageBuffer.length >= 4) {
+          while (_messageBuffers[browser]?.isNotEmpty ?? false) {
+            if (_expectedLengths[browser] == null) {
+              if ((_messageBuffers[browser]?.length ?? 0) >= 4) {
                 // Read length prefix using Uint8List and ByteData
-                final lengthBytes = Uint8List.fromList(_messageBuffer.take(4).toList());
-                _expectedLength = ByteData.view(lengthBytes.buffer).getUint32(0, Endian.little);
-                _messageBuffer = _messageBuffer.sublist(4);
+                final lengthBytes = Uint8List.fromList(_messageBuffers[browser]!.take(4).toList());
+                _expectedLengths[browser] = ByteData.view(lengthBytes.buffer).getUint32(0, Endian.little);
+                _messageBuffers[browser] = _messageBuffers[browser]!.sublist(4);
               } else {
                 break;
               }
             }
 
-            if (_expectedLength != null && _messageBuffer.length >= _expectedLength!) {
+            if (_expectedLengths[browser] != null && 
+                (_messageBuffers[browser]?.length ?? 0) >= _expectedLengths[browser]!) {
 
-              final messageBytes = _messageBuffer.take(_expectedLength!).toList();
-              _messageBuffer = _messageBuffer.sublist(_expectedLength!);
-              _expectedLength = null;
+              final messageBytes = _messageBuffers[browser]!.take(_expectedLengths[browser]!).toList();
+              _messageBuffers[browser] = _messageBuffers[browser]!.sublist(_expectedLengths[browser]!);
+              _expectedLengths[browser] = null;
 
               try {
                 final String message = utf8.decode(messageBytes);
                 final Map<String, dynamic> decoded = json.decode(message);
-                logger.i('Received from NMH: $decoded');
+                logger.i('Received from NMH ($browser): $decoded');
               } catch (e, st) {
-                Util.report('Error decoding NMH message', e, st);
+                Util.report('Error decoding NMH message from $browser', e, st);
               }
             } else {
               break;
@@ -361,34 +486,65 @@ class BrowserExtensionService {
           }
         },
         onError: (error) {
-          Util.report('NMH socket error', error, null);
-          setExtensionConnected(false);
+          Util.report('NMH socket error for $browser', error, null);
+          setBrowserConnected(browser, false);
         },
         onDone: () {
-          logger.i('Socket closed');
-          setExtensionConnected(false);
+          logger.i('Socket closed for $browser');
+          setBrowserConnected(browser, false);
         },
       );
     } on SocketException catch (e) {
-      setExtensionConnected(false);
+      setBrowserConnected(browser, false);
       if (e.osError?.errorCode == 61) {
-        logger.i('NMH service is not running. The app will continue without NMH features.');
+        logger.i('NMH service for $browser is not running. The app will continue without NMH features for this browser.');
       } else {
-        logger.w('Socket connection error: ${e.message}. The app will continue without NMH features.');
+        logger.w('Socket connection error for $browser: ${e.message}. The app will continue without NMH features for this browser.');
       }
     }
   }
   
-  // Send a message to the Native Messaging Host
-  Future<void> sendToNMH(String action, Map<String, dynamic> data) async {
-     if (!isExtensionConnected) {
-      await connectToNMH();
-      if (!isExtensionConnected) {
-        logger.w('Failed to connect to NMH, skipping update');
+  // Try to connect to all supported browsers
+  Future<void> connectToAllBrowsers() async {
+    for (final browser in _browserNames) {
+      await connectToNMH(browserName: browser);
+    }
+  }
+  
+  // Send a message to the Native Messaging Host for a specific browser
+  Future<void> sendToNMH(String action, Map<String, dynamic> data, {String? browserName}) async {
+    // If browser is specified, send to that browser only
+    if (browserName != null) {
+      final browser = browserName.toLowerCase();
+      await _sendToSpecificBrowser(browser, action, data);
+      return;
+    }
+    
+    // If no browser is specified, send to all connected browsers
+    if (_browserSockets.isEmpty) {
+      await connectToAllBrowsers();
+      if (_browserSockets.isEmpty) {
+        logger.w('Failed to connect to any NMH, skipping update');
         return;
       }
     }
-
+    
+    // Send to all connected browsers
+    for (final browser in _browserSockets.keys) {
+      await _sendToSpecificBrowser(browser, action, data);
+    }
+  }
+  
+  // Helper method to send to a specific browser
+  Future<void> _sendToSpecificBrowser(String browser, String action, Map<String, dynamic> data) async {
+    if (!(_browserConnectionStatus[browser] ?? false)) {
+      await connectToNMH(browserName: browser);
+      if (!(_browserConnectionStatus[browser] ?? false)) {
+        logger.w('Failed to connect to NMH for $browser, skipping update');
+        return;
+      }
+    }
+    
     try {
       final message = {
         'action': action,
@@ -399,20 +555,39 @@ class BrowserExtensionService {
       final List<int> messageBytes = utf8.encode(jsonMessage);
       
       // Send length prefix followed by message
-      _socket?.add(Uint8List.fromList([
+      _browserSockets[browser]?.add(Uint8List.fromList([
         ...Uint32List.fromList([messageBytes.length]).buffer.asUint8List(),
         ...messageBytes,
       ]));
-      await _socket?.flush();
+      await _browserSockets[browser]?.flush();
     } catch (e, st) {
-      Util.report('Failed to send message to NMH', e, st);
+      Util.report('Failed to send message to NMH for $browser', e, st);
     }
   }
 
-  void setExtensionConnected(bool connected) {
-    if (_extensionConnected != connected) {
-      _extensionConnected = connected;
-      _connectionStreamController.add(_extensionConnected);
+  // Update connection status for a specific browser
+  void setBrowserConnected(String browserName, bool connected) {
+    final browser = browserName.toLowerCase();
+    
+    if ((_browserConnectionStatus[browser] ?? false) != connected) {
+      _browserConnectionStatus[browser] = connected;
+      
+      // Update the overall connection status
+      _updateOverallConnectionStatus();
+      
+      // Notify listeners with the browser name and connection status
+      _connectionStreamController.add(_anyExtensionConnected);
+    }
+  }
+  
+  // Update the overall connection status based on individual browser statuses
+  void _updateOverallConnectionStatus() {
+    final wasConnected = _anyExtensionConnected;
+    _anyExtensionConnected = _browserConnectionStatus.values.any((connected) => connected);
+    
+    // If overall status changed, log it
+    if (wasConnected != _anyExtensionConnected) {
+      logger.i('Overall extension connection status changed to: $_anyExtensionConnected');
     }
   }
   
@@ -427,7 +602,18 @@ class BrowserExtensionService {
   
   // Clean up resources
   void dispose() {
-    _socket?.close();
+    // Close all browser sockets
+    for (final socket in _browserSockets.values) {
+      socket.close();
+    }
+    _browserSockets.clear();
+    
+    // Clear all buffers and statuses
+    _messageBuffers.clear();
+    _expectedLengths.clear();
+    _browserConnectionStatus.clear();
+    
+    // Close the stream controller
     _connectionStreamController.close();
   }
 }

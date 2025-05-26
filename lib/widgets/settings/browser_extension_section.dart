@@ -177,18 +177,19 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
                 ),
               ),
             const SizedBox(height: 16),
-            // Only show the button if the extension is not connected
-            if (!isExtensionConnected)
-              ElevatedButton(
-                onPressed: isInCooldown ? null : () async {
-                  await widget.onRestartOnboarding();
-                  // Then show the onboarding dialog
-                  await _showOnboardingDialog();
-                },
-                child: Text(isInCooldown
-                    ? 'Wait ${remainingCooldownMinutes}m to try again'
-                    : 'Set Up Browser Extension'),
-              ),
+            // Always show the button to allow setting up additional browsers
+            ElevatedButton(
+              onPressed: isInCooldown ? null : () async {
+                await widget.onRestartOnboarding();
+                // Then show the onboarding dialog
+                await _showOnboardingDialog();
+              },
+              child: Text(isInCooldown
+                  ? 'Wait ${remainingCooldownMinutes}m to try again'
+                  : isExtensionConnected 
+                      ? 'Set Up Additional Browsers'
+                      : 'Set Up Browser Extension'),
+            ),
               ],
             ),
           ),

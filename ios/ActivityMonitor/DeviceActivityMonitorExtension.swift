@@ -93,6 +93,7 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
                 logError("Failed to decode routines from shared UserDefaults", error)
             }
         } else {
+            logError("Failed to find any routines in shared UserDefaults", nil)
             os_log("DeviceActivityMonitorExtension: No routines data found in shared UserDefaults")
         }
         
