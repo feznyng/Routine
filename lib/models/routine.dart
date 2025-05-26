@@ -481,7 +481,20 @@ class Routine implements Syncable {
 
   DateTime get startedAt {
     final now = DateTime.now();
+    final int currMins = now.hour * 60 + now.minute;
     
+    if (_endTime < _startTime && currMins < _endTime) {
+      final yesterday = now.subtract(const Duration(days: 1));
+      return DateTime(
+        yesterday.year,
+        yesterday.month,
+        yesterday.day,
+        startHour,
+        startMinute,
+      );
+    }
+    
+    // Regular same-day routine or after start time but before midnight
     return DateTime(
       now.year,
       now.month,
