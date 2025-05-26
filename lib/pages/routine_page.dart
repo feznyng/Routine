@@ -95,7 +95,7 @@ class _RoutinePageState extends State<RoutinePage> {
   void _validateRoutine() {
     setState(() {
       _isValid = _routine.valid;
-      _hasChanges = _routine.changes
+      _hasChanges = !_routine.saved || _routine.changes
         .where((change) => !['snoozedUntil', 'numBreaksTaken'].contains(change))
         .isNotEmpty;
     });
@@ -129,6 +129,32 @@ class _RoutinePageState extends State<RoutinePage> {
   }
 
   Future<void> _saveRoutine() async {
+    // Check if this is an all-day, every-day routine with strict mode enabled
+    bool isAllDayEveryDay = _routine.allDay && 
+        _routine.days.every((day) => day == true) && 
+        _routine.strictMode;
+    
+    if (isAllDayEveryDay) {
+      await showDialog<void>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Cannot Save Routine'),
+            content: const Text(
+              'You cannot create an all-day, every-day routine with strict mode enabled. This would prevent you from ever modifying or deleting this routine. Please modify the routine schedule or disable strict mode.'
+            ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+
     // If strict mode is being enabled, show a confirmation dialog
     if (!_originalStrictMode && _routine.strictMode) {
       final bool? confirm = await showDialog<bool>(
