@@ -59,7 +59,7 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
         
         os_log("DeviceActivityMonitorExtension: intervalDidStart %{public}s", activity.rawValue)
         
-        eval(id: activity.rawValue)
+        eval(id: activity.rawValue, type: "start")
     }
     
     override func intervalDidEnd(for activity: DeviceActivityName) {
@@ -67,16 +67,10 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
         
         os_log("DeviceActivityMonitorExtension: intervalDidEnd %{public}s", activity.rawValue)
         
-        let name = activity.rawValue
-        if name.starts(with: "paused") || name.starts(with: "snoozed") {
-            os_log("DeviceActivityMonitorExtension: skipping due to non-standard schedule")
-            return
-        }
-        
-        eval(id: activity.rawValue)
+        eval(id: activity.rawValue, type: "end")
     }
     
-    private func eval(id: String) {        
+    private func eval(id: String, type: String) {
         // Start timing the eval function
         let startTime = Date()
         
