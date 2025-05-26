@@ -192,6 +192,23 @@ class BreakConfigSection extends StatelessWidget {
                           } : null,
                         ),
                       ),
+                      if (routine.friction != 'none') ...[                
+                        const SizedBox(height: 10),
+                        Text(
+                          routine.friction == 'delay'
+                              ? 'Wait a bit before taking a break. Can be fixed or increase with each break.'
+                              : routine.friction == 'intention'
+                                  ? 'Describe why you want to take a break before taking one.'
+                                  : routine.friction == 'code'
+                                      ? 'Enter a random code to take a break. Code length can increase with each break or be fixed.'
+                                      : routine.friction == 'qr'
+                                          ? 'Scan a QR code to take a break.'
+                                          : 'Scan an NFC tag to take a break.',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ],
                     if (routine.maxBreaks != 0 && routine.friction == 'nfc') ...[                
                       const SizedBox(height: 16),
