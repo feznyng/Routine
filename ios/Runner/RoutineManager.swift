@@ -16,6 +16,9 @@ class RoutineManager {
     var routines: [Routine] = []
     
     func update(routines: [Routine]) {
+        // Start timing the update function
+        let updateStartTime = Date()
+        
         SentrySDK.capture(message: "updateRoutines: internal start")
         
         // Store routines immediately on main thread since it's just an array assignment
@@ -26,6 +29,10 @@ class RoutineManager {
         
         let now = Date()
         let hasAllDay = routines.contains { $0.allDay }
+        
+        // Arrays to accumulate all evaluation times
+        var regularEvalTimes: [(id: String, startTime: Int?, endTime: Int?)] = []
+        var oneTimeEvalTimes: [(id: String, type: String, startTime: Date, endTime: Date)] = []
 
         // always schedule for midnight to handle all day routines
         if hasAllDay {
@@ -37,6 +44,9 @@ class RoutineManager {
                 let schedule = DeviceActivitySchedule(intervalStart: intervalStart, intervalEnd: intervalEnd, repeats: true)
 
                 try self.center.startMonitoring(name, during: schedule)
+                
+                // Add midnight eval to the list
+                regularEvalTimes.append((id: "midnight-eval", startTime: 0, endTime: 15))
             } catch {
                 print("failed to register device activity \(error.localizedDescription)")
                 SentrySDK.capture(message: "failed to register all day routine")
@@ -56,6 +66,9 @@ class RoutineManager {
                 
                 do {
                     try self.center.startMonitoring(name, during: schedule)
+                    
+                    // Add regular routine eval times to the list
+                    regularEvalTimes.append((id: routine.id, startTime: startTime, endTime: endTime))
                 } catch {
                     print("failed to register routine schedule \(error.localizedDescription)")
                     SentrySDK.capture(error: error)
@@ -63,18 +76,62 @@ class RoutineManager {
             }
             
             if let snoozedUntil = routine.snoozedUntil, snoozedUntil > now {
-                self.scheduleOneTimeActivity(for: routine, startDate: snoozedUntil, activityType: "snoozed")
+                let (scheduled, startTime, endTime) = self.scheduleOneTimeActivity(for: routine, startDate: snoozedUntil, activityType: "snoozed")
+                if scheduled {
+                    oneTimeEvalTimes.append((id: routine.id, type: "snoozed", startTime: startTime, endTime: endTime))
+                }
             } else if let pausedUntil = routine.pausedUntil, pausedUntil > now {
-                self.scheduleOneTimeActivity(for: routine, startDate: pausedUntil, activityType: "paused")
+                let (scheduled, startTime, endTime) = self.scheduleOneTimeActivity(for: routine, startDate: pausedUntil, activityType: "paused")
+                if scheduled {
+                    oneTimeEvalTimes.append((id: routine.id, type: "paused", startTime: startTime, endTime: endTime))
+                }
             }
         }
         
+        // Prepare the evaluation times summary for the Sentry log
+        var evalTimesSummary = "Regular Evals: ["
+        
+        // Create a date formatter for HH:mm format
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "HH:mm"
+        
+        // Function to convert minutes of day to HH:mm format
+        func formatMinutesOfDay(_ minutes: Int?) -> String {
+            guard let mins = minutes else { return "00:00" }
+            let hours = mins / 60
+            let remainingMins = mins % 60
+            return String(format: "%02d:%02d", hours, remainingMins)
+        }
+        
+        for (index, evalTime) in regularEvalTimes.enumerated() {
+            let startFormatted = formatMinutesOfDay(evalTime.startTime)
+            let endFormatted = formatMinutesOfDay(evalTime.endTime)
+            evalTimesSummary += "\(evalTime.id)(\(startFormatted)-\(endFormatted))"
+            if index < regularEvalTimes.count - 1 {
+                evalTimesSummary += ", "
+            }
+        }
+        evalTimesSummary += "] OneTime Evals: ["
+        
+        for (index, evalTime) in oneTimeEvalTimes.enumerated() {
+            let startTimeString = dateFormatter.string(from: evalTime.startTime)
+            let endTimeString = dateFormatter.string(from: evalTime.endTime)
+            evalTimesSummary += "\(evalTime.id)(\(evalTime.type)-\(startTimeString)-\(endTimeString))"
+            if index < oneTimeEvalTimes.count - 1 {
+                evalTimesSummary += ", "
+            }
+        }
+        evalTimesSummary += "]"
+        
+        // Calculate elapsed time for the entire update function
+        let updateElapsedTime = Date().timeIntervalSince(updateStartTime)
+        
         print("finished updating routines")
-        SentrySDK.capture(message: "updateRoutines: internal done")
+        SentrySDK.capture(message: "updateRoutines: internal done - \(evalTimesSummary) - Total Duration: \(String(format: "%.3f", updateElapsedTime)) seconds")
         SentrySDK.flush(timeout: 1000)
     }
     
-    private func scheduleOneTimeActivity(for routine: Routine, startDate: Date, activityType: String) {
+    private func scheduleOneTimeActivity(for routine: Routine, startDate: Date, activityType: String) -> (scheduled: Bool, startTime: Date, endTime: Date) {
         // Create a unique name for this one-time activity
         let uniqueId = "\(activityType)_\(routine.id)"
         let name = DeviceActivityName(uniqueId)
@@ -98,8 +155,10 @@ class RoutineManager {
         
         do {
             try center.startMonitoring(name, during: schedule)
+            return (true, delayedStartDate, endDate)
         } catch {
             SentrySDK.capture(error: error)
+            return (false, delayedStartDate, endDate)
         }
     }
     

@@ -206,7 +206,10 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
         // Calculate elapsed time
         let elapsedTime = Date().timeIntervalSince(startTime)
         
+        // Get comma-separated list of active routine IDs
+        let activeRoutineIds = routines.map { $0.id }.joined(separator: ",")
+        
         os_log("DeviceActivityMonitorExtension: Eval completed [ID: %{public}s] in %.3f seconds", String(id), elapsedTime)
-        logError("DeviceActivityMonitorExtension: End Eval [ID: \(id)] - Duration: \(String(format: "%.3f", elapsedTime)) seconds", nil)
+        logError("DeviceActivityMonitorExtension: End Eval [ID: \(id), Type: \(type)] - Active Routines: [\(activeRoutineIds)] - Duration: \(String(format: "%.3f", elapsedTime)) seconds", nil)
     }
 }
