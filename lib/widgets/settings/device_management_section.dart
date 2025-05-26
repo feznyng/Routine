@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/device.dart';
 
-class DeviceManagementSection extends StatelessWidget {
+class DeviceManagementSection extends StatefulWidget {
   final Function(Device) onDeviceOptionsTap;
   
   const DeviceManagementSection({
@@ -9,6 +9,14 @@ class DeviceManagementSection extends StatelessWidget {
     required this.onDeviceOptionsTap,
   });
 
+  @override
+  State<DeviceManagementSection> createState() => _DeviceManagementSectionState();
+
+}
+
+class _DeviceManagementSectionState extends State<DeviceManagementSection> {
+  bool _hasLoadedBefore = false;
+  
   IconData _getDeviceIcon(DeviceType type) {
     switch (type) {
       case DeviceType.windows:
@@ -43,7 +51,8 @@ class DeviceManagementSection extends StatelessWidget {
           StreamBuilder<List<Device>>(
             stream: Device.watchAll(),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
+              // Show loading indicator only if we haven't loaded data before
+              if (snapshot.connectionState == ConnectionState.waiting && !_hasLoadedBefore) {
                 return const Padding(
                   padding: EdgeInsets.all(16.0),
                   child: Center(child: CircularProgressIndicator()),
@@ -58,6 +67,12 @@ class DeviceManagementSection extends StatelessWidget {
               }
               
               final devices = snapshot.data ?? [];
+              
+              // Mark that we've loaded data at least once
+              if (!_hasLoadedBefore && snapshot.connectionState != ConnectionState.waiting) {
+                _hasLoadedBefore = true;
+              }
+              
               if (devices.isEmpty) {
                 return const Padding(
                   padding: EdgeInsets.all(16.0),
@@ -90,7 +105,7 @@ class DeviceManagementSection extends StatelessWidget {
                         isThreeLine: true,
                         leading: Icon(_getDeviceIcon(device.type)),
                         trailing: SizedBox(width: 24), // Reserve space for the icon
-                        onTap: () => onDeviceOptionsTap(device),
+                        onTap: () => widget.onDeviceOptionsTap(device),
                       ),
                       if (device.curr)
                         Positioned(
