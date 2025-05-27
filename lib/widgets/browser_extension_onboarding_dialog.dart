@@ -122,7 +122,7 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
     _connectionAttemptTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       if (_currentBrowserIndex < _selectedBrowsers.length) {
         final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
-        _browserExtensionService.connectToNMH(currentBrowser);
+        _browserExtensionService.connectToBrowser(currentBrowser);
       } else {
         // Stop the timer if we've gone through all browsers
         timer.cancel();
