@@ -1,5 +1,5 @@
 // Native messaging host name
-const hostName = "com.solidsoft.routine.nmh";
+const hostName = "com.solidsoft.routine";
 let port = null;
 let isAppConnected = false;  // Track Flutter app connection state
 let reconnectTimer = null;
@@ -143,7 +143,7 @@ async function registerBlockingRules() {
       priority: 1,
       action: {
         type: "redirect",
-        redirect: { url: "https://www.routineblocker.com/blocked" }
+        redirect: { url: "https://www.routineblocker.com/blocked.html" }
       },
       condition: {
         urlFilter: "*://*/*",
@@ -198,7 +198,7 @@ async function registerBlockingRules() {
       priority: 1,
       action: {
         type: "redirect",
-        redirect: { url: "https://www.routineblocker.com/blocked" }
+        redirect: { url: "https://www.routineblocker.com/blocked.html" }
       },
       condition: {
         urlFilter: "*://*/*",

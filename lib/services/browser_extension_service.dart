@@ -106,11 +106,12 @@ class BrowserExtensionService {
 
   Map<String, dynamic> _createManifestContent(String binaryPath) {
     return {
-      'name': 'com.solidsoft.routine.nmh',
+      'name': 'com.solidsoft.routine',
       'description': 'Routine Native Messaging Host',
       'path': binaryPath,
       'type': 'stdio',
-      'allowed_extensions': ['blocker@routineblocker.com']
+      'allowed_extensions': ['blocker@routineblocker.com'],
+      'allowed_origins': ['chrome-extension://jdemcmodknkdcnkglkilkobkcboeaeib/']
     };
   }
 
@@ -125,11 +126,9 @@ class BrowserExtensionService {
         final Map<String, dynamic> manifest = _createManifestContent('$assetsPath/$nmhName');
         final String manifestJson = json.encode(manifest);
 
-        final fileName = 'com.solidsoft.routine.nmh.json';
+        final fileName = 'com.solidsoft.routine.json';
         final nmhDir = data.macosNmhDir;
-
-        logger.i("Browser Data: ${nmhDir}");
-
+        
         final path = await FilePicker.platform.saveFile(
           fileName: fileName,
           initialDirectory: nmhDir
@@ -146,7 +145,7 @@ class BrowserExtensionService {
         final Map<String, dynamic> manifest = _createManifestContent('$assetsPath/$nmhName');
         final String manifestJson = json.encode(manifest);
         
-        String mozillaRegistryPath = "${data.registryPath}\\com.solidsoft.routine.nmh";
+        String mozillaRegistryPath = "${data.registryPath}\\com.solidsoft.routine";
         final Pointer<HKEY> hKey = calloc<HKEY>();
         
         try {

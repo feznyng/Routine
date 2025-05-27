@@ -24,6 +24,7 @@
     "64": "icons/icon64.png",
     "128": "icons/icon128.png"
   },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA71U5hmmSlCVEch1A8rn3I2EQy7Blig7p8g1VUBykxxG2U00Umw+3aVIEBwW5Pat/9fvN2ONR1yOzpbsr737AHoD4bJbZlo7DwZQ2ux2nogpVHgU2uJXHH5hzkmolmeLA9m108xAbA8dqU9MH+WvquH4kDakmrXnon2tMlyCwwr2Bc41ZDuvlS8o1sVdNusNz+nkkPGGiA7hSxQlyl7ToYHY16HzehDgqZkv351xQzXTGJh8zkGk4s7U62DOUkqnCeQOZ4z0jG/m+tu3s/axMXv3R29Lgi8OuatZ/8//EX7Vi7hQkNhWKt31b1lCdyFGwxvODdx/pFw57jcnzd3bdRQIDAQAB",
   "browser_specific_settings": {
     "gecko": {
       "id": "blocker@routineblocker.com"
