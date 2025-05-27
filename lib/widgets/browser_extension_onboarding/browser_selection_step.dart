@@ -1,4 +1,5 @@
 import 'package:Routine/services/browser_config.dart';
+import 'package:Routine/services/browser_extension_service.dart';
 import 'package:flutter/material.dart';
 
 /// Step 1: Browser Selection
@@ -48,7 +49,7 @@ class BrowserSelectionStep extends StatelessWidget {
               final isSelected = selectedBrowsers.contains(browser);
               
               return CheckboxListTile(
-                title: Text(browser.name),
+                title: Text(BrowserExtensionService.instance.getBrowserData(browser).appName),
                 value: isSelected,
                 onChanged: (_) => onToggleBrowser(browser),
                 secondary: _getBrowserIcon(browser),

@@ -104,14 +104,13 @@ class BrowserExtensionService {
     throw UnsupportedError('Unsupported platform');
   }
 
-  Map<String, dynamic> _createManifestContent(String binaryPath) {
+  Map<String, dynamic> _createManifestContent(Browser browser, String binaryPath) {
     return {
       'name': 'com.solidsoft.routine',
       'description': 'Routine Native Messaging Host',
       'path': binaryPath,
       'type': 'stdio',
-      'allowed_extensions': ['blocker@routineblocker.com'],
-      'allowed_origins': ['chrome-extension://jdemcmodknkdcnkglkilkobkcboeaeib/']
+      (browser == Browser.firefox ? 'allowed_extensions' : 'allowed_origins'): (browser == Browser.firefox ? ['blocker@routineblocker.com'] : ['chrome-extension://jdemcmodknkdcnkglkilkobkcboeaeib/'])
     };
   }
 
@@ -123,7 +122,7 @@ class BrowserExtensionService {
       if (Platform.isMacOS) {
         final String nmhName = await _getBinaryAssetPath();
         
-        final Map<String, dynamic> manifest = _createManifestContent('$assetsPath/$nmhName');
+        final Map<String, dynamic> manifest = _createManifestContent(browser, '$assetsPath/$nmhName');
         final String manifestJson = json.encode(manifest);
 
         final fileName = 'com.solidsoft.routine.json';
@@ -142,7 +141,7 @@ class BrowserExtensionService {
         return false;
       } else if (Platform.isWindows) {
         final String nmhName = await _getBinaryAssetPath();
-        final Map<String, dynamic> manifest = _createManifestContent('$assetsPath/$nmhName');
+        final Map<String, dynamic> manifest = _createManifestContent(browser, '$assetsPath/$nmhName');
         final String manifestJson = json.encode(manifest);
         
         String mozillaRegistryPath = "${data.registryPath}\\com.solidsoft.routine";
