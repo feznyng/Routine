@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:Routine/services/browser_config.dart';
 import 'package:flutter/material.dart';
 import 'package:Routine/services/browser_extension_service.dart';
 import 'package:Routine/services/strict_mode_service.dart';

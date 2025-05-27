@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:Routine/services/browser_config.dart';
 import 'package:Routine/util.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
@@ -5,29 +8,13 @@ import 'dart:io' show Directory, File, Platform, Process, ProcessResult, Socket,
 import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
 import 'package:win32/win32.dart';
-import 'package:win32/src/constants.dart';
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
-import 'dart:typed_data';
 import 'dart:async';
 import 'package:Routine/setup.dart';
 import 'package:collection/src/iterable_extensions.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-enum Browser {
-  firefox
-}
-
-class BrowserData {
-  final int port;
-  final List<String> windowsPaths;
-  final String appName;
-  final String windowsCommand;
-  final String extensionUrl;
-  final String macosNmhDir;
-  final String registryPath;
-
-  BrowserData({required this.port, required this.windowsPaths, required this.appName, required this.windowsCommand, required this.extensionUrl, required this.macosNmhDir, required this.registryPath});
-}
 
 class BrowserConnection {
   final Socket socket;
@@ -39,20 +26,9 @@ class BrowserConnection {
 
 class BrowserExtensionService {
   static final BrowserExtensionService _instance = BrowserExtensionService._internal();
-  
-  final Map<Browser, BrowserData> _data = {
-    Browser.firefox: BrowserData(
-      port: 54322,
-      windowsPaths: ['C:\\Program Files\\Mozilla Firefox', 'C:\\Program Files (x86)\\Mozilla Firefox'],
-      windowsCommand: 'firefox',
-      appName: 'Firefox',
-      extensionUrl: 'https://addons.mozilla.org/firefox/addon/routineblocker/',
-      macosNmhDir: 'Library/Application Support/Mozilla/NativeMessagingHosts/',
-      registryPath: 'SOFTWARE\\Mozilla\\NativeMessagingHosts'
-    )
-  };
   final Map<Browser, BrowserConnection> _connections = {};
   final StreamController<bool> _connectionStreamController = StreamController<bool>.broadcast();
+  static const String _connectedBrowsersKey = 'connected_browsers';
   
   factory BrowserExtensionService() {
     return _instance;
@@ -73,7 +49,7 @@ class BrowserExtensionService {
   }
 
   BrowserData getBrowserData(Browser browser) {
-    return _data[browser]!;
+    return browserData[browser]!;
   }
   
   Future<List<Browser>> getInstalledSupportedBrowsers() async {
@@ -97,7 +73,7 @@ class BrowserExtensionService {
           }
         }
       } else if (Platform.isWindows) {
-        for (final entry in _data.entries) {
+        for (final entry in browserData.entries) {
           for (final path in entry.value.windowsPaths) {
             final dir = Directory(path);
             if (await dir.exists()) {
@@ -140,7 +116,7 @@ class BrowserExtensionService {
 
   Future<bool> installNativeMessagingHost(Browser browser) async {
     try {
-      final data = _data[browser]!;
+      final data = browserData[browser]!;
 
       if (Platform.isMacOS) {
         final String assetPath = await _getBinaryAssetPath();
@@ -208,12 +184,12 @@ class BrowserExtensionService {
               hKey.value,
               nullptr,  // Default value
               0,
-              REG_SZ,
+              REG_VALUE_TYPE.REG_SZ,
               manifestPathUtf16.cast<Uint8>(),
               (manifestPath.length + 1) * 2,  // Include null terminator, *2 for UTF-16
             );
             
-            if (setValueResult != ERROR_SUCCESS) {
+            if (setValueResult != WIN32_ERROR.ERROR_SUCCESS) {
               return false;
             }
             
@@ -237,7 +213,7 @@ class BrowserExtensionService {
   // Install browser extension
   Future<bool> installBrowserExtension(Browser browser) async {
     try {
-      final data = _data[browser]!;
+      final data = browserData[browser]!;
       String extensionUrl = data.extensionUrl;
 
       if (Platform.isMacOS) {
@@ -257,15 +233,24 @@ class BrowserExtensionService {
   
   Future<void> init() async {
     logger.i("Browser Extension - Init");
-    // TODO: switch this to only attempt to reconnect to previously connected browser
-    for (final browser in _data.keys) {
-      await connectToNMH(browser);
+    final prefs = await SharedPreferences.getInstance();
+    final connectedBrowsers = prefs.getStringList(_connectedBrowsersKey);
+    
+    if (connectedBrowsers != null && connectedBrowsers.isNotEmpty) {
+      for (final browserStr in connectedBrowsers) {
+        try {
+          final browser = Browser.values.firstWhere((b) => b.name == browserStr);
+          await connectToNMH(browser);
+        } catch (e) {
+          logger.w('Invalid browser type in preferences: $browserStr');
+        }
+      }
     }
   }
   
   Future<void> connectToNMH(Browser browser) async {
     try {
-      final data = _data[browser]!;
+      final data = browserData[browser]!;
       
       // Connect to the NMH for this browser
       final socket = await Socket.connect('127.0.0.1', data.port);
@@ -274,7 +259,13 @@ class BrowserExtensionService {
       final conn = BrowserConnection(socket: socket);
       _connections[browser] = conn;
       
-      // TODO: persist browser type to shared prefs
+      // Persist connected browser to SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final connectedBrowsers = prefs.getStringList(_connectedBrowsersKey) ?? [];
+      if (!connectedBrowsers.contains(browser.name)) {
+        connectedBrowsers.add(browser.name);
+        await prefs.setStringList(_connectedBrowsersKey, connectedBrowsers);
+      }
 
       _connectionStreamController.add(true);
 
@@ -314,10 +305,22 @@ class BrowserExtensionService {
         onError: (error) {
           Util.report('NMH socket error for $browser', error, null);
           _connections.remove(browser);
+          // Remove browser from SharedPreferences on error
+          SharedPreferences.getInstance().then((prefs) {
+            final connectedBrowsers = prefs.getStringList(_connectedBrowsersKey) ?? [];
+            connectedBrowsers.remove(browser.name);
+            prefs.setStringList(_connectedBrowsersKey, connectedBrowsers);
+          });
         },
         onDone: () {
           logger.i('Socket closed for $browser');
           _connections.remove(browser);
+          // Remove browser from SharedPreferences on disconnect
+          SharedPreferences.getInstance().then((prefs) {
+            final connectedBrowsers = prefs.getStringList(_connectedBrowsersKey) ?? [];
+            connectedBrowsers.remove(browser.name);
+            prefs.setStringList(_connectedBrowsersKey, connectedBrowsers);
+          });
         },
       );
     } on SocketException catch (e) {
@@ -330,17 +333,17 @@ class BrowserExtensionService {
     }
   }
   
-  Future<void> sendToNMH(String action, Map<String, dynamic> data, {Browser? browser}) async {
+  Future<void> sendToBrowser(String action, Map<String, dynamic> data, {Browser? browser}) async {
     if (browser != null) {
-      await _sendToSpecificBrowser(browser, action, data);
+      await _sendToBrowser(browser, action, data);
     } else {
       for (final browser in _connections.keys) {
-        await _sendToSpecificBrowser(browser, action, data);
+        await _sendToBrowser(browser, action, data);
       }
     }
   }
   
-  Future<void> _sendToSpecificBrowser(Browser browser, String action, Map<String, dynamic> data) async {
+  Future<void> _sendToBrowser(Browser browser, String action, Map<String, dynamic> data) async {
     try {
       final message = {
         'action': action,
@@ -368,7 +371,7 @@ class BrowserExtensionService {
   
   bool isBrowser(String appName) {
     final lowerAppName = appName.toLowerCase();
-    return _data.keys.any((browser) => lowerAppName.contains(browser.name));
+    return browserData.keys.any((browser) => lowerAppName.contains(browser.name));
   }
   
   void dispose() {

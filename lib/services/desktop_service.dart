@@ -193,7 +193,7 @@ class DesktopService extends PlatformService {
   
   // Update blocked sites in the browser extension
   Future<void> updateBlockedSites() async {
-    await BrowserExtensionService.instance.sendToNMH('updateBlockedSites', {
+    await BrowserExtensionService.instance.sendToBrowser('updateBlockedSites', {
       'sites': _cachedSites,
       'allowList': _isAllowList,
     });

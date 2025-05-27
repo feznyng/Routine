@@ -1,5 +1,5 @@
+import 'package:Routine/services/browser_config.dart';
 import 'package:flutter/material.dart';
-import 'package:Routine/services/browser_extension_service.dart';
 
 /// Step 1: Browser Selection
 class BrowserSelectionStep extends StatelessWidget {
