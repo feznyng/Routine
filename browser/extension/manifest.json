@@ -1,21 +1,23 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "Routine Blocker",
   "version": "1.6",
   "description": "Routine site blocking extension",
   "permissions": [
-    "webRequest",
-    "webRequestBlocking",
-    "<all_urls>",
-    "nativeMessaging"
+    "declarativeNetRequest",
+    "nativeMessaging",
+    "alarms"
+  ],
+  "host_permissions": [
+    "<all_urls>"
   ],
   "background": {
-    "scripts": ["background.js"],
-    "persistent": true
+    "service_worker": "background.js"
   },
-  "web_accessible_resources": [
-    "blocked.html"
-  ],
+  "web_accessible_resources": [{
+    "resources": ["blocked.html"],
+    "matches": ["<all_urls>"]
+  }],
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",

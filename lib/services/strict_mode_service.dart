@@ -188,14 +188,14 @@ class StrictModeService with ChangeNotifier {
   static const String _blockUninstallingAppsKey = 'block_uninstalling_apps';
   static const String _blockInstallingAppsKey = 'block_installing_apps';
   
-  void startExtensionGracePeriod() {
+  void startExtensionGracePeriod(int gracePeriodDuration) {
     if (isInExtensionCooldown) {
       return;
     }
     
     _gracePeriodTimer?.cancel();
     
-    _extensionGracePeriodEnd = DateTime.now().add(Duration(seconds: _extensionGracePeriodSeconds));
+    _extensionGracePeriodEnd = DateTime.now().add(Duration(seconds: gracePeriodDuration));
     
     _extensionCooldownEnd = DateTime.now().add(Duration(minutes: _extensionCooldownMinutes));
     _gracePeriodTimer = Timer(Duration(seconds: _extensionGracePeriodSeconds), () {

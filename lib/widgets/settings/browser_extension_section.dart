@@ -64,21 +64,17 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
 
   Future<void> _showOnboardingDialog() async {
     if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {      
-      await showDialog<List<String>>(
+      await showDialog<void>(
         context: context,
         barrierDismissible: false,
         builder: (context) => BrowserExtensionOnboardingDialog(
-          selectedSites: const [], // No pre-selected sites
-          onComplete: (sites) {
-            setState(() {});
-            Navigator.of(context).pop(sites);
-          },
-          onSkip: () {
-            setState(() {});
-            Navigator.of(context).pop();
-          },
+          inGracePeriod: _strictModeService.isInExtensionGracePeriod,
         ),
       );
+      
+      // Update state after dialog is closed
+      setState(() {});
+
     }
   }
   

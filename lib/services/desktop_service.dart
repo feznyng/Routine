@@ -48,6 +48,8 @@ class DesktopService extends PlatformService {
       Util.report('Failed to signal engine start', e, st);
     }
 
+    await BrowserExtensionService.instance.init();
+
     _routineSubscription = Routine.watchAll().listen((routines) {
       onRoutinesUpdated(routines);
     });
@@ -180,7 +182,7 @@ class DesktopService extends PlatformService {
         !BrowserExtensionService.instance.isExtensionConnected && 
         !StrictModeService.instance.isInExtensionGracePeriod) {
       final browsers = await BrowserExtensionService.instance.getInstalledSupportedBrowsers();
-      apps.addAll(browsers);
+      apps.addAll(browsers.map((b) => b.name));
     }
     await platform.invokeMethod('updateAppList', {
       'apps': apps,

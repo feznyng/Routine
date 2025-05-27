@@ -180,26 +180,25 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
 
   Future<void> _openSitesDialog() async {
     // Check if browser extension setup has been completed
-    final browserExtensionService = BrowserExtensionService.instance;    
+    final browserExtensionService = BrowserExtensionService.instance;
+    final strictModeService = StrictModeService.instance;
+    
     if (!browserExtensionService.isExtensionConnected && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
       // Show onboarding dialog if setup is not completed
-      final result = await showDialog<List<String>>(
+      await showDialog<void>(
         context: context,
         barrierDismissible: false,
         builder: (context) => BrowserExtensionOnboardingDialog(
-          selectedSites: _selectedSites,
-          onComplete: (sites) {
-            Navigator.of(context).pop(sites);
-          },
-          onSkip: () {
-            Navigator.of(context).pop();
-          },
+          inGracePeriod: strictModeService.isInExtensionGracePeriod,
         ),
       );
       
-      if (result != null) {
+      // Check if extension is now connected after dialog is closed
+      if (browserExtensionService.isExtensionConnected) {
+        // Now that the extension is connected, proceed with site selection
+        // We'll need to implement the site selection logic separately
         setState(() {
-          _selectedSites = result;
+          // No sites to update since we're not getting them from the dialog anymore
         });
         widget.onSave(_selectedApps, _selectedSites, _selectedCategories);
       }

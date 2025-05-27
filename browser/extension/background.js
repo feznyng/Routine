@@ -9,51 +9,55 @@ const RECONNECT_INTERVAL = 2000; // Attempt reconnection every 2 seconds to matc
 let blockedSites = [];
 let allowList = false;
 
+// Rule IDs for declarativeNetRequest
+const BLOCK_RULE_ID = 1;
+const ALLOW_RULE_ID = 2;
+
 // Connect to native messaging host
 function connectToNative() {
   try {
     port = chrome.runtime.connectNative(hostName);
     console.log("Attempting to connect to native host");
 
-  port.onMessage.addListener((message) => {
-    console.log("Received message from native host:", message);
+    port.onMessage.addListener((message) => {
+      console.log("Received message from native host:", message);
+      
+      if (message.action === "updateBlockedSites" && Array.isArray(message.data.sites)) {
+        // Update blocked sites list
+        blockedSites = message.data.sites;
+        allowList = message.data.allowList;
+        
+        // Re-register blocking rules with new patterns
+        registerBlockingRules();
+        
+        console.log("Updated blocked sites:", blockedSites, allowList);
+      } else if (message.action === "appConnectionState") {
+        // Update app connection state
+        isAppConnected = message.data.connected;
+        console.log("App connection state changed:", isAppConnected ? "connected" : "disconnected", 
+                   "active connections:", message.data.connections);
+        
+        // Re-register blocking rules with new connection state
+        registerBlockingRules();
+      }
+    });
     
-    if (message.action === "updateBlockedSites" && Array.isArray(message.data.sites)) {
-      // Update blocked sites list
-      blockedSites = message.data.sites;
-      allowList = message.data.allowList;
+    port.onDisconnect.addListener(() => {
+      const error = chrome.runtime.lastError;
+      console.log("Disconnected from native host", error ? error.message : "");
+      port = null;
+      isAppConnected = false;  // Reset app connection state
+      registerBlockingRules();  // Re-register rules with new connection state
       
-      // Re-register web request listener with new patterns
-      registerBlockingRules();
-      
-      console.log("Updated blocked sites:", blockedSites, allowList);
-    } else if (message.action === "appConnectionState") {
-      // Update app connection state
-      isAppConnected = message.data.connected;
-      console.log("App connection state changed:", isAppConnected ? "connected" : "disconnected", 
-                 "active connections:", message.data.connections);
-      
-      // Re-register blocking rules with new connection state
-      registerBlockingRules();
-    }
-  });
-  
-  port.onDisconnect.addListener(() => {
-    const error = chrome.runtime.lastError;
-    console.log("Disconnected from native host", error ? error.message : "");
-    port = null;
-    isAppConnected = false;  // Reset app connection state
-    registerBlockingRules();  // Re-register rules with new connection state
-    
-    // Start reconnection attempts
-    scheduleReconnect();
-  });
+      // Start reconnection attempts
+      scheduleReconnect();
+    });
 
-  // Clear reconnection timer on successful connection
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer);
-    reconnectTimer = null;
-  }
+    // Clear reconnection timer on successful connection
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
   } catch (error) {
     console.log("Failed to connect to native host:", error);
     scheduleReconnect();
@@ -70,11 +74,8 @@ function scheduleReconnect() {
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
     connectToNative();
-  }, delay);
+  }, RECONNECT_INTERVAL);
 }
-
-// Initialize connection
-connectToNative();
 
 // Check if hostname matches any domain in the list (including subdomains)
 function matchesDomain(hostname, domainList) {
@@ -86,61 +87,119 @@ function matchesDomain(hostname, domainList) {
   });
 }
 
-// Listener for web requests
-function blockRequest(details) {
-  // If app is not connected, allow all requests
-  if (!isAppConnected) {
-    console.log("App not connected, allowing request");
-    return;
-  }
-
-  const url = new URL(details.url);
-  const hostname = url.hostname;
-
-  if (allowList) {
-    // In allowList mode, allow only sites in the list
-    const isAllowed = matchesDomain(hostname, blockedSites);
-    if (!url.contains('routineblocker.com') && !isAllowed) {
-      console.log("Blocking non-allowed site:", hostname);
-      return { redirectUrl: 'https://www.routineblocker.com/blocked' };
-    }
-  } else {
-    // In blockgroup mode, block only sites in the list
-    if (matchesDomain(hostname, blockedSites)) {
-      console.log("Blocking blocked site:", hostname);
-      return { redirectUrl: 'https://www.routineblocker.com/blocked' };
-    }
-  }
+// Create domain condition patterns for declarativeNetRequest
+function createDomainConditions(domains) {
+  return domains.map(domain => {
+    // Handle both exact domains and subdomains
+    return {
+      urlFilter: `*://*.${domain}/*`,
+      resourceTypes: [
+        "main_frame",
+        "sub_frame",
+        "xmlhttprequest",
+        "websocket"
+      ]
+    };
+  });
 }
 
-// Register blocking rules
-function registerBlockingRules() {
-  // First remove existing listener
-  try {
-    chrome.webRequest.onBeforeRequest.removeListener(blockRequest);
-  } catch (e) {
-    // Listener might not exist yet
-    console.log("No existing listener to remove");
-  }
+// Register blocking rules using declarativeNetRequest
+async function registerBlockingRules() {
+  // First remove all existing rules
+  await chrome.declarativeNetRequest.updateDynamicRules({
+    removeRuleIds: [BLOCK_RULE_ID, ALLOW_RULE_ID]
+  });
   
   // Only register blocking if app is connected and have sites to block
-  if (isAppConnected && (allowList || blockedSites.length > 0)) {
-    console.log(`Registering ${allowList ? 'allowList' : 'blockgroup'} mode with ${allowList ? 'allowed' : 'blocked'} sites:`, blockedSites);
-    chrome.webRequest.onBeforeRequest.addListener(
-      blockRequest,
-      {
-        urls: ["<all_urls>"],
-        types: [
-          "main_frame",        // New page loads
-          "sub_frame",         // iframes
-          "xmlhttprequest",    // Ajax requests
-          "websocket"          // WebSocket connections
-        ]
+  if (!isAppConnected) {
+    console.log("App not connected, blocking disabled");
+    return;
+  }
+  
+  if (allowList && blockedSites.length > 0) {
+    // In allowList mode, block all sites except those in the list and routineblocker.com
+    console.log(`Registering allowList mode with allowed sites:`, blockedSites);
+    
+    // Rule 1: Block all sites
+    const blockAllRule = {
+      id: BLOCK_RULE_ID,
+      priority: 1,
+      action: {
+        type: "redirect",
+        redirect: { url: "https://www.routineblocker.com/blocked" }
       },
-      ["blocking"]
-    );
+      condition: {
+        urlFilter: "*://*/*",
+        resourceTypes: [
+          "main_frame",
+          "sub_frame",
+          "xmlhttprequest",
+          "websocket"
+        ]
+      }
+    };
+    
+    // Rule 2: Allow specific sites (higher priority)
+    const allowedConditions = createDomainConditions(blockedSites);
+    // Add routineblocker.com to allowed sites
+    allowedConditions.push({
+      urlFilter: "*://*.routineblocker.com/*",
+      resourceTypes: [
+        "main_frame",
+        "sub_frame",
+        "xmlhttprequest",
+        "websocket"
+      ]
+    });
+    
+    const allowRule = {
+      id: ALLOW_RULE_ID,
+      priority: 2, // Higher priority than block rule
+      action: { type: "allow" },
+      condition: { 
+        urlFilter: "*://*/*",
+        resourceTypes: [
+          "main_frame",
+          "sub_frame",
+          "xmlhttprequest",
+          "websocket"
+        ],
+        // In MV3, we need to use requestDomains instead of urlFilter for complex patterns
+        requestDomains: [...blockedSites, "routineblocker.com"]
+      }
+    };
+    
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      addRules: [blockAllRule, allowRule]
+    });
+  } else if (!allowList && blockedSites.length > 0) {
+    // In blockgroup mode, block only sites in the list
+    console.log(`Registering blockgroup mode with blocked sites:`, blockedSites);
+    
+    const blockRule = {
+      id: BLOCK_RULE_ID,
+      priority: 1,
+      action: {
+        type: "redirect",
+        redirect: { url: "https://www.routineblocker.com/blocked" }
+      },
+      condition: {
+        urlFilter: "*://*/*",
+        resourceTypes: [
+          "main_frame",
+          "sub_frame",
+          "xmlhttprequest",
+          "websocket"
+        ],
+        requestDomains: blockedSites
+      }
+    };
+    
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      addRules: [blockRule]
+    });
   } else {
-    console.log(isAppConnected ? "No sites to block" : "App not connected, blocking disabled");
+    console.log("No sites to block");
   }
 }
 
@@ -153,6 +212,34 @@ function sendToNative(message) {
     connectToNative();
   }
 }
+
+// Service worker event listeners
+chrome.runtime.onInstalled.addListener(() => {
+  console.log("Extension installed");
+  connectToNative();
+});
+
+// Handle service worker activation
+chrome.runtime.onStartup.addListener(() => {
+  console.log("Extension starting up");
+  connectToNative();
+});
+
+// Keep the service worker alive with periodic alarms
+chrome.alarms.create("keepAlive", { periodInMinutes: 1 });
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === "keepAlive") {
+    // Check connection and reconnect if needed
+    if (!port) {
+      console.log("Keep-alive alarm triggered reconnection");
+      connectToNative();
+    }
+  }
+});
+
+// Initialize connection
+connectToNative();
 
 // Set up initial blocking rules
 registerBlockingRules();

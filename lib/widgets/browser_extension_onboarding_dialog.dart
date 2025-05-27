@@ -1,21 +1,21 @@
 import 'dart:async';
-import 'package:Routine/util.dart';
 import 'package:flutter/material.dart';
-import 'dart:io' show Platform;
-import '../services/desktop_service.dart';
-import '../services/browser_extension_service.dart';
-import '../services/strict_mode_service.dart';
+import 'package:Routine/services/browser_extension_service.dart';
+import 'package:Routine/services/strict_mode_service.dart';
+import 'package:Routine/widgets/browser_extension_onboarding/browser_selection_step.dart';
+import 'package:Routine/widgets/browser_extension_onboarding/native_messaging_host_step.dart';
+import 'package:Routine/widgets/browser_extension_onboarding/extension_installation_step.dart';
+import 'package:Routine/widgets/browser_extension_onboarding/completion_step.dart';
 
+/// A dialog that guides the user through setting up the Routine browser extension
+/// for each browser they have installed.
 class BrowserExtensionOnboardingDialog extends StatefulWidget {
-  final List<String> selectedSites;
-  final Function(List<String>) onComplete;
-  final VoidCallback onSkip;
+  /// Whether the dialog is opened during a grace period
+  final bool inGracePeriod;
 
   const BrowserExtensionOnboardingDialog({
     super.key,
-    required this.selectedSites,
-    required this.onComplete,
-    required this.onSkip,
+    this.inGracePeriod = false,
   });
 
   @override
@@ -23,704 +23,416 @@ class BrowserExtensionOnboardingDialog extends StatefulWidget {
 }
 
 class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboardingDialog> {
+  final BrowserExtensionService _browserExtensionService = BrowserExtensionService.instance;
+  final StrictModeService _strictModeService = StrictModeService.instance;
+  
   int _currentStep = 0;
-  final PageController _pageController = PageController();
-  List<String> _detectedBrowsers = [];
+  List<Browser> _installedBrowsers = [];
+  List<Browser> _selectedBrowsers = [];
+  int _currentBrowserIndex = 0;
+  Map<Browser, bool> _nmhInstalledMap = {};
   bool _isLoading = true;
-  bool _manifestInstalled = false;
-  bool _isInstallingManifest = false;
-  String? _manifestInstallError;
-  bool _isInstallingExtension = false;
-  String? _extensionInstallError;
+  bool _isExtensionConnecting = false;
   
-  // Grace period tracking
-  bool _startedGracePeriod = false;
-  int _remainingGracePeriodSeconds = 0;
-  Timer? _gracePeriodCountdownTimer;
-  StreamSubscription? _gracePeriodExpirationSubscription;
+  // Grace period related variables
+  bool _inGracePeriod = false;
+  int _remainingSeconds = 0;
+  Timer? _countdownTimer;
+  StreamSubscription? _gracePeriodExpirationListener;
   
-  // Subscription for extension connection status
-  StreamSubscription<bool>? _connectionSubscription;
-  
-  // Timer for periodically trying to connect to NMH
+  // Connection attempt timer
   Timer? _connectionAttemptTimer;
-  
+  StreamSubscription? _connectionStatusSubscription;
+
   @override
   void initState() {
     super.initState();
-    _detectInstalledBrowsers();
-    _startedGracePeriod = false;
+    _inGracePeriod = widget.inGracePeriod;
+    _loadInstalledBrowsers();
+    
+    // Listen for connection status changes
+    _connectionStatusSubscription = _browserExtensionService.connectionStream.listen((connected) {
+      _updateConnectionStatus();
+    });
+    
+    // If in grace period, listen for expiration
+    if (_inGracePeriod) {
+      _gracePeriodExpirationListener = _strictModeService.gracePeriodExpirationStream.listen((_) {
+        _onGracePeriodExpired();
+      });
+    }
   }
-  
+
   @override
   void dispose() {
-    _pageController.dispose();
-    _connectionSubscription?.cancel();
+    _countdownTimer?.cancel();
     _connectionAttemptTimer?.cancel();
-    _gracePeriodCountdownTimer?.cancel();
-    _gracePeriodExpirationSubscription?.cancel();
-    
+    _connectionStatusSubscription?.cancel();
+    _gracePeriodExpirationListener?.cancel();
     super.dispose();
   }
-  
-  // Start a timer to update the grace period countdown
-  void _startGracePeriodCountdown() {
-    if (!StrictModeService.instance.effectiveBlockBrowsersWithoutExtension) {
-      return;
-    }
 
-    setState(() {
-      _startedGracePeriod = true;
-    });
-
-    _gracePeriodExpirationSubscription = StrictModeService.instance.gracePeriodExpirationStream
-        .listen((_) => _onGracePeriodExpired());
-    StrictModeService.instance.startExtensionGracePeriod();
-
-    _gracePeriodCountdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        setState(() {
-          _remainingGracePeriodSeconds = StrictModeService.instance.remainingGracePeriodSeconds;
-          
-          // If grace period has expired, cancel the timer
-          if (_remainingGracePeriodSeconds <= 0) {
-            timer.cancel();
-            _gracePeriodCountdownTimer = null;
-          }
-        });
-      }
-    });
-  }
-  
-  // Handle grace period expiration
-  void _onGracePeriodExpired() {
-    if (mounted) {
-      // Close the dialog when grace period expires
-      widget.onSkip();
-    }
-  }
-  
-  Future<void> _detectInstalledBrowsers() async {
+  Future<void> _loadInstalledBrowsers() async {
     setState(() {
       _isLoading = true;
     });
     
-    try {
-      // Get installed applications
-      final installedApps = await DesktopService.getInstalledApps();
-      
-      // Filter for supported browsers (only Firefox for now)
-      final browsers = installedApps
-          .where((app) => app.name.toLowerCase().contains('firefox'))
-          .map((app) => app.name)
-          .toList();
-      
-      setState(() {
-        _detectedBrowsers = browsers;
-        _isLoading = false;
-      });
-    } catch (e, st) {
-      Util.report('error detecting browsers', e, st);
-      setState(() {
-        _detectedBrowsers = [];
-        _isLoading = false;
-      });
-    }
-  }
-  
-  Future<void> _installNativeMessagingHost() async {
-    setState(() {
-      _isInstallingManifest = true;
-      _manifestInstallError = null;
-    });
+    // Get installed browsers
+    final browsers = await _browserExtensionService.getInstalledSupportedBrowsers();
     
-    try {
-      final browserExtensionService = BrowserExtensionService.instance;
-      
-      // Always install the native messaging host and manifest during onboarding
-      // to ensure they're properly configured
-      final success = await browserExtensionService.installNativeMessagingHost();
+    // Initialize NMH installation status map for each browser
+    Map<Browser, bool> nmhMap = {};
+    for (final browser in browsers) {
+      nmhMap[browser] = false;
+    }
+    
+    setState(() {
+      _installedBrowsers = browsers;
+      // Select all browsers by default
+      _selectedBrowsers = List.from(browsers);
+      _nmhInstalledMap = nmhMap;
+      _isLoading = false;
+    });
+  }
+
+  void _updateConnectionStatus() {
+    if (_currentStep == 2 && _currentBrowserIndex < _selectedBrowsers.length) {
+      final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
+      final isConnected = _browserExtensionService.isBrowserConnected(currentBrowser);
       
       setState(() {
-        _manifestInstalled = success;
-        _isInstallingManifest = false;
-        
-        if (!success) {
-          _manifestInstallError = 'Failed to install native messaging host. Please try again.';
+        if (isConnected) {
+          _isExtensionConnecting = false;
         }
       });
-    } catch (e) {
-      setState(() {
-        _isInstallingManifest = false;
-        _manifestInstalled = false;
-        _manifestInstallError = 'Error: ${e.toString()}';
-      });
     }
   }
-  
-  Future<void> _installBrowserExtension(String browserName) async {
-    setState(() {
-      _isInstallingExtension = true;
-      _extensionInstallError = null;
-    });
-    
-    try {
-      final browserExtensionService = BrowserExtensionService.instance;
-      final success = await browserExtensionService.installBrowserExtension(browserName);
-      
-      setState(() {
-        // Don't set _extensionInstalled to true here
-        // It will be set by the connection listener when the extension actually connects
-        _isInstallingExtension = false;
-        
-        if (!success) {
-          _extensionInstallError = 'Failed to install browser extension. Please try again or install it manually.';
-        } else {
-          // Start periodic connection attempts
-          _startPeriodicConnectionAttempts();
-        }
-      });
-    } catch (e) {
-      setState(() {
-        _isInstallingExtension = false;
-        _extensionInstallError = 'Error: ${e.toString()}';
-      });
-    }
+
+  void _onGracePeriodExpired() {
+    // Close the dialog when grace period expires
+    Navigator.of(context).pop();
   }
-  
-  // Start periodic attempts to connect to the Native Messaging Host
-  void _startPeriodicConnectionAttempts() {
+
+  void _startConnectionAttemptTimer() {
     // Cancel any existing timer
     _connectionAttemptTimer?.cancel();
     
-    // Try to connect immediately
-    _attemptConnection();
-    
-    // Set up a timer to try connecting every 2 seconds
+    // Start a new timer that attempts to connect every 2 seconds
     _connectionAttemptTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      // Check if the extension is already connected
-      if (BrowserExtensionService.instance.isExtensionConnected) {
-        setState(() {
-          _isInstallingExtension = false;
-        });
-        // If connected, cancel the timer
+      if (_currentBrowserIndex < _selectedBrowsers.length) {
+        final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
+        _browserExtensionService.connectToNMH(currentBrowser);
+      } else {
+        // Stop the timer if we've gone through all browsers
         timer.cancel();
-        _connectionAttemptTimer = null;
-        return;
       }
-      
-      // Try to connect
-      _attemptConnection();
     });
   }
-  
-  // Attempt to connect to the Native Messaging Host
-  Future<void> _attemptConnection() async {
-    if (!BrowserExtensionService.instance.isExtensionConnected) {
-      await BrowserExtensionService.instance.connectToNMH();
+
+  void _startGracePeriodCountdown() {
+    // Only start grace period if strict mode is enabled and browser blocking is active
+    if (_strictModeService.effectiveBlockBrowsersWithoutExtension) {
+      // Calculate grace period duration based on number of browsers
+      final gracePeriodDuration = _selectedBrowsers.length * 60; // 60 seconds per browser
+      
+      // Start the grace period
+      _strictModeService.startExtensionGracePeriod(gracePeriodDuration);
+      
+      // Set initial remaining time
+      setState(() {
+        _inGracePeriod = true;
+        _remainingSeconds = gracePeriodDuration;
+      });
+      
+      // Start countdown timer
+      _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        setState(() {
+          if (_remainingSeconds > 0) {
+            _remainingSeconds--;
+          } else {
+            timer.cancel();
+          }
+        });
+      });
     }
   }
-  
+
   void _nextStep() {
-    if (_currentStep < _getStepTitles().length - 1) {
+    if (_currentStep == 0 && _selectedBrowsers.isEmpty) {
+      // Can't proceed if no browsers are selected
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select at least one browser')),
+      );
+      return;
+    }
+    
+    // If we're at the browser selection step and moving to the first browser setup
+    if (_currentStep == 0) {
+      // Start the grace period when moving to the browser setup steps
+      if (!_inGracePeriod && _strictModeService.effectiveBlockBrowsersWithoutExtension) {
+        _startGracePeriodCountdown();
+      }
+      
+      // Reset the current browser index
+      _currentBrowserIndex = 0;
       setState(() {
         _currentStep++;
       });
-      _pageController.animateToPage(
-        _currentStep,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-      
-      // If moving to the extension installation step, start periodic connection attempts
-      if (_currentStep == 2) { // Extension installation step
-        _startGracePeriodCountdown();
-        _startPeriodicConnectionAttempts();
-      }
-    } else {
-      // Complete the onboarding
-      widget.onComplete(widget.selectedSites);
+      return;
     }
+    
+    // If we're at the NMH installation step
+    if (_currentStep == 1) {
+      // Check if NMH is installed for the current browser
+      final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
+      if (!(_nmhInstalledMap[currentBrowser] ?? false)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please install the Native Messaging Host first')),
+        );
+        return;
+      }
+      
+      // Move to the extension installation step
+      // Start connection attempt timer when moving to extension installation step
+      _startConnectionAttemptTimer();
+      setState(() {
+        _currentStep++;
+      });
+      return;
+    }
+    
+    // If we're at the extension installation step
+    if (_currentStep == 2) {
+      // Check if current browser is connected before proceeding
+      final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
+      final isConnected = _browserExtensionService.isBrowserConnected(currentBrowser);
+      
+      if (!isConnected) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please wait for the extension to connect')),
+        );
+        return;
+      }
+      
+      // Move to the next browser or to the completion step
+      _currentBrowserIndex++;
+      
+      // If we've gone through all browsers, move to the completion step
+      if (_currentBrowserIndex >= _selectedBrowsers.length) {
+        setState(() {
+          _currentStep = 3; // Completion step
+        });
+        return;
+      }
+      
+      // Otherwise, go back to the NMH installation step for the next browser
+      setState(() {
+        _currentStep = 1; // Back to NMH installation for next browser
+      });
+      return;
+    }
+    
+    // For any other steps, just increment
+    setState(() {
+      _currentStep++;
+    });
   }
-  
+
   void _previousStep() {
     if (_currentStep > 0) {
       setState(() {
         _currentStep--;
+        
+        // If going back from extension installation to NMH installation,
+        // reset the current browser index
+        if (_currentStep == 1) {
+          _currentBrowserIndex = 0;
+        }
       });
-      _pageController.animateToPage(
-        _currentStep,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
     }
   }
-  
-  List<String> _getStepTitles() {
-    return [
-      'Detect Browsers',
-      'Install Native Messaging Host',
-      'Install Browser Extension',
-    ];
+
+  void _toggleBrowserSelection(Browser browser) {
+    setState(() {
+      if (_selectedBrowsers.contains(browser)) {
+        _selectedBrowsers.remove(browser);
+      } else {
+        _selectedBrowsers.add(browser);
+      }
+    });
   }
-  
-  Widget _buildBrowserDetectionStep() {
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+
+  void _installNativeMessagingHost() async {
+    if (_currentBrowserIndex < _selectedBrowsers.length) {
+      final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
+      
+      setState(() {
+        _isLoading = true;
+      });
+      
+      // Install NMH - note that the current API doesn't support per-browser installation
+      // but the UI will track it per browser for a better user experience
+      final success = await _browserExtensionService.installNativeMessagingHost(currentBrowser);
+      
+      setState(() {
+        _nmhInstalledMap[currentBrowser] = success;
+        _isLoading = false;
+      });
+      
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Native messaging host installed successfully for $currentBrowser')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to install native messaging host for $currentBrowser')),
+        );
+      }
     }
-    
-    if (_detectedBrowsers.isEmpty) {
-      return SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-          const Icon(
-            Icons.warning_amber_rounded,
-            size: 48,
-            color: Colors.orange,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'No supported browsers detected',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'We currently support Firefox. Please install it to use website blocking.',
-            textAlign: TextAlign.center,
-          ),
-          ],
-        ),
-      );
+  }
+
+  void _installBrowserExtension() async {
+    if (_currentBrowserIndex < _selectedBrowsers.length) {
+      final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
+      
+      setState(() {
+        _isExtensionConnecting = true;
+      });
+      
+      await _browserExtensionService.installBrowserExtension(currentBrowser);
+      
+      // Start connection attempt timer
+      _startConnectionAttemptTimer();
     }
-    
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-        const Text(
-          'Supported browsers detected:',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        ...List.generate(_detectedBrowsers.length, (index) {
-          final words = _detectedBrowsers[index].split(' ');
-          final titleCase = words.map((word) => word[0].toUpperCase() + word.substring(1)).join(' ');
-          return ListTile(
-            leading: const Icon(Icons.check_circle, color: Colors.green),
-            title: Text(titleCase),
-          );
-        }),
-        const SizedBox(height: 16),
-        Text(
-          Platform.isWindows
-              ? 'Please open any additional browsers you want to block sites on. Routine can only detect running browsers on Windows.'
-              : 'To block websites, please set up our extension for each browser you have installed.',
-          style: const TextStyle(fontSize: 14),
-        ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildInstallNativeMessagingHostStep() {
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-        const SizedBox(height: 16),
-        const Text(
-          'The native messaging host allows the browser extension to communicate with Routine.',
-          textAlign: TextAlign.center,
-        ),
-        if (Platform.isMacOS)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8.0),
-            child: Text(
-              'You will be prompted to select the Mozilla NativeMessagingHosts directory.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontStyle: FontStyle.italic),
-            ),
-          ),
-        if (Platform.isWindows)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8.0),
-            child: Text(
-              'The native messaging host will be registered in the Windows registry.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontStyle: FontStyle.italic),
-            ),
-          ),
-        const SizedBox(height: 16),
-        if (_manifestInstallError != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16.0),
-            child: Container(
-              padding: const EdgeInsets.all(8.0),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(4.0),
-                border: Border.all(color: Colors.red.shade200),
-              ),
-              child: Text(
-                _manifestInstallError!,
-                style: TextStyle(color: Colors.red.shade800),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-        const SizedBox(height: 8),
-        if (!_manifestInstalled)
-          _isInstallingManifest
-              ? const Column(
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Installing native messaging host...'),
-                  ],
-                )
-              : ElevatedButton.icon(
-                  icon: const Icon(Icons.download),
-                  label: const Text('Install Native Messaging Host'),
-                  onPressed: _installNativeMessagingHost,
-                )
-        else
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.check_circle, color: Colors.green),
-              SizedBox(width: 8),
-              Text('Native Messaging Host installed successfully!'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildInstallExtensionStep() {
-    // Get the actual connection status from the service
-    final isExtensionConnected = BrowserExtensionService.instance.isExtensionConnected;
-    
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-        const SizedBox(height: 16),
-        const Text(
-          'The browser extension is required to block websites in your browser.',
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 16),
-        const Text(
-          'This will open your browser to install the extension. Follow the instructions in the browser to complete installation.',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontStyle: FontStyle.italic, fontSize: 13),
-        ),
-        const SizedBox(height: 16),
-        if (!isExtensionConnected && _startedGracePeriod && _remainingGracePeriodSeconds > 0)
-          Container(
-            padding: const EdgeInsets.all(12.0),
-            margin: const EdgeInsets.only(bottom: 16.0),
-            decoration: BoxDecoration(
-              color: Colors.amber.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8.0),
-              border: Border.all(color: Colors.amber.shade300),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.timer, color: Colors.amber.shade800),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Time remaining: $_remainingGracePeriodSeconds seconds',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.amber.shade800,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Browsers will be blocked when this time expires if the extension is not connected.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: Colors.amber.shade800),
-                ),
-              ],
-            ),
-          ),
-        if (_extensionInstallError != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16.0),
-            child: Container(
-              padding: const EdgeInsets.all(8.0),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(4.0),
-                border: Border.all(color: Colors.red.shade200),
-              ),
-              child: Text(
-                _extensionInstallError!,
-                style: TextStyle(color: Colors.red.shade800),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-        const SizedBox(height: 8),
-        if (!isExtensionConnected) // Use actual connection status
-          _isInstallingExtension
-              ? const Column(
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Opening browser to install extension...'),
-                  ],
-                )
-              : Column(
-                  children: [
-                    // Browser installation buttons
-                    ..._detectedBrowsers.map((browser) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16.0),
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.extension),
-                          label: Text('Install for $browser'),
-                          onPressed: () => _installBrowserExtension(browser),
-                        ),
-                      );
-                    }).toList(),
-                    
-                    // Add a waiting message if installation was initiated but not connected yet
-                    if (_isInstallingExtension == false && _extensionInstallError == null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 16.0),
-                        child: Column(
-                          children: const [
-                            CircularProgressIndicator(strokeWidth: 2),
-                            SizedBox(height: 8),
-                            Text(
-                              'Waiting for extension to connect...',
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
-                )
-        else
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.check_circle, color: Colors.green),
-              SizedBox(width: 8),
-              Text('Browser extension connected successfully!'),
-            ],
-          ),
-        ],
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final stepTitles = _getStepTitles();
-    
     return Dialog(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 600, maxHeight: 500),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Container(
+        width: 600,
+        constraints: const BoxConstraints(maxHeight: 600),
+        padding: const EdgeInsets.all(24),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Flexible(
-                    child: const Text(
-                      'Browser Extension Setup',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                  _buildHeader(),
+                  const SizedBox(height: 24),
+                  Expanded(
+                    child: _buildCurrentStep(),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () {
-                      // If in grace period, cancel it and go to cooldown
-                      if (_startedGracePeriod) {
-                        StrictModeService.instance.cancelGracePeriodWithCooldown();
-                      } else {
-                        widget.onSkip();
-                      }
-                    },
-                  ),
+                  const SizedBox(height: 24),
+                  _buildActions(),
                 ],
               ),
-              const SizedBox(height: 8),
-              // Step indicator
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    stepTitles.length,
-                    (index) => _buildStepIndicator(index, stepTitles[index]),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              // Step title
-              Text(
-                stepTitles[_currentStep],
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              // Step content
-              Expanded(
-                child: PageView(
-                  controller: _pageController,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    _buildBrowserDetectionStep(),
-                    _buildInstallNativeMessagingHostStep(),
-                    _buildInstallExtensionStep(),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Navigation buttons
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  TextButton(
-                    onPressed: () {
-                      // If in grace period, cancel it and go to cooldown
-                      if (_startedGracePeriod) {
-                        StrictModeService.instance.cancelGracePeriodWithCooldown();
-                      } else {
-                        widget.onSkip();
-                      }
-                    },
-                    child: const Text('Cancel'),
-                  ),
-                  Row(
-                    children: [
-                      if (_currentStep > 0)
-                        TextButton(
-                          onPressed: _previousStep,
-                          child: const Text('Back'),
-                        ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: _getNextButtonEnabled() ? _nextStep : null,
-                        child: Text(_currentStep == stepTitles.length - 1 ? 'Finish' : 'Next'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Row(
+      children: [
+        const Icon(Icons.extension, size: 28),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            'Browser Extension Setup',
+            style: Theme.of(context).textTheme.headlineSmall,
           ),
         ),
-      ),
+        IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () {
+            // If in grace period, cancel it and go to cooldown
+            if (_inGracePeriod) {
+              _strictModeService.cancelGracePeriodWithCooldown();
+            }
+            Navigator.of(context).pop();
+          },
+        ),
+      ],
     );
   }
-  
-  Widget _buildStepIndicator(int index, String title) {
-    final isActive = _currentStep >= index;
-    final isCurrent = _currentStep == index;
-    
-    return Expanded(
-      child: Row(
-        children: [
-          // Line before (except for first item)
-          if (index > 0)
-            Expanded(
-              child: Container(
-                height: 2,
-                color: isActive 
-                    ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context).colorScheme.surfaceVariant,
-              ),
-            ),
-          // Circle indicator
-          GestureDetector(
-            onTap: () {
-              if (_currentStep > index) {
-                setState(() {
-                  _currentStep = index;
-                });
-                _pageController.animateToPage(
-                  index,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                );
-              }
-            },
-            child: Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isCurrent 
-                    ? Theme.of(context).colorScheme.primary
-                    : (isActive 
-                        ? Theme.of(context).colorScheme.primaryContainer
-                        : Theme.of(context).colorScheme.surfaceVariant),
-                border: Border.all(
-                  color: isActive 
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.onSurfaceVariant,
-                  width: 2,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  '${index + 1}',
-                  style: TextStyle(
-                    color: isCurrent 
-                        ? Theme.of(context).colorScheme.onPrimary
-                        : (isActive 
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.onSurfaceVariant),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // Line after (except for last item)
-          if (index < _getStepTitles().length - 1)
-            Expanded(
-              child: Container(
-                height: 2,
-                color: isActive && _currentStep > index
-                    ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context).colorScheme.surfaceVariant,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-  
-  bool _getNextButtonEnabled() {
+
+  Widget _buildCurrentStep() {
     switch (_currentStep) {
       case 0:
-        return _detectedBrowsers.isNotEmpty;
+        return BrowserSelectionStep(
+          installedBrowsers: _installedBrowsers,
+          selectedBrowsers: _selectedBrowsers,
+          onToggleBrowser: _toggleBrowserSelection,
+        );
       case 1:
-        return _manifestInstalled;
+        if (_currentBrowserIndex < _selectedBrowsers.length) {
+          final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
+          final nmhInstalled = _nmhInstalledMap[currentBrowser] ?? false;
+          
+          return NativeMessagingHostStep(
+            browser: currentBrowser,
+            nmhInstalled: nmhInstalled,
+            onInstall: _installNativeMessagingHost,
+            totalBrowsers: _selectedBrowsers.length,
+            currentBrowserIndex: _currentBrowserIndex,
+          );
+        }
+        return const Center(child: Text('No browsers selected'));
       case 2:
-        // Use the actual connection status from the service
-        return BrowserExtensionService.instance.isExtensionConnected;
+        if (_currentBrowserIndex < _selectedBrowsers.length) {
+          final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
+          final isConnected = _browserExtensionService.isBrowserConnected(currentBrowser);
+          
+          return ExtensionInstallationStep(
+            browser: currentBrowser,
+            isConnected: isConnected,
+            isConnecting: _isExtensionConnecting,
+            onInstall: _installBrowserExtension,
+            inGracePeriod: _inGracePeriod,
+            remainingSeconds: _remainingSeconds,
+            totalBrowsers: _selectedBrowsers.length,
+            currentBrowserIndex: _currentBrowserIndex,
+          );
+        }
+        return const Center(child: Text('No browsers selected'));
+      case 3:
+        return CompletionStep(
+          connectedBrowsers: _browserExtensionService.connectedBrowsers,
+        );
       default:
-        return true;
+        return const Center(child: Text('Unknown step'));
     }
   }
+
+  Widget _buildActions() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        if (_currentStep > 0)
+          TextButton(
+            onPressed: _previousStep,
+            child: const Text('Back'),
+          )
+        else
+          const SizedBox.shrink(),
+        if (_currentStep < 3)
+          ElevatedButton(
+            onPressed: _nextStep,
+            child: Text(_currentStep == 2 ? 'Next' : 'Continue'),
+          )
+        else
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text('Finish'),
+          ),
+      ],
+    );
+  }
 }
+
+

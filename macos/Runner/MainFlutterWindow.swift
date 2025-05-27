@@ -61,38 +61,6 @@ class MainFlutterWindow: NSWindow {
       case "getStartOnLogin":
         let isEnabled = SMAppService.mainApp.status == .enabled
         result(isEnabled)
-      case "saveNativeMessagingHostManifest":
-        if let args = call.arguments as? [String: Any],
-           let manifestContent = args["content"] as? String {
-          
-          // Extract binary data and filename if provided
-          var binary: Data? = nil
-          let binaryFilename = args["binaryFilename"] as? String
-          
-          // Check if binary data is provided and convert it to Data
-          if let binaryList = args["binary"] as? [UInt8] {
-            binary = Data(binaryList)
-            NSLog("Received binary data: %d bytes", binary!.count)
-          } else if let binaryData = args["binary"] as? FlutterStandardTypedData {
-            binary = binaryData.data
-            NSLog("Received binary data as FlutterStandardTypedData: %d bytes", binary!.count)
-          }
-          
-          NSLog("Saving manifest with binary: %@", binary != nil ? "Yes" : "No")
-          if let filename = binaryFilename {
-            NSLog("Binary filename: %@", filename)
-          }
-          
-          saveNativeMessagingHostManifest(content: manifestContent, binary: binary, binaryFilename: binaryFilename) { success, error in
-            if success {
-              result(true)
-            } else {
-              result(FlutterError(code: "SAVE_FAILED", message: error, details: nil))
-            }
-          }
-        } else {
-          result(FlutterError(code: "INVALID_ARGUMENTS", message: "Expected manifest content", details: nil))
-        }
       default:
         NSLog("Method not implemented: %@", call.method)
         result(FlutterMethodNotImplemented)
@@ -298,56 +266,6 @@ class MainFlutterWindow: NSWindow {
           app.hide()
           self?.isHiding = false
         }
-      }
-    }
-  }
-  
-  private func saveNativeMessagingHostManifest(content: String, binary: Data? = nil, binaryFilename: String? = nil, completion: @escaping (Bool, String) -> Void) {
-    let savePanel = NSOpenPanel()
-    savePanel.title = "Browser Extension Setup"
-    savePanel.message = "Click 'Save' to install the browser extension. The recommended directory is already selected."
-    savePanel.prompt = "Save"
-    savePanel.canCreateDirectories = true
-    savePanel.canChooseFiles = false
-    savePanel.canChooseDirectories = true
-    savePanel.allowsMultipleSelection = false
-    
-    let homeDir = FileManager.default.homeDirectoryForCurrentUser
-    let recommendedPath = homeDir.appendingPathComponent("Library/Application Support/Mozilla/NativeMessagingHosts")
-    
-    let fileManager = FileManager.default
-    
-    if fileManager.fileExists(atPath: recommendedPath.path) {
-      savePanel.directoryURL = recommendedPath
-    } else {
-      do {
-        try fileManager.createDirectory(at: recommendedPath, withIntermediateDirectories: true, attributes: nil)
-        savePanel.directoryURL = recommendedPath
-      } catch {
-        SentrySDK.capture(error: error) { (scope) in
-          scope.setTag(value: "failed to create nmh directory", key: "method")
-        }
-        savePanel.directoryURL = homeDir
-      }
-    }
-    
-    // Show the save panel
-    savePanel.begin { response in
-      if response == .OK, let selectedURL = savePanel.url {
-        let fileURL = selectedURL.appendingPathComponent("com.solidsoft.routine.NativeMessagingHost.json")
-        
-        do {
-          try content.write(to: fileURL, atomically: true, encoding: .utf8)
-          NSLog("Manifest written to: %@", fileURL.path)
-          completion(true, "")
-        } catch {
-          completion(false, error.localizedDescription)
-          SentrySDK.capture(error: error) { (scope) in
-            scope.setTag(value: "failed to write nmh manifest file", key: "method")
-          }
-        }
-      } else {
-        completion(false, "User cancelled the operation")
       }
     }
   }
