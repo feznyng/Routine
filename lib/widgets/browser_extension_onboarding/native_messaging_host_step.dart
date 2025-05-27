@@ -1,4 +1,5 @@
 import 'package:Routine/services/browser_config.dart';
+import 'package:Routine/services/browser_extension_service.dart';
 import 'package:flutter/material.dart';
 
 /// Step 2: Native Messaging Host Installation
@@ -20,11 +21,13 @@ class NativeMessagingHostStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final name = BrowserExtensionService.instance.getBrowserData(browser).appName;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Install Native Messaging Host for ${browser.name}',
+          'Install Native Messaging Host for $name',
           style: Theme.of(context).textTheme.titleLarge,
         ),
         Text(
@@ -33,7 +36,7 @@ class NativeMessagingHostStep extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'The Native Messaging Host is required for the ${browser.name} extension to communicate with Routine.',
+          'The Native Messaging Host is required for the $name extension to communicate with Routine.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: 24),

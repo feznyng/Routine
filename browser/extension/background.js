@@ -1,5 +1,5 @@
 // Native messaging host name
-const hostName = "com.solidsoft.routine.NativeMessagingHost";
+const hostName = "com.solidsoft.routine.nmh";
 let port = null;
 let isAppConnected = false;  // Track Flutter app connection state
 let reconnectTimer = null;
@@ -32,7 +32,7 @@ async function connectToNative() {
     console.log(`Detected browser type: ${browserType}`);
     
     // Send browser type as first message after connecting
-    port = chrome.runtime.connectNative('com.solidsoft.routine.NativeMessagingHost');
+    port = chrome.runtime.connectNative(hostName);
     port.postMessage({ action: 'browser_info', data: { browser: browserType } });
     console.log(`Connected to native messaging host for ${browserType}`);
 
@@ -61,7 +61,7 @@ async function connectToNative() {
     
     port.onDisconnect.addListener(() => {
       const error = chrome.runtime.lastError;
-      console.log("Disconnected from native host", error ? error.message : "");
+      console.log("Disconnected from native host", error ? error.message : "", hostName);
       port = null;
       isAppConnected = false;  // Reset app connection state
       registerBlockingRules();  // Re-register rules with new connection state

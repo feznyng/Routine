@@ -106,7 +106,7 @@ class BrowserExtensionService {
 
   Map<String, dynamic> _createManifestContent(String binaryPath) {
     return {
-      'name': 'com.solidsoft.routine.NativeMessagingHost',
+      'name': 'com.solidsoft.routine.nmh',
       'description': 'Routine Native Messaging Host',
       'path': binaryPath,
       'type': 'stdio',
@@ -118,14 +118,17 @@ class BrowserExtensionService {
     try {
       final data = browserData[browser]!;
 
+
       if (Platform.isMacOS) {
         final String nmhName = await _getBinaryAssetPath();
         
         final Map<String, dynamic> manifest = _createManifestContent('$assetsPath/$nmhName');
         final String manifestJson = json.encode(manifest);
 
-        final fileName = 'com.solidsoft.routine.NativeMessagingHost.json';
-        final nmhDir = Platform.environment['HOME']! + data.macosNmhDir;
+        final fileName = 'com.solidsoft.routine.nmh.json';
+        final nmhDir = data.macosNmhDir;
+
+        logger.i("Browser Data: ${nmhDir}");
 
         final path = await FilePicker.platform.saveFile(
           fileName: fileName,
@@ -143,7 +146,7 @@ class BrowserExtensionService {
         final Map<String, dynamic> manifest = _createManifestContent('$assetsPath/$nmhName');
         final String manifestJson = json.encode(manifest);
         
-        String mozillaRegistryPath = "${data.registryPath}\\com.solidsoft.routine.NativeMessagingHost";
+        String mozillaRegistryPath = "${data.registryPath}\\com.solidsoft.routine.nmh";
         final Pointer<HKEY> hKey = calloc<HKEY>();
         
         try {
