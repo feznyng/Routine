@@ -10,8 +10,9 @@ let blockedSites = [];
 let allowList = false;
 
 // Rule IDs for declarativeNetRequest
-const BLOCK_RULE_ID = 1;
-const ALLOW_RULE_ID = 2;
+const ALLOW_LIST_BLOCK_RULE_ID = 1;
+const ALLOW_LIST_ALLOW_RULE_ID = 2;
+const BLOCK_LIST_RULE_ID = 3;
 
 function getBrowserType() {
   if (typeof browser !== 'undefined') return 'firefox';
@@ -122,10 +123,16 @@ function createDomainConditions(domains) {
 
 // Register blocking rules using declarativeNetRequest
 async function registerBlockingRules() {
-  // First remove all existing rules
-  await chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: [BLOCK_RULE_ID, ALLOW_RULE_ID]
-  });
+  // Get existing rules
+  const existingRules = await chrome.declarativeNetRequest.getDynamicRules();
+  const existingRuleIds = existingRules.map(rule => rule.id);
+  
+  // Remove all existing rules
+  if (existingRuleIds.length > 0) {
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: existingRuleIds
+    });
+  }
   
   // Only register blocking if app is connected and have sites to block
   if (!isAppConnected) {
@@ -139,7 +146,7 @@ async function registerBlockingRules() {
     
     // Rule 1: Block all sites
     const blockAllRule = {
-      id: BLOCK_RULE_ID,
+      id: ALLOW_LIST_BLOCK_RULE_ID,
       priority: 1,
       action: {
         type: "redirect",
@@ -170,7 +177,7 @@ async function registerBlockingRules() {
     });
     
     const allowRule = {
-      id: ALLOW_RULE_ID,
+      id: ALLOW_LIST_ALLOW_RULE_ID,
       priority: 2, // Higher priority than block rule
       action: { type: "allow" },
       condition: { 
@@ -194,7 +201,7 @@ async function registerBlockingRules() {
     console.log(`Registering blockgroup mode with blocked sites:`, blockedSites);
     
     const blockRule = {
-      id: BLOCK_RULE_ID,
+      id: BLOCK_LIST_RULE_ID,
       priority: 1,
       action: {
         type: "redirect",
