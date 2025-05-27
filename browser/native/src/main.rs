@@ -2,11 +2,13 @@ use byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use std::io::{self, Read, Write};
 use std::fs::OpenOptions;
-use std::net::TcpStream;
+use std::net::{TcpListener, TcpStream};
 use chrono;
 use std::thread;
 use std::sync::mpsc;
 use std::sync::atomic::{AtomicI32, Ordering};
+use std::path::{Path, PathBuf};
+use std::env;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Message {
@@ -77,23 +79,60 @@ fn main() -> io::Result<()> {
     let (tx, rx) = mpsc::channel();
     let tx_clone = tx.clone();
     
-    // Create TCP server
-    let listener = match std::net::TcpListener::bind("127.0.0.1:54322") {
-        Ok(listener) => {
-            log_to_file("TCP server started on port 54322");
-            listener
-        },
-        Err(e) => {
-            log_to_file(&format!("Failed to start TCP server: {}", e));
-            return Err(e);
+    let mut listener: Option<TcpListener> = None;
+    for i in 10000..54325 {
+        let res = match std::net::TcpListener::bind(format!("127.0.0.1:{}", i)) {
+            Ok(listener) => {
+                log_to_file(format!("TCP server started on port {}", i).as_str());
+                Some(listener)
+            },
+            Err(_) => {
+                None
+            }
+        };
+        
+        if res.is_some() {
+            listener = res;
+            break
         }
+    }
+
+    let listener = if listener.is_none() {
+        return Err(std::io::Error::new(std::io::ErrorKind::Other, "failed to bind to any port"));
+    } else {
+        listener.unwrap()
     };
+
+    // Get the port number before moving listener
+    let port = listener.local_addr()?.port();
 
     // Thread for reading from browser extension
     thread::spawn(move || {
+        // Get the current executable directory
+        let exe_dir = env::current_exe()
+            .unwrap_or_else(|_| PathBuf::from("/"))
+            .parent()
+            .unwrap_or_else(|| Path::new("/"))
+            .to_path_buf();  // Convert to owned PathBuf
         loop {
             match read_browser_message() {
                 Ok(message) => {
+                    // If this is a browser_info message, write the port to a browser-specific file
+                    if message.action == "browser_info" {
+                        if let Some(browser_type) = message.data.get("browser").and_then(|v| v.as_str()) {
+                            let port_file = exe_dir.join(format!("routine_nmh_{}_port", browser_type));
+                            if let Ok(mut file) = OpenOptions::new()
+                                .create(true)
+                                .write(true)
+                                .truncate(true)
+                                .open(&port_file)
+                            {
+                                let _ = writeln!(file, "{}", port);
+                                log_to_file(&format!("Wrote port to file: {}", port_file.display()));
+                            }
+                        }
+                    }
+
                     if let Err(e) = tx.send(message) {
                         log_to_file(&format!("Failed to send message to channel: {}", e));
                         break;

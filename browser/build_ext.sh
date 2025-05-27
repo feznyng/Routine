@@ -24,21 +24,46 @@ if [ -z "$AMO_JWT_ISSUER" ] || [ -z "$AMO_JWT_SECRET" ]; then
     exit 1
 fi
 
-# Create build directory if it doesn't exist
-mkdir -p "$BUILD_DIR"
+# Create build directories
+mkdir -p "$BUILD_DIR"/firefox
+mkdir -p "$BUILD_DIR"/chrome
 
-# Sign the extension
-echo "Signing extension..."
-web-ext sign \
-    --source-dir="$EXT_DIR" \
-    --artifacts-dir="$BUILD_DIR" \
-    --api-key="$AMO_JWT_ISSUER" \
-    --api-secret="$AMO_JWT_SECRET" \
-    --channel unlisted
+# Build Firefox version
+echo "Building Firefox version..."
+cp -r "$EXT_DIR/icons" "$EXT_DIR/blocked.html" "$EXT_DIR/background.js" "$BUILD_DIR"/firefox/
+cp "$EXT_DIR/manifest_firefox.json" "$BUILD_DIR"/firefox/manifest.json
 
-# Clean up temporary files
-echo "Cleaning up temporary files..."
-rm -f "$EXT_DIR/.amo-upload-uuid"
-rm -f "$BUILD_DIR"/*.zip
+# Build Chrome version
+echo "Building Chrome version..."
+cp -r "$EXT_DIR/icons" "$EXT_DIR/blocked.html" "$EXT_DIR/background.js" "$BUILD_DIR"/chrome/
+cp "$EXT_DIR/manifest.json" "$BUILD_DIR"/chrome/
 
-echo "Build and signing complete! Signed extension can be found in $BUILD_DIR"
+# Create zip files
+cd "$BUILD_DIR"
+zip -r firefox.zip firefox/*
+zip -r chrome.zip chrome/*
+cd - > /dev/null
+
+# Sign Firefox extension if credentials are available
+if [ -n "$AMO_JWT_ISSUER" ] && [ -n "$AMO_JWT_SECRET" ]; then
+    echo "Signing Firefox extension..."
+    web-ext sign \
+        --source-dir="$BUILD_DIR/firefox" \
+        --artifacts-dir="$BUILD_DIR" \
+        --api-key="$AMO_JWT_ISSUER" \
+        --api-secret="$AMO_JWT_SECRET" \
+        --channel unlisted
+    
+    # Clean up temporary files
+    echo "Cleaning up temporary files..."
+    rm -f "$BUILD_DIR/firefox/.amo-upload-uuid"
+else
+    echo "Skipping Firefox signing - no API credentials provided"
+fi
+
+echo "Build complete!"
+echo "Firefox extension: $BUILD_DIR/firefox.zip"
+echo "Chrome extension: $BUILD_DIR/chrome.zip"
+if [ -n "$AMO_JWT_ISSUER" ] && [ -n "$AMO_JWT_SECRET" ]; then
+    echo "Signed Firefox extension can be found in $BUILD_DIR"
+fi

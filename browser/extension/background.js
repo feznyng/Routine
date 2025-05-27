@@ -13,11 +13,28 @@ let allowList = false;
 const BLOCK_RULE_ID = 1;
 const ALLOW_RULE_ID = 2;
 
+function getBrowserType() {
+  if (typeof browser !== 'undefined') return 'firefox';
+  const userAgent = navigator.userAgent.toLowerCase();
+  if (userAgent.includes('edg/')) return 'edge';
+  if (userAgent.includes('opr/')) return 'opera';
+  if (userAgent.includes('brave')) return 'brave';
+  if (userAgent.includes('safari') && !userAgent.includes('chrome')) return 'safari';
+  if (userAgent.includes('chrome')) return 'chrome';
+  return 'unknown';
+}
+
 // Connect to native messaging host
-function connectToNative() {
+async function connectToNative() {
   try {
-    port = chrome.runtime.connectNative(hostName);
-    console.log("Attempting to connect to native host");
+    // Get browser type for logging
+    const browserType = getBrowserType();
+    console.log(`Detected browser type: ${browserType}`);
+    
+    // Send browser type as first message after connecting
+    port = chrome.runtime.connectNative('com.solidsoft.routine.NativeMessagingHost');
+    port.postMessage({ action: 'browser_info', data: { browser: browserType } });
+    console.log(`Connected to native messaging host for ${browserType}`);
 
     port.onMessage.addListener((message) => {
       console.log("Received message from native host:", message);

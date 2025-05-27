@@ -95,11 +95,11 @@ class BrowserExtensionService {
       final ProcessResult result = await Process.run('uname', ['-m']);
       final String arch = result.stdout.toString().trim();
       logger.i('Detected architecture: $arch');
-      return arch == 'arm64' ? 'assets/extension/native_macos_arm64' : 'assets/extension/native_macos_x86_64';
+      return arch == 'arm64' ? 'native_macos_arm64' : 'native_macos_x86_64';
     } else if (Platform.isWindows) {
-      return 'assets/extension/native_windows.exe';
+      return 'native_windows.exe';
     } else if (Platform.isLinux) {
-      return 'assets/extension/native_linux';
+      return 'native_linux';
     }
     throw UnsupportedError('Unsupported platform');
   }
@@ -119,12 +119,9 @@ class BrowserExtensionService {
       final data = browserData[browser]!;
 
       if (Platform.isMacOS) {
-        final String assetPath = await _getBinaryAssetPath();
+        final String nmhName = await _getBinaryAssetPath();
         
-        final String bundlePath = Platform.resolvedExecutable
-            .replaceAll('/MacOS/Routine', '/Frameworks/App.framework/Resources/flutter_assets/$assetPath');
-        
-        final Map<String, dynamic> manifest = _createManifestContent(bundlePath);
+        final Map<String, dynamic> manifest = _createManifestContent('$assetsPath/$nmhName');
         final String manifestJson = json.encode(manifest);
 
         final fileName = 'com.solidsoft.routine.NativeMessagingHost.json';
@@ -142,11 +139,8 @@ class BrowserExtensionService {
 
         return false;
       } else if (Platform.isWindows) {
-        final String assetPath = await _getBinaryAssetPath();
-        final String bundlePath = Platform.resolvedExecutable
-            .replaceAll('/MacOS/Routine', '/Frameworks/App.framework/Resources/flutter_assets/$assetPath');
-        
-        final Map<String, dynamic> manifest = _createManifestContent(bundlePath);
+        final String nmhName = await _getBinaryAssetPath();
+        final Map<String, dynamic> manifest = _createManifestContent('$assetsPath/$nmhName');
         final String manifestJson = json.encode(manifest);
         
         String mozillaRegistryPath = "${data.registryPath}\\com.solidsoft.routine.NativeMessagingHost";
@@ -247,19 +241,50 @@ class BrowserExtensionService {
       }
     }
   }
+
+  String get assetsPath {
+    if (Platform.isMacOS) {
+      return Platform.resolvedExecutable
+          .replaceAll('/MacOS/Routine', '/Frameworks/App.framework/Resources/flutter_assets/assets/extension');
+    } else {
+      final exePath = Platform.resolvedExecutable;
+      final exeDir = exePath.substring(0, exePath.lastIndexOf('/'));
+      return '$exeDir/data/flutter_assets/assets/extension';
+    }
+  }
   
+  Future<int?> _readNmhPort(Browser browser) async {
+    try {
+      final String portFile = '$assetsPath/routine_nmh_${browser.name}_port';
+      logger.i("Reading port file: $portFile");
+      
+      final file = File(portFile);
+      if (await file.exists()) {
+        final content = await file.readAsString();
+        return int.tryParse(content.trim());
+      } else {
+        logger.w("Port file does not exist for $browser");
+      }
+    } catch (e, st) {
+      Util.report('Error reading NMH port for $browser', e, st);
+    }
+    return null;
+  }
+
   Future<void> connectToNMH(Browser browser) async {
     try {
-      final data = browserData[browser]!;
+      final port = await _readNmhPort(browser);
+      if (port == null) {
+        logger.w('Could not read NMH port for $browser');
+        return;
+      }
       
-      // Connect to the NMH for this browser
-      final socket = await Socket.connect('127.0.0.1', data.port);
-      logger.i('Connected to NMH TCP server for $browser on port ${data.port}');
+      final socket = await Socket.connect('127.0.0.1', port);
+      logger.i('Connected to NMH TCP server for $browser on port $port');
       
       final conn = BrowserConnection(socket: socket);
       _connections[browser] = conn;
       
-      // Persist connected browser to SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       final connectedBrowsers = prefs.getStringList(_connectedBrowsersKey) ?? [];
       if (!connectedBrowsers.contains(browser.name)) {
