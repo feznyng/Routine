@@ -31,7 +31,7 @@ mkdir -p "$BUILD_DIR"/chrome
 # Build Firefox version
 echo "Building Firefox version..."
 cp -r "$EXT_DIR/icons" "$EXT_DIR/blocked.html" "$EXT_DIR/background.js" "$BUILD_DIR"/firefox/
-cp "$EXT_DIR/manifest_firefox.json" "$BUILD_DIR"/firefox/manifest.json
+cp "$EXT_DIR/manifest.json" "$BUILD_DIR"/firefox/manifest.json
 
 # Build Chrome version
 echo "Building Chrome version..."
@@ -61,9 +61,16 @@ else
     echo "Skipping Firefox signing - no API credentials provided"
 fi
 
+# Clean up build directories
+echo "Cleaning up build directories..."
+rm -rf "$BUILD_DIR/firefox" "$BUILD_DIR/chrome"
+
 echo "Build complete!"
 echo "Firefox extension: $BUILD_DIR/firefox.zip"
 echo "Chrome extension: $BUILD_DIR/chrome.zip"
 if [ -n "$AMO_JWT_ISSUER" ] && [ -n "$AMO_JWT_SECRET" ]; then
     echo "Signed Firefox extension can be found in $BUILD_DIR"
 fi
+
+# Clean up old builds
+find "$BUILD_DIR" -name "*.xpi" -mtime +30 -delete
