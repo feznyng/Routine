@@ -9,6 +9,10 @@ const RECONNECT_INTERVAL = 2000; // Attempt reconnection every 2 seconds to matc
 let sites = [];
 let allowList = false;
 
+// Lock mechanism for rule updates
+let isUpdatingRules = false;
+let pendingRuleUpdate = false;
+
 function getBrowserType() {
   if (typeof browser !== 'undefined') return 'firefox';
   const userAgent = navigator.userAgent.toLowerCase();
@@ -92,6 +96,15 @@ function scheduleReconnect() {
 
 // Register blocking rules using declarativeNetRequest
 async function registerBlockingRules() {
+  // If already updating rules, schedule a follow-up update
+  if (isUpdatingRules) {
+    console.log('Rule update already in progress, scheduling follow-up update');
+    pendingRuleUpdate = true;
+    return;
+  }
+
+  isUpdatingRules = true;
+
   try {
     // Remove all existing dynamic rules first
     await chrome.declarativeNetRequest.updateDynamicRules({
@@ -103,9 +116,7 @@ async function registerBlockingRules() {
       console.log('App not connected, clearing all blocking rules');
       return;
     }
-
-    console.log('applying rules')
-
+    
     const rules = [];
     let ruleId = 1;
 
@@ -164,6 +175,16 @@ async function registerBlockingRules() {
     console.log(`Updated blocking rules: ${rules.length} rules added, mode: ${allowList ? 'allowlist' : 'blocklist'}`);
   } catch (error) {
     console.error('Error updating blocking rules:', error);
+  } finally {
+    isUpdatingRules = false;
+
+    // If there's a pending update, process it
+    if (pendingRuleUpdate) {
+      pendingRuleUpdate = false;
+      console.log('Processing pending rule update');
+      // Use setTimeout to prevent stack overflow with recursive async calls
+      setTimeout(() => registerBlockingRules(), 0);
+    }
   }
 }
 
