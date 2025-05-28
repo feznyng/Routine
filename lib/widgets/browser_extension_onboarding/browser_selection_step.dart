@@ -28,6 +28,13 @@ class BrowserSelectionStep extends StatelessWidget {
       );
     }
 
+    final connectedBrowsers = installedBrowsers
+        .where((b) => BrowserExtensionService.instance.isBrowserConnected(b))
+        .toList();
+    final unconnectedBrowsers = installedBrowsers
+        .where((b) => !BrowserExtensionService.instance.isBrowserConnected(b))
+        .toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -42,19 +49,27 @@ class BrowserSelectionStep extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Expanded(
-          child: ListView.builder(
-            itemCount: installedBrowsers.length,
-            itemBuilder: (context, index) {
-              final browser = installedBrowsers[index];
-              final isSelected = selectedBrowsers.contains(browser);
-              
-              return CheckboxListTile(
-                title: Text(BrowserExtensionService.instance.getBrowserData(browser).appName),
-                value: isSelected,
-                onChanged: (_) => onToggleBrowser(browser),
-                secondary: _getBrowserIcon(browser),
-              );
-            },
+          child: ListView(
+            children: [
+              if (connectedBrowsers.isNotEmpty) ...[
+                ...connectedBrowsers.map((browser) => ListTile(
+                      title: Text(BrowserExtensionService.instance.getBrowserData(browser).appName),
+                      leading: const Icon(Icons.check_circle, color: Colors.green),
+                    )),
+                const Divider(height: 24),
+              ],
+              if (unconnectedBrowsers.isNotEmpty) ...[
+                ...unconnectedBrowsers.map((browser) {
+                  final isSelected = selectedBrowsers.contains(browser);
+                  return CheckboxListTile(
+                    title: Text(BrowserExtensionService.instance.getBrowserData(browser).appName),
+                    value: isSelected,
+                    onChanged: (_) => onToggleBrowser(browser),
+                    secondary: _getBrowserIcon(browser),
+                  );
+                }),
+              ],
+            ],
           ),
         ),
       ],

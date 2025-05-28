@@ -93,8 +93,10 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
     
     setState(() {
       _installedBrowsers = browsers;
-      // Select all browsers by default
-      _selectedBrowsers = List.from(browsers);
+      // Only select unconnected browsers by default
+      _selectedBrowsers = browsers.where(
+        (b) => !_browserExtensionService.isBrowserConnected(b)
+      ).toList();
       _nmhInstalledMap = nmhMap;
       _isLoading = false;
     });
