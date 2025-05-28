@@ -8,6 +8,9 @@ import 'package:Routine/widgets/browser_extension_onboarding/native_messaging_ho
 import 'package:Routine/widgets/browser_extension_onboarding/extension_installation_step.dart';
 import 'package:Routine/widgets/browser_extension_onboarding/completion_step.dart';
 
+/// Type of message to display in the dialog
+enum MessageType { error, success }
+
 /// A dialog that guides the user through setting up the Routine browser extension
 /// for each browser they have installed.
 class BrowserExtensionOnboardingDialog extends StatefulWidget {
@@ -34,6 +37,7 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
   Map<Browser, bool> _nmhInstalledMap = {};
   bool _isLoading = true;
   bool _isExtensionConnecting = false;
+  String? _errorMessage;
   
   // Grace period related variables
   bool _inGracePeriod = false;
@@ -159,11 +163,15 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
   }
 
   void _nextStep() {
+    // Clear any existing error message when moving to next step
+    setState(() {
+      _errorMessage = null;
+    });
     if (_currentStep == 0 && _selectedBrowsers.isEmpty) {
       // Can't proceed if no browsers are selected
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one browser')),
-      );
+      setState(() {
+        _errorMessage = 'Please select at least one browser';
+      });
       return;
     }
     
@@ -187,9 +195,9 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
       // Check if NMH is installed for the current browser
       final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
       if (!(_nmhInstalledMap[currentBrowser] ?? false)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please install the Native Messaging Host first')),
-        );
+        setState(() {
+          _errorMessage = 'Please install the Native Messaging Host first';
+        });
         return;
       }
       
@@ -209,9 +217,9 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
       final isConnected = _browserExtensionService.isBrowserConnected(currentBrowser);
       
       if (!isConnected) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please wait for the extension to connect')),
-        );
+        setState(() {
+          _errorMessage = 'Please wait for the extension to connect';
+        });
         return;
       }
       
@@ -280,14 +288,10 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
         _isLoading = false;
       });
       
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Native messaging host installed successfully for $currentBrowser')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to install native messaging host for $currentBrowser')),
-        );
+      if (!success) {
+        setState(() {
+          _errorMessage = 'Failed to install native messaging host for $currentBrowser';
+        });
       }
     }
   }
@@ -328,6 +332,43 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
                     child: _buildCurrentStep(),
                   ),
                   const SizedBox(height: 24),
+                  if (_errorMessage != null)
+                    Container(
+                      margin: const EdgeInsets.only(top: 16, bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            color: Theme.of(context).colorScheme.error,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            iconSize: 20,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            color: Theme.of(context).colorScheme.error,
+                            onPressed: () => setState(() {
+                              _errorMessage = null;
+                            }),
+                          ),
+                        ],
+                      ),
+                    ),
                   _buildActions(),
                 ],
               ),

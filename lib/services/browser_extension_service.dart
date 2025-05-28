@@ -1,4 +1,6 @@
 import 'dart:typed_data';
+import 'dart:math';
+
 import 'package:Routine/services/browser_config.dart';
 import 'package:Routine/util.dart';
 import 'package:file_picker/file_picker.dart';
@@ -337,10 +339,12 @@ class BrowserExtensionService {
         onError: (error) {
           Util.report('NMH socket error for $browser', error, null);
           _connections.remove(browser);
+          _attemptReconnection(browser, retryCount);
         },
         onDone: () {
           logger.i('Socket closed for $browser');
           _connections.remove(browser);
+          _attemptReconnection(browser, retryCount);
         },
       );
     } on SocketException catch (e) {
@@ -350,7 +354,25 @@ class BrowserExtensionService {
       } else {
         logger.w('Socket connection error for $browser: ${e.message}. The app will continue without NMH features for this browser.');
       }
+      _attemptReconnection(browser, retryCount);
     }
+  }
+
+  Future<void> _attemptReconnection(Browser browser, int retryCount) async {
+    // Maximum number of retry attempts
+    const maxRetries = 5;
+    
+    // Don't retry if we've hit the maximum or if we're in cooldown
+    if (retryCount >= maxRetries || StrictModeService.instance.isInExtensionCooldown) {
+      return;
+    }
+    
+    // Exponential backoff: 2^retryCount seconds (1, 2, 4, 8, 16 seconds)
+    final delay = pow(2, retryCount).toInt();
+    logger.i('Attempting to reconnect to $browser in $delay seconds (attempt ${retryCount + 1}/$maxRetries)');
+    
+    await Future.delayed(Duration(seconds: delay));
+    await connectToBrowser(browser, retryCount: retryCount + 1);
   }
 
   Future<void> sendToBrowser(String action, Map<String, dynamic> data, {Browser? browser}) async {
