@@ -9,10 +9,10 @@ import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import org.json.JSONArray
 import java.util.ArrayList
 import java.util.Calendar
 import java.util.HashSet
-import org.json.JSONArray
 import java.util.Date
 
 private const val SYSTEM_UI_PACKAGE = "com.android.systemui"
@@ -164,7 +164,7 @@ class RoutineManager : AccessibilityService() {
         if (strictModeEnabled) {
             // Block uninstalling apps
             if (blockUninstallingApps &&
-                (isUninstallDialog(event) || isAccessibilitySettingsForRoutine(event))) {
+                (isUninstallDialog(event) || isAccessibilitySettingsForRoutine(event) || isAppInfoPageForRoutine(event))) {
                 Log.d(TAG, "Blocking access to app info or accessibility settings for Routine")
                 goBack()
                 return
@@ -763,6 +763,59 @@ class RoutineManager : AccessibilityService() {
             }
 
             return false
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking app info page: ${e.message}", e)
+        }
+        
+        return false
+    }
+
+    /**
+     * Checks if the current screen is the app info page for Routine
+     */
+    private fun isAppInfoPageForRoutine(event: AccessibilityEvent): Boolean {
+        val packageName = event.packageName?.toString() ?: return false
+
+        if (packageName != "com.android.settings") {
+            return false
+        }
+
+        val rootNode = event.source ?: return false
+
+        try {
+            var hasAppInfoTitle = false
+            var hasRoutineReference = false
+            var hasAppInfoElements = false
+            
+            // Traverse the node hierarchy to look for specific patterns
+            traverseNodes(rootNode) { node ->
+                val text = node.text?.toString() ?: ""
+                val contentDesc = node.contentDescription?.toString() ?: ""
+                
+                // Check for app info title
+                if (text.contains("App info", ignoreCase = true) || 
+                    contentDesc.contains("App info", ignoreCase = true)) {
+                    hasAppInfoTitle = true
+                }
+                
+                // Check for Routine reference
+                if (text.contains("Routine") || contentDesc.contains("Routine") || 
+                    text.contains(this.packageName) || contentDesc.contains(this.packageName)) {
+                    hasRoutineReference = true
+                }
+                
+                // Check for common app info page elements
+                if (text.contains("Force stop") || text.contains("Uninstall") || 
+                    text.contains("Storage") || text.contains("Permissions")) {
+                    hasAppInfoElements = true
+                }
+                
+                // Continue traversal
+                true
+            }
+
+            // If we found app info indicators and Routine reference, it's likely the app info page
+            return (hasAppInfoTitle || hasAppInfoElements) && hasRoutineReference
         } catch (e: Exception) {
             Log.e(TAG, "Error checking app info page: ${e.message}", e)
         }
