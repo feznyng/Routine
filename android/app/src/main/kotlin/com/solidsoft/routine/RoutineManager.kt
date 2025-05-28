@@ -14,6 +14,7 @@ import java.util.ArrayList
 import java.util.Calendar
 import java.util.HashSet
 import java.util.Date
+import io.sentry.Sentry;
 
 private const val SYSTEM_UI_PACKAGE = "com.android.systemui"
 
@@ -67,19 +68,29 @@ class RoutineManager : AccessibilityService() {
     override fun onCreate() {
         Log.d(TAG, "RoutineManager service onCreate")
         super.onCreate()
-        blockOverlayView = BlockOverlayView(this)
-        
-        // Restore state from shared preferences when service is created
-        updateRoutines()
-        updateStrictMode()
+        try {
+            blockOverlayView = BlockOverlayView(this)
+            
+            // Restore state from shared preferences when service is created
+            updateRoutines()
+            updateStrictMode()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in onCreate: ${e.message}", e)
+            Sentry.captureException(e)
+        }
     }
     
     override fun onServiceConnected() {
         Log.d(TAG, "RoutineManager accessibility service connected")
         super.onServiceConnected()
 
-        instance = this
-        isEditableFieldFocused = false
+        try {
+            instance = this
+            isEditableFieldFocused = false
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in onServiceConnected: ${e.message}", e)
+            Sentry.captureException(e)
+        }
     }
     
     /**
@@ -124,6 +135,7 @@ class RoutineManager : AccessibilityService() {
             Log.d(TAG, "Updated ${routines.size} routines from shared preferences")
         } catch (e: Exception) {
             Log.e(TAG, "Error updating routines from shared preferences: ${e.message}", e)
+            Sentry.captureException(e)
         }
     }
     
@@ -134,122 +146,132 @@ class RoutineManager : AccessibilityService() {
      */
     fun updateStrictMode() {
         Log.d(TAG, "Updating strict mode settings from shared preferences")
-        // Use applicationContext instead of appContext
-        val sharedPreferences = applicationContext.getSharedPreferences("com.solidsoft.routine.preferences", Context.MODE_PRIVATE)
-        
-        // Get the strict mode settings from shared preferences
-        blockChangingTimeSettings = sharedPreferences.getBoolean("blockChangingTimeSettings", false)
-        blockUninstallingApps = sharedPreferences.getBoolean("blockUninstallingApps", false)
-        blockInstallingApps = sharedPreferences.getBoolean("blockInstallingApps", false)
+        try {
+            // Use applicationContext instead of appContext
+            val sharedPreferences = applicationContext.getSharedPreferences("com.solidsoft.routine.preferences", Context.MODE_PRIVATE)
+            
+            // Get the strict mode settings from shared preferences
+            blockChangingTimeSettings = sharedPreferences.getBoolean("blockChangingTimeSettings", false)
+            blockUninstallingApps = sharedPreferences.getBoolean("blockUninstallingApps", false)
+            blockInstallingApps = sharedPreferences.getBoolean("blockInstallingApps", false)
 
-        Log.d(TAG, "Updated strict mode settings: blockChangingTimeSettings=$blockChangingTimeSettings, " +
-                "blockUninstallingApps=$blockUninstallingApps, blockInstallingApps=$blockInstallingApps")
+            Log.d(TAG, "Updated strict mode settings: blockChangingTimeSettings=$blockChangingTimeSettings, " +
+                    "blockUninstallingApps=$blockUninstallingApps, blockInstallingApps=$blockInstallingApps")
 
-        evaluate()
+            evaluate()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating strict mode settings: ${e.message}", e)
+            Sentry.captureException(e)
+        }
     }
     
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        val eventType = event.eventType
-        val currentTime = System.currentTimeMillis()
-        val packageName = event.packageName?.toString() ?: return
-        val changeType = event.contentChangeTypes;
+        try {
+            val eventType = event.eventType
+            val currentTime = System.currentTimeMillis()
+            val packageName = event.packageName?.toString() ?: return
+            val changeType = event.contentChangeTypes;
 
-        if (changeType != AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED &&
-            packageName != SYSTEM_UI_PACKAGE) {
-            lastSeenApp = packageName
-            lastSeenTimestamp = currentTime
-        }
+            if (changeType != AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED &&
+                packageName != SYSTEM_UI_PACKAGE) {
+                lastSeenApp = packageName
+                lastSeenTimestamp = currentTime
+            }
 
-        // Check strict mode restrictions
-        if (strictModeEnabled) {
-            // Block uninstalling apps
-            if (blockUninstallingApps &&
-                (isUninstallDialog(event) || isAccessibilitySettingsForRoutine(event) || isAppInfoPageForRoutine(event))) {
-                Log.d(TAG, "Blocking access to app info or accessibility settings for Routine")
-                goBack()
-                return
-            }
-            
-            // Block installing apps
-            if (blockInstallingApps && isAppStore(packageName)) {
-                Log.d(TAG, "Blocking access to app store: $packageName")
-                goBack()
-                return
-            }
-            
-            // Block changing time settings
-            if (blockChangingTimeSettings && isTimeSettingsPage(event)) {
-                Log.d(TAG, "Blocking access to time settings")
-                goBack()
-                return
-            }
-        }
-
-        // block apps
-        if (isBlockedApp(packageName) &&
-            changeType != AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED) {
-            showBlockOverlay(packageName)
-            return
-        } else if (blockOverlayView?.isShowing() == true) {
-            if (packageName != this.packageName) {
-                hideBlockOverlay()
-            }
-        }
-        
-        // block sites
-        val browserConfig = getSupportedBrowsers().find { it.packageName == packageName }
-            ?: return
-        
-        // Handle focus changes to detect when user is editing text
-        if (eventType == AccessibilityEvent.TYPE_VIEW_FOCUSED || 
-            eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
-            val source = event.source
-            if (source != null) {
-                // Check if the focused element is editable
-                val isFocused = source.isFocused
-                val isEditable = source.isEditable || source.className?.contains("EditText") == true
-                val isAddressBar = isAddressBarNode(source, browserConfig)
-                
-                isEditableFieldFocused = isFocused && (isEditable || isAddressBar)
-                
-                if (isEditableFieldFocused) {
-                    Log.d(TAG, "Editable field focused: $isEditableFieldFocused (address bar: $isAddressBar)")
+            // Check strict mode restrictions
+            if (strictModeEnabled) {
+                // Block uninstalling apps
+                if (blockUninstallingApps &&
+                    (isUninstallDialog(event) || isAccessibilitySettingsForRoutine(event) || isAppInfoPageForRoutine(event))) {
+                    Log.d(TAG, "Blocking access to app info or accessibility settings for Routine")
+                    goBack()
+                    return
                 }
                 
+                // Block installing apps
+                if (blockInstallingApps && isAppStore(packageName)) {
+                    Log.d(TAG, "Blocking access to app store: $packageName")
+                    goBack()
+                    return
+                }
+                
+                // Block changing time settings
+                if (blockChangingTimeSettings && isTimeSettingsPage(event)) {
+                    Log.d(TAG, "Blocking access to time settings")
+                    goBack()
+                    return
+                }
+            }
+
+            // block apps
+            if (isBlockedApp(packageName) &&
+                changeType != AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED) {
+                showBlockOverlay(packageName)
+                return
+            } else if (blockOverlayView?.isShowing() == true) {
+                if (packageName != this.packageName) {
+                    hideBlockOverlay()
+                }
+            }
+            
+            // block sites
+            val browserConfig = getSupportedBrowsers().find { it.packageName == packageName }
+                ?: return
+        
+            // Handle focus changes to detect when user is editing text
+            if (eventType == AccessibilityEvent.TYPE_VIEW_FOCUSED || 
+                eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
+                val source = event.source
+                if (source != null) {
+                    // Check if the focused element is editable
+                    val isFocused = source.isFocused
+                    val isEditable = source.isEditable || source.className?.contains("EditText") == true
+                    val isAddressBar = isAddressBarNode(source, browserConfig)
+                    
+                    isEditableFieldFocused = isFocused && (isEditable || isAddressBar)
+                    
+                    if (isEditableFieldFocused) {
+                        Log.d(TAG, "Editable field focused: $isEditableFieldFocused (address bar: $isAddressBar)")
+                    }
+                    
+                    return
+                }
+            }
+            
+            // Check for typing events
+            if (eventType == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED) {
+                // User is typing, update focus state
+                isEditableFieldFocused = true
+                Log.d(TAG, "Text changed event detected, marking editable field as focused")
                 return
             }
-        }
-        
-        // Check for typing events
-        if (eventType == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED) {
-            // User is typing, update focus state
-            isEditableFieldFocused = true
-            Log.d(TAG, "Text changed event detected, marking editable field as focused")
-            return
-        }
-        
-        // Only process content and window change events
-        if (eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
-            eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED ||
-            eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
             
-            val parentNodeInfo = event.source ?: return
-            
-            // Check for focus state in the current view hierarchy
-            updateFocusState(parentNodeInfo, browserConfig)
-            
-            // Capture URL from the browser
-            val capturedUrl = captureUrl(parentNodeInfo, browserConfig)
-            parentNodeInfo.recycle()
-            
-            if (capturedUrl == null || !android.util.Patterns.WEB_URL.matcher(capturedUrl).matches()) {
-                return
+            // Only process content and window change events
+            if (eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+                eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED ||
+                eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+                
+                val parentNodeInfo = event.source ?: return
+                
+                // Check for focus state in the current view hierarchy
+                updateFocusState(parentNodeInfo, browserConfig)
+                
+                // Capture URL from the browser
+                val capturedUrl = captureUrl(parentNodeInfo, browserConfig)
+                parentNodeInfo.recycle()
+                
+                if (capturedUrl == null || !android.util.Patterns.WEB_URL.matcher(capturedUrl).matches()) {
+                    return
+                }
+                
+                // Only process URL if no editable field is focused and it passes validation
+                if (!isEditableFieldFocused) {
+                    processUrl(packageName, capturedUrl)
+                }
             }
-            
-            // Only process URL if no editable field is focused and it passes validation
-            if (!isEditableFieldFocused) {
-                processUrl(packageName, capturedUrl)
-            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in onAccessibilityEvent: ${e.message}", e)
+            Sentry.captureException(e)
         }
     }
     
@@ -266,7 +288,8 @@ class RoutineManager : AccessibilityService() {
                 Log.d(TAG, "Found focused editable node in view hierarchy")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error updating focus state: ${e.message}")
+            Log.e(TAG, "Error updating focus state: ${e.message}", e)
+            Sentry.captureException(e)
         }
     }
 
@@ -381,7 +404,8 @@ class RoutineManager : AccessibilityService() {
             
             return url
         } catch (e: Exception) {
-            Log.e(TAG, "Error capturing URL: ${e.message}")
+            Log.e(TAG, "Error capturing URL: ${e.message}", e)
+            Sentry.captureException(e)
             return null
         }
     }
@@ -417,6 +441,7 @@ class RoutineManager : AccessibilityService() {
             startActivity(intent)
         } catch (e: Exception) {
             Log.e(TAG, "Error redirecting to browser: ${e.message}", e)
+            Sentry.captureException(e)
         }
     }
     
@@ -448,6 +473,7 @@ class RoutineManager : AccessibilityService() {
 
         } catch (e: Exception) {
             Log.e(TAG, "Error handling blocked app: ${e.message}", e)
+            Sentry.captureException(e)
         }
     }
 
@@ -456,6 +482,7 @@ class RoutineManager : AccessibilityService() {
             blockOverlayView?.hide()
         } catch (e: Exception) {
             Log.e(TAG, "Error hiding block overlay: ${e.message}", e)
+            Sentry.captureException(e)
         }
     }
 
@@ -765,6 +792,7 @@ class RoutineManager : AccessibilityService() {
             return false
         } catch (e: Exception) {
             Log.e(TAG, "Error checking app info page: ${e.message}", e)
+            Sentry.captureException(e)
         }
         
         return false
@@ -818,6 +846,7 @@ class RoutineManager : AccessibilityService() {
             return (hasAppInfoTitle || hasAppInfoElements) && hasRoutineReference
         } catch (e: Exception) {
             Log.e(TAG, "Error checking app info page: ${e.message}", e)
+            Sentry.captureException(e)
         }
         
         return false
@@ -882,6 +911,7 @@ class RoutineManager : AccessibilityService() {
             return hasUninstallText && hasRoutineReference && (hasOkButton || hasCancelButton)
         } catch (e: Exception) {
             Log.e(TAG, "Error in isUninstallDialogByNodePattern: ${e.message}", e)
+            Sentry.captureException(e)
         }
         
         return false
@@ -949,6 +979,7 @@ class RoutineManager : AccessibilityService() {
                    automaticTexts.isNotEmpty()
         } catch (e: Exception) {
             Log.e(TAG, "Error checking time settings page: ${e.message}", e)
+            Sentry.captureException(e)
         }
         
         return false
