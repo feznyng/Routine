@@ -127,8 +127,7 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
     // Start a new timer that attempts to connect every 2 seconds
     _connectionAttemptTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       if (_currentBrowserIndex < _selectedBrowsers.length) {
-        final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
-        _browserExtensionService.connectToBrowser(currentBrowser);
+        // No need to connect since we're in server mode
       } else {
         // Stop the timer if we've gone through all browsers
         timer.cancel();

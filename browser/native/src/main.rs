@@ -1,14 +1,11 @@
 use byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use std::io::{self, Read, Write};
+use std::io::{self, Read, Write, BufReader, BufWriter};
 use std::fs::OpenOptions;
-use std::net::{TcpListener, TcpStream};
+use std::net::TcpStream;
 use chrono;
 use std::thread;
 use std::sync::mpsc;
-use std::sync::atomic::{AtomicI32, Ordering};
-use std::path::{Path, PathBuf};
-use std::env;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Message {
@@ -27,6 +24,34 @@ fn log_to_file(msg: &str) {
 }
 
 // Read a message from stdin (browser extension)
+// Write a message to the Flutter app
+fn write_flutter_message(stream: &mut TcpStream, message: &Message) -> io::Result<()> {
+    let mut writer = BufWriter::new(stream);
+    let json = serde_json::to_string(message)?;
+    let length = json.len() as u32;
+    writer.write_all(&length.to_be_bytes())?;
+    writer.write_all(json.as_bytes())?;
+    writer.flush()?;
+    Ok(())
+}
+
+// Read a message from the Flutter app
+fn read_flutter_message(stream: &mut TcpStream) -> io::Result<Message> {
+    let mut reader = BufReader::new(stream);
+    let mut length_bytes = [0u8; 4];
+    reader.read_exact(&mut length_bytes)?;
+    let length = u32::from_be_bytes(length_bytes) as usize;
+    
+    let mut json_bytes = vec![0u8; length];
+    reader.read_exact(&mut json_bytes)?;
+    
+    let json_str = String::from_utf8(json_bytes)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    
+    serde_json::from_str(&json_str)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+}
+
 fn read_browser_message() -> io::Result<Message> {
     let mut stdin = io::stdin();
     let message_length = stdin.read_u32::<NativeEndian>()?;
@@ -54,85 +79,17 @@ fn write_browser_message(message: &Message) -> io::Result<()> {
     Ok(())
 }
 
-// Read a message from TCP (Flutter app)
-fn read_flutter_message(stream: &mut TcpStream) -> io::Result<Message> {
-    let mut len_bytes = [0u8; 4];
-    stream.read_exact(&mut len_bytes)?;
-    let message_len = u32::from_ne_bytes(len_bytes);
-    
-    let mut buffer = vec![0; message_len as usize];
-    stream.read_exact(&mut buffer)?;
-    
-    match serde_json::from_slice(&buffer) {
-        Ok(message) => {
-            log_to_file(&format!("Flutter -> Browser: {:?}", message));
-            Ok(message)
-        },
-        Err(e) => Err(io::Error::new(io::ErrorKind::InvalidData, e))
-    }
-}
-
 fn main() -> io::Result<()> {
     log_to_file("Native messaging host started");
     
     // Channel for communication between threads
     let (tx, rx) = mpsc::channel();
-    let tx_clone = tx.clone();
-    
-    let mut listener: Option<TcpListener> = None;
-    for i in 10000..54325 {
-        let res = match std::net::TcpListener::bind(format!("127.0.0.1:{}", i)) {
-            Ok(listener) => {
-                log_to_file(format!("TCP server started on port {}", i).as_str());
-                Some(listener)
-            },
-            Err(_) => {
-                None
-            }
-        };
         
-        if res.is_some() {
-            listener = res;
-            break
-        }
-    }
-
-    let listener = if listener.is_none() {
-        return Err(std::io::Error::new(std::io::ErrorKind::Other, "failed to bind to any port"));
-    } else {
-        listener.unwrap()
-    };
-
-    // Get the port number before moving listener
-    let port = listener.local_addr()?.port();
-
     // Thread for reading from browser extension
     thread::spawn(move || {
-        // Get the current executable directory
-        let exe_dir = env::current_exe()
-            .unwrap_or_else(|_| PathBuf::from("/"))
-            .parent()
-            .unwrap_or_else(|| Path::new("/"))
-            .to_path_buf();  // Convert to owned PathBuf
         loop {
             match read_browser_message() {
                 Ok(message) => {
-                    // If this is a browser_info message, write the port to a browser-specific file
-                    if message.action == "browser_info" {
-                        if let Some(browser_type) = message.data.get("browser").and_then(|v| v.as_str()) {
-                            let port_file = exe_dir.join(format!("routine_nmh_{}_port", browser_type));
-                            if let Ok(mut file) = OpenOptions::new()
-                                .create(true)
-                                .write(true)
-                                .truncate(true)
-                                .open(&port_file)
-                            {
-                                let _ = writeln!(file, "{}", port);
-                                log_to_file(&format!("Wrote port to file: {}", port_file.display()));
-                            }
-                        }
-                    }
-
                     if let Err(e) = tx.send(message) {
                         log_to_file(&format!("Failed to send message to channel: {}", e));
                         break;
@@ -146,91 +103,43 @@ fn main() -> io::Result<()> {
         }
     });
 
-    // Track number of active Flutter connections
-    let active_connections = std::sync::Arc::new(AtomicI32::new(0));
+    // Connect to Flutter app's TCP server
+    let mut flutter_stream = match TcpStream::connect("127.0.0.1:54325") {
+        Ok(stream) => {
+            log_to_file("Connected to Flutter app's TCP server");
+            stream
+        },
+        Err(e) => {
+            log_to_file(&format!("Failed to connect to Flutter app: {}", e));
+            return Err(e);
+        }
+    };
 
-    // Thread for accepting TCP connections and handling Flutter clients
-    let listener_handle = thread::spawn(move || {
-        // Accept connections in a loop
-        for stream in listener.incoming() {
-            match stream {
-                Ok(tcp_stream) => {
-                    let addr = tcp_stream.peer_addr().unwrap_or_else(|_| "unknown".parse().unwrap());
-                    log_to_file(&format!("Flutter app connected from {}", addr));
-                    
-                    // Increment active connections
-                    let prev_count = active_connections.fetch_add(1, Ordering::SeqCst);
-                    
-                    // Notify browser about connection state change
-                    let connection_msg = Message {
-                        action: "appConnectionState".to_string(),
-                        data: serde_json::json!({ "connected": true, "connections": prev_count + 1 }),
-                    };
-                    if let Err(e) = write_browser_message(&connection_msg) {
-                        log_to_file(&format!("Failed to notify browser of connection: {}", e));
-                    }
-                    
-                    // Clone necessary handles for the new client thread
-                    let tx_flutter = tx_clone.clone();
-                    let active_conns = active_connections.clone();
-                    let mut tcp_stream_clone = match tcp_stream.try_clone() {
-                        Ok(clone) => clone,
-                        Err(e) => {
-                            log_to_file(&format!("Failed to clone TCP stream: {}", e));
-                            continue;
-                        }
-                    };
-
-                    // Spawn a new thread for each client
-                    thread::spawn(move || {
-                        loop {
-                            match read_flutter_message(&mut tcp_stream_clone) {
-                                Ok(message) => {
-                                    if let Err(e) = tx_flutter.send(message) {
-                                        log_to_file(&format!("Failed to send message to channel: {}", e));
-                                        break;
-                                    }
-                                },
-                                Err(e) => {
-                                    log_to_file(&format!("Failed to read Flutter message: {}", e));
-                                    break;
-                                }
-                            }
-                        }
-                        // Client disconnected
-                        log_to_file(&format!("Flutter client {} disconnected", addr));
-                        
-                        // Decrement active connections
-                        let prev_count = active_conns.fetch_sub(1, Ordering::SeqCst);
-                        
-                        // Notify browser about connection state change
-                        let connection_msg = Message {
-                            action: "appConnectionState".to_string(),
-                            data: serde_json::json!({ "connected": prev_count - 1 > 0, "connections": prev_count - 1 }),
-                        };
-                        if let Err(e) = write_browser_message(&connection_msg) {
-                            log_to_file(&format!("Failed to notify browser of disconnection: {}", e));
-                        }
-                    });
-                },
-                Err(e) => {
-                    log_to_file(&format!("Error accepting connection: {}", e));
-                }
+    // Thread for handling messages from browser extension
+    let mut flutter_stream_clone = flutter_stream.try_clone()?;
+    thread::spawn(move || {
+        for message in rx {
+            if let Err(e) = write_flutter_message(&mut flutter_stream_clone, &message) {
+                log_to_file(&format!("Failed to write message to Flutter: {}", e));
+                break;
             }
         }
     });
 
-    // Main thread handles message broadcasting to all connected clients
-    for message in rx {
-        // Forward messages to browser
-        if let Err(e) = write_browser_message(&message) {
-            log_to_file(&format!("Failed to write browser message: {}", e));
+    // Main thread reads messages from Flutter
+    loop {
+        match read_flutter_message(&mut flutter_stream) {
+            Ok(message) => {
+                if let Err(e) = write_browser_message(&message) {
+                    log_to_file(&format!("Failed to write message to browser: {}", e));
+                    break;
+                }
+            },
+            Err(e) => {
+                log_to_file(&format!("Failed to read Flutter message: {}", e));
+                break;
+            }
         }
-    }
-
-    // Wait for the listener thread (this won't actually be reached in normal operation)
-    if let Err(e) = listener_handle.join() {
-        log_to_file(&format!("TCP listener thread panicked: {:?}", e));
     }
 
     Ok(())

@@ -1,11 +1,10 @@
 import 'dart:typed_data';
-import 'dart:math';
-
 import 'package:Routine/services/browser_config.dart';
 import 'package:Routine/util.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
-import 'dart:io' show Directory, File, Platform, Process, ProcessResult, Socket, SocketException;
+import 'dart:io' show Directory, File, Platform, Process, ProcessResult, Socket, ServerSocket;
+import 'dart:typed_data' show ByteData, Uint8List;
 import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
 import 'package:win32/win32.dart';
@@ -15,7 +14,6 @@ import 'dart:async';
 import 'package:Routine/setup.dart';
 import 'package:collection/src/iterable_extensions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:Routine/services/strict_mode_service.dart';
 
 
 class BrowserConnection {
@@ -24,6 +22,14 @@ class BrowserConnection {
   int? len;
 
   BrowserConnection({required this.socket});
+
+  void sendMessage(String action, Map<String, dynamic> data) {
+    final message = json.encode({'action': action, 'data': data});
+    final messageBytes = utf8.encode(message);
+    final lengthBytes = ByteData(4)..setUint32(0, messageBytes.length, Endian.host);
+    socket.add(lengthBytes.buffer.asUint8List());
+    socket.add(messageBytes);
+  }
 }
 
 class BrowserExtensionService {
@@ -230,19 +236,7 @@ class BrowserExtensionService {
   
   Future<void> init() async {
     logger.i("Browser Extension - Init");
-    final prefs = await SharedPreferences.getInstance();
-    final connectedBrowsers = prefs.getStringList(_connectedBrowsersKey);
-    
-    if (connectedBrowsers != null && connectedBrowsers.isNotEmpty) {
-      for (final browserStr in connectedBrowsers) {
-        try {
-          final browser = Browser.values.firstWhere((b) => b.name == browserStr);
-          await connectToBrowser(browser);
-        } catch (e) {
-          logger.w('Invalid browser type in preferences: $browserStr');
-        }
-      }
-    }
+    await startServer();
   }
 
   String get assetsPath {
@@ -256,123 +250,95 @@ class BrowserExtensionService {
     }
   }
   
-  Future<int?> _readNmhPort(Browser browser) async {
+
+
+  static const int serverPort = 54325;
+  ServerSocket? _server;
+
+  Future<void> startServer() async {
+    if (_server != null) return;
+
     try {
-      final String portFile = '$assetsPath/routine_nmh_${browser.name}_port';
-      logger.i("Reading port file: $portFile");
-      
-      final file = File(portFile);
-      if (await file.exists()) {
-        final content = await file.readAsString();
-        return int.tryParse(content.trim());
-      } else {
-        logger.w("Port file does not exist for $browser");
-      }
+      _server = await ServerSocket.bind('127.0.0.1', serverPort);
+      logger.i('TCP server started on port $serverPort');
+
+      _server!.listen((socket) {
+        
+        final browser = Browser.values.firstWhere((b) => b.name == socket.remoteAddress.address,
+            orElse: () => Browser.firefox);
+        logger.i('NMH connected from ${socket.remoteAddress.address} for $browser');
+
+        final connection = BrowserConnection(socket: socket);
+        _connections[browser] = connection;
+
+        socket.listen(
+          (data) {
+            _handleBrowserData(browser, data, socket);
+          },
+          onError: (error) {
+            logger.e('Error from NMH socket: $error');
+            _handleDisconnect(browser);
+          },
+          onDone: () {
+            logger.i('NMH socket closed');
+            _handleDisconnect(browser);
+          },
+        );
+
+        _connectionStreamController.add(true);
+        _saveBrowserConnection(browser);
+      });
     } catch (e, st) {
-      Util.report('Error reading NMH port for $browser', e, st);
+      Util.report('Error starting TCP server', e, st);
     }
-    return null;
   }
 
-  Future<void> connectToBrowser(Browser browser, {int retryCount = 0}) async {
-    // Don't attempt reconnection if in cooldown
-    if (StrictModeService.instance.isInExtensionCooldown) {
-      logger.i('Not attempting to connect to $browser - in cooldown period');
-      return;
-    }
+  void _handleBrowserData(Browser browser, List<int> data, Socket socket) {
+    final connection = _connections[browser];
+    if (connection == null) return;
 
-    try {
-      final port = await _readNmhPort(browser);
-      if (port == null) {
-        logger.w('Could not read NMH port for $browser');
-        return;
-      }
-      
-      final socket = await Socket.connect('127.0.0.1', port);
-      logger.i('Connected to NMH TCP server for $browser on port $port');
-      
-      final conn = BrowserConnection(socket: socket);
-      _connections[browser] = conn;
-      
-      final prefs = await SharedPreferences.getInstance();
-      final connectedBrowsers = prefs.getStringList(_connectedBrowsersKey) ?? [];
-      if (!connectedBrowsers.contains(browser.name)) {
-        connectedBrowsers.add(browser.name);
-        await prefs.setStringList(_connectedBrowsersKey, connectedBrowsers);
+    connection.buffer.addAll(data);
+    
+    while (connection.buffer.length >= 4) {
+      if (connection.len == null) {
+        connection.len = ByteData.view(Uint8List.fromList(connection.buffer.sublist(0, 4)).buffer).getUint32(0, Endian.host);
+        connection.buffer.removeRange(0, 4);
       }
 
-      _connectionStreamController.add(true);
+      if (connection.buffer.length >= connection.len!) {
+        final message = utf8.decode(connection.buffer.sublist(0, connection.len!));
+        connection.buffer.removeRange(0, connection.len!);
+        connection.len = null;
 
-      socket.listen(
-        (List<int> data) {
-          conn.buffer.addAll(data);
-          
-          while (conn.buffer.isNotEmpty) {
-            if (conn.len == null) {
-              if ((conn.buffer.length) >= 4) {
-                // Read length prefix using Uint8List and ByteData
-                final lengthBytes = Uint8List.fromList(conn.buffer.take(4).toList());
-                conn.len = ByteData.view(lengthBytes.buffer).getUint32(0, Endian.little);
-                conn.buffer = conn.buffer.sublist(4);
-              } else {
-                break;
-              }
-            }
-
-            if (conn.len != null && conn.buffer.length >= conn.len!) {
-              final messageBytes = conn.buffer.take(conn.len!).toList();
-              conn.buffer = conn.buffer.sublist(conn.len!);
-              conn.len = null;
-
-              try {
-                final String message = utf8.decode(messageBytes);
-                final Map<String, dynamic> decoded = json.decode(message);
-                logger.i('Received from NMH ($browser): $decoded');
-              } catch (e, st) {
-                Util.report('Error decoding NMH message from $browser', e, st);
-              }
-            } else {
-              break;
-            }
-          }
-        },
-        onError: (error) {
-          Util.report('NMH socket error for $browser', error, null);
-          _connections.remove(browser);
-          _attemptReconnection(browser, retryCount);
-        },
-        onDone: () {
-          logger.i('Socket closed for $browser');
-          _connections.remove(browser);
-          _attemptReconnection(browser, retryCount);
-        },
-      );
-    } on SocketException catch (e) {
-      _connections.remove(browser);
-      if (e.osError?.errorCode == 61) {
-        logger.i('NMH service for $browser is not running. The app will continue without NMH features for this browser.');
+        try {
+          final decoded = json.decode(message) as Map<String, dynamic>;
+          _handleMessage(browser, decoded);
+        } catch (e, st) {
+          Util.report('Error decoding message from NMH', e, st);
+        }
       } else {
-        logger.w('Socket connection error for $browser: ${e.message}. The app will continue without NMH features for this browser.');
+        break;
       }
-      _attemptReconnection(browser, retryCount);
     }
   }
 
-  Future<void> _attemptReconnection(Browser browser, int retryCount) async {
-    // Maximum number of retry attempts
-    const maxRetries = 5;
-    
-    // Don't retry if we've hit the maximum or if we're in cooldown
-    if (retryCount >= maxRetries || StrictModeService.instance.isInExtensionCooldown) {
-      return;
+  void _handleMessage(Browser browser, Map<String, dynamic> message) {
+    logger.i('Received message from NMH: $message');
+    // Handle message from NMH here
+  }
+
+  void _handleDisconnect(Browser browser) {
+    _connections.remove(browser);
+    _connectionStreamController.add(false);
+  }
+
+  Future<void> _saveBrowserConnection(Browser browser) async {
+    final prefs = await SharedPreferences.getInstance();
+    final connectedBrowsers = prefs.getStringList(_connectedBrowsersKey) ?? [];
+    if (!connectedBrowsers.contains(browser.name)) {
+      connectedBrowsers.add(browser.name);
+      await prefs.setStringList(_connectedBrowsersKey, connectedBrowsers);
     }
-    
-    // Exponential backoff: 2^retryCount seconds (1, 2, 4, 8, 16 seconds)
-    final delay = pow(2, retryCount).toInt();
-    logger.i('Attempting to reconnect to $browser in $delay seconds (attempt ${retryCount + 1}/$maxRetries)');
-    
-    await Future.delayed(Duration(seconds: delay));
-    await connectToBrowser(browser, retryCount: retryCount + 1);
   }
 
   Future<void> sendToBrowser(String action, Map<String, dynamic> data, {Browser? browser}) async {
@@ -420,7 +386,9 @@ class BrowserExtensionService {
     for (final conn in _connections.values) {
       conn.socket.close();
     }
-
+    _connections.clear();
+    _server?.close();
+    _server = null;
     _connectionStreamController.close();
   }
 }
