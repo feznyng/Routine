@@ -3,7 +3,7 @@ const hostName = "com.solidsoft.routine";
 let port = null;
 let isAppConnected = false;  // Track Flutter app connection state
 let reconnectTimer = null;
-const RECONNECT_INTERVAL = 2000; // Attempt reconnection every 2 seconds to match onboarding dialog behavior
+const RECONNECT_INTERVAL = 5000; // Attempt reconnection every 2 seconds to match onboarding dialog behavior
 
 // block config
 let sites = [];
