@@ -2,13 +2,13 @@
 set -e
 
 # Configuration
-APP_NAME="native"
+APP_NAME="native_messaging_host"
 DEVELOPER_ID="$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | awk -F '"' '{print $2}')"
 TEAM_ID="$APPLE_TEAM_ID"
 NOTARIZATION_APPLE_ID="$APPLE_ID" # Set this via environment variable
 NOTARIZATION_PASSWORD="$APPLE_APP_PASSWORD" # Set this via environment variable or keychain
 OUTPUT_DIR="../assets/extension"
-ENTITLEMENTS_FILE="$(pwd)/native/native.entitlements"
+ENTITLEMENTS_FILE="$(pwd)/native/entitlements.plist"
 
 # Check if required environment variables are set
 if [ -z "$APPLE_ID" ] || [ -z "$APPLE_APP_PASSWORD" ]; then
@@ -24,24 +24,32 @@ if [ -z "$DEVELOPER_ID" ]; then
     exit 1
 fi
 
+# Check if dart is installed
+if ! command -v dart &> /dev/null; then
+    echo "Error: dart is not installed"
+    echo "Please install dart first using: brew install dart"
+    exit 1
+fi
+
 # Create output directory if it doesn't exist
 mkdir -p "$OUTPUT_DIR"
 
 # Build function
 build_and_process() {
     local arch=$1
-    local target=$2
-    local output_name=$3
+    local output_name=$2
     local temp_dir=$(mktemp -d)
     local binary_path="$temp_dir/$APP_NAME"
     
     echo "Building for $arch..."
-    RUSTFLAGS="-C link-arg=-s" cargo build --release --target "$target"
+    cd native
+    dart pub get
     
-    # Copy binary to temp directory
-    cp "../target/$target/release/$APP_NAME" "$binary_path"
+    # Compile native executable
+    dart compile exe src/main.dart --target-os macos --output "$binary_path"
+    cd ..
     
-    echo "Signing binary for $arch with entitlements..."
+    echo "Signing binary with entitlements..."
     codesign --force --options runtime --entitlements "$ENTITLEMENTS_FILE" --sign "$DEVELOPER_ID" "$binary_path"
     
     echo "Verifying signature..."
@@ -53,15 +61,12 @@ build_and_process() {
     echo "Cleaning up temporary files..."
     rm -rf "$temp_dir"
     
-    echo "Build for $arch completed successfully!"
+    echo "Build completed successfully!"
 }
 
-# Build for arm64
-build_and_process "arm64" "aarch64-apple-darwin" "native_macos_arm64"
-
-# Build for x86_64
-build_and_process "x86_64" "x86_64-apple-darwin" "native_macos_x86_64"
+# Build for both architectures (Dart produces a universal binary)
+build_and_process "universal" "native_macos"
 
 echo "All builds completed successfully!"
-echo "Binaries are available in $OUTPUT_DIR:"
-ls -la "$OUTPUT_DIR/native_macos_"*
+echo "Binary is available in $OUTPUT_DIR:"
+ls -la "$OUTPUT_DIR/native_macos"
