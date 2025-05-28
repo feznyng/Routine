@@ -3,7 +3,7 @@ import 'package:Routine/services/browser_config.dart';
 import 'package:Routine/util.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
-import 'dart:io' show Directory, File, Platform, Process, ProcessResult, Socket, ServerSocket, InternetAddress;
+import 'dart:io' show Directory, File, Platform, Process, Socket, ServerSocket, InternetAddress;
 import 'dart:typed_data' show ByteData, Uint8List;
 import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
@@ -102,10 +102,7 @@ class BrowserExtensionService {
 
   Future<String> _getBinaryAssetPath() async {
     if (Platform.isMacOS) {
-      final ProcessResult result = await Process.run('uname', ['-m']);
-      final String arch = result.stdout.toString().trim();
-      logger.i('Detected architecture: $arch');
-      return arch == 'arm64' ? 'native_macos_arm64' : 'native_macos_x86_64';
+      return 'native_macos';
     } else if (Platform.isWindows) {
       return 'native_windows.exe';
     } else if (Platform.isLinux) {
@@ -252,7 +249,6 @@ class BrowserExtensionService {
     }
   }
 
-  static const int serverPort = 54325;
   ServerSocket? _server;
 
   Future<void> startServer() async {
