@@ -755,8 +755,6 @@ class RoutineManager : AccessibilityService() {
         val rootNode = event.source ?: return false
 
         try {
-            Log.d(TAG, "Checking if current screen is accessibility settings for Routine")
-            
             val accessibilityTexts = rootNode.findAccessibilityNodeInfosByText("Routine")
             val routineServiceTexts = rootNode.findAccessibilityNodeInfosByText("Use Routine")
             
@@ -797,14 +795,12 @@ class RoutineManager : AccessibilityService() {
                 if (text.contains("Uninstall", ignoreCase = true) || 
                     contentDesc.contains("Uninstall", ignoreCase = true)) {
                     hasUninstallText = true
-                    Log.d(TAG, "Found Uninstall text")
                 }
                 
                 // Check for Routine reference
                 if (text.contains("Routine") || contentDesc.contains("Routine") || 
                     text.contains(this.packageName) || contentDesc.contains(this.packageName)) {
                     hasRoutineReference = true
-                    Log.d(TAG, "Found Routine reference in dialog")
                 }
                 
                 // Check for OK button
@@ -814,7 +810,6 @@ class RoutineManager : AccessibilityService() {
                      contentDesc.equals("Yes", ignoreCase = true)) &&
                     className.contains("Button")) {
                     hasOkButton = true
-                    Log.d(TAG, "Found OK/Yes button")
                 }
                 
                 // Check for Cancel button
@@ -824,7 +819,6 @@ class RoutineManager : AccessibilityService() {
                      contentDesc.equals("No", ignoreCase = true)) &&
                     className.contains("Button")) {
                     hasCancelButton = true
-                    Log.d(TAG, "Found Cancel/No button")
                 }
                 
                 // Continue traversal
