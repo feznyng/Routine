@@ -86,7 +86,8 @@ class Util {
         'Location permissions are permanently denied, we cannot request permissions.');
     } 
 
-    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    LocationSettings settings = LocationSettings(accuracy: LocationAccuracy.best);
+    return await Geolocator.getCurrentPosition(locationSettings: settings);
   }
 
   static List<Schedule> _getEvaluationTimes(List<Routine> routines) {

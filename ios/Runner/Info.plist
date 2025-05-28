@@ -31,7 +31,13 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Allow Routine to scan QR codes for conditions.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app needs access to location when open.</string>
+	<string>Location is used when completing location conditions.</string>
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<dict>
+	<key>condition</key>
+	<string>Your location is used to determine if you've reached the target destination.</string>
+	</dict>
+	<dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIBackgroundModes</key>
