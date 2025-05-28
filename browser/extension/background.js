@@ -40,6 +40,7 @@ async function connectToNative() {
       console.log("Received message from native host:", message);
       
       if (message.action === "updateBlockedSites" && Array.isArray(message.data.sites)) {
+        isAppConnected = true;
         // Update blocked sites list
         sites = message.data.sites;
         allowList = message.data.allowList;

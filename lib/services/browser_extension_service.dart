@@ -362,10 +362,19 @@ class BrowserExtensionService {
       final List<int> messageBytes = utf8.encode(jsonMessage);
 
       final socket = _connections[browser]?.socket;
-
+      
+      logger.i("sending $jsonMessage to $browser");
+      
       if (socket != null) {
+        // Convert length to big-endian bytes
+        final lengthBytes = Uint8List(4);
+        lengthBytes[0] = (messageBytes.length >> 24) & 0xFF;
+        lengthBytes[1] = (messageBytes.length >> 16) & 0xFF;
+        lengthBytes[2] = (messageBytes.length >> 8) & 0xFF;
+        lengthBytes[3] = messageBytes.length & 0xFF;
+        
         socket.add(Uint8List.fromList([
-          ...Uint32List.fromList([messageBytes.length]).buffer.asUint8List(),
+          ...lengthBytes,
           ...messageBytes,
         ]));
         await socket.flush();

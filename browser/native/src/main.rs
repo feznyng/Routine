@@ -41,6 +41,7 @@ fn read_flutter_message(stream: &mut TcpStream) -> io::Result<Message> {
     let mut length_bytes = [0u8; 4];
     reader.read_exact(&mut length_bytes)?;
     let length = u32::from_be_bytes(length_bytes) as usize;
+    log_to_file(&format!("Reading message of length {}", length));
     
     let mut json_bytes = vec![0u8; length];
     reader.read_exact(&mut json_bytes)?;
