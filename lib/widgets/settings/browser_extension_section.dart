@@ -4,6 +4,7 @@ import 'dart:async';
 import '../../services/browser_extension_service.dart';
 import '../../services/strict_mode_service.dart';
 import '../browser_extension_onboarding_dialog.dart';
+import '../../services/browser_config.dart';
 
 class BrowserExtensionSection extends StatefulWidget {
   final Future<void> Function() onRestartOnboarding;
@@ -78,9 +79,15 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
     }
   }
   
+
+
+  String _getBrowserName(Browser browser) {
+    return browser.name.substring(0, 1).toUpperCase() + browser.name.substring(1);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isExtensionConnected = BrowserExtensionService.instance.isExtensionConnected;
+    final connectedBrowsers = _browserExtensionService.connectedBrowsers;
     final isInGracePeriod = _strictModeService.isInExtensionGracePeriod;
     final isInCooldown = _strictModeService.isInExtensionCooldown;
     final remainingGraceSeconds = _strictModeService.remainingGracePeriodSeconds;
@@ -107,85 +114,85 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-            Text(
-              'The browser extension allows Routine to block distracting websites during focus sessions.',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 16),
-            // Extension connection status
-            Row(
-              children: [
-                Icon(
-                  isExtensionConnected ? Icons.check_circle : (isInGracePeriod ? Icons.timer : Icons.error),
-                  color: isExtensionConnected ? Colors.green : (isInGracePeriod ? Colors.blue : (isInCooldown ? Colors.red : Colors.orange)),
+                Text(
+                  'The browser extension allows Routine to block distracting websites during focus sessions.',
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    isExtensionConnected
-                        ? 'Browser extension is connected'
-                        : 'Browser extension is disconnected',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: isExtensionConnected ? Colors.green : (isInGracePeriod ? Colors.blue : (isInCooldown ? Colors.red : Colors.orange)),
-                        ),
+                const SizedBox(height: 16),
+                
+                // Connected browsers list
+                if (connectedBrowsers.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  ...connectedBrowsers.map((browser) {
+                    return ListTile(
+                      leading: const Icon(Icons.check_circle, color: Colors.green),
+                      title: Text(_getBrowserName(browser)),
+                      dense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    );
+                  }).toList(),
+                  const SizedBox(height: 8),
+                ] else ...[
+                  ListTile(
+                    leading: const Icon(Icons.error_outline, color: Colors.orange),
+                    title: const Text('No browsers connected'),
+                    subtitle: const Text('Set up the browser extension to block distracting websites'),
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
                   ),
-                ),
-              ],
-            ),
-            
-            // Warning about browser blocking when extension is not connected
-            if (isBlockingBrowsers && !isExtensionConnected)
-              Container(
-                margin: const EdgeInsets.only(top: 16.0),
-                padding: const EdgeInsets.all(16.0),
-                decoration: BoxDecoration(
-                  color: Colors.amber.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8.0),
-                  border: Border.all(color: Colors.amber),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.warning_amber_rounded, color: Colors.amber),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Browser Blocking Enabled',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: Colors.amber.shade800,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            isInGracePeriod
-                                ? 'You have ${remainingGraceSeconds} seconds to connect the extension before browsers are blocked. If you exit this setup, a 10-minute cooldown will be enforced.'
-                                : isInCooldown
-                                    ? 'Browsers are currently blocked. You must wait ${remainingCooldownMinutes} minutes before trying to set up the extension again.'
-                                    : 'Browsers will be blocked until you connect the extension. Once you start setup, you\'ll have 60 seconds to complete it before a 10-minute cooldown is enforced.',
-                          ),
-                        ],
-                      ),
+                  const SizedBox(height: 8),
+                ],
+                
+                // Warning about browser blocking when no browsers are connected
+                if (isBlockingBrowsers && connectedBrowsers.isEmpty)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8.0),
+                      border: Border.all(color: Colors.amber),
                     ),
-                  ],
+                    child: Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, color: Colors.amber),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Browser Blocking Enabled',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Colors.amber.shade800,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                isInGracePeriod
+                                    ? 'You have ${remainingGraceSeconds} seconds to connect the extension before browsers are blocked. If you exit this setup, a 10-minute cooldown will be enforced.'
+                                    : isInCooldown
+                                        ? 'Browsers are currently blocked. You must wait ${remainingCooldownMinutes} minutes before trying to set up the extension again.'
+                                        : 'Browsers will be blocked until you connect the extension. Once you start setup, you\'ll have 60 seconds to complete it before a 10-minute cooldown is enforced.',
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                
+                // Setup button
+                ElevatedButton(
+                  onPressed: isInCooldown ? null : () async {
+                    await widget.onRestartOnboarding();
+                    await _showOnboardingDialog();
+                  },
+                  child: Text(isInCooldown
+                      ? 'Wait ${remainingCooldownMinutes}m to try again'
+                      : connectedBrowsers.isNotEmpty 
+                          ? 'Set Up Additional Browsers'
+                          : 'Set Up Browser Extension'),
                 ),
-              ),
-            const SizedBox(height: 16),
-            // Always show the button to allow setting up additional browsers
-            ElevatedButton(
-              onPressed: isInCooldown ? null : () async {
-                await widget.onRestartOnboarding();
-                // Then show the onboarding dialog
-                await _showOnboardingDialog();
-              },
-              child: Text(isInCooldown
-                  ? 'Wait ${remainingCooldownMinutes}m to try again'
-                  : isExtensionConnected 
-                      ? 'Set Up Additional Browsers'
-                      : 'Set Up Browser Extension'),
-            ),
               ],
             ),
           ),
