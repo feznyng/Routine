@@ -41,4 +41,4 @@ Sync backend can be found in `./supabase` including an sql setup script and edge
 Mobile notifications and background sync requests are sent through Firebase Cloud Messaging (FCM). If you don't have a Firebase project, you can duplicate and rename the firebase_options.example.dart file to firebase_options.dart for local development.
 
 ### Browser Extension
-Routine performs site blocking on desktop through a browser extension (`./browser/extension`). Communication with the extension is performed via TCP socket using a [native messaging host (NMH)](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging) (`./browser/native`). You'll need to [install Rust](https://www.rust-lang.org/tools/install) in order to build the NMH.
+Routine performs site blocking on desktop through a browser extension (`./browser/extension`). Communication with the extension is performed via TCP socket using a [native messaging host (NMH)](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging) (`./browser/native`). This requires a working Dart toolchain which you likely already have thanks to the Flutter setup. 

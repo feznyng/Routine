@@ -15,6 +15,7 @@ import 'dart:async';
 import 'package:Routine/setup.dart';
 import 'package:collection/src/iterable_extensions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 
 class BrowserConnection {
@@ -277,16 +278,11 @@ class BrowserExtensionService {
       }
       
       _server = server;
-      logger.i('TCP server started on port $boundPort');
-      
-      // Write port file to app support directory which is allowed by sandbox
       final supportDir = await getApplicationSupportDirectory();
       await supportDir.create(recursive: true);
-      logger.i('App support directory: ${supportDir.path}');
       
       final portFile = File(p.join(supportDir.path, 'routine_server_port'));
       await portFile.writeAsString(boundPort.toString());
-      logger.i('Wrote port $boundPort to ${portFile.path}');
       
       _server!.listen((socket) {
         
@@ -298,8 +294,8 @@ class BrowserExtensionService {
         _connections[browser] = connection;
 
         socket.listen(
-          (data) {
-            _handleBrowserData(browser, data, socket);
+          (data) async {
+            await _handleBrowserData(browser, data, socket);
           },
           onError: (error) {
             logger.e('Error from NMH socket: $error');
@@ -319,7 +315,7 @@ class BrowserExtensionService {
     }
   }
 
-  void _handleBrowserData(Browser browser, List<int> data, Socket socket) {
+  Future<void> _handleBrowserData(Browser browser, List<int> data, Socket socket) async {
     final connection = _connections[browser];
     if (connection == null) return;
 
@@ -338,7 +334,7 @@ class BrowserExtensionService {
 
         try {
           final decoded = json.decode(message) as Map<String, dynamic>;
-          _handleMessage(browser, decoded);
+          await _handleMessage(browser, decoded);
         } catch (e, st) {
           Util.report('Error decoding message from NMH', e, st);
         }
@@ -348,9 +344,23 @@ class BrowserExtensionService {
     }
   }
 
-  void _handleMessage(Browser browser, Map<String, dynamic> message) {
+  Future<void> _handleMessage(Browser browser, Map<String, dynamic> message) async {
     logger.i('Received message from NMH: $message');
-    // Handle message from NMH here
+    
+    final action = message['action'] as String?;
+    final data = message['data'] as Map<String, dynamic>?;
+    
+    if (action == 'browser_info' && data != null) {
+      // Get app info
+      final packageInfo = await PackageInfo.fromPlatform();
+      
+      // Send back app info
+      sendToBrowser('app_info', {
+        'name': packageInfo.appName,
+        'version': packageInfo.version,
+        'platform': Platform.operatingSystem,
+      }, browser: browser);
+    }
   }
 
   void _handleDisconnect(Browser browser) {
@@ -389,15 +399,10 @@ class BrowserExtensionService {
 
       final socket = _connections[browser]?.socket;
       
-      logger.i("sending $jsonMessage to $browser");
-      
       if (socket != null) {
-        // Convert length to big-endian bytes
         final lengthBytes = Uint8List(4);
-        lengthBytes[0] = (messageBytes.length >> 24) & 0xFF;
-        lengthBytes[1] = (messageBytes.length >> 16) & 0xFF;
-        lengthBytes[2] = (messageBytes.length >> 8) & 0xFF;
-        lengthBytes[3] = messageBytes.length & 0xFF;
+        final view = ByteData.view(lengthBytes.buffer);
+        view.setUint32(0, messageBytes.length, Endian.host);
         
         socket.add(Uint8List.fromList([
           ...lengthBytes,
