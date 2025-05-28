@@ -3,10 +3,11 @@ import 'package:Routine/services/browser_config.dart';
 import 'package:Routine/util.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
-import 'dart:io' show Directory, File, Platform, Process, ProcessResult, Socket, ServerSocket;
+import 'dart:io' show Directory, File, Platform, Process, ProcessResult, Socket, ServerSocket, InternetAddress;
 import 'dart:typed_data' show ByteData, Uint8List;
 import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
+import 'package:path/path.dart' as p;
 import 'package:win32/win32.dart';
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
@@ -249,8 +250,6 @@ class BrowserExtensionService {
       return '$exeDir/data/flutter_assets/assets/extension';
     }
   }
-  
-
 
   static const int serverPort = 54325;
   ServerSocket? _server;
@@ -259,9 +258,36 @@ class BrowserExtensionService {
     if (_server != null) return;
 
     try {
-      _server = await ServerSocket.bind('127.0.0.1', serverPort);
-      logger.i('TCP server started on port $serverPort');
-
+      // Try ports in range 54320-54330
+      ServerSocket? server;
+      int? boundPort;
+      
+      for (int port = 54320; port <= 54330; port++) {
+        try {
+          server = await ServerSocket.bind(InternetAddress.loopbackIPv4, port);
+          boundPort = port;
+          break;
+        } catch (e) {
+          logger.d('Port $port is not available');
+        }
+      }
+      
+      if (server == null || boundPort == null) {
+        throw Exception('Could not find available port in range 54320-54330');
+      }
+      
+      _server = server;
+      logger.i('TCP server started on port $boundPort');
+      
+      // Write port file to app support directory which is allowed by sandbox
+      final supportDir = await getApplicationSupportDirectory();
+      await supportDir.create(recursive: true);
+      logger.i('App support directory: ${supportDir.path}');
+      
+      final portFile = File(p.join(supportDir.path, 'routine_server_port'));
+      await portFile.writeAsString(boundPort.toString());
+      logger.i('Wrote port $boundPort to ${portFile.path}');
+      
       _server!.listen((socket) {
         
         final browser = Browser.values.firstWhere((b) => b.name == socket.remoteAddress.address,

@@ -80,6 +80,28 @@ fn write_browser_message(message: &Message) -> io::Result<()> {
     Ok(())
 }
 
+fn get_app_support_dir() -> io::Result<std::path::PathBuf> {
+    let home = std::env::var("HOME").map_err(|e| io::Error::new(io::ErrorKind::NotFound, e))?;
+    Ok(std::path::PathBuf::from(home)
+        .join("Library/Containers/com.solidsoft.routine/Data/Library/Application Support/com.solidsoft.routine"))
+}
+
+fn get_server_port() -> io::Result<u16> {
+    let app_support_dir = get_app_support_dir()?;
+    let port_file = app_support_dir.join("routine_server_port");
+    log_to_file(&format!("Attempting to read port from: {}", port_file.display()));
+    let port_str = std::fs::read_to_string(&port_file)
+        .map_err(|e| {
+            log_to_file(&format!("Error reading port file: {}", e));
+            e
+        })?
+        .trim()
+        .to_string();
+    
+    port_str.parse::<u16>()
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+}
+
 fn main() -> io::Result<()> {
     log_to_file("Native messaging host started");
     
@@ -104,15 +126,46 @@ fn main() -> io::Result<()> {
         }
     });
 
-    // Connect to Flutter app's TCP server
-    let mut flutter_stream = match TcpStream::connect("127.0.0.1:54325") {
-        Ok(stream) => {
-            log_to_file("Connected to Flutter app's TCP server");
-            stream
-        },
-        Err(e) => {
-            log_to_file(&format!("Failed to connect to Flutter app: {}", e));
-            return Err(e);
+    // Get port from file and connect to Flutter app's TCP server with retries
+    let mut flutter_stream = None;
+    let mut retry_count = 0;
+    const MAX_RETRIES: u32 = 10;
+    const RETRY_DELAY_MS: u64 = 500;
+    
+    while retry_count < MAX_RETRIES {
+        match get_server_port() {
+            Ok(port) => {
+                log_to_file(&format!("Attempt {} - Connecting to port {}", retry_count + 1, port));
+                match TcpStream::connect(format!("127.0.0.1:{}", port)) {
+                    Ok(stream) => {
+                        log_to_file("Connected to Flutter app's TCP server");
+                        flutter_stream = Some(stream);
+                        break;
+                    },
+                    Err(e) => {
+                        log_to_file(&format!("Failed to connect to Flutter app: {}", e));
+                        retry_count += 1;
+                        if retry_count < MAX_RETRIES {
+                            thread::sleep(std::time::Duration::from_millis(RETRY_DELAY_MS));
+                        }
+                    }
+                }
+            },
+            Err(e) => {
+                log_to_file(&format!("Failed to read port file: {}", e));
+                retry_count += 1;
+                if retry_count < MAX_RETRIES {
+                    thread::sleep(std::time::Duration::from_millis(RETRY_DELAY_MS));
+                }
+            }
+        }
+    }
+    
+    let mut flutter_stream = match flutter_stream {
+        Some(stream) => stream,
+        None => {
+            log_to_file("Failed to connect to Flutter app after all retries");
+            return Err(io::Error::new(io::ErrorKind::NotFound, "Could not connect to Flutter app"));
         }
     };
 
