@@ -28,7 +28,7 @@ class BrowserConnection {
   void sendMessage(String action, Map<String, dynamic> data) {
     final message = json.encode({'action': action, 'data': data});
     final messageBytes = utf8.encode(message);
-    final lengthBytes = ByteData(4)..setUint32(0, messageBytes.length, Endian.host);
+    final lengthBytes = ByteData(4)..setUint32(0, messageBytes.length, Endian.little);
     socket.add(lengthBytes.buffer.asUint8List());
     socket.add(messageBytes);
   }
@@ -37,6 +37,7 @@ class BrowserConnection {
 class BrowserExtensionService {
   static final BrowserExtensionService _instance = BrowserExtensionService._internal();
   final Map<Browser, BrowserConnection> _connections = {};
+  final Map<String, BrowserConnection> _pendingConnections = {};
   final StreamController<bool> _connectionStreamController = StreamController<bool>.broadcast();
   static const String _connectedBrowsersKey = 'connected_browsers';
   
@@ -281,87 +282,113 @@ class BrowserExtensionService {
       await portFile.writeAsString(boundPort.toString());
       
       _server!.listen((socket) {
-        
-        final browser = Browser.values.firstWhere((b) => b.name == socket.remoteAddress.address,
-            orElse: () => Browser.firefox);
-        logger.i('NMH connected from ${socket.remoteAddress.address} for $browser');
+        logger.i('NMH connected from ${socket.remoteAddress.address}');
 
         final connection = BrowserConnection(socket: socket);
-        _connections[browser] = connection;
+        final socketId = socket.remoteAddress.address;
+        _pendingConnections[socketId] = connection;
 
         socket.listen(
           (data) async {
-            await _handleBrowserData(browser, data, socket);
+            await _handlePendingData(socketId, data);
           },
           onError: (error) {
             logger.e('Error from NMH socket: $error');
-            _handleDisconnect(browser);
+            _pendingConnections.remove(socketId);
           },
           onDone: () {
             logger.i('NMH socket closed');
-            _handleDisconnect(browser);
+            // Find and disconnect browser if it was moved to active connections
+            final browser = _connections.entries.firstWhereOrNull((entry) => entry.value.socket == socket)?.key;
+            if (browser != null) {
+              _handleDisconnect(browser);
+            } else {
+              _pendingConnections.remove(socketId);
+            }
           },
         );
-
-        _connectionStreamController.add(true);
-        _saveBrowserConnection(browser);
       });
     } catch (e, st) {
       Util.report('Error starting TCP server', e, st);
     }
   }
 
-  Future<void> _handleBrowserData(Browser browser, List<int> data, Socket socket) async {
-    final connection = _connections[browser];
-    if (connection == null) return;
+  Future<void> _handlePendingData(String socketId, List<int> data) async {
+    final connection = _pendingConnections[socketId];
+    if (connection == null) {
+      logger.w('No pending connection found for socket $socketId');
+      return;
+    }
 
+    logger.d('Received ${data.length} bytes from socket $socketId');
     connection.buffer.addAll(data);
     
     while (connection.buffer.length >= 4) {
       if (connection.len == null) {
-        connection.len = ByteData.view(Uint8List.fromList(connection.buffer.sublist(0, 4)).buffer).getUint32(0, Endian.host);
+        connection.len = ByteData.view(Uint8List.fromList(connection.buffer.sublist(0, 4)).buffer).getUint32(0, Endian.little);
         connection.buffer.removeRange(0, 4);
+        logger.d('Message length: ${connection.len} bytes');
       }
 
       if (connection.buffer.length >= connection.len!) {
         final message = utf8.decode(connection.buffer.sublist(0, connection.len!));
+        logger.d('Decoded message from socket $socketId: $message');
         connection.buffer.removeRange(0, connection.len!);
         connection.len = null;
 
         try {
           final decoded = json.decode(message) as Map<String, dynamic>;
-          await _handleMessage(browser, decoded);
+          await _handlePendingMessage(socketId, decoded);
         } catch (e, st) {
+          logger.e('Error decoding message from NMH: $e');
           Util.report('Error decoding message from NMH', e, st);
         }
       } else {
+        logger.d('Waiting for more data. Have ${connection.buffer.length} bytes, need ${connection.len}');
         break;
       }
     }
   }
 
-  Future<void> _handleMessage(Browser browser, Map<String, dynamic> message) async {
-    logger.i('Received message from NMH: $message');
+  Future<void> _handlePendingMessage(String socketId, Map<String, dynamic> message) async {
+    logger.i('Received message from pending NMH: $message');
     
     final action = message['action'] as String?;
     final data = message['data'] as Map<String, dynamic>?;
     
     if (action == 'browser_info' && data != null) {
-      // Get app info
-      final packageInfo = await PackageInfo.fromPlatform();
-      
-      // Send back app info
-      sendToBrowser('app_info', {
-        'name': packageInfo.appName,
-        'version': packageInfo.version,
-        'platform': Platform.operatingSystem,
-      }, browser: browser);
+      final browserName = data['browser'] as String?;
+      if (browserName != null) {
+        final browser = Browser.values.firstWhere(
+          (b) => b.name.toLowerCase() == browserName.toLowerCase(),
+          orElse: () => Browser.firefox
+        );
+        
+        // Move from pending to active connections
+        final connection = _pendingConnections.remove(socketId);
+        if (connection != null) {
+          _connections[browser] = connection;
+          _connectionStreamController.add(true);
+          await _saveBrowserConnection(browser);
+          
+          // Get app info
+          final packageInfo = await PackageInfo.fromPlatform();
+          
+          // Send back app info
+          sendToBrowser('app_info', {
+            'name': packageInfo.appName,
+            'version': packageInfo.version,
+            'platform': Platform.operatingSystem,
+          }, browser: browser);
+        }
+      }
     }
   }
 
   void _handleDisconnect(Browser browser) {
-    _connections.remove(browser);
-    _connectionStreamController.add(false);
+    if (_connections.remove(browser) != null) {
+      _connectionStreamController.add(false);
+    }
   }
 
   Future<void> _saveBrowserConnection(Browser browser) async {
@@ -398,7 +425,7 @@ class BrowserExtensionService {
       if (socket != null) {
         final lengthBytes = Uint8List(4);
         final view = ByteData.view(lengthBytes.buffer);
-        view.setUint32(0, messageBytes.length, Endian.host);
+        view.setUint32(0, messageBytes.length, Endian.little);
         
         socket.add(Uint8List.fromList([
           ...lengthBytes,

@@ -90,9 +90,10 @@ void main(List<String> args) async {
           }
 
           // Send message length in big-endian format as expected by the Routine app
-          final lengthBytes = ByteData(4)..setUint32(0, bytes.length, Endian.big);
+          final lengthBytes = ByteData(4)..setUint32(0, bytes.length, Endian.little);
           routineSocket.add(Uint8List.fromList([...lengthBytes.buffer.asUint8List(), ...bytes]));
           await routineSocket.flush();
+          stderr.writeln('Sent message: $message');
         }
       } catch (e, st) {
         stderr.writeln('Error processing message from extension: $e\n$st');
@@ -122,7 +123,7 @@ void main(List<String> args) async {
         while (routineBuffer.length >= 4) {
           if (expectedLength == null) {
             final view = ByteData.view(Uint8List.fromList(routineBuffer.sublist(0, 4)).buffer);
-            expectedLength = view.getUint32(0, Endian.host);
+            expectedLength = view.getUint32(0, Endian.little);
             
             if (expectedLength! > maxMessageSize) {
               stderr.writeln('Error: Message too large: $expectedLength bytes');
