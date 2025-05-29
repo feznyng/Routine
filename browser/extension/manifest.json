@@ -16,7 +16,7 @@
     "scripts": ["background.js"]
   },
   "web_accessible_resources": [{
-    "resources": ["blocked.html"],
+    "resources": [],
     "matches": ["<all_urls>"]
   }],
   "icons": {

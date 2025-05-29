@@ -15,8 +15,6 @@ import 'dart:async';
 import 'package:Routine/setup.dart';
 import 'package:collection/src/iterable_extensions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-
 
 class BrowserConnection {
   final Socket socket;
@@ -370,16 +368,6 @@ class BrowserExtensionService {
           _connections[browser] = connection;
           _connectionStreamController.add(true);
           await _saveBrowserConnection(browser);
-          
-          // Get app info
-          final packageInfo = await PackageInfo.fromPlatform();
-          
-          // Send back app info
-          sendToBrowser('app_info', {
-            'name': packageInfo.appName,
-            'version': packageInfo.version,
-            'platform': Platform.operatingSystem,
-          }, browser: browser);
         }
       }
     }

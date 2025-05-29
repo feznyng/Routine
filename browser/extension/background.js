@@ -49,14 +49,6 @@ async function connectToNative() {
         registerBlockingRules();
         
         console.log("Updated blocked sites:", sites, allowList);
-      } else if (message.action === "appConnectionState") {
-        // Update app connection state
-        isAppConnected = message.data.connected;
-        console.log("App connection state changed:", isAppConnected ? "connected" : "disconnected", 
-                   "active connections:", message.data.connections);
-        
-        // Re-register blocking rules with new connection state
-        registerBlockingRules();
       }
     });
     
