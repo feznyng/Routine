@@ -101,7 +101,7 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
           const Padding(
             padding: EdgeInsets.all(16.0),
             child: Text(
-              'Browser Extension',
+              'Browsers',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -110,17 +110,10 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
           ),
           const Divider(height: 1),
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(10.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'The browser extension allows Routine to block distracting websites during focus sessions.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 16),
-                
-                // Connected browsers list
                 if (connectedBrowsers.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   ...connectedBrowsers.map((browser) {
