@@ -1,3 +1,4 @@
+import 'package:Routine/constants.dart';
 import 'package:Routine/models/installed_app.dart';
 import 'package:Routine/services/auth_service.dart';
 import 'package:Routine/services/platform_service.dart';
@@ -25,7 +26,7 @@ class DesktopService extends PlatformService {
 
   static DesktopService get instance => _instance;
 
-  final platform = const MethodChannel('com.solidsoft.routine');
+  final _platform = const MethodChannel(kAppName);
   // Cache fields for blocked items
   List<String> _cachedSites = [];
   List<String> _cachedApps = [];
@@ -43,7 +44,7 @@ class DesktopService extends PlatformService {
     _stopWatching();
 
     try {
-      await platform.invokeMethod('engineReady');
+      await _platform.invokeMethod('engineReady');
     } catch (e, st) {
       Util.report('Failed to signal engine start', e, st);
     }
@@ -54,9 +55,13 @@ class DesktopService extends PlatformService {
       onRoutinesUpdated(routines);
     });
 
-    _appSubscription = BrowserService.instance.connectionStream.listen((strictMode) async {
+    _appSubscription = BrowserService.instance.connectionStream.listen((_) async {
       await updateAppList();
       await updateBlockedSites();
+    });
+    
+    _gracePeriodExpirationSubscription = BrowserService.instance.gracePeriodStream.listen((_) {
+      updateAppList();
     });
 
     _strictModeSettingsSubscription = StrictModeService.instance.effectiveSettingsStream.listen((settings) {
@@ -67,12 +72,8 @@ class DesktopService extends PlatformService {
       }
     });
     
-    _gracePeriodExpirationSubscription = StrictModeService.instance.gracePeriodExpirationStream.listen((_) {
-      updateAppList();
-    });
-    
     // Setup platform method channel handler for system wake events
-    platform.setMethodCallHandler((call) async {
+    _platform.setMethodCallHandler((call) async {
       switch (call.method) {
         case 'systemWake':
           logger.i('=== SYSTEM WAKE EVENT ===');
@@ -184,7 +185,7 @@ class DesktopService extends PlatformService {
       logger.i("added disconnected browsers: $apps");
     }
 
-    await platform.invokeMethod('updateAppList', {
+    await _platform.invokeMethod('updateAppList', {
       'apps': apps,
       'categories': _cachedCategories,
       'allowList': _isAllowList,
@@ -230,7 +231,7 @@ class DesktopService extends PlatformService {
       }
     } else {
       try {
-        await platform.invokeMethod('setStartOnLogin', enabled);
+        await _platform.invokeMethod('setStartOnLogin', enabled);
       } catch (e, st) {
         Util.report('error setting start on login to $enabled', e, st);
       }
@@ -255,7 +256,7 @@ class DesktopService extends PlatformService {
       }
     } else {
       try {
-        final bool enabled = await platform.invokeMethod('getStartOnLogin');
+        final bool enabled = await _platform.invokeMethod('getStartOnLogin');
         return enabled;
       } catch (e, st) {
         Util.report('failed retrieving startup on login status', e, st);
@@ -265,14 +266,12 @@ class DesktopService extends PlatformService {
   }
 
   
-  static Future<List<InstalledApp>> getInstalledApps() async {
+  Future<List<InstalledApp>> getInstalledApps() async {
     List<InstalledApp> installedApps = [];
 
     if (Platform.isWindows) {
       try {
-        // Call the native method to get running applications
-        final MethodChannel platform = const MethodChannel('com.solidsoft.routine');
-        final List<dynamic> runningApps = await platform.invokeMethod('getRunningApplications');
+        final List<dynamic> runningApps = await _platform.invokeMethod('getRunningApplications');
         
         // Convert the result to InstalledApplication objects
         for (final app in runningApps) {

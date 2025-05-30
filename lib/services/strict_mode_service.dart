@@ -428,7 +428,6 @@ class StrictModeService with ChangeNotifier {
   
   Stream<Map<String, bool>> get effectiveSettingsStream => _effectiveSettingsStreamController.stream;
   Stream<Map<String, bool>> get settingsStream => _settingsStreamController.stream;
-  Stream<void> get gracePeriodExpirationStream => BrowserService.instance.onGracePeriodExpired;
 
   @override
   void dispose() {

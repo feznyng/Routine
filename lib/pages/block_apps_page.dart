@@ -67,7 +67,7 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
       _isLoadingApps = true;
     });
 
-    final List<InstalledApp> apps = Util.isDesktop() ? await DesktopService.getInstalledApps() : await MobileService().getInstalledApps();
+    final List<InstalledApp> apps = Util.isDesktop() ? await DesktopService.instance.getInstalledApps() : await MobileService().getInstalledApps();
     setState(() {
       _availableApps = apps;
       _isLoadingApps = false;

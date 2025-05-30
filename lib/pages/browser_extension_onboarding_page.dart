@@ -57,8 +57,10 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
       _updateConnectionStatus();
     });
     
-    _gracePeriodExpirationListener = _strictModeService.gracePeriodExpirationStream.listen((_) {
-      _onGracePeriodExpired();
+    _gracePeriodExpirationListener = _browserExtensionService.gracePeriodStream.listen((started) {
+      if (!started) {
+        _onGracePeriodExpired();
+      }
     });
   }
 
@@ -140,7 +142,7 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
 
       final gracePeriodDuration = 60;
       
-      _browserExtensionService.startExtensionGracePeriod(gracePeriodDuration);
+      _browserExtensionService.startGracePeriod(gracePeriodDuration);
       
       setState(() {
         _inGracePeriod = true;
@@ -458,7 +460,7 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        if (_currentStep > 0)
+        if (_currentStep > 0 && _currentStep < 3)
           TextButton(
             onPressed: _previousStep,
             child: const Text('Back'),

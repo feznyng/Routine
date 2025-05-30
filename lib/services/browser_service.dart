@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:Routine/constants.dart';
 import 'package:flutter/foundation.dart';
 import 'package:Routine/models/installed_app.dart';
 import 'package:Routine/services/browser_config.dart';
@@ -48,7 +49,7 @@ class BrowserService with ChangeNotifier {
   final Map<Browser, BrowserConnection> _connections = {};
   final Map<String, BrowserConnection> _pendingConnections = {};
   final StreamController<bool> _connectionStreamController = StreamController<bool>.broadcast();
-  final StreamController<void> _gracePeriodExpirationController = StreamController<void>.broadcast();
+  final StreamController<bool> _gracePeriodExpirationController = StreamController<bool>.broadcast();
   static const String _connectedBrowsersKey = 'connected_browsers';
   
   factory BrowserService() {
@@ -59,6 +60,13 @@ class BrowserService with ChangeNotifier {
   
   static BrowserService get instance => _instance;
   
+  Future<void> init() async {
+    logger.i("Browser Extension - Init");
+    _initialConnectionDeadline = DateTime.now().add(const Duration(seconds: 5));
+    await startServer();
+  }
+  
+  Stream<bool> get connectionStream => _connectionStreamController.stream;
   bool get isExtensionConnected => _connections.values.isNotEmpty;
 
   bool get isInitialConnectionPeriod {
@@ -86,49 +94,47 @@ class BrowserService with ChangeNotifier {
     return _extensionCooldownEnd!.difference(DateTime.now()).inMinutes + 1; // +1 to round up
   }
 
-  Stream<void> get onGracePeriodExpired => _gracePeriodExpirationController.stream;
+  Stream<bool> get gracePeriodStream => _gracePeriodExpirationController.stream;
 
-  void startExtensionGracePeriod(int gracePeriodDuration) {
+  void startGracePeriod(int gracePeriodDuration) {
     if (isInCooldown) {
       return;
     }
     
-    _gracePeriodTimer?.cancel();
-    
     _extensionGracePeriodEnd = DateTime.now().add(Duration(seconds: gracePeriodDuration));
-    _extensionCooldownEnd = DateTime.now().add(Duration(minutes: _extensionCooldownMinutes));
-    
-    _gracePeriodTimer = Timer(Duration(seconds: gracePeriodDuration), () {
-      _gracePeriodExpirationController.add(null);
-      _extensionGracePeriodEnd = null;
-      notifyListeners();
-    });
     
     notifyListeners();
+    _gracePeriodExpirationController.add(true);
+
+    _gracePeriodTimer?.cancel();
+    _gracePeriodTimer = Timer(Duration(seconds: gracePeriodDuration), () {
+      _endGracePeriod();
+    });
   }
 
   void cancelGracePeriodWithCooldown() {
     if (!isInGracePeriod) return;
-    
+    _endGracePeriod();
+  }
+
+  void _endGracePeriod() {
+    _gracePeriodExpirationController.add(false);
+    _extensionGracePeriodEnd = null;
     _gracePeriodTimer?.cancel();
     _extensionGracePeriodEnd = null;
     _extensionCooldownEnd = DateTime.now().add(Duration(minutes: _extensionCooldownMinutes));
-    _gracePeriodExpirationController.add(null);
-    
     notifyListeners();
   }
   
   bool isBrowserConnected(Browser browser) {
     return _connections.containsKey(browser);
   }
-  
-  List<Browser> get connectedBrowsers {
-    return _connections.keys.toList();
-  }
 
   BrowserData getBrowserData(Browser browser) {
     return browserData[browser]!;
   }
+  
+  List<Browser> get connectedBrowsers => _connections.keys.toList();
   
   Future<List<InstalledBrowser>> getInstalledSupportedBrowsers({bool? connected = false}) async {
     List<InstalledBrowser> browsers = await _getInstalledSupportedBrowsers();
@@ -194,7 +200,7 @@ class BrowserService with ChangeNotifier {
 
   Map<String, dynamic> _createManifestContent(Browser browser, String binaryPath) {
     return {
-      'name': 'com.solidsoft.routine',
+      'name': kAppName,
       'description': 'Routine Native Messaging Host',
       'path': binaryPath,
       'type': 'stdio',
@@ -206,14 +212,13 @@ class BrowserService with ChangeNotifier {
     try {
       final data = browserData[browser]!;
 
-
       if (Platform.isMacOS) {
         final String nmhName = await _getBinaryAssetPath();
         
-        final Map<String, dynamic> manifest = _createManifestContent(browser, '$assetsPath/$nmhName');
+        final Map<String, dynamic> manifest = _createManifestContent(browser, '$nmhPath/$nmhName');
         final String manifestJson = json.encode(manifest);
 
-        final fileName = 'com.solidsoft.routine.json';
+        final fileName = '$kAppName.json';
         final nmhDir = data.macosNmhDir;
         
         final path = await FilePicker.platform.saveFile(
@@ -229,10 +234,10 @@ class BrowserService with ChangeNotifier {
         return false;
       } else if (Platform.isWindows) {
         final String nmhName = await _getBinaryAssetPath();
-        final Map<String, dynamic> manifest = _createManifestContent(browser, '$assetsPath/$nmhName');
+        final Map<String, dynamic> manifest = _createManifestContent(browser, '$nmhPath/$nmhName');
         final String manifestJson = json.encode(manifest);
         
-        String mozillaRegistryPath = "${data.registryPath}\\com.solidsoft.routine";
+        String mozillaRegistryPath = "${data.registryPath}\\$kAppName";
         final Pointer<HKEY> hKey = calloc<HKEY>();
         
         try {
@@ -252,8 +257,6 @@ class BrowserService with ChangeNotifier {
             return false;
           }
           
-          // Write the manifest path to the registry
-          // First, create a temporary file with the manifest
           final tempDir = await getTemporaryDirectory();
           final manifestFile = File('${tempDir.path}\\routine_manifest.json');
           
@@ -293,7 +296,6 @@ class BrowserService with ChangeNotifier {
     }
   }
   
-  // Install browser extension
   Future<bool> installBrowserExtension(Browser browser) async {
     try {
       final data = browserData[browser]!;
@@ -313,14 +315,8 @@ class BrowserService with ChangeNotifier {
       return false;
     }
   }
-  
-  Future<void> init() async {
-    logger.i("Browser Extension - Init");
-    _initialConnectionDeadline = DateTime.now().add(const Duration(seconds: 5));
-    await startServer();
-  }
 
-  String get assetsPath {
+  String get nmhPath {
     if (Platform.isMacOS) {
       return Platform.resolvedExecutable
           .replaceAll('/MacOS/Routine', '/Frameworks/App.framework/Resources/flutter_assets/assets/extension');
@@ -337,7 +333,6 @@ class BrowserService with ChangeNotifier {
     if (_server != null) return;
 
     try {
-      // Try ports in range 54320-54330
       ServerSocket? server;
       int? boundPort;
       
@@ -445,7 +440,6 @@ class BrowserService with ChangeNotifier {
           orElse: () => Browser.firefox
         );
         
-        // Move from pending to active connections
         final connection = _pendingConnections.remove(socketId);
         if (connection != null) {
           _connections[browser] = connection;
@@ -507,13 +501,6 @@ class BrowserService with ChangeNotifier {
     } catch (e, st) {
       Util.report('Failed to send message to NMH for $browser', e, st);
     }
-  }
-  
-  Stream<bool> get connectionStream => _connectionStreamController.stream;
-  
-  bool isBrowser(String appName) {
-    final lowerAppName = appName.toLowerCase();
-    return browserData.keys.any((browser) => lowerAppName.contains(browser.name));
   }
   
   @override

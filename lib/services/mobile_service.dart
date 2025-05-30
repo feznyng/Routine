@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io' show Platform;
+import 'package:Routine/constants.dart';
 import 'package:Routine/models/installed_app.dart';
 import 'package:Routine/services/platform_service.dart';
 import 'package:Routine/services/sync_service.dart';
@@ -16,7 +17,7 @@ class MobileService extends PlatformService {
   
   MobileService._internal();
   
-  final MethodChannel _channel = const MethodChannel('com.solidsoft.routine');
+  final MethodChannel _channel = const MethodChannel(kAppName);
   
   StreamSubscription? _routineSubscription;
   StreamSubscription? _strictModeSubscription;

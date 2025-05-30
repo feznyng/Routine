@@ -22,10 +22,8 @@ class MainFlutterWindow: NSWindow {
 
     RegisterGeneratedPlugins(registry: flutterViewController)
     
-    // Request notification authorization
     requestNotificationAuthorization()
 
-    // Set up method channel
     methodChannel = FlutterMethodChannel(
       name: "com.solidsoft.routine",
       binaryMessenger: flutterViewController.engine.binaryMessenger
