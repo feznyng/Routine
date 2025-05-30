@@ -177,7 +177,7 @@ class StrictModeService with ChangeNotifier {
 
   bool get effectiveBlockAppExit => _blockAppExit && _inStrictMode && !emergencyMode;
   bool get effectiveBlockDisablingSystemStartup => _blockDisablingSystemStartup && _inStrictMode && !emergencyMode;
-  bool get effectiveBlockBrowsersWithoutExtension => _blockBrowsersWithoutExtension && _inStrictMode && !emergencyMode;
+  bool get effectiveBlockBrowsersWithoutExtension => _blockBrowsersWithoutExtension && _inStrictMode && !emergencyMode && !isInExtensionGracePeriod;
   bool get effectiveBlockChangingTimeSettings => _blockChangingTimeSettings && _inStrictMode && !emergencyMode;
   bool get effectiveBlockUninstallingApps => _blockUninstallingApps && _inStrictMode && !emergencyMode;
   bool get effectiveBlockInstallingApps => _blockInstallingApps && _inStrictMode && !emergencyMode;

@@ -29,7 +29,8 @@ class ExtensionInstallationStep extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = BrowserExtensionService.instance.getBrowserData(browser).appName;
 
-    return Column(
+    return SingleChildScrollView(
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
@@ -45,47 +46,6 @@ class ExtensionInstallationStep extends StatelessWidget {
           'The browser extension needs to be installed to block distracting websites and applications.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
-        const SizedBox(height: 24),
-        
-        // Grace period warning if applicable
-        if (inGracePeriod)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.amber.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.amber),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.warning, color: Colors.amber),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Grace Period Active',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.amber[800],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Time remaining: $remainingSeconds seconds',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'You must complete the extension setup before the grace period expires, '
-                  'or browsers will be blocked for 10 minutes.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-            ),
-          ),
-        
         const SizedBox(height: 24),
         Center(
           child: Column(
@@ -130,7 +90,48 @@ class ExtensionInstallationStep extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(height: 24),
+        
+        // Grace period warning if applicable and extension is not connected
+        if (inGracePeriod && !isConnected)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.amber.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.amber),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.warning, color: Colors.amber),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Grace Period Active',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.amber[800],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Time remaining: $remainingSeconds seconds',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'You must complete the extension setup before the grace period expires, '
+                  'or browsers will be blocked for 10 minutes.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ),
       ],
+    ),
     );
   }
 }

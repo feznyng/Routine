@@ -178,11 +178,10 @@ class DesktopService extends PlatformService {
   Future<void> updateAppList() async {
     final apps = List<String>.from(_cachedApps);
 
-    if (StrictModeService.instance.effectiveBlockBrowsersWithoutExtension && 
-        !BrowserExtensionService.instance.isExtensionConnected && 
-        !StrictModeService.instance.isInExtensionGracePeriod) {
-      final browsers = await BrowserExtensionService.instance.getInstalledSupportedBrowsers();
-      apps.addAll(browsers.map((b) => b.name));
+    if (StrictModeService.instance.effectiveBlockBrowsersWithoutExtension) {
+      final browsers = await BrowserExtensionService.instance.getInstalledSupportedBrowsers(connected: false);
+      apps.addAll(browsers.map((b) => b.app.filePath));
+      logger.i("added disconnected browsers: $apps");
     }
     await platform.invokeMethod('updateAppList', {
       'apps': apps,

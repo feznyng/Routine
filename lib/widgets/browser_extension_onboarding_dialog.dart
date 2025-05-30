@@ -83,7 +83,8 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
     });
     
     // Get installed browsers
-    final browsers = await _browserExtensionService.getInstalledSupportedBrowsers();
+    final browsers = (await _browserExtensionService.getInstalledSupportedBrowsers())
+      .map((b) => b.browser).toList();
     
     // Initialize NMH installation status map for each browser
     Map<Browser, bool> nmhMap = {};

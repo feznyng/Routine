@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:Routine/models/installed_app.dart';
 import 'package:Routine/services/browser_config.dart';
 import 'package:Routine/util.dart';
 import 'package:file_picker/file_picker.dart';
@@ -15,6 +16,8 @@ import 'dart:async';
 import 'package:Routine/setup.dart';
 import 'package:collection/src/iterable_extensions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+typedef InstalledBrowser = ({Browser browser, InstalledApp app});
 
 class BrowserConnection {
   final Socket socket;
@@ -61,8 +64,20 @@ class BrowserExtensionService {
     return browserData[browser]!;
   }
   
-  Future<List<Browser>> getInstalledSupportedBrowsers() async {
-    List<Browser> supportedBrowsers = [];
+  Future<List<InstalledBrowser>> getInstalledSupportedBrowsers({bool? connected = false}) async {
+    List<InstalledBrowser> browsers = await _getInstalledSupportedBrowsers();
+
+    if (connected == true) {
+      return browsers.where((b) => _connections.containsKey(b.browser)).toList();
+    } else if (connected == false) {
+      return browsers.where((b) => !_connections.containsKey(b.browser)).toList();
+    }
+
+    return browsers;
+  }
+
+  Future<List<InstalledBrowser>> _getInstalledSupportedBrowsers() async {
+    List<InstalledBrowser> supportedBrowsers = [];
     
     try {
       if (Platform.isMacOS) {
@@ -76,7 +91,7 @@ class BrowserExtensionService {
               final browser = Browser.values.firstWhereOrNull((b) => lowerPath.contains(b.name));
 
               if (browser != null) {
-                supportedBrowsers.add(browser);
+                supportedBrowsers.add((browser: browser, app: InstalledApp(filePath: entity.path, name: browser.name)));
               }
             }
           }
@@ -86,7 +101,8 @@ class BrowserExtensionService {
           for (final path in entry.value.windowsPaths) {
             final dir = Directory(path);
             if (await dir.exists()) {
-              supportedBrowsers.add(entry.key);
+              supportedBrowsers.add((browser: entry.key, app: InstalledApp(filePath: path, name: entry.key.name)));
+
               break;
             }
           }

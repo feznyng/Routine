@@ -193,12 +193,8 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
         ),
       );
       
-      // Check if extension is now connected after dialog is closed
       if (browserExtensionService.isExtensionConnected) {
-        // Now that the extension is connected, proceed with site selection
-        // We'll need to implement the site selection logic separately
         setState(() {
-          // No sites to update since we're not getting them from the dialog anymore
         });
         widget.onSave(_selectedApps, _selectedSites, _selectedCategories);
       }
