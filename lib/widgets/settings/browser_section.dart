@@ -156,15 +156,15 @@ class _BrowserSectionState extends State<BrowserSection> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Browsers',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const Spacer(),
                 ElevatedButton(
                   onPressed: isInCooldown ? null : () async {
                     await widget.onRestartOnboarding();
@@ -183,13 +183,13 @@ class _BrowserSectionState extends State<BrowserSection> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
                 if (isBlockingBrowsers)
                   Container(
                     padding: const EdgeInsets.all(16),
+                    margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
                       color: Colors.amber.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8.0),
+                      borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.amber),
                     ),
                     child: Row(
@@ -213,37 +213,32 @@ class _BrowserSectionState extends State<BrowserSection> {
                                   ? 'Disconnected browsers are currently blocked. You must wait $remainingCooldownMinutes minutes before trying to set up the extension again.'
                                   : 'Disconnected browsers will be blocked until you connect the extension. Set them up to remove blocking.',
                               ),
+                              const SizedBox(height: 8),
                             ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                // Connected browsers
-                if (connectedBrowsers.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  ...connectedBrowsers.map((browser) {
-                    return ListTile(
+                // Browser Lists
+                if (connectedBrowsers.isNotEmpty || disconnectedBrowsers.isNotEmpty) ...[
+                  // Connected browsers
+                  if (connectedBrowsers.isNotEmpty)
+                    ...connectedBrowsers.map((browser) => ListTile(
                       leading: const Icon(Icons.check_circle, color: Colors.green),
                       title: Text(_getBrowserName(browser)),
+                      subtitle: const Text('Connected'),
                       dense: true,
-                    );
-                  }),
-                  const SizedBox(height: 8),
-                ],
+                    )),
 
-                // Unconnected but installed browsers
-                if (disconnectedBrowsers.isNotEmpty) ...[                  
-                  ...(disconnectedBrowsers
-                    .map((browser) {
-                      return ListTile(
-                        leading: const Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                        title: Text(_getBrowserName(browser)),
-                        dense: true,
-                      );
-                    })
-                  ),
-                  const SizedBox(height: 8),
+                  // Unconnected but installed browsers
+                  if (disconnectedBrowsers.isNotEmpty)
+                    ...disconnectedBrowsers.map((browser) => ListTile(
+                      leading: const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                      title: Text(_getBrowserName(browser)),
+                      subtitle: const Text('Not Connected'),
+                      dense: true,
+                    )),
                 ],
               ],
             ),
