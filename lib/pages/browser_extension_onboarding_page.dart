@@ -113,12 +113,8 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
   void _onGracePeriodExpired() {
     logger.i("onGracePeriodExpired");
     
-    // Cancel grace period and trigger cooldown
-    _strictModeService.cancelGracePeriodWithCooldown();
-    
-    // Navigate back when grace period expires
+    _browserExtensionService.cancelGracePeriodWithCooldown();    
     if (mounted) Navigator.of(context).pop();
-    else logger.i("not mounted can't go back");
   }
 
   void _startConnectionAttemptTimer() {
@@ -137,10 +133,14 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
   }
 
   void _startGracePeriodCountdown() {
+    logger.i("check and starting grace period ${_strictModeService.effectiveBlockBrowsersWithoutExtension}");
+
     if (_strictModeService.effectiveBlockBrowsersWithoutExtension) {
+      logger.i("starting grace period");
+
       final gracePeriodDuration = 60;
       
-      _strictModeService.startExtensionGracePeriod(gracePeriodDuration);
+      _browserExtensionService.startExtensionGracePeriod(gracePeriodDuration);
       
       setState(() {
         _inGracePeriod = true;
@@ -173,14 +173,7 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
       return;
     }
     
-    // If we're at the browser selection step and moving to the first browser setup
     if (_currentStep == 0) {
-      // Start the grace period when moving to the browser setup steps
-      if (!_inGracePeriod && _strictModeService.effectiveBlockBrowsersWithoutExtension) {
-        _startGracePeriodCountdown();
-      }
-      
-      // Reset the current browser index
       _currentBrowserIndex = 0;
       setState(() {
         _currentStep++;
@@ -188,9 +181,7 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
       return;
     }
     
-    // If we're at the NMH installation step
     if (_currentStep == 1) {
-      // Check if NMH is installed for the current browser
       final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
       if (!(_nmhInstalledMap[currentBrowser] ?? false)) {
         setState(() {
@@ -199,18 +190,18 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
         return;
       }
       
-      // Move to the extension installation step
-      // Start connection attempt timer when moving to extension installation step
       _startConnectionAttemptTimer();
+      _startGracePeriodCountdown();
+      
       setState(() {
         _currentStep++;
       });
+
       return;
     }
     
-    // If we're at the extension installation step
     if (_currentStep == 2) {
-      // Check if current browser is connected before proceeding
+
       final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
       final isConnected = _browserExtensionService.isBrowserConnected(currentBrowser);
       
@@ -277,8 +268,7 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
       );
 
       if (shouldGoBack == true) {
-        _strictModeService.cancelGracePeriodWithCooldown();
-        if (context.mounted) Navigator.of(context).pop();
+        _browserExtensionService.cancelGracePeriodWithCooldown();
       }
     } else {
       Navigator.of(context).pop();
@@ -354,7 +344,7 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
     return Scaffold(
       appBar: AppBar(
         title: const Text('Browser Extension Setup'),
-        leading: IconButton(
+        leading: _currentStep == 3 ? null : IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => _handleBackNavigation(context),
         ),

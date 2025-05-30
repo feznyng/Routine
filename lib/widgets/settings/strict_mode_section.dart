@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:io';
 import '../../services/strict_mode_service.dart';
+import '../../services/browser_service.dart';
 import '../common/emergency_mode_banner.dart';
 
 class StrictModeSection extends StatefulWidget {
@@ -14,6 +15,7 @@ class StrictModeSection extends StatefulWidget {
 
 class _StrictModeSectionState extends State<StrictModeSection> {
   final _strictModeService = StrictModeService.instance;
+  final _browserService = BrowserService.instance;
   Timer? _gracePeriodTimer;
   Timer? _cooldownTimer;
 
@@ -38,9 +40,9 @@ class _StrictModeSectionState extends State<StrictModeSection> {
     _cooldownTimer?.cancel();
     
     // Start grace period timer if in grace period
-    if (_strictModeService.isInExtensionGracePeriod) {
+    if (_browserService.isInGracePeriod) {
       _gracePeriodTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        if (!_strictModeService.isInExtensionGracePeriod) {
+        if (!_browserService.isInGracePeriod) {
           timer.cancel();
         }
         if (mounted) {
@@ -50,9 +52,9 @@ class _StrictModeSectionState extends State<StrictModeSection> {
     }
     
     // Start cooldown timer if in cooldown
-    if (_strictModeService.isInExtensionCooldown) {
+    if (_browserService.isInCooldown) {
       _cooldownTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
-        if (!_strictModeService.isInExtensionCooldown) {
+        if (!_browserService.isInCooldown) {
           timer.cancel();
         }
         if (mounted) {

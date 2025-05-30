@@ -1,8 +1,10 @@
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:Routine/models/installed_app.dart';
 import 'package:Routine/services/browser_config.dart';
 import 'package:Routine/util.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io' show Directory, File, Platform, Process, Socket, ServerSocket, InternetAddress;
 import 'dart:typed_data' show ByteData, Uint8List;
@@ -35,12 +37,18 @@ class BrowserConnection {
   }
 }
 
-class BrowserService {
+class BrowserService with ChangeNotifier {
   DateTime? _initialConnectionDeadline;
+  DateTime? _extensionGracePeriodEnd;
+  DateTime? _extensionCooldownEnd;
+  static const int _extensionCooldownMinutes = 10;
+  Timer? _gracePeriodTimer;
+  
   static final BrowserService _instance = BrowserService._internal();
   final Map<Browser, BrowserConnection> _connections = {};
   final Map<String, BrowserConnection> _pendingConnections = {};
   final StreamController<bool> _connectionStreamController = StreamController<bool>.broadcast();
+  final StreamController<void> _gracePeriodExpirationController = StreamController<void>.broadcast();
   static const String _connectedBrowsersKey = 'connected_browsers';
   
   factory BrowserService() {
@@ -56,6 +64,58 @@ class BrowserService {
   bool get isInitialConnectionPeriod {
     if (_initialConnectionDeadline == null) return false;
     return DateTime.now().isBefore(_initialConnectionDeadline!);
+  }
+
+  bool get isInGracePeriod {
+    if (_extensionGracePeriodEnd == null) return false;
+    return DateTime.now().isBefore(_extensionGracePeriodEnd!);
+  }
+  
+  bool get isInCooldown {
+    if (_extensionCooldownEnd == null) return false;
+    return DateTime.now().isBefore(_extensionCooldownEnd!);
+  }
+  
+  int get remainingGracePeriodSeconds {
+    if (!isInGracePeriod) return 0;
+    return _extensionGracePeriodEnd!.difference(DateTime.now()).inSeconds;
+  }
+  
+  int get remainingCooldownMinutes {
+    if (!isInCooldown) return 0;
+    return _extensionCooldownEnd!.difference(DateTime.now()).inMinutes + 1; // +1 to round up
+  }
+
+  Stream<void> get onGracePeriodExpired => _gracePeriodExpirationController.stream;
+
+  void startExtensionGracePeriod(int gracePeriodDuration) {
+    if (isInCooldown) {
+      return;
+    }
+    
+    _gracePeriodTimer?.cancel();
+    
+    _extensionGracePeriodEnd = DateTime.now().add(Duration(seconds: gracePeriodDuration));
+    _extensionCooldownEnd = DateTime.now().add(Duration(minutes: _extensionCooldownMinutes));
+    
+    _gracePeriodTimer = Timer(Duration(seconds: gracePeriodDuration), () {
+      _gracePeriodExpirationController.add(null);
+      _extensionGracePeriodEnd = null;
+      notifyListeners();
+    });
+    
+    notifyListeners();
+  }
+
+  void cancelGracePeriodWithCooldown() {
+    if (!isInGracePeriod) return;
+    
+    _gracePeriodTimer?.cancel();
+    _extensionGracePeriodEnd = null;
+    _extensionCooldownEnd = DateTime.now().add(Duration(minutes: _extensionCooldownMinutes));
+    _gracePeriodExpirationController.add(null);
+    
+    notifyListeners();
   }
   
   bool isBrowserConnected(Browser browser) {
@@ -456,7 +516,10 @@ class BrowserService {
     return browserData.keys.any((browser) => lowerAppName.contains(browser.name));
   }
   
+  @override
   void dispose() {
+    super.dispose();
+
     for (final conn in _connections.values) {
       conn.socket.close();
     }

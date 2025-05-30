@@ -181,14 +181,13 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
   Future<void> _openSitesDialog() async {
     // Check if browser extension setup has been completed
     final browserExtensionService = BrowserService.instance;
-    final strictModeService = StrictModeService.instance;
     
     if (!browserExtensionService.isExtensionConnected && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
       // Show onboarding dialog if setup is not completed
       await Navigator.of(context).push<void>(
         MaterialPageRoute(
           builder: (context) => BrowserExtensionOnboardingPage(
-            inGracePeriod: strictModeService.isInExtensionGracePeriod,
+            inGracePeriod: browserExtensionService.isInGracePeriod,
           ),
         ),
       );

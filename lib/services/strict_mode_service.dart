@@ -10,6 +10,7 @@ import 'dart:async';
 import '../models/routine.dart';
 import '../models/emergency_event.dart';
 import '../services/sync_service.dart';
+import '../services/browser_service.dart';
 
 class StrictModeService with ChangeNotifier {
   static final StrictModeService _instance = StrictModeService._internal();
@@ -18,17 +19,10 @@ class StrictModeService with ChangeNotifier {
     return _instance;
   }
   
-  DateTime? _extensionGracePeriodEnd;
-  DateTime? _extensionCooldownEnd;
-  static const int _extensionGracePeriodSeconds = 60;
-  static const int _extensionCooldownMinutes = 10;
   final List<ScheduledTask> _scheduledTasks = [];
-
-  Timer? _gracePeriodTimer;
   
   final StreamController<Map<String, bool>> _effectiveSettingsStreamController = StreamController<Map<String, bool>>.broadcast();
   final StreamController<Map<String, bool>> _settingsStreamController = StreamController<Map<String, bool>>.broadcast();
-  final StreamController<void> _gracePeriodExpirationController = StreamController<void>.broadcast();
   
   StrictModeService._internal();
   
@@ -125,25 +119,7 @@ class StrictModeService with ChangeNotifier {
   bool get blockUninstallingApps => _blockUninstallingApps && !emergencyMode;
   bool get blockInstallingApps => _blockInstallingApps;
   
-  bool get isInExtensionGracePeriod {
-    if (_extensionGracePeriodEnd == null) return false;
-    return DateTime.now().isBefore(_extensionGracePeriodEnd!);
-  }
-  
-  bool get isInExtensionCooldown {
-    if (_extensionCooldownEnd == null) return false;
-    return DateTime.now().isBefore(_extensionCooldownEnd!);
-  }
-  
-  int get remainingGracePeriodSeconds {
-    if (!isInExtensionGracePeriod) return 0;
-    return _extensionGracePeriodEnd!.difference(DateTime.now()).inSeconds;
-  }
-  
-  int get remainingCooldownMinutes {
-    if (!isInExtensionCooldown) return 0;
-    return _extensionCooldownEnd!.difference(DateTime.now()).inMinutes + 1; // +1 to round up
-  }
+
   
   bool get emergencyMode => _emergencyEvents.any((e) => e.isActive);
   List<EmergencyEvent> get emergencyEvents => _emergencyEvents;
@@ -177,7 +153,7 @@ class StrictModeService with ChangeNotifier {
 
   bool get effectiveBlockAppExit => _blockAppExit && _inStrictMode && !emergencyMode;
   bool get effectiveBlockDisablingSystemStartup => _blockDisablingSystemStartup && _inStrictMode && !emergencyMode;
-  bool get effectiveBlockBrowsersWithoutExtension => _blockBrowsersWithoutExtension && _inStrictMode && !emergencyMode && !isInExtensionGracePeriod;
+  bool get effectiveBlockBrowsersWithoutExtension => _blockBrowsersWithoutExtension && _inStrictMode && !emergencyMode;
   bool get effectiveBlockChangingTimeSettings => _blockChangingTimeSettings && _inStrictMode && !emergencyMode;
   bool get effectiveBlockUninstallingApps => _blockUninstallingApps && _inStrictMode && !emergencyMode;
   bool get effectiveBlockInstallingApps => _blockInstallingApps && _inStrictMode && !emergencyMode;
@@ -187,46 +163,6 @@ class StrictModeService with ChangeNotifier {
   static const String _blockChangingTimeSettingsKey = 'block_changing_time_settings';
   static const String _blockUninstallingAppsKey = 'block_uninstalling_apps';
   static const String _blockInstallingAppsKey = 'block_installing_apps';
-  
-  void startExtensionGracePeriod(int gracePeriodDuration) {
-    if (isInExtensionCooldown) {
-      return;
-    }
-    
-    _gracePeriodTimer?.cancel();
-    
-    _extensionGracePeriodEnd = DateTime.now().add(Duration(seconds: gracePeriodDuration));
-    
-    _extensionCooldownEnd = DateTime.now().add(Duration(minutes: _extensionCooldownMinutes));
-    _gracePeriodTimer = Timer(Duration(seconds: _extensionGracePeriodSeconds), () {
-      _extensionGracePeriodEnd = null;
-      _notifyEffectiveSettingsChanged();
-      _notifyGracePeriodExpired();
-    });
-    
-    _notifyEffectiveSettingsChanged();
-  }
-  
-  void endExtensionGracePeriod() {
-    _gracePeriodTimer?.cancel();
-    _gracePeriodTimer = null;
-    
-    _extensionGracePeriodEnd = null;
-    
-    _notifyEffectiveSettingsChanged();
-  }
-  
-  void cancelGracePeriodWithCooldown() {
-    _gracePeriodTimer?.cancel();
-    _gracePeriodTimer = null;
-    
-    _extensionGracePeriodEnd = null;
-    
-    _extensionCooldownEnd ??= DateTime.now().add(Duration(minutes: _extensionCooldownMinutes));
-    
-    _notifyEffectiveSettingsChanged();
-    _notifyGracePeriodExpired();
-  }
   
   Future<void> _updateBoolSetting(
     bool value,
@@ -458,8 +394,8 @@ class StrictModeService with ChangeNotifier {
       'blockInstallingApps': effectiveBlockInstallingApps,
       'inStrictMode': inStrictMode,
       'inEmergencyMode': emergencyMode,
-      'isInExtensionGracePeriod': isInExtensionGracePeriod,
-      'isInExtensionCooldown': isInExtensionCooldown,
+      'isInExtensionGracePeriod': BrowserService.instance.isInGracePeriod,
+      'isInExtensionCooldown': BrowserService.instance.isInCooldown,
     };
   }
   
@@ -473,8 +409,8 @@ class StrictModeService with ChangeNotifier {
       'blockInstallingApps': blockInstallingApps,
       'inStrictMode': inStrictMode,
       'inEmergencyMode': emergencyMode,
-      'isInExtensionGracePeriod': isInExtensionGracePeriod,
-      'isInExtensionCooldown': isInExtensionCooldown,
+      'isInExtensionGracePeriod': BrowserService.instance.isInGracePeriod,
+      'isInExtensionCooldown': BrowserService.instance.isInCooldown,
     };
   }
   
@@ -490,20 +426,14 @@ class StrictModeService with ChangeNotifier {
     // we don't need to notify listeners since _notifyEffectiveSettingsChanged will do that for us
   }
   
-  void _notifyGracePeriodExpired() {
-    _gracePeriodExpirationController.add(null);
-    notifyListeners();
-  }
-  
   Stream<Map<String, bool>> get effectiveSettingsStream => _effectiveSettingsStreamController.stream;
   Stream<Map<String, bool>> get settingsStream => _settingsStreamController.stream;
-  Stream<void> get gracePeriodExpirationStream => _gracePeriodExpirationController.stream;
-  
+  Stream<void> get gracePeriodExpirationStream => BrowserService.instance.onGracePeriodExpired;
+
   @override
   void dispose() {
     _effectiveSettingsStreamController.close();
     _settingsStreamController.close();
-    _gracePeriodExpirationController.close();
     super.dispose();
   }
 }

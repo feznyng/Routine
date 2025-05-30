@@ -8,7 +8,7 @@ import '../widgets/settings/startup_settings_section.dart';
 import '../widgets/settings/strict_mode_section.dart';
 import '../widgets/settings/device_management_section.dart';
 import '../widgets/settings/auth_section.dart';
-import '../widgets/settings/browser_extension_section.dart';
+import '../widgets/settings/browser_section.dart';
 import '../widgets/settings/device_options_bottom_sheet.dart';
 import '../widgets/settings/sync_settings_section.dart';
 import '../widgets/settings/device_permissions_section.dart';
@@ -86,7 +86,7 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 16),
           
           if (isDesktop) ...[  
-            BrowserExtensionSection(
+            BrowserSection(
               onRestartOnboarding: _restartBrowserExtensionOnboarding,
             ),
             const SizedBox(height: 16),

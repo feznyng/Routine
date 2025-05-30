@@ -6,19 +6,19 @@ import '../../services/strict_mode_service.dart';
 import '../../pages/browser_extension_onboarding_page.dart';
 import '../../services/browser_config.dart';
 
-class BrowserExtensionSection extends StatefulWidget {
+class BrowserSection extends StatefulWidget {
   final Future<void> Function() onRestartOnboarding;
 
-  const BrowserExtensionSection({
-    Key? key,
+  const BrowserSection({
+    super.key,
     required this.onRestartOnboarding,
-  }) : super(key: key);
+  });
 
   @override
-  State<BrowserExtensionSection> createState() => _BrowserExtensionSectionState();
+  State<BrowserSection> createState() => _BrowserSectionState();
 }
 
-class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
+class _BrowserSectionState extends State<BrowserSection> {
   final BrowserService _browserExtensionService = BrowserService();
   final StrictModeService _strictModeService = StrictModeService();
   StreamSubscription<bool>? _connectionSubscription;
@@ -89,7 +89,7 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
       await Navigator.of(context).push<void>(
         MaterialPageRoute(
           builder: (context) => BrowserExtensionOnboardingPage(
-            inGracePeriod: _strictModeService.isInExtensionGracePeriod,
+            inGracePeriod: _browserExtensionService.isInGracePeriod,
           ),
         ),
       );
@@ -144,10 +144,10 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
     }
 
     final connectedBrowsers = _browserExtensionService.connectedBrowsers;
-    final isInGracePeriod = _strictModeService.isInExtensionGracePeriod;
-    final isInCooldown = _strictModeService.isInExtensionCooldown;
-    final remainingGraceSeconds = _strictModeService.remainingGracePeriodSeconds;
-    final remainingCooldownMinutes = _strictModeService.remainingCooldownMinutes;
+    final isInGracePeriod = _browserExtensionService.isInGracePeriod;
+    final isInCooldown = _browserExtensionService.isInCooldown;
+    final remainingGraceSeconds = _browserExtensionService.remainingGracePeriodSeconds;
+    final remainingCooldownMinutes = _browserExtensionService.remainingCooldownMinutes;
     final isBlockingBrowsers = _strictModeService.effectiveBlockBrowsersWithoutExtension;
   
     return Card(
@@ -239,9 +239,9 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
                               const SizedBox(height: 4),
                               Text(
                                 isInGracePeriod
-                                    ? 'You have ${remainingGraceSeconds} seconds to connect the extension before browsers are blocked. If you exit this setup, a 10-minute cooldown will be enforced.'
+                                    ? 'You have $remainingGraceSeconds seconds to connect the extension before browsers are blocked. If you exit this setup, a 10-minute cooldown will be enforced.'
                                     : isInCooldown
-                                        ? 'Browsers are currently blocked. You must wait ${remainingCooldownMinutes} minutes before trying to set up the extension again.'
+                                        ? 'Browsers are currently blocked. You must wait $remainingCooldownMinutes minutes before trying to set up the extension again.'
                                         : 'Browsers will be blocked until you connect the extension. Once you start setup, you\'ll have 60 seconds to complete it before a 10-minute cooldown is enforced.',
                               ),
                             ],
