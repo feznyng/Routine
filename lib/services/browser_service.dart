@@ -112,17 +112,19 @@ class BrowserService with ChangeNotifier {
     });
   }
 
-  void cancelGracePeriodWithCooldown() {
-    if (!isInGracePeriod) return;
+  bool endGracePeriod() {
+    if (!isInGracePeriod) return false;
     _endGracePeriod();
+    return true;
   }
 
   void _endGracePeriod() {
-    _gracePeriodExpirationController.add(false);
     _extensionGracePeriodEnd = null;
     _gracePeriodTimer?.cancel();
     _extensionGracePeriodEnd = null;
     _extensionCooldownEnd = DateTime.now().add(Duration(minutes: _extensionCooldownMinutes));
+    
+    _gracePeriodExpirationController.add(false);
     notifyListeners();
   }
   

@@ -114,8 +114,6 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
 
   void _onGracePeriodExpired() {
     logger.i("onGracePeriodExpired");
-    
-    _browserExtensionService.cancelGracePeriodWithCooldown();    
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -270,7 +268,7 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
       );
 
       if (shouldGoBack == true) {
-        _browserExtensionService.cancelGracePeriodWithCooldown();
+        _browserExtensionService.endGracePeriod();
       }
     } else {
       Navigator.of(context).pop();
@@ -338,6 +336,12 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
       
       // Start connection attempt timer
       _startConnectionAttemptTimer();
+    }
+  }
+
+  void _finish() {
+    if (!_browserExtensionService.endGracePeriod()) {
+      Navigator.of(context).pop();
     }
   }
 
@@ -474,9 +478,7 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
           )
         else
           ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
+            onPressed: _finish,
             child: const Text('Finish'),
           ),
       ],
