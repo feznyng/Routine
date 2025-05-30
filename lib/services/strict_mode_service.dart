@@ -1,6 +1,5 @@
 import 'dart:math';
 
-import 'package:Routine/setup.dart';
 import 'package:Routine/util.dart';
 import 'package:cron/cron.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -80,7 +79,6 @@ class StrictModeService with ChangeNotifier {
     _notifyEffectiveSettingsChanged();
 
     Routine.watchAll().listen((routines) {
-      logger.i("strict mode - refreshing routines");
       evaluateStrictMode(routines);
       Util.scheduleEvaluationTimes(routines, _scheduledTasks, () async {
         evaluateStrictMode(routines);
@@ -89,7 +87,7 @@ class StrictModeService with ChangeNotifier {
   }
   
   void evaluateStrictMode(List<Routine> routines) {
-    final activeRoutines = routines.where((r) => r.isActive && !r.isPaused).toList();    
+    final activeRoutines = routines.where((r) => r.isActive).toList();    
     final wasInStrictMode = _inStrictMode;
     _inStrictMode = activeRoutines.any((r) => r.strictMode);
     if (wasInStrictMode != _inStrictMode) {
