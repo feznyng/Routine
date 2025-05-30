@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:Routine/services/browser_config.dart';
+import 'package:Routine/setup.dart';
 import 'package:flutter/material.dart';
 import 'package:Routine/services/browser_service.dart';
 import 'package:Routine/services/strict_mode_service.dart';
@@ -8,13 +9,9 @@ import 'package:Routine/widgets/browser_extension_page/native_messaging_host_ste
 import 'package:Routine/widgets/browser_extension_page/extension_installation_step.dart';
 import 'package:Routine/widgets/browser_extension_page/completion_step.dart';
 
-/// Type of message to display in the page
 enum MessageType { error, success }
 
-/// A page that guides the user through setting up the Routine browser extension
-/// for each browser they have installed.
 class BrowserExtensionOnboardingPage extends StatefulWidget {
-  /// Whether the page is opened during a grace period
   final bool inGracePeriod;
 
   const BrowserExtensionOnboardingPage({
@@ -60,12 +57,9 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
       _updateConnectionStatus();
     });
     
-    // If in grace period, listen for expiration
-    if (_inGracePeriod) {
-      _gracePeriodExpirationListener = _strictModeService.gracePeriodExpirationStream.listen((_) {
-        _onGracePeriodExpired();
-      });
-    }
+    _gracePeriodExpirationListener = _strictModeService.gracePeriodExpirationStream.listen((_) {
+      _onGracePeriodExpired();
+    });
   }
 
   @override
@@ -117,8 +111,14 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
   }
 
   void _onGracePeriodExpired() {
+    logger.i("onGracePeriodExpired");
+    
+    // Cancel grace period and trigger cooldown
+    _strictModeService.cancelGracePeriodWithCooldown();
+    
     // Navigate back when grace period expires
-    Navigator.of(context).pop();
+    if (mounted) Navigator.of(context).pop();
+    else logger.i("not mounted can't go back");
   }
 
   void _startConnectionAttemptTimer() {
@@ -137,21 +137,16 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
   }
 
   void _startGracePeriodCountdown() {
-    // Only start grace period if strict mode is enabled and browser blocking is active
     if (_strictModeService.effectiveBlockBrowsersWithoutExtension) {
-      // Calculate grace period duration based on number of browsers
-      final gracePeriodDuration = _selectedBrowsers.length * 60; // 60 seconds per browser
+      final gracePeriodDuration = 60;
       
-      // Start the grace period
       _strictModeService.startExtensionGracePeriod(gracePeriodDuration);
       
-      // Set initial remaining time
       setState(() {
         _inGracePeriod = true;
         _remainingSeconds = gracePeriodDuration;
       });
       
-      // Start countdown timer
       _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
         setState(() {
           if (_remainingSeconds > 0) {

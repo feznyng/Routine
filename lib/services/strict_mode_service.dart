@@ -200,7 +200,6 @@ class StrictModeService with ChangeNotifier {
     _extensionCooldownEnd = DateTime.now().add(Duration(minutes: _extensionCooldownMinutes));
     _gracePeriodTimer = Timer(Duration(seconds: _extensionGracePeriodSeconds), () {
       _extensionGracePeriodEnd = null;
-      
       _notifyEffectiveSettingsChanged();
       _notifyGracePeriodExpired();
     });
