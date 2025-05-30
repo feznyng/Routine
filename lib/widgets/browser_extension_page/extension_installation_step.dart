@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:Routine/services/browser_service.dart';
 
 /// Step 3: Extension Installation
-class ExtensionInstallationStep extends StatelessWidget {
+class ExtensionInstallationStep extends StatefulWidget {
   final Browser browser;
   final bool isConnected;
   final bool isConnecting;
@@ -26,10 +26,30 @@ class ExtensionInstallationStep extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<ExtensionInstallationStep> createState() => _ExtensionInstallationStepState();
+}
+
+class _ExtensionInstallationStepState extends State<ExtensionInstallationStep> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final name = BrowserService.instance.getBrowserData(browser).appName;
+    final name = BrowserService.instance.getBrowserData(widget.browser).appName;
 
     return SingleChildScrollView(
+      controller: _scrollController,
       child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -38,7 +58,7 @@ class ExtensionInstallationStep extends StatelessWidget {
           style: Theme.of(context).textTheme.titleLarge,
         ),
         Text(
-          'Browser ${currentBrowserIndex + 1} of $totalBrowsers',
+          'Browser ${widget.currentBrowserIndex + 1} of ${widget.totalBrowsers}',
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 8),
@@ -50,13 +70,13 @@ class ExtensionInstallationStep extends StatelessWidget {
         Center(
           child: Column(
             children: [
-              if (isConnected)
+              if (widget.isConnected)
                 const Icon(
                   Icons.check_circle,
                   color: Colors.green,
                   size: 64,
                 )
-              else if (isConnecting)
+              else if (widget.isConnecting)
                 Column(
                   children: [
                     const CircularProgressIndicator(),
@@ -75,17 +95,17 @@ class ExtensionInstallationStep extends StatelessWidget {
                 ),
               const SizedBox(height: 16),
               Text(
-                isConnected
+                widget.isConnected
                     ? '$name extension is connected'
                     : '$name extension needs to be installed',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 24),
-              if (!isConnected)
+              if (!widget.isConnected)
                 ElevatedButton.icon(
                   icon: const Icon(Icons.open_in_browser),
                   label: Text('Open $name to Install Extension'),
-                  onPressed: onInstall,
+                  onPressed: widget.onInstall,
                 ),
             ],
           ),
@@ -93,7 +113,7 @@ class ExtensionInstallationStep extends StatelessWidget {
         const SizedBox(height: 24),
         
         // Grace period warning if applicable and extension is not connected
-        if (inGracePeriod && !isConnected)
+        if (widget.inGracePeriod && !widget.isConnected)
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -118,7 +138,7 @@ class ExtensionInstallationStep extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Time remaining: $remainingSeconds seconds',
+                  'Time remaining: ${widget.remainingSeconds} seconds',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 4),
