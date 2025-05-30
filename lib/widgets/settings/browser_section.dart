@@ -144,11 +144,10 @@ class _BrowserSectionState extends State<BrowserSection> {
     }
 
     final connectedBrowsers = _browserExtensionService.connectedBrowsers;
-    final isInGracePeriod = _browserExtensionService.isInGracePeriod;
+    final disconnectedBrowsers = _installedBrowsers.where((b) => !connectedBrowsers.contains(b));
     final isInCooldown = _browserExtensionService.isInCooldown;
-    final remainingGraceSeconds = _browserExtensionService.remainingGracePeriodSeconds;
     final remainingCooldownMinutes = _browserExtensionService.remainingCooldownMinutes;
-    final isBlockingBrowsers = _strictModeService.effectiveBlockBrowsersWithoutExtension;
+    final isBlockingBrowsers = _strictModeService.effectiveBlockBrowsersWithoutExtension && disconnectedBrowsers.isNotEmpty;
   
     return Card(
       child: Column(
@@ -180,42 +179,14 @@ class _BrowserSectionState extends State<BrowserSection> {
           ),
           const Divider(height: 1),
           Padding(
-            padding: const EdgeInsets.all(10.0),
+            padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Connected browsers
-                if (connectedBrowsers.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  ...connectedBrowsers.map((browser) {
-                    return ListTile(
-                      leading: const Icon(Icons.check_circle, color: Colors.green),
-                      title: Text(_getBrowserName(browser)),
-                      dense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    );
-                  }),
-                  const SizedBox(height: 8),
-                ],
 
-                // Unconnected but installed browsers
-                if (_installedBrowsers.isNotEmpty) ...[                  
-                  ...(_installedBrowsers
-                    .where((b) => !connectedBrowsers.contains(b))
-                    .map((browser) {
-                      return ListTile(
-                        leading: const Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                        title: Text(_getBrowserName(browser)),
-                        dense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      );
-                    })
-                  ),
-                  const SizedBox(height: 8),
-                ],
-                // Warning about browser blocking when no browsers are connected
-                if (isBlockingBrowsers && connectedBrowsers.isEmpty)
+                if (isBlockingBrowsers)
                   Container(
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.amber.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8.0),
@@ -238,11 +209,9 @@ class _BrowserSectionState extends State<BrowserSection> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                isInGracePeriod
-                                    ? 'You have $remainingGraceSeconds seconds to connect the extension before browsers are blocked. If you exit this setup, a 10-minute cooldown will be enforced.'
-                                    : isInCooldown
-                                        ? 'Browsers are currently blocked. You must wait $remainingCooldownMinutes minutes before trying to set up the extension again.'
-                                        : 'Browsers will be blocked until you connect the extension. Once you start setup, you\'ll have 60 seconds to complete it before a 10-minute cooldown is enforced.',
+                                isInCooldown
+                                  ? 'Disconnected browsers are currently blocked. You must wait $remainingCooldownMinutes minutes before trying to set up the extension again.'
+                                  : 'Disconnected browsers will be blocked until you connect the extension. Set them up to remove blocking.',
                               ),
                             ],
                           ),
@@ -250,8 +219,32 @@ class _BrowserSectionState extends State<BrowserSection> {
                       ],
                     ),
                   ),
-                
-                // No setup button here anymore - moved to header
+                // Connected browsers
+                if (connectedBrowsers.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  ...connectedBrowsers.map((browser) {
+                    return ListTile(
+                      leading: const Icon(Icons.check_circle, color: Colors.green),
+                      title: Text(_getBrowserName(browser)),
+                      dense: true,
+                    );
+                  }),
+                  const SizedBox(height: 8),
+                ],
+
+                // Unconnected but installed browsers
+                if (disconnectedBrowsers.isNotEmpty) ...[                  
+                  ...(disconnectedBrowsers
+                    .map((browser) {
+                      return ListTile(
+                        leading: const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                        title: Text(_getBrowserName(browser)),
+                        dense: true,
+                      );
+                    })
+                  ),
+                  const SizedBox(height: 8),
+                ],
               ],
             ),
           ),
