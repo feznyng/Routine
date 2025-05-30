@@ -350,7 +350,7 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
     return Scaffold(
       appBar: AppBar(
         title: const Text('Browser Extension Setup'),
-        leading: _currentStep == 3 ? null : IconButton(
+        leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => _handleBackNavigation(context),
         ),

@@ -29,17 +29,6 @@ class CompletionStep extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(
-              Icons.check_circle,
-              color: Colors.green,
-              size: 64,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Browser Extension Setup Complete',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 24),
             Text(
               'Connected browsers:',
               style: Theme.of(context).textTheme.titleSmall,
