@@ -1,5 +1,5 @@
 import 'package:Routine/services/browser_config.dart';
-import 'package:Routine/services/browser_extension_service.dart';
+import 'package:Routine/services/browser_service.dart';
 import 'package:Routine/services/strict_mode_service.dart';
 import 'package:flutter/material.dart';
 
@@ -33,10 +33,10 @@ class BrowserSelectionStep extends StatelessWidget {
     }
 
     final connectedBrowsers = installedBrowsers
-        .where((b) => BrowserExtensionService.instance.isBrowserConnected(b))
+        .where((b) => BrowserService.instance.isBrowserConnected(b))
         .toList();
     final unconnectedBrowsers = installedBrowsers
-        .where((b) => !BrowserExtensionService.instance.isBrowserConnected(b))
+        .where((b) => !BrowserService.instance.isBrowserConnected(b))
         .toList();
 
     return Column(
@@ -89,7 +89,7 @@ class BrowserSelectionStep extends StatelessWidget {
             children: [
               if (connectedBrowsers.isNotEmpty) ...[
                 ...connectedBrowsers.map((browser) => ListTile(
-                      title: Text(BrowserExtensionService.instance.getBrowserData(browser).appName),
+                      title: Text(BrowserService.instance.getBrowserData(browser).appName),
                       leading: const Icon(Icons.check_circle, color: Colors.green),
                     )),
                 const Divider(height: 24),
@@ -98,7 +98,7 @@ class BrowserSelectionStep extends StatelessWidget {
                 ...unconnectedBrowsers.map((browser) {
                   final isSelected = selectedBrowsers.contains(browser);
                   return CheckboxListTile(
-                    title: Text(BrowserExtensionService.instance.getBrowserData(browser).appName),
+                    title: Text(BrowserService.instance.getBrowserData(browser).appName),
                     value: isSelected,
                     onChanged: (_) => onToggleBrowser(browser),
                     secondary: _getBrowserIcon(browser),

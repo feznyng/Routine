@@ -35,21 +35,21 @@ class BrowserConnection {
   }
 }
 
-class BrowserExtensionService {
+class BrowserService {
   DateTime? _initialConnectionDeadline;
-  static final BrowserExtensionService _instance = BrowserExtensionService._internal();
+  static final BrowserService _instance = BrowserService._internal();
   final Map<Browser, BrowserConnection> _connections = {};
   final Map<String, BrowserConnection> _pendingConnections = {};
   final StreamController<bool> _connectionStreamController = StreamController<bool>.broadcast();
   static const String _connectedBrowsersKey = 'connected_browsers';
   
-  factory BrowserExtensionService() {
+  factory BrowserService() {
     return _instance;
   }
   
-  BrowserExtensionService._internal();
+  BrowserService._internal();
   
-  static BrowserExtensionService get instance => _instance;
+  static BrowserService get instance => _instance;
   
   bool get isExtensionConnected => _connections.values.isNotEmpty;
 

@@ -1,5 +1,5 @@
 import 'package:Routine/services/browser_config.dart';
-import 'package:Routine/services/browser_extension_service.dart';
+import 'package:Routine/services/browser_service.dart';
 import 'package:flutter/material.dart';
 
 /// Step 2: Native Messaging Host Installation
@@ -21,7 +21,7 @@ class NativeMessagingHostStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = BrowserExtensionService.instance.getBrowserData(browser).appName;
+    final name = BrowserService.instance.getBrowserData(browser).appName;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

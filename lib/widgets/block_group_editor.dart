@@ -8,7 +8,7 @@ import '../pages/block_apps_page.dart';
 import '../pages/block_sites_page.dart';
 import 'app_site_selector.dart';
 import 'package:Routine/pages/browser_extension_onboarding_page.dart';
-import '../services/browser_extension_service.dart';
+import '../services/browser_service.dart';
 import '../services/mobile_service.dart';
 
 class BlockGroupEditor extends StatefulWidget {
@@ -180,7 +180,7 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
 
   Future<void> _openSitesDialog() async {
     // Check if browser extension setup has been completed
-    final browserExtensionService = BrowserExtensionService.instance;
+    final browserExtensionService = BrowserService.instance;
     final strictModeService = StrictModeService.instance;
     
     if (!browserExtensionService.isExtensionConnected && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {

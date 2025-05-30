@@ -1,6 +1,6 @@
 import 'package:Routine/services/browser_config.dart';
 import 'package:flutter/material.dart';
-import 'package:Routine/services/browser_extension_service.dart';
+import 'package:Routine/services/browser_service.dart';
 
 /// Step 4: Completion
 class CompletionStep extends StatelessWidget {
@@ -52,7 +52,7 @@ class CompletionStep extends StatelessWidget {
                 children: [
                   const Icon(Icons.check_circle, color: Colors.green, size: 16),
                   const SizedBox(width: 8),
-                  Text((BrowserExtensionService.instance.getBrowserData(browser)).appName),
+                  Text((BrowserService.instance.getBrowserData(browser)).appName),
                 ],
               ),
             )),

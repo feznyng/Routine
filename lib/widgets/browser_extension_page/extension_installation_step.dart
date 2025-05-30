@@ -1,6 +1,6 @@
 import 'package:Routine/services/browser_config.dart';
 import 'package:flutter/material.dart';
-import 'package:Routine/services/browser_extension_service.dart';
+import 'package:Routine/services/browser_service.dart';
 
 /// Step 3: Extension Installation
 class ExtensionInstallationStep extends StatelessWidget {
@@ -27,7 +27,7 @@ class ExtensionInstallationStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = BrowserExtensionService.instance.getBrowserData(browser).appName;
+    final name = BrowserService.instance.getBrowserData(browser).appName;
 
     return SingleChildScrollView(
       child: Column(

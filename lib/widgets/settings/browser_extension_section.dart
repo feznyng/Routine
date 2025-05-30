@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
 import 'dart:async';
-import '../../services/browser_extension_service.dart';
+import '../../services/browser_service.dart';
 import '../../services/strict_mode_service.dart';
 import '../../pages/browser_extension_onboarding_page.dart';
 import '../../services/browser_config.dart';
@@ -19,7 +19,7 @@ class BrowserExtensionSection extends StatefulWidget {
 }
 
 class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
-  final BrowserExtensionService _browserExtensionService = BrowserExtensionService();
+  final BrowserService _browserExtensionService = BrowserService();
   final StrictModeService _strictModeService = StrictModeService();
   StreamSubscription<bool>? _connectionSubscription;
   Timer? _gracePeriodTimer;

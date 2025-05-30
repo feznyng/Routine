@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:Routine/services/browser_config.dart';
 import 'package:flutter/material.dart';
-import 'package:Routine/services/browser_extension_service.dart';
+import 'package:Routine/services/browser_service.dart';
 import 'package:Routine/services/strict_mode_service.dart';
-import 'package:Routine/widgets/browser_extension_onboarding/browser_selection_step.dart';
-import 'package:Routine/widgets/browser_extension_onboarding/native_messaging_host_step.dart';
-import 'package:Routine/widgets/browser_extension_onboarding/extension_installation_step.dart';
-import 'package:Routine/widgets/browser_extension_onboarding/completion_step.dart';
+import 'package:Routine/widgets/browser_extension_page/browser_selection_step.dart';
+import 'package:Routine/widgets/browser_extension_page/native_messaging_host_step.dart';
+import 'package:Routine/widgets/browser_extension_page/extension_installation_step.dart';
+import 'package:Routine/widgets/browser_extension_page/completion_step.dart';
 
 /// Type of message to display in the page
 enum MessageType { error, success }
@@ -27,7 +27,7 @@ class BrowserExtensionOnboardingPage extends StatefulWidget {
 }
 
 class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboardingPage> {
-  final BrowserExtensionService _browserExtensionService = BrowserExtensionService.instance;
+  final BrowserService _browserExtensionService = BrowserService.instance;
   final StrictModeService _strictModeService = StrictModeService.instance;
   
   int _currentStep = 0;

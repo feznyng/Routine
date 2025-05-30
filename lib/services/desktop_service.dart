@@ -7,7 +7,7 @@ import 'dart:io';
 import 'dart:async';
 import '../models/routine.dart';
 import 'strict_mode_service.dart';
-import 'browser_extension_service.dart';
+import 'browser_service.dart';
 import 'sync_service.dart';
 import 'package:cron/cron.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
@@ -48,13 +48,13 @@ class DesktopService extends PlatformService {
       Util.report('Failed to signal engine start', e, st);
     }
 
-    await BrowserExtensionService.instance.init();
+    await BrowserService.instance.init();
 
     _routineSubscription = Routine.watchAll().listen((routines) {
       onRoutinesUpdated(routines);
     });
 
-    _appSubscription = BrowserExtensionService.instance.connectionStream.listen((strictMode) async {
+    _appSubscription = BrowserService.instance.connectionStream.listen((strictMode) async {
       await updateAppList();
       await updateBlockedSites();
     });
@@ -179,7 +179,7 @@ class DesktopService extends PlatformService {
     final apps = List<String>.from(_cachedApps);
 
     if (StrictModeService.instance.effectiveBlockBrowsersWithoutExtension) {
-      final browsers = await BrowserExtensionService.instance.getInstalledSupportedBrowsers(connected: false);
+      final browsers = await BrowserService.instance.getInstalledSupportedBrowsers(connected: false);
       apps.addAll(browsers.map((b) => b.app.filePath));
       logger.i("added disconnected browsers: $apps");
     }
@@ -193,7 +193,7 @@ class DesktopService extends PlatformService {
   // Update blocked sites in the browser extension
   Future<void> updateBlockedSites() async {
     logger.i("updateBlockedSites");
-    await BrowserExtensionService.instance.sendToBrowser('updateBlockedSites', {
+    await BrowserService.instance.sendToBrowser('updateBlockedSites', {
       'sites': _cachedSites,
       'allowList': _isAllowList,
     });
