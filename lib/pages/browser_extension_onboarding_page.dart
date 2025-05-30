@@ -8,25 +8,25 @@ import 'package:Routine/widgets/browser_extension_onboarding/native_messaging_ho
 import 'package:Routine/widgets/browser_extension_onboarding/extension_installation_step.dart';
 import 'package:Routine/widgets/browser_extension_onboarding/completion_step.dart';
 
-/// Type of message to display in the dialog
+/// Type of message to display in the page
 enum MessageType { error, success }
 
-/// A dialog that guides the user through setting up the Routine browser extension
+/// A page that guides the user through setting up the Routine browser extension
 /// for each browser they have installed.
-class BrowserExtensionOnboardingDialog extends StatefulWidget {
-  /// Whether the dialog is opened during a grace period
+class BrowserExtensionOnboardingPage extends StatefulWidget {
+  /// Whether the page is opened during a grace period
   final bool inGracePeriod;
 
-  const BrowserExtensionOnboardingDialog({
+  const BrowserExtensionOnboardingPage({
     super.key,
     this.inGracePeriod = false,
   });
 
   @override
-  State<BrowserExtensionOnboardingDialog> createState() => _BrowserExtensionOnboardingDialogState();
+  State<BrowserExtensionOnboardingPage> createState() => _BrowserExtensionOnboardingPageState();
 }
 
-class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboardingDialog> {
+class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboardingPage> {
   final BrowserExtensionService _browserExtensionService = BrowserExtensionService.instance;
   final StrictModeService _strictModeService = StrictModeService.instance;
   
@@ -117,7 +117,7 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
   }
 
   void _onGracePeriodExpired() {
-    // Close the dialog when grace period expires
+    // Navigate back when grace period expires
     Navigator.of(context).pop();
   }
 
@@ -169,6 +169,7 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
     setState(() {
       _errorMessage = null;
     });
+    
     if (_currentStep == 0 && _selectedBrowsers.isEmpty) {
       // Can't proceed if no browsers are selected
       setState(() {
@@ -249,6 +250,45 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
     });
   }
 
+  Future<void> _handleBackNavigation(BuildContext context) async {
+    if (_inGracePeriod && _strictModeService.effectiveBlockBrowsersWithoutExtension) {
+      final shouldGoBack = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.warning, color: Colors.amber),
+              const SizedBox(width: 8),
+              const Text('Warning'),
+            ],
+          ),
+          content: const Text(
+            'Since strict mode is enabled, exiting now will trigger a 10-minute cooldown period. '
+            'During this time, you won\'t be able to set up the browser extension again.\n\n'
+            'Are you sure you want to exit?'
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Exit Anyway'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldGoBack == true) {
+        _strictModeService.cancelGracePeriodWithCooldown();
+        if (context.mounted) Navigator.of(context).pop();
+      }
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
   void _previousStep() {
     if (_currentStep > 0) {
       setState(() {
@@ -315,25 +355,26 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Browser Extension Setup'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => _handleBackNavigation(context),
+        ),
       ),
-      child: Container(
-        width: 600,
-        constraints: const BoxConstraints(maxHeight: 600),
-        padding: const EdgeInsets.all(24),
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
-                mainAxisSize: MainAxisSize.min,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Container(
+              constraints: const BoxConstraints(maxWidth: 800),
+              margin: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildHeader(),
                   const SizedBox(height: 24),
                   Expanded(
                     child: _buildCurrentStep(),
                   ),
-                  const SizedBox(height: 24),
                   if (_errorMessage != null)
                     Container(
                       margin: const EdgeInsets.only(top: 16, bottom: 16),
@@ -372,34 +413,10 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
                       ),
                     ),
                   _buildActions(),
+                  const SizedBox(height: 24),
                 ],
               ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Row(
-      children: [
-        const Icon(Icons.extension, size: 28),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            'Browser Extension Setup',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () {
-            // If in grace period, cancel it and go to cooldown
-            if (_inGracePeriod) {
-              _strictModeService.cancelGracePeriodWithCooldown();
-            }
-            Navigator.of(context).pop();
-          },
-        ),
-      ],
+            ),
     );
   }
 
@@ -478,5 +495,3 @@ class _BrowserExtensionOnboardingDialogState extends State<BrowserExtensionOnboa
     );
   }
 }
-
-

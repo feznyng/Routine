@@ -123,8 +123,8 @@ class ExtensionInstallationStep extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'You must complete the extension setup before the grace period expires, '
-                  'or browsers will be blocked for 10 minutes.',
+                  'Since strict mode is enabled, you must complete the extension setup before the grace period expires. '
+                  'If the grace period expires before setup is complete, browsers will be blocked for 10 minutes.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],

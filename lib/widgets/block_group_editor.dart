@@ -7,7 +7,7 @@ import 'android_permissions_onboarding_dialog.dart';
 import '../pages/block_apps_page.dart';
 import '../pages/block_sites_page.dart';
 import 'app_site_selector.dart';
-import 'browser_extension_onboarding_dialog.dart';
+import 'package:Routine/pages/browser_extension_onboarding_page.dart';
 import '../services/browser_extension_service.dart';
 import '../services/mobile_service.dart';
 
@@ -185,11 +185,11 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
     
     if (!browserExtensionService.isExtensionConnected && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
       // Show onboarding dialog if setup is not completed
-      await showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => BrowserExtensionOnboardingDialog(
-          inGracePeriod: strictModeService.isInExtensionGracePeriod,
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (context) => BrowserExtensionOnboardingPage(
+            inGracePeriod: strictModeService.isInExtensionGracePeriod,
+          ),
         ),
       );
       

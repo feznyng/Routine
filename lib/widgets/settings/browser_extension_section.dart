@@ -3,7 +3,7 @@ import 'dart:io' show Platform;
 import 'dart:async';
 import '../../services/browser_extension_service.dart';
 import '../../services/strict_mode_service.dart';
-import '../browser_extension_onboarding_dialog.dart';
+import '../../pages/browser_extension_onboarding_page.dart';
 import '../../services/browser_config.dart';
 
 class BrowserExtensionSection extends StatefulWidget {
@@ -65,11 +65,11 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
 
   Future<void> _showOnboardingDialog() async {
     if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {      
-      await showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => BrowserExtensionOnboardingDialog(
-          inGracePeriod: _strictModeService.isInExtensionGracePeriod,
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (context) => BrowserExtensionOnboardingPage(
+            inGracePeriod: _strictModeService.isInExtensionGracePeriod,
+          ),
         ),
       );
       
@@ -79,8 +79,6 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
     }
   }
   
-
-
   String _getBrowserName(Browser browser) {
     return browser.name.substring(0, 1).toUpperCase() + browser.name.substring(1);
   }

@@ -26,38 +26,37 @@ class CompletionStep extends StatelessWidget {
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: 24),
-        Center(
-          child: Column(
-            children: [
-              const Icon(
-                Icons.check_circle,
-                color: Colors.green,
-                size: 64,
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              Icons.check_circle,
+              color: Colors.green,
+              size: 64,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Browser Extension Setup Complete',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Connected browsers:',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            ...connectedBrowsers.map((browser) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.max,
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.green, size: 16),
+                  const SizedBox(width: 8),
+                  Text((BrowserExtensionService.instance.getBrowserData(browser)).appName),
+                ],
               ),
-              const SizedBox(height: 16),
-              Text(
-                'Browser Extension Setup Complete',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Connected browsers:',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              ...connectedBrowsers.map((browser) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.check_circle, color: Colors.green, size: 16),
-                    const SizedBox(width: 8),
-                    Text((BrowserExtensionService.instance.getBrowserData(browser)).appName),
-                  ],
-                ),
-              )),
-            ],
-          ),
+            )),
+          ],
         ),
       ],
     );
