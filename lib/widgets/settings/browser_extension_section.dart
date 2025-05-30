@@ -38,8 +38,15 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
       }
     });
     
-    // Start a timer to update the cooldown time display
+    // Start a timer to update the cooldown time display and check initial connection period
     _startCooldownTimer();
+    
+    // Force refresh when initial connection period ends
+    if (_browserExtensionService.isInitialConnectionPeriod) {
+      Future.delayed(const Duration(seconds: 5), () {
+        if (mounted) setState(() {});
+      });
+    }
 
     // Load installed browsers
     _loadInstalledBrowsers();
@@ -99,6 +106,43 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
 
   @override
   Widget build(BuildContext context) {
+    // Show loading during initial connection period
+    if (_browserExtensionService.isInitialConnectionPeriod) {
+      return Card(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: const [
+                  Text(
+                    'Browsers',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: const [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Checking browser connections...'),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final connectedBrowsers = _browserExtensionService.connectedBrowsers;
     final isInGracePeriod = _strictModeService.isInExtensionGracePeriod;
     final isInCooldown = _strictModeService.isInExtensionCooldown;
@@ -110,14 +154,28 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text(
-              'Browsers',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                const Text(
+                  'Browsers',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                ElevatedButton(
+                  onPressed: isInCooldown ? null : () async {
+                    await widget.onRestartOnboarding();
+                    await _showOnboardingDialog();
+                  },
+                  child: Text(isInCooldown
+                      ? 'Wait ${remainingCooldownMinutes}m to try again'
+                      : 'Set Up'),
+                ),
+              ],
             ),
           ),
           const Divider(height: 1),
@@ -136,7 +194,7 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
                       dense: true,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
                     );
-                  }).toList(),
+                  }),
                   const SizedBox(height: 8),
                 ],
 
@@ -152,22 +210,9 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
                       );
                     })
-                  ).toList(),
-                  const SizedBox(height: 8),
-                ],
-
-                // No browsers connected message
-                if (connectedBrowsers.isEmpty) ...[
-                  ListTile(
-                    leading: const Icon(Icons.error_outline, color: Colors.orange),
-                    title: const Text('No browsers connected'),
-                    subtitle: const Text('Set up the browser extension to block distracting websites'),
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
                   ),
                   const SizedBox(height: 8),
                 ],
-                
                 // Warning about browser blocking when no browsers are connected
                 if (isBlockingBrowsers && connectedBrowsers.isEmpty)
                   Container(
@@ -206,16 +251,7 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
                     ),
                   ),
                 
-                // Setup button
-                ElevatedButton(
-                  onPressed: isInCooldown ? null : () async {
-                    await widget.onRestartOnboarding();
-                    await _showOnboardingDialog();
-                  },
-                  child: Text(isInCooldown
-                      ? 'Wait ${remainingCooldownMinutes}m to try again'
-                      : 'Set Up Browsers'),
-                ),
+                // No setup button here anymore - moved to header
               ],
             ),
           ),

@@ -36,6 +36,7 @@ class BrowserConnection {
 }
 
 class BrowserExtensionService {
+  DateTime? _initialConnectionDeadline;
   static final BrowserExtensionService _instance = BrowserExtensionService._internal();
   final Map<Browser, BrowserConnection> _connections = {};
   final Map<String, BrowserConnection> _pendingConnections = {};
@@ -51,6 +52,11 @@ class BrowserExtensionService {
   static BrowserExtensionService get instance => _instance;
   
   bool get isExtensionConnected => _connections.values.isNotEmpty;
+
+  bool get isInitialConnectionPeriod {
+    if (_initialConnectionDeadline == null) return false;
+    return DateTime.now().isBefore(_initialConnectionDeadline!);
+  }
   
   bool isBrowserConnected(Browser browser) {
     return _connections.containsKey(browser);
@@ -250,6 +256,7 @@ class BrowserExtensionService {
   
   Future<void> init() async {
     logger.i("Browser Extension - Init");
+    _initialConnectionDeadline = DateTime.now().add(const Duration(seconds: 5));
     await startServer();
   }
 
