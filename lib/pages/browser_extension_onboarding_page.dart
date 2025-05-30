@@ -251,7 +251,7 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
   }
 
   Future<void> _handleBackNavigation(BuildContext context) async {
-    if (_inGracePeriod && _strictModeService.effectiveBlockBrowsersWithoutExtension) {
+    if (_inGracePeriod) {
       final shouldGoBack = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -264,7 +264,7 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
           ),
           content: const Text(
             'Since strict mode is enabled, exiting now will trigger a 10-minute cooldown period. '
-            'During this time, you won\'t be able to set up the browser extension again.\n\n'
+            'During this time, you won\'t be able to set up the browser extension again and browsers will remain block.\n\n'
             'Are you sure you want to exit?'
           ),
           actions: [
@@ -277,7 +277,8 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
               child: const Text('Exit Anyway'),
             ),
           ],
-        ),
+        )
+
       );
 
       if (shouldGoBack == true) {

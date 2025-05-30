@@ -25,6 +25,8 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
   Timer? _gracePeriodTimer;
   Timer? _cooldownTimer;
 
+  List<Browser> _installedBrowsers = [];
+
   @override
   void initState() {
     super.initState();
@@ -38,6 +40,18 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
     
     // Start a timer to update the cooldown time display
     _startCooldownTimer();
+
+    // Load installed browsers
+    _loadInstalledBrowsers();
+  }
+
+  Future<void> _loadInstalledBrowsers() async {
+    final browsers = await _browserExtensionService.getInstalledSupportedBrowsers();
+    if (mounted) {
+      setState(() {
+        _installedBrowsers = browsers.map((b) => b.browser).toList();
+      });
+    }
   }
 
   @override
@@ -112,6 +126,7 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Connected browsers
                 if (connectedBrowsers.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   ...connectedBrowsers.map((browser) {
@@ -123,7 +138,26 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
                     );
                   }).toList(),
                   const SizedBox(height: 8),
-                ] else ...[
+                ],
+
+                // Unconnected but installed browsers
+                if (_installedBrowsers.isNotEmpty) ...[                  
+                  ...(_installedBrowsers
+                    .where((b) => !connectedBrowsers.contains(b))
+                    .map((browser) {
+                      return ListTile(
+                        leading: const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                        title: Text(_getBrowserName(browser)),
+                        dense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      );
+                    })
+                  ).toList(),
+                  const SizedBox(height: 8),
+                ],
+
+                // No browsers connected message
+                if (connectedBrowsers.isEmpty) ...[
                   ListTile(
                     leading: const Icon(Icons.error_outline, color: Colors.orange),
                     title: const Text('No browsers connected'),
@@ -180,9 +214,7 @@ class _BrowserExtensionSectionState extends State<BrowserExtensionSection> {
                   },
                   child: Text(isInCooldown
                       ? 'Wait ${remainingCooldownMinutes}m to try again'
-                      : connectedBrowsers.isNotEmpty 
-                          ? 'Set Up Additional Browsers'
-                          : 'Set Up Browser Extension'),
+                      : 'Set Up Browsers'),
                 ),
               ],
             ),
