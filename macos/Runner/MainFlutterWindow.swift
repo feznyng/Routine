@@ -13,6 +13,7 @@ class MainFlutterWindow: NSWindow {
   private var isFlutterReady = false
   private var pendingMessages: [(String, Any)] = []
   private var isHiding = false
+  private var safariURLTimer: Timer? // Timer for Safari URL polling
 
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
@@ -71,10 +72,60 @@ class MainFlutterWindow: NSWindow {
 
     // Check initial state
     checkActiveApplication(NSWorkspace.shared.frontmostApplication)
+    setupSafariURLPolling() // Start polling for Safari URL
   }
 
   deinit {
     stopMonitoring()
+    safariURLTimer?.invalidate() // Invalidate Safari polling timer
+    NSLog("[Routine] Safari URL Poller stopped.")
+  }
+
+  // MARK: - Safari URL Polling
+
+  private func setupSafariURLPolling() {
+    // Poll every 2 seconds. Adjust interval as needed.
+    safariURLTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+      self?.pollSafariURL()
+    }
+    NSLog("[Routine] Safari URL Poller started.")
+  }
+
+  private func pollSafariURL() {
+    let scriptSource = """
+    tell application "Safari"
+        if not running then return "" -- Safari not running
+        try
+            if (count of windows) is 0 then return "" -- No windows open
+            tell front window
+                if (count of tabs) is 0 then return "" -- No tabs in front window
+                tell current tab
+                    return URL
+                end tell
+            end tell
+        on error errMsg number errNum
+            -- NSLog("[Routine] AppleScript error getting Safari URL: %@ (Number: %@)", errMsg, errNum)
+            return "" -- Error occurred
+        end try
+    end tell
+    """
+    
+    var error: NSDictionary?
+    if let script = NSAppleScript(source: scriptSource) {
+        let output = script.executeAndReturnError(&error)
+        if let errorDict = error {
+            let errorMessage = errorDict[NSAppleScript.errorMessage] as? String ?? "Unknown AppleScript error"
+            let errorNumber = errorDict[NSAppleScript.errorNumber] as? NSNumber ?? -1
+            NSLog("[Routine] Error executing AppleScript for Safari URL: %@ (Number: %@)", errorMessage, errorNumber)
+        } else if let urlString = output.stringValue, !urlString.isEmpty {
+            NSLog("[Routine] Current Safari URL: %@", urlString)
+        } else {
+            // This case now primarily means Safari is running but no URL was obtained (e.g., empty tab, about:blank, or script returned empty string explicitly)
+            // NSLog("[Routine] Safari URL not available or empty.")
+        }
+    } else {
+        NSLog("[Routine] Failed to initialize AppleScript for Safari URL.")
+    }
   }
     
   private func setStartOnLogin(enabled: Bool) {
