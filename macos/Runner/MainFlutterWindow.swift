@@ -14,7 +14,6 @@ class MainFlutterWindow: NSWindow {
   private var isFlutterReady = false
   private var pendingMessages: [(String, Any)] = []
   private var isHiding = false
-  private var safariURLTimer: Timer? // Timer for Safari URL polling
 
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
@@ -83,112 +82,10 @@ class MainFlutterWindow: NSWindow {
 
     // Check initial state
     checkActiveApplication(NSWorkspace.shared.frontmostApplication)
-    setupSafariURLPolling() // Start polling for Safari URL
   }
 
   deinit {
     stopMonitoring()
-    safariURLTimer?.invalidate() // Invalidate Safari polling timer
-    NSLog("[Routine] Safari URL Poller stopped.")
-  }
-
-  // MARK: - Safari URL Polling
-
-  private func setupSafariURLPolling() {
-    // Poll every 2 seconds. Adjust interval as needed.
-    safariURLTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
-      self?.pollSafariURL()
-    }
-    NSLog("[Routine] Safari URL Poller started.")
-  }
-
-  private func pollSafariURL() {
-    NSLog("[Routine] Starting Safari URL poll...")
-    NSLog("[Routine] Current siteList: %@", siteList)
-    NSLog("[Routine] Allow List Mode: %@", allowList ? "true" : "false")
-    
-    let getUrlScript = """
-    tell application "Safari"
-        if not running then return "" -- Safari not running
-        try
-            if (count of windows) is 0 then return "" -- No windows open
-            tell front window
-                if (count of tabs) is 0 then return "" -- No tabs in front window
-                tell current tab
-                    return URL
-                end tell
-            end tell
-        on error errMsg number errNum
-            return "" -- Error occurred
-        end try
-    end tell
-    """
-    
-    var error: NSDictionary?
-    if let script = NSAppleScript(source: getUrlScript) {
-        NSLog("[Routine] Executing AppleScript to get Safari URL...")
-        let output = script.executeAndReturnError(&error)
-        
-        if let errorDict = error {
-            let errorMessage = errorDict[NSAppleScript.errorMessage] as? String ?? "Unknown AppleScript error"
-            let errorNumber = errorDict[NSAppleScript.errorNumber] as? NSNumber ?? -1
-            NSLog("[Routine] ❌ Error executing AppleScript for Safari URL: %@ (Number: %@)", errorMessage, errorNumber)
-            return
-        }
-        
-        guard let currentUrl = output.stringValue, !currentUrl.isEmpty else {
-            NSLog("[Routine] No valid URL found (empty or Safari not active)")
-            return
-        }
-        
-        NSLog("[Routine] Current Safari URL: %@", currentUrl)
-        
-        // Check if the current URL matches any site in the siteList
-        var matchedSite: String? = nil
-        let shouldBlock = siteList.contains { site in
-            let matches = currentUrl.lowercased().contains(site.lowercased())
-            if matches {
-                matchedSite = site
-                NSLog("[Routine] 🎯 URL matched site in list: %@", site)
-            }
-            return matches
-        }
-        
-        NSLog("[Routine] URL check result - Should Block: %@", shouldBlock ? "true" : "false")
-        
-        // Block if: (allowList is false AND site is in list) OR (allowList is true AND site is NOT in list)
-        if shouldBlock != allowList {
-            NSLog("[Routine] 🚫 Blocking required. Matched site: %@, Allow List: %@", matchedSite ?? "N/A", allowList ? "true" : "false")
-            
-            // Redirect to a blocking page
-            let redirectScript = """
-            tell application "Safari"
-                tell front window
-                    tell current tab
-                        set URL to "https://www.routineblocker.com/blocked.html"
-                    end tell
-                end tell
-            end tell
-            """
-            
-            if let redirectAppleScript = NSAppleScript(source: redirectScript) {
-                NSLog("[Routine] Executing redirect AppleScript...")
-                redirectAppleScript.executeAndReturnError(&error)
-                
-                if let errorDict = error {
-                    NSLog("[Routine] ❌ Error redirecting Safari: %@", errorDict[NSAppleScript.errorMessage] as? String ?? "Unknown error")
-                } else {
-                    NSLog("[Routine] ✅ Successfully blocked access to: %@", currentUrl)
-                }
-            }
-        } else {
-            NSLog("[Routine] ✅ Access allowed to: %@", currentUrl)
-        }
-    } else {
-        NSLog("[Routine] ❌ Failed to initialize AppleScript for Safari URL.")
-    }
-    
-    NSLog("[Routine] Safari URL poll completed.")
   }
     
   private func setStartOnLogin(enabled: Bool) {
@@ -357,28 +254,126 @@ class MainFlutterWindow: NSWindow {
   }
 
   private func checkActiveApplication(_ app: NSRunningApplication?) {
-    if let app = app,
-       let appPath = app.bundleURL?.path.lowercased() {
+    guard let app = app,
+          let appPath = app.bundleURL?.path.lowercased() else { return }
 
-      if let executablePath = Bundle.main.executablePath {
-        if (executablePath.lowercased().contains(appPath.lowercased())) {
-          return
-        }
-      }
-      
-      let isAllowed = allowList ? appList.contains(appPath) : !appList.contains(appPath)
-
-      if !isAllowed && !isHiding && app.localizedName?.lowercased() != "finder" {
-        isHiding = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-          // Find and activate Finder
-          if let finder = NSWorkspace.shared.runningApplications.first(where: { $0.localizedName?.lowercased() == "finder" }) {
-            finder.activate(options: .activateIgnoringOtherApps)
-          }
-          app.hide()
-          self?.isHiding = false
-        }
+    if let executablePath = Bundle.main.executablePath {
+      if (executablePath.lowercased().contains(appPath.lowercased())) {
+        return
       }
     }
+    
+    let appName = app.localizedName?.lowercased() ?? ""
+    let isAllowed = allowList ? appList.contains(appPath) : !appList.contains(appPath)
+
+    if !isAllowed && !isHiding && appName != "finder" {
+      hideApplication(app)
+      return
+    }
+
+    if appName == "safari" {
+      checkSafariURL()
+    }
+  }
+
+  private func hideApplication(_ app: NSRunningApplication) {
+    isHiding = true
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+      // Find and activate Finder
+      if let finder = NSWorkspace.shared.runningApplications.first(where: { $0.localizedName?.lowercased() == "finder" }) {
+        finder.activate(options: .activateIgnoringOtherApps)
+      }
+      app.hide()
+      self?.isHiding = false
+    }
+  }
+
+  private func checkSafariURL() {
+    NSLog("[Routine] Starting Safari URL poll...")
+    NSLog("[Routine] Current siteList: %@", siteList)
+    NSLog("[Routine] Allow List Mode: %@", allowList ? "true" : "false")
+    
+    let getUrlScript = """
+    tell application "Safari"
+        if not running then return "" -- Safari not running
+        try
+            if (count of windows) is 0 then return "" -- No windows open
+            tell front window
+                if (count of tabs) is 0 then return "" -- No tabs in front window
+                tell current tab
+                    return URL
+                end tell
+            end tell
+        on error errMsg number errNum
+            return "" -- Error occurred
+        end try
+    end tell
+    """
+    
+    var error: NSDictionary?
+    if let script = NSAppleScript(source: getUrlScript) {
+        NSLog("[Routine] Executing AppleScript to get Safari URL...")
+        let output = script.executeAndReturnError(&error)
+        
+        if let errorDict = error {
+            let errorMessage = errorDict[NSAppleScript.errorMessage] as? String ?? "Unknown AppleScript error"
+            let errorNumber = errorDict[NSAppleScript.errorNumber] as? NSNumber ?? -1
+            NSLog("[Routine] ❌ Error executing AppleScript for Safari URL: %@ (Number: %@)", errorMessage, errorNumber)
+            return
+        }
+        
+        guard let currentUrl = output.stringValue, !currentUrl.isEmpty else {
+            NSLog("[Routine] No valid URL found (empty or Safari not active)")
+            return
+        }
+        
+        NSLog("[Routine] Current Safari URL: %@", currentUrl)
+        
+        // Check if the current URL matches any site in the siteList
+        var matchedSite: String? = nil
+        let shouldBlock = siteList.contains { site in
+            let matches = currentUrl.lowercased().contains(site.lowercased())
+            if matches {
+                matchedSite = site
+                NSLog("[Routine] 🎯 URL matched site in list: %@", site)
+            }
+            return matches
+        }
+        
+        NSLog("[Routine] URL check result - Should Block: %@", shouldBlock ? "true" : "false")
+        
+        // Block if: (allowList is false AND site is in list) OR (allowList is true AND site is NOT in list)
+        if shouldBlock != allowList {
+            NSLog("[Routine] 🚫 Blocking required. Matched site: %@, Allow List: %@", matchedSite ?? "N/A", allowList ? "true" : "false")
+            
+            // Redirect to a blocking page
+            let redirectScript = """
+            tell application "Safari"
+                tell front window
+                    tell current tab
+                        set URL to "https://www.routineblocker.com/blocked.html"
+                    end tell
+                end tell
+            end tell
+            """
+            
+            if let redirectAppleScript = NSAppleScript(source: redirectScript) {
+                NSLog("[Routine] Executing redirect AppleScript...")
+                redirectAppleScript.executeAndReturnError(&error)
+                
+                if let errorDict = error {
+                    NSLog("[Routine] ❌ Error redirecting Safari: %@", errorDict[NSAppleScript.errorMessage] as? String ?? "Unknown error")
+                } else {
+                    NSLog("[Routine] ✅ Successfully blocked access to: %@", currentUrl)
+                }
+            }
+        } else {
+            NSLog("[Routine] ✅ Access allowed to: %@", currentUrl)
+        }
+    } else {
+        NSLog("[Routine] ❌ Failed to initialize AppleScript for Safari URL.")
+    }
+    
+    NSLog("[Routine] Safari URL poll completed.")
   }
 }
