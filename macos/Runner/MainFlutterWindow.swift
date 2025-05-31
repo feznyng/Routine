@@ -7,6 +7,7 @@ import Sentry
 
 class MainFlutterWindow: NSWindow {
   private var appList: Set<String> = []
+  private var siteList: [String] = []
   private var isMonitoring = false
   private var methodChannel: FlutterMethodChannel?
   private var allowList = false
@@ -40,10 +41,20 @@ class MainFlutterWindow: NSWindow {
         self.processPendingMessages()
         result(true)
       case "updateAppList":
+        NSLog("[Routine] Received updateAppList call")
         if let args = call.arguments as? [String: Any],
-          let apps = args["apps"] as? [String], let allowList = args["allowList"] as? Bool {
+          let apps = args["apps"] as? [String], 
+          let allowList = args["allowList"] as? Bool,
+          let sites = args["sites"] as? [String] {
+          NSLog("[Routine] 📱 Apps to monitor: %@", apps)
+          NSLog("[Routine] 🌐 Sites to monitor: %@", sites)
+          NSLog("[Routine] 🔄 Mode: %@", allowList ? "Allow List" : "Block List")
+          
           self.appList = Set(apps.map { $0.lowercased() })  // Store lowercase for case-insensitive comparison
+          self.siteList = sites;
           self.allowList = allowList
+          
+          NSLog("[Routine] ✅ Successfully updated app and site lists")
           result(nil)
         } else {
           result(FlutterError(code: "INVALID_ARGUMENTS",
@@ -92,7 +103,11 @@ class MainFlutterWindow: NSWindow {
   }
 
   private func pollSafariURL() {
-    let scriptSource = """
+    NSLog("[Routine] Starting Safari URL poll...")
+    NSLog("[Routine] Current siteList: %@", siteList)
+    NSLog("[Routine] Allow List Mode: %@", allowList ? "true" : "false")
+    
+    let getUrlScript = """
     tell application "Safari"
         if not running then return "" -- Safari not running
         try
@@ -104,28 +119,76 @@ class MainFlutterWindow: NSWindow {
                 end tell
             end tell
         on error errMsg number errNum
-            -- NSLog("[Routine] AppleScript error getting Safari URL: %@ (Number: %@)", errMsg, errNum)
             return "" -- Error occurred
         end try
     end tell
     """
     
     var error: NSDictionary?
-    if let script = NSAppleScript(source: scriptSource) {
+    if let script = NSAppleScript(source: getUrlScript) {
+        NSLog("[Routine] Executing AppleScript to get Safari URL...")
         let output = script.executeAndReturnError(&error)
+        
         if let errorDict = error {
             let errorMessage = errorDict[NSAppleScript.errorMessage] as? String ?? "Unknown AppleScript error"
             let errorNumber = errorDict[NSAppleScript.errorNumber] as? NSNumber ?? -1
-            NSLog("[Routine] Error executing AppleScript for Safari URL: %@ (Number: %@)", errorMessage, errorNumber)
-        } else if let urlString = output.stringValue, !urlString.isEmpty {
-            NSLog("[Routine] Current Safari URL: %@", urlString)
+            NSLog("[Routine] ❌ Error executing AppleScript for Safari URL: %@ (Number: %@)", errorMessage, errorNumber)
+            return
+        }
+        
+        guard let currentUrl = output.stringValue, !currentUrl.isEmpty else {
+            NSLog("[Routine] No valid URL found (empty or Safari not active)")
+            return
+        }
+        
+        NSLog("[Routine] Current Safari URL: %@", currentUrl)
+        
+        // Check if the current URL matches any site in the siteList
+        var matchedSite: String? = nil
+        let shouldBlock = siteList.contains { site in
+            let matches = currentUrl.lowercased().contains(site.lowercased())
+            if matches {
+                matchedSite = site
+                NSLog("[Routine] 🎯 URL matched site in list: %@", site)
+            }
+            return matches
+        }
+        
+        NSLog("[Routine] URL check result - Should Block: %@", shouldBlock ? "true" : "false")
+        
+        // Block if: (allowList is false AND site is in list) OR (allowList is true AND site is NOT in list)
+        if shouldBlock != allowList {
+            NSLog("[Routine] 🚫 Blocking required. Matched site: %@, Allow List: %@", matchedSite ?? "N/A", allowList ? "true" : "false")
+            
+            // Redirect to a blocking page
+            let redirectScript = """
+            tell application "Safari"
+                tell front window
+                    tell current tab
+                        set URL to "https://www.routineblocker.com/blocked.html"
+                    end tell
+                end tell
+            end tell
+            """
+            
+            if let redirectAppleScript = NSAppleScript(source: redirectScript) {
+                NSLog("[Routine] Executing redirect AppleScript...")
+                redirectAppleScript.executeAndReturnError(&error)
+                
+                if let errorDict = error {
+                    NSLog("[Routine] ❌ Error redirecting Safari: %@", errorDict[NSAppleScript.errorMessage] as? String ?? "Unknown error")
+                } else {
+                    NSLog("[Routine] ✅ Successfully blocked access to: %@", currentUrl)
+                }
+            }
         } else {
-            // This case now primarily means Safari is running but no URL was obtained (e.g., empty tab, about:blank, or script returned empty string explicitly)
-            // NSLog("[Routine] Safari URL not available or empty.")
+            NSLog("[Routine] ✅ Access allowed to: %@", currentUrl)
         }
     } else {
-        NSLog("[Routine] Failed to initialize AppleScript for Safari URL.")
+        NSLog("[Routine] ❌ Failed to initialize AppleScript for Safari URL.")
     }
+    
+    NSLog("[Routine] Safari URL poll completed.")
   }
     
   private func setStartOnLogin(enabled: Bool) {

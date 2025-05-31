@@ -187,6 +187,7 @@ class DesktopService extends PlatformService {
 
     await _platform.invokeMethod('updateAppList', {
       'apps': apps,
+      'sites': [..._cachedSites, 'reddit.com'], // we also send sites for macos script-based blocking 
       'categories': _cachedCategories,
       'allowList': _isAllowList,
     });
