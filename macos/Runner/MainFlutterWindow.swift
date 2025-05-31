@@ -273,6 +273,8 @@ class MainFlutterWindow: NSWindow {
 
     if bundleId == "com.apple.Safari" {
       checkSafariURL()
+    } else if chromiumBundleIds.contains(bundleId) {
+      checkChromiumURL(bundleId: bundleId)
     }
   }
 
@@ -287,6 +289,13 @@ class MainFlutterWindow: NSWindow {
       self?.isHiding = false
     }
   }
+
+  private let chromiumBundleIds = [
+    "com.google.Chrome",
+    "com.microsoft.edgemac",
+    "com.brave.Browser",
+    "com.operasoftware.Opera"
+  ]
 
   private func checkSafariURL() {
     NSLog("[Routine] Starting Safari URL poll...")
@@ -375,5 +384,86 @@ class MainFlutterWindow: NSWindow {
     }
     
     NSLog("[Routine] Safari URL poll completed.")
+  }
+
+  private func checkChromiumURL(bundleId: String) {
+    NSLog("[Routine] Starting Chromium URL poll for %@...", bundleId)
+    NSLog("[Routine] Current siteList: %@", siteList)
+    NSLog("[Routine] Allow List Mode: %@", allowList ? "true" : "false")
+
+    let getUrlScript = """
+    tell application id "\(bundleId)"
+        if not running then return ""
+        try
+            if (count of windows) is 0 then return ""
+            tell active tab of front window
+                return URL
+            end tell
+        on error errMsg number errNum
+            return "" -- Error occurred
+        end try
+    end tell
+    """
+
+    var error: NSDictionary?
+    if let script = NSAppleScript(source: getUrlScript) {
+        NSLog("[Routine] Executing AppleScript to get Chromium URL for %@...", bundleId)
+        let output = script.executeAndReturnError(&error)
+
+        if let errorDict = error {
+            let errorMessage = errorDict[NSAppleScript.errorMessage] as? String ?? "Unknown AppleScript error"
+            let errorNumber = errorDict[NSAppleScript.errorNumber] as? NSNumber ?? -1
+            NSLog("[Routine] ❌ Error executing AppleScript for %@ URL: %@ (Number: %@)", bundleId, errorMessage, errorNumber)
+            return
+        }
+
+        guard let currentUrl = output.stringValue, !currentUrl.isEmpty else {
+            NSLog("[Routine] No valid URL found for %@ (empty or browser not active/no tabs)", bundleId)
+            return
+        }
+
+        NSLog("[Routine] Current %@ URL: %@", bundleId, currentUrl)
+
+        var matchedSite: String? = nil
+        let shouldBlock = siteList.contains { site in
+            let matches = currentUrl.lowercased().contains(site.lowercased())
+            if matches {
+                matchedSite = site
+                NSLog("[Routine] 🎯 URL matched site in list for %@: %@", bundleId, site)
+            }
+            return matches
+        }
+
+        NSLog("[Routine] URL check result for %@ - Should Block: %@", bundleId, shouldBlock ? "true" : "false")
+
+        if shouldBlock != allowList {
+            NSLog("[Routine] 🚫 Blocking required for %@. Matched site: %@, Allow List: %@", bundleId, matchedSite ?? "N/A", allowList ? "true" : "false")
+
+            let redirectScript = """
+            tell application id "\(bundleId)"
+                tell active tab of front window
+                    set URL to "https://www.routineblocker.com/blocked.html"
+                end tell
+            end tell
+            """
+
+            if let redirectAppleScript = NSAppleScript(source: redirectScript) {
+                NSLog("[Routine] Executing redirect AppleScript for %@...", bundleId)
+                redirectAppleScript.executeAndReturnError(&error)
+
+                if let errorDict = error {
+                    NSLog("[Routine] ❌ Error redirecting %@: %@", bundleId, errorDict[NSAppleScript.errorMessage] as? String ?? "Unknown error")
+                } else {
+                    NSLog("[Routine] ✅ Successfully blocked access for %@ to: %@", bundleId, currentUrl)
+                }
+            }
+        } else {
+            NSLog("[Routine] ✅ Access allowed for %@ to: %@", bundleId, currentUrl)
+        }
+    } else {
+        NSLog("[Routine] ❌ Failed to initialize AppleScript for %@ URL.", bundleId)
+    }
+
+    NSLog("[Routine] Chromium URL poll for %@ completed.", bundleId)
   }
 }
