@@ -263,15 +263,15 @@ class MainFlutterWindow: NSWindow {
       }
     }
     
-    let appName = app.localizedName?.lowercased() ?? ""
+    let bundleId = app.bundleIdentifier ?? ""
     let isAllowed = allowList ? appList.contains(appPath) : !appList.contains(appPath)
 
-    if !isAllowed && !isHiding && appName != "finder" {
+    if !isAllowed && !isHiding && bundleId != "com.apple.finder" {
       hideApplication(app)
       return
     }
 
-    if appName == "safari" {
+    if bundleId == "com.apple.Safari" {
       checkSafariURL()
     }
   }
@@ -294,7 +294,7 @@ class MainFlutterWindow: NSWindow {
     NSLog("[Routine] Allow List Mode: %@", allowList ? "true" : "false")
     
     let getUrlScript = """
-    tell application "Safari"
+    tell application id "com.apple.Safari"
         if not running then return "" -- Safari not running
         try
             if (count of windows) is 0 then return "" -- No windows open
@@ -348,7 +348,7 @@ class MainFlutterWindow: NSWindow {
             
             // Redirect to a blocking page
             let redirectScript = """
-            tell application "Safari"
+            tell application id "com.apple.Safari"
                 tell front window
                     tell current tab
                         set URL to "https://www.routineblocker.com/blocked.html"
