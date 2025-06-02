@@ -127,15 +127,6 @@ class Routine: Codable {
         
         // Check if routine is paused
         if let pausedUntil = pausedUntil, now < pausedUntil {
-            let dateFormatter = DateFormatter()
-
-            // Set the date format you want
-            dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-
-            // Convert the Date to String
-            let dateString = dateFormatter.string(from: pausedUntil)
-            let nowString = dateFormatter.string(from: now)
-            os_log("DeviceActivityMonitorExtension: routine is paused - %{public}s < %{public}s", nowString, dateString)
             return false
         }
         

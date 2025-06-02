@@ -132,21 +132,18 @@ class RoutineManager {
     }
     
     private func scheduleOneTimeActivity(for routine: Routine, startDate: Date, activityType: String) -> (scheduled: Bool, startTime: Date, endTime: Date) {
-        // Create a unique name for this one-time activity
         let uniqueId = "\(activityType)_\(routine.id)"
         let name = DeviceActivityName(uniqueId)
         
-        let delayedStartDate = startDate.addingTimeInterval(60)
+        // add a slight delay to avoid timing issues
+        let delayedStartDate = startDate.addingTimeInterval(30)
         
-        // Calculate end date (15 minutes after start date)
         let endDate = delayedStartDate.addingTimeInterval(15 * 60) // 15 minutes in seconds
         
-        // Create date components for start and end dates
         let calendar = Calendar.current
-        let startComponents = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: delayedStartDate)
-        let endComponents = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: endDate)
+        let startComponents = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: delayedStartDate)
+        let endComponents = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: endDate)
         
-        // Create non-repeating schedule
         let schedule = DeviceActivitySchedule(
             intervalStart: startComponents,
             intervalEnd: endComponents,
@@ -157,7 +154,12 @@ class RoutineManager {
             try center.startMonitoring(name, during: schedule)
             return (true, delayedStartDate, endDate)
         } catch {
-            SentrySDK.capture(error: error)
+            // Create a date formatter for detailed time logging
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            
+            let errorMessage = "\(error.localizedDescription) - Start: \(formatter.string(from: delayedStartDate)), End: \(formatter.string(from: endDate))"
+            SentrySDK.capture(message: errorMessage)
             return (false, delayedStartDate, endDate)
         }
     }
