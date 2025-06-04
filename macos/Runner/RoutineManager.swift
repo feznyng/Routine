@@ -6,27 +6,13 @@ import ServiceManagement
 import Sentry
 
 class RoutineManager {
+    private let browserManager = BrowserManager()
     private var appList: Set<String> = []
-    private var siteList: [String] = []
     private var allowList = false
     private var isHiding = false
     private var isMonitoring = false
     
-    private let redirectUrl = "https://www.routineblocker.com/blocked.html"
-    private let browsers: Dictionary<String, Browser>;
-    
     init() {
-        var browsers: Dictionary<String, Browser> = Dictionary(uniqueKeysWithValues: [
-            "com.google.Chrome",
-            "com.microsoft.edgemac",
-            "com.brave.Browser",
-            "com.operasoftware.Opera"
-        ].map { ($0, Chromium(bundleId: $0)) })
-        
-        browsers["com.apple.Safari"] = Safari()
-        
-        self.browsers = browsers
-        
         startMonitoring()
     }
     
@@ -70,9 +56,12 @@ class RoutineManager {
     }
     
     func updateList(apps: [String], sites: [String], allow: Bool) {
-        self.appList = Set(apps.map { $0.lowercased() })  // Store lowercase for case-insensitive comparison
-        self.siteList = sites.map { $0.lowercased() };
+        self.appList = Set(apps.map { $0.lowercased() })
         self.allowList = allow
+        
+        browserManager.siteList = sites.map { $0.lowercased() };
+        browserManager.allowList = allow;
+        
         self.checkFrontmostApp()
     }
     
@@ -119,7 +108,7 @@ class RoutineManager {
             return
         }
         
-        checkBrowser(bundleId: bundleId)
+        browserManager.checkBrowser(bundleId: bundleId)
     }
     
     private func hideApplication(_ app: NSRunningApplication) {
@@ -131,19 +120,6 @@ class RoutineManager {
             }
             app.hide()
             self?.isHiding = false
-        }
-    }
-    
-    private func checkBrowser(bundleId: String) {
-        guard let browser = browsers[bundleId], let activeUrl = browser.getUrl() else {
-            return
-        }
-        
-        NSLog("[Routine] Active URL: %@ ", activeUrl)
-        NSLog("[Routine] Site List URL: %@ ", siteList)
-
-        if (siteList.contains { activeUrl.contains($0) } != allowList) {
-            browser.redirect(url: redirectUrl)
         }
     }
 }

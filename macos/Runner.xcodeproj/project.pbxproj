@@ -32,6 +32,7 @@
 		A7A2C7712DEFBC4C0076DD65 /* Browser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7A2C7702DEFBC490076DD65 /* Browser.swift */; };
 		A7A2C7732DEFC2D50076DD65 /* Safari.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7A2C7722DEFC2D40076DD65 /* Safari.swift */; };
 		A7A2C7752DEFC2F60076DD65 /* Chromium.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7A2C7742DEFC2F40076DD65 /* Chromium.swift */; };
+		A7A2C7772DF103820076DD65 /* BrowserManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7A2C7762DF1037F0076DD65 /* BrowserManager.swift */; };
 		A7FE04D62DEFB5FF00BBA1F9 /* RoutineManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7FE04D52DEFB5FB00BBA1F9 /* RoutineManager.swift */; };
 		AEC0A627E8672968ED651864 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FF677E587CE2A4BBCD820BE7 /* Pods_Runner.framework */; };
 /* End PBXBuildFile section */
@@ -91,6 +92,7 @@
 		A7A2C7702DEFBC490076DD65 /* Browser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Browser.swift; sourceTree = "<group>"; };
 		A7A2C7722DEFC2D40076DD65 /* Safari.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Safari.swift; sourceTree = "<group>"; };
 		A7A2C7742DEFC2F40076DD65 /* Chromium.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chromium.swift; sourceTree = "<group>"; };
+		A7A2C7762DF1037F0076DD65 /* BrowserManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserManager.swift; sourceTree = "<group>"; };
 		A7FE04D52DEFB5FB00BBA1F9 /* RoutineManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutineManager.swift; sourceTree = "<group>"; };
 		B6445D8C0A7B86736FCF4243 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		D71F51AE2E5A2E2DF230B6BE /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
@@ -186,6 +188,7 @@
 		33FAB671232836740065AC1E /* Runner */ = {
 			isa = PBXGroup;
 			children = (
+				A7A2C7762DF1037F0076DD65 /* BrowserManager.swift */,
 				A7A2C7742DEFC2F40076DD65 /* Chromium.swift */,
 				A7A2C7722DEFC2D40076DD65 /* Safari.swift */,
 				A7A2C7702DEFBC490076DD65 /* Browser.swift */,
@@ -476,6 +479,7 @@
 				33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */,
 				A7FE04D62DEFB5FF00BBA1F9 /* RoutineManager.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,
+				A7A2C7772DF103820076DD65 /* BrowserManager.swift in Sources */,
 				A7A2C7732DEFC2D50076DD65 /* Safari.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
