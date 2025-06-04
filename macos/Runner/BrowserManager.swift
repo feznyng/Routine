@@ -19,13 +19,13 @@ class BrowserManager {
         self.browsers = browsers
     }
     
-    func hasAutomationPermission(for bundleId: String) -> Bool {
+    static func hasAutomationPermission(for bundleId: String) -> Bool {
         let trusted = kAXTrustedCheckOptionPrompt.takeUnretainedValue()
         let options = [trusted: false] as CFDictionary
         return AXIsProcessTrustedWithOptions(options)
     }
 
-    func requestAutomationPermission(for bundleId: String, openPrefsOnReject: Bool = false) -> Bool {
+    static func requestAutomationPermission(for bundleId: String, openPrefsOnReject: Bool = false) -> Bool {
         let trusted = kAXTrustedCheckOptionPrompt.takeUnretainedValue()
         let options = [trusted: true] as CFDictionary
         let hasPermission = AXIsProcessTrustedWithOptions(options)

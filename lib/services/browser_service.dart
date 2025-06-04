@@ -39,6 +39,8 @@ class BrowserConnection {
 }
 
 class BrowserService with ChangeNotifier {
+  static const _platformChannel = MethodChannel('com.routineblocker.browser');
+
   DateTime? _initialConnectionDeadline;
   DateTime? _extensionGracePeriodEnd;
   DateTime? _extensionCooldownEnd;
@@ -47,6 +49,7 @@ class BrowserService with ChangeNotifier {
   
   static final BrowserService _instance = BrowserService._internal();
   final Map<Browser, BrowserConnection> _connections = {};
+  final Set<Browser> _controllable = {};
   final Map<String, BrowserConnection> _pendingConnections = {};
   final StreamController<bool> _connectionStreamController = StreamController<bool>.broadcast();
   final StreamController<bool> _gracePeriodExpirationController = StreamController<bool>.broadcast();
@@ -64,6 +67,22 @@ class BrowserService with ChangeNotifier {
     logger.i("Browser Extension - Init");
     _initialConnectionDeadline = DateTime.now().add(const Duration(seconds: 5));
     await startServer();
+
+    if (Platform.isMacOS) {
+      final browsers = await getInstalledSupportedBrowsers();
+      for (final installedBrowser in browsers) {
+        final browser = installedBrowser.browser;
+        final data = browserData[installedBrowser.browser]!;
+        if (data.macosControllable) {
+          logger.i("checking if $browser is controllable");
+          final controllable = await hasAutomationPermission(data.macosPackage);
+          logger.i("$browser is controllable = $controllable");
+          if (controllable) {
+            _controllable.add(browser);
+          }
+        }
+      }
+    }
   }
   
   Stream<bool> get connectionStream => _connectionStreamController.stream;
@@ -92,6 +111,45 @@ class BrowserService with ChangeNotifier {
   int get remainingCooldownMinutes {
     if (!isInCooldown) return 0;
     return _extensionCooldownEnd!.difference(DateTime.now()).inMinutes + 1; // +1 to round up
+  }
+
+  Future<bool> hasAutomationPermission(String bundleId) async {
+    try {
+      final result = await _platformChannel.invokeMethod('hasAutomationPermission', {
+        'bundleId': bundleId,
+      });
+      return result ?? false;
+    } catch (e) {
+      logger.e('Error checking automation permission: $e');
+      return false;
+    }
+  }
+
+  Future<bool> requestAutomationPermission(Browser browser, {bool openPrefsOnReject = false}) async {
+    final data = browserData[browser]!;
+
+    final result = await _requestAutomationPermission(data.macosPackage, openPrefsOnReject: openPrefsOnReject);
+
+    if (result) {
+      _controllable.add(browser);
+    } else {
+      _controllable.remove(browser);
+    }
+
+    return result;
+  }
+
+  Future<bool> _requestAutomationPermission(String bundleId, {bool openPrefsOnReject = false}) async {
+    try {
+      final result = await _platformChannel.invokeMethod('requestAutomationPermission', {
+        'bundleId': bundleId,
+        'openPrefsOnReject': openPrefsOnReject,
+      });
+      return result ?? false;
+    } catch (e) {
+      logger.e('Error requesting automation permission: $e');
+      return false;
+    }
   }
 
   Stream<bool> get gracePeriodStream => _gracePeriodExpirationController.stream;
@@ -129,7 +187,7 @@ class BrowserService with ChangeNotifier {
   }
   
   bool isBrowserConnected(Browser browser) {
-    return _connections.containsKey(browser);
+    return _connections.containsKey(browser) || _controllable.contains(browser);
   }
 
   BrowserData getBrowserData(Browser browser) {
@@ -142,9 +200,9 @@ class BrowserService with ChangeNotifier {
     List<InstalledBrowser> browsers = await _getInstalledSupportedBrowsers();
 
     if (connected == true) {
-      return browsers.where((b) => _connections.containsKey(b.browser)).toList();
+      return browsers.where((b) => isBrowserConnected(b.browser)).toList();
     } else if (connected == false) {
-      return browsers.where((b) => !_connections.containsKey(b.browser)).toList();
+      return browsers.where((b) => !isBrowserConnected(b.browser)).toList();
     }
 
     return browsers;
@@ -239,7 +297,7 @@ class BrowserService with ChangeNotifier {
         final Map<String, dynamic> manifest = _createManifestContent(browser, '$nmhPath/$nmhName');
         final String manifestJson = json.encode(manifest);
         
-        String mozillaRegistryPath = "${data.registryPath}\\$kAppName";
+        String mozillaRegistryPath = "${data.windowsRegistryPath}\\$kAppName";
         final Pointer<HKEY> hKey = calloc<HKEY>();
         
         try {

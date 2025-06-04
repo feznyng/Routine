@@ -211,7 +211,7 @@ class _BrowserSectionState extends State<BrowserSection> {
                               Text(
                                 isInCooldown
                                   ? 'Disconnected browsers are currently blocked. You must wait $remainingCooldownMinutes minutes before trying to set up the extension again.'
-                                  : 'Disconnected browsers will be blocked until you connect the extension. Set them up to remove blocking.',
+                                  : 'Disconnected browsers will be blocked until you connect them.',
                               ),
                               const SizedBox(height: 8),
                             ],

@@ -60,7 +60,7 @@ class MainFlutterWindow: NSWindow {
                 result(isEnabled)
             case "hasAutomationPermission":
                 if let bundleId = call.arguments as? String {
-                    result(hasAutomationPermission(for: bundleId))
+                    result(BrowserManager.hasAutomationPermission(for: bundleId))
                 } else {
                     result(FlutterError(code: "INVALID_ARGUMENTS",
                                       message: "Expected bundle ID string",
@@ -70,7 +70,7 @@ class MainFlutterWindow: NSWindow {
                 if let args = call.arguments as? [String: Any],
                    let bundleId = args["bundleId"] as? String,
                    let openPrefsOnReject = args["openPrefsOnReject"] as? Bool {
-                    result(requestAutomationPermission(for: bundleId, openPrefsOnReject: openPrefsOnReject))
+                    result(BrowserManager.requestAutomationPermission(for: bundleId, openPrefsOnReject: openPrefsOnReject))
                 } else {
                     result(FlutterError(code: "INVALID_ARGUMENTS",
                                       message: "Expected bundleId and openPrefsOnReject arguments",
