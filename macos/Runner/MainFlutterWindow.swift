@@ -58,6 +58,24 @@ class MainFlutterWindow: NSWindow {
             case "getStartOnLogin":
                 let isEnabled = SMAppService.mainApp.status == .enabled
                 result(isEnabled)
+            case "hasAutomationPermission":
+                if let bundleId = call.arguments as? String {
+                    result(hasAutomationPermission(for: bundleId))
+                } else {
+                    result(FlutterError(code: "INVALID_ARGUMENTS",
+                                      message: "Expected bundle ID string",
+                                      details: nil))
+                }
+            case "requestAutomationPermission":
+                if let args = call.arguments as? [String: Any],
+                   let bundleId = args["bundleId"] as? String,
+                   let openPrefsOnReject = args["openPrefsOnReject"] as? Bool {
+                    result(requestAutomationPermission(for: bundleId, openPrefsOnReject: openPrefsOnReject))
+                } else {
+                    result(FlutterError(code: "INVALID_ARGUMENTS",
+                                      message: "Expected bundleId and openPrefsOnReject arguments",
+                                      details: nil))
+                }
             default:
                 NSLog("Method not implemented: %@", call.method)
                 result(FlutterMethodNotImplemented)
