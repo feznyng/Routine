@@ -38,7 +38,7 @@ class MainFlutterWindow: NSWindow {
             case "updateAppList":
                 if let args = call.arguments as? [String: Any],
                    let apps = args["apps"] as? [String],
-                    let allowList = args["allowList"] as? Bool,
+                   let allowList = args["allowList"] as? Bool,
                    let sites = args["sites"] as? [String] {
                     routineManager.updateList(apps: apps, sites: sites, allow: allowList)
                     NSLog("[Routine] ✅ Successfully updated app and site lists")

@@ -181,7 +181,7 @@ class DesktopService extends PlatformService {
 
     if (StrictModeService.instance.effectiveBlockBrowsersWithoutExtension && !BrowserService.instance.isInGracePeriod) {
       final browsers = await BrowserService.instance.getInstalledSupportedBrowsers(connected: false);
-      //apps.addAll(browsers.map((b) => b.app.filePath));
+      apps.addAll(browsers.map((b) => b.app.filePath));
       logger.i("added disconnected browsers: $apps");
     }
 

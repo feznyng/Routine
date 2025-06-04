@@ -12,14 +12,21 @@ class RoutineManager {
     private var isHiding = false
     private var isMonitoring = false
     
-    private let chromiumBundleIds = [
-        "com.google.Chrome",
-        "com.microsoft.edgemac",
-        "com.brave.Browser",
-        "com.operasoftware.Opera"
-    ]
+    private let redirectUrl = "https://www.routineblocker.com/blocked.html"
+    private let browsers: Dictionary<String, Browser>;
     
     init() {
+        var browsers: Dictionary<String, Browser> = Dictionary(uniqueKeysWithValues: [
+            "com.google.Chrome",
+            "com.microsoft.edgemac",
+            "com.brave.Browser",
+            "com.operasoftware.Opera"
+        ].map { ($0, Chromium(bundleId: $0)) })
+        
+        browsers["com.apple.Safari"] = Safari()
+        
+        self.browsers = browsers
+        
         startMonitoring()
     }
     
@@ -30,7 +37,6 @@ class RoutineManager {
         let workspace = NSWorkspace.shared
         let notificationCenter = workspace.notificationCenter
         
-        // Monitor for application activation
         notificationCenter.addObserver(
             self,
             selector: #selector(activeAppDidChange),
@@ -38,7 +44,6 @@ class RoutineManager {
             object: nil
         )
         
-        // Monitor for application unhiding
         notificationCenter.addObserver(
             self,
             selector: #selector(appDidUnhide),
@@ -46,7 +51,6 @@ class RoutineManager {
             object: nil
         )
         
-        // Monitor for application launching
         notificationCenter.addObserver(
             self,
             selector: #selector(appDidLaunch),
@@ -54,8 +58,7 @@ class RoutineManager {
             object: nil
         )
         
-        // Start periodic check
-        Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+        Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
             self?.checkFrontmostApp()
         }
     }
@@ -68,8 +71,9 @@ class RoutineManager {
     
     func updateList(apps: [String], sites: [String], allow: Bool) {
         self.appList = Set(apps.map { $0.lowercased() })  // Store lowercase for case-insensitive comparison
-        self.siteList = sites;
+        self.siteList = sites.map { $0.lowercased() };
         self.allowList = allow
+        self.checkFrontmostApp()
     }
     
     
@@ -91,6 +95,12 @@ class RoutineManager {
         }
     }
     
+    private func checkFrontmostApp() {
+        if let frontmostApp = NSWorkspace.shared.frontmostApplication {
+            checkActiveApplication(frontmostApp)
+        }
+    }
+    
     private func checkActiveApplication(_ app: NSRunningApplication?) {
         guard let app = app,
               let appPath = app.bundleURL?.path.lowercased() else { return }
@@ -102,24 +112,14 @@ class RoutineManager {
         }
         
         let bundleId = app.bundleIdentifier ?? ""
-        let isAllowed = allowList ? appList.contains(appPath) : !appList.contains(appPath)
+        let blocked = appList.contains(appPath) != allowList
         
-        if !isAllowed && !isHiding && bundleId != "com.apple.finder" {
+        if blocked && !isHiding && bundleId != "com.apple.finder" {
             hideApplication(app)
             return
         }
         
-        if bundleId == "com.apple.Safari" {
-            checkSafariURL()
-        } else if chromiumBundleIds.contains(bundleId) {
-            checkChromiumURL(bundleId: bundleId)
-        }
-    }
-    
-    private func checkFrontmostApp() {
-        if let frontmostApp = NSWorkspace.shared.frontmostApplication {
-            checkActiveApplication(frontmostApp)
-        }
+        checkBrowser(bundleId: bundleId)
     }
     
     private func hideApplication(_ app: NSRunningApplication) {
@@ -134,171 +134,16 @@ class RoutineManager {
         }
     }
     
-    private func checkSafariURL() {
-        let getUrlScript = """
-    tell application id "com.apple.Safari"
-        if not running then return "not running" -- Safari not running
-        try
-            if (count of windows) is 0 then return "no windows" -- No windows open
-            tell front window
-                if (count of tabs) is 0 then return "no tabs" -- No tabs in front window
-                tell current tab
-                    return URL
-                end tell
-            end tell
-        on error errMsg number errNum
-            return errMsg -- Error occurred
-        end try
-    end tell
-    """
+    private func checkBrowser(bundleId: String) {
+        guard let browser = browsers[bundleId], let activeUrl = browser.getUrl() else {
+            return
+        }
         
-        var error: NSDictionary?
-        if let script = NSAppleScript(source: getUrlScript) {
-            NSLog("[Routine] Executing AppleScript to get Safari URL...")
-            let output = script.executeAndReturnError(&error)
-            NSLog("[Routine] Raw output = %@", output)
+        NSLog("[Routine] Active URL: %@ ", activeUrl)
+        NSLog("[Routine] Site List URL: %@ ", siteList)
 
-            if let errorDict = error {
-                let errorMessage = errorDict[NSAppleScript.errorMessage] as? String ?? "Unknown AppleScript error"
-                let errorNumber = errorDict[NSAppleScript.errorNumber] as? NSNumber ?? -1
-                NSLog("[Routine] ❌ Error executing AppleScript for Safari URL: %@ (Number: %@)", errorMessage, errorNumber)
-                return
-            }
-            
-            guard let currentUrl = output.stringValue, !currentUrl.isEmpty else {
-                NSLog("[Routine] No valid URL found (empty or Safari not active)")
-                return
-            }
-            
-            NSLog("[Routine] Current Safari URL: %@", currentUrl)
-            
-            // Check if the current URL matches any site in the siteList
-            var matchedSite: String? = nil
-            let shouldBlock = siteList.contains { site in
-                let matches = currentUrl.lowercased().contains(site.lowercased())
-                if matches {
-                    matchedSite = site
-                    NSLog("[Routine] 🎯 URL matched site in list: %@", site)
-                }
-                return matches
-            }
-            
-            NSLog("[Routine] URL check result - Should Block: %@", shouldBlock ? "true" : "false")
-            
-            // Block if: (allowList is false AND site is in list) OR (allowList is true AND site is NOT in list)
-            if shouldBlock != allowList {
-                NSLog("[Routine] 🚫 Blocking required. Matched site: %@, Allow List: %@", matchedSite ?? "N/A", allowList ? "true" : "false")
-                
-                // Redirect to a blocking page
-                let redirectScript = """
-            tell application id "com.apple.Safari"
-                tell front window
-                    tell current tab
-                        set URL to "https://www.routineblocker.com/blocked.html"
-                    end tell
-                end tell
-            end tell
-            """
-                
-                if let redirectAppleScript = NSAppleScript(source: redirectScript) {
-                    NSLog("[Routine] Executing redirect AppleScript...")
-                    redirectAppleScript.executeAndReturnError(&error)
-                    
-                    if let errorDict = error {
-                        NSLog("[Routine] ❌ Error redirecting Safari: %@", errorDict[NSAppleScript.errorMessage] as? String ?? "Unknown error")
-                    } else {
-                        NSLog("[Routine] ✅ Successfully blocked access to: %@", currentUrl)
-                    }
-                }
-            } else {
-                NSLog("[Routine] ✅ Access allowed to: %@", currentUrl)
-            }
-        } else {
-            NSLog("[Routine] ❌ Failed to initialize AppleScript for Safari URL.")
+        if (siteList.contains { activeUrl.contains($0) } != allowList) {
+            browser.redirect(url: redirectUrl)
         }
-        
-        NSLog("[Routine] Safari URL poll completed.")
     }
-    
-    private func checkChromiumURL(bundleId: String) {
-        NSLog("[Routine] Starting Chromium URL poll for %@...", bundleId)
-        NSLog("[Routine] Current siteList: %@", siteList)
-        NSLog("[Routine] Allow List Mode: %@", allowList ? "true" : "false")
-        
-        let getUrlScript = """
-    tell application id "\(bundleId)"
-        if not running then return ""
-        try
-            if (count of windows) is 0 then return ""
-            tell active tab of front window
-                return URL
-            end tell
-        on error errMsg number errNum
-            return "" -- Error occurred
-        end try
-    end tell
-    """
-        
-        var error: NSDictionary?
-        if let script = NSAppleScript(source: getUrlScript) {
-            NSLog("[Routine] Executing AppleScript to get Chromium URL for %@...", bundleId)
-            let output = script.executeAndReturnError(&error)
-            
-            if let errorDict = error {
-                let errorMessage = errorDict[NSAppleScript.errorMessage] as? String ?? "Unknown AppleScript error"
-                let errorNumber = errorDict[NSAppleScript.errorNumber] as? NSNumber ?? -1
-                NSLog("[Routine] ❌ Error executing AppleScript for %@ URL: %@ (Number: %@)", bundleId, errorMessage, errorNumber)
-                return
-            }
-            
-            guard let currentUrl = output.stringValue, !currentUrl.isEmpty else {
-                NSLog("[Routine] No valid URL found for %@ (empty or browser not active/no tabs)", bundleId)
-                return
-            }
-            
-            NSLog("[Routine] Current %@ URL: %@", bundleId, currentUrl)
-            
-            var matchedSite: String? = nil
-            let shouldBlock = siteList.contains { site in
-                let matches = currentUrl.lowercased().contains(site.lowercased())
-                if matches {
-                    matchedSite = site
-                    NSLog("[Routine] 🎯 URL matched site in list for %@: %@", bundleId, site)
-                }
-                return matches
-            }
-            
-            NSLog("[Routine] URL check result for %@ - Should Block: %@", bundleId, shouldBlock ? "true" : "false")
-            
-            if shouldBlock != allowList {
-                NSLog("[Routine] 🚫 Blocking required for %@. Matched site: %@, Allow List: %@", bundleId, matchedSite ?? "N/A", allowList ? "true" : "false")
-                
-                let redirectScript = """
-            tell application id "\(bundleId)"
-                tell active tab of front window
-                    set URL to "https://www.routineblocker.com/blocked.html"
-                end tell
-            end tell
-            """
-                
-                if let redirectAppleScript = NSAppleScript(source: redirectScript) {
-                    NSLog("[Routine] Executing redirect AppleScript for %@...", bundleId)
-                    redirectAppleScript.executeAndReturnError(&error)
-                    
-                    if let errorDict = error {
-                        NSLog("[Routine] ❌ Error redirecting %@: %@", bundleId, errorDict[NSAppleScript.errorMessage] as? String ?? "Unknown error")
-                    } else {
-                        NSLog("[Routine] ✅ Successfully blocked access for %@ to: %@", bundleId, currentUrl)
-                    }
-                }
-            } else {
-                NSLog("[Routine] ✅ Access allowed for %@ to: %@", bundleId, currentUrl)
-            }
-        } else {
-            NSLog("[Routine] ❌ Failed to initialize AppleScript for %@ URL.", bundleId)
-        }
-        
-        NSLog("[Routine] Chromium URL poll for %@ completed.", bundleId)
-    }
-    
 }
