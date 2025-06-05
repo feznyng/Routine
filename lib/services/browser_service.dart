@@ -19,6 +19,7 @@ import 'dart:async';
 import 'package:Routine/setup.dart';
 import 'package:collection/src/iterable_extensions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:Routine/channels/desktop_channel.dart';
 
 typedef InstalledBrowser = ({Browser browser, InstalledApp app});
 
@@ -39,8 +40,6 @@ class BrowserConnection {
 }
 
 class BrowserService with ChangeNotifier {
-  static const _platformChannel = MethodChannel('com.routineblocker.browser');
-
   DateTime? _initialConnectionDeadline;
   DateTime? _extensionGracePeriodEnd;
   DateTime? _extensionCooldownEnd;
@@ -75,7 +74,7 @@ class BrowserService with ChangeNotifier {
         final data = browserData[installedBrowser.browser]!;
         if (data.macosControllable) {
           logger.i("checking if $browser is controllable");
-          final controllable = await hasAutomationPermission(data.macosPackage);
+          final controllable = await DesktopChannel.instance.hasAutomationPermission(data.macosPackage);
           logger.i("$browser is controllable = $controllable");
           if (controllable) {
             _controllable.add(browser);
@@ -113,22 +112,10 @@ class BrowserService with ChangeNotifier {
     return _extensionCooldownEnd!.difference(DateTime.now()).inMinutes + 1; // +1 to round up
   }
 
-  Future<bool> hasAutomationPermission(String bundleId) async {
-    try {
-      final result = await _platformChannel.invokeMethod('hasAutomationPermission', {
-        'bundleId': bundleId,
-      });
-      return result ?? false;
-    } catch (e) {
-      logger.e('Error checking automation permission: $e');
-      return false;
-    }
-  }
-
   Future<bool> requestAutomationPermission(Browser browser, {bool openPrefsOnReject = false}) async {
     final data = browserData[browser]!;
 
-    final result = await _requestAutomationPermission(data.macosPackage, openPrefsOnReject: openPrefsOnReject);
+    final result = await DesktopChannel.instance.requestAutomationPermission(data.macosPackage, openPrefsOnReject: openPrefsOnReject);
 
     if (result) {
       _controllable.add(browser);
@@ -137,19 +124,6 @@ class BrowserService with ChangeNotifier {
     }
 
     return result;
-  }
-
-  Future<bool> _requestAutomationPermission(String bundleId, {bool openPrefsOnReject = false}) async {
-    try {
-      final result = await _platformChannel.invokeMethod('requestAutomationPermission', {
-        'bundleId': bundleId,
-        'openPrefsOnReject': openPrefsOnReject,
-      });
-      return result ?? false;
-    } catch (e) {
-      logger.e('Error requesting automation permission: $e');
-      return false;
-    }
   }
 
   Stream<bool> get gracePeriodStream => _gracePeriodExpirationController.stream;
