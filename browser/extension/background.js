@@ -87,6 +87,44 @@ function scheduleReconnect() {
   }, RECONNECT_INTERVAL);
 }
 
+// Check if a URL matches any blocked sites
+function isUrlBlocked(url) {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname;
+    
+    if (allowList) {
+      // In allowlist mode, site is blocked if it's not in the sites list
+      return !sites.some(site => hostname.endsWith(site));
+    } else {
+      // In blocklist mode, site is blocked if it's in the sites list
+      return sites.some(site => hostname.endsWith(site));
+    }
+  } catch (e) {
+    console.error('Error parsing URL:', e);
+    return false;
+  }
+}
+
+// Check all open tabs and redirect blocked ones
+async function checkOpenTabs() {
+  if (!isAppConnected) return;
+  
+  try {
+    const tabs = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] });
+    for (const tab of tabs) {
+      if (isUrlBlocked(tab.url)) {
+        console.log(`Redirecting already-open blocked tab: ${tab.url}`);
+        chrome.tabs.update(tab.id, {
+          url: 'https://www.routineblocker.com/blocked.html'
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error checking open tabs:', error);
+  }
+}
+
 // Register blocking rules using declarativeNetRequest
 async function registerBlockingRules() {
   // If already updating rules, schedule a follow-up update
@@ -166,6 +204,9 @@ async function registerBlockingRules() {
     });
 
     console.log(`Updated blocking rules: ${rules.length} rules added, mode: ${allowList ? 'allowlist' : 'blocklist'}`);
+    
+    // After updating rules, check all open tabs
+    await checkOpenTabs();
   } catch (error) {
     console.error('Error updating blocking rules:', error);
   } finally {
