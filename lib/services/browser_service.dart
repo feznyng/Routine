@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:Routine/constants.dart';
+import 'package:Routine/models/browser_connection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:Routine/models/installed_app.dart';
 import 'package:Routine/services/browser_config.dart';
@@ -7,7 +8,7 @@ import 'package:Routine/util.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:io' show Directory, File, Platform, Process, Socket, ServerSocket, InternetAddress;
+import 'dart:io' show Directory, File, Platform, Process, ServerSocket, InternetAddress;
 import 'dart:typed_data' show ByteData, Uint8List;
 import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
@@ -22,22 +23,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:Routine/channels/desktop_channel.dart';
 
 typedef InstalledBrowser = ({Browser browser, InstalledApp app});
-
-class BrowserConnection {
-  final Socket socket;
-  List<int> buffer = [];
-  int? len;
-
-  BrowserConnection({required this.socket});
-
-  void sendMessage(String action, Map<String, dynamic> data) {
-    final message = json.encode({'action': action, 'data': data});
-    final messageBytes = utf8.encode(message);
-    final lengthBytes = ByteData(4)..setUint32(0, messageBytes.length, Endian.little);
-    socket.add(lengthBytes.buffer.asUint8List());
-    socket.add(messageBytes);
-  }
-}
 
 class BrowserService with ChangeNotifier {
   DateTime? _initialConnectionDeadline;
