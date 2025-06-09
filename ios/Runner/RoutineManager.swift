@@ -75,12 +75,12 @@ class RoutineManager {
                 }
             }
             
-            if let snoozedUntil = routine.snoozedUntil, snoozedUntil > now {
+            if let snoozedUntil = routine.snoozedUntil, now.compare(snoozedUntil) == .orderedAscending {
                 let (scheduled, startTime, endTime) = self.scheduleOneTimeActivity(for: routine, startDate: snoozedUntil, activityType: "snoozed")
                 if scheduled {
                     oneTimeEvalTimes.append((id: routine.id, type: "snoozed", startTime: startTime, endTime: endTime))
                 }
-            } else if let pausedUntil = routine.pausedUntil, pausedUntil > now {
+            } else if let pausedUntil = routine.pausedUntil, now.compare(pausedUntil) == .orderedAscending {
                 let (scheduled, startTime, endTime) = self.scheduleOneTimeActivity(for: routine, startDate: pausedUntil, activityType: "paused")
                 if scheduled {
                     oneTimeEvalTimes.append((id: routine.id, type: "paused", startTime: startTime, endTime: endTime))
