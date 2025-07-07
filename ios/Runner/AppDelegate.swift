@@ -12,6 +12,8 @@ import Sentry
     var extensionErrorCheckTimer: Timer?
     let manager = RoutineManager()
     
+    var backgroundTaskID: UIBackgroundTaskIdentifier = UIBackgroundTaskIdentifier.invalid
+    
     override func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -38,18 +40,18 @@ import Sentry
             os_log("AppDelegate: %{public}s", call.method)
             switch call.method {
             case "immediateUpdateRoutines":
-                os_log("updateRoutines: immediate start")
-                SentrySDK.capture(message: "updateRoutines: immediate start")
+                os_log("updateRoutines: fg start")
+                SentrySDK.capture(message: "updateRoutines: fg start")
                 if let args = call.arguments as? [String: Any],
                    let routinesJson = args["routines"] as? [[String: Any]] {
                     self?.handleRoutineUpdate(routinesJson: routinesJson) { updateResult in
                         switch updateResult {
                         case .success(_):
-                            os_log("updateRoutines: immediate done")
-                            SentrySDK.capture(message: "updateRoutines: immediate done")
+                            os_log("updateRoutines: fg done")
+                            SentrySDK.capture(message: "updateRoutines: fg done")
                             result(true)
                         case .failure(let error):
-                            os_log("updateRoutines: immediate failed - \(error)")
+                            os_log("updateRoutines: fg failed - \(error)")
                             SentrySDK.capture(error: error) { (scope) in
                                 scope.setTag(value: "failed to immediately update routines", key: "context")
                             }
@@ -65,28 +67,36 @@ import Sentry
                 if let args = call.arguments as? [String: Any],
                    let routinesJson = args["routines"] as? [[String: Any]] {
                     
-                    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                    DispatchQueue.global().async { [weak self] in
                         SentrySDK.capture(message: "updateRoutines: start")
-                        os_log("updateRoutines: start")
+                        os_log("updateRoutines: bg start")
+                        
+                        let backgroundTaskID = UIApplication.shared.beginBackgroundTask (withName: "Finish updating routines") {
+                            UIApplication.shared.endBackgroundTask(self!.backgroundTaskID)
+                            self!.backgroundTaskID = UIBackgroundTaskIdentifier.invalid
+                        }
                         
                         self?.handleRoutineUpdate(routinesJson: routinesJson) { updateResult in
                             DispatchQueue.main.async {
                                 switch updateResult {
                                 case .success(_):
-                                    SentrySDK.capture(message: "updateRoutines: done")
-                                    os_log("updateRoutines: done")
+                                    SentrySDK.capture(message: "updateRoutines: bg done")
+                                    os_log("updateRoutines: bg done")
                                     result(true)
                                 case .failure(let error):
                                     SentrySDK.capture(error: error) { (scope) in
                                         scope.setTag(value: "failed to background update routines", key: "context")
                                     }
-                                    os_log("updateRoutines: failed - \(error)")
+                                    os_log("updateRoutines: bg failed - \(error)")
                                     result(FlutterError(code: "JSON_DECODE_ERROR",
                                                       message: "Failed to deserialize: \(error.localizedDescription)",
                                                       details: nil))
                                 }
                             }
                         }
+                        
+                        UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                        self?.backgroundTaskID = UIBackgroundTaskIdentifier.invalid
                     }
                 } else {
                     print("Error: Invalid arguments for updateRoutines")
