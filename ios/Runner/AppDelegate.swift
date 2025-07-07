@@ -42,38 +42,25 @@ import Sentry
                 SentrySDK.capture(message: "updateRoutines: immediate start")
                 if let args = call.arguments as? [String: Any],
                    let routinesJson = args["routines"] as? [[String: Any]] {
-                    do {
-                        let jsonData = try JSONSerialization.data(withJSONObject: routinesJson)
-                        let jsonString = String(data: jsonData, encoding: .utf8)!
-                        
-                        if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker") {
-                            sharedDefaults.set(jsonString, forKey: "routinesData")
-                            sharedDefaults.synchronize()
-                        } else {
-                            print("Failed to access shared UserDefaults")
+                    self?.handleRoutineUpdate(routinesJson: routinesJson) { updateResult in
+                        switch updateResult {
+                        case .success(_):
+                            os_log("updateRoutines: immediate done")
+                            SentrySDK.capture(message: "updateRoutines: immediate done")
+                            result(true)
+                        case .failure(let error):
+                            os_log("updateRoutines: immediate failed - \(error)")
+                            SentrySDK.capture(error: error) { (scope) in
+                                scope.setTag(value: "failed to immediately update routines", key: "context")
+                            }
+                            result(FlutterError(code: "JSON_DECODE_ERROR",
+                                              message: "Failed to deserialize: \(error.localizedDescription)",
+                                              details: nil))
                         }
-                        
-                        let decoder = JSONDecoder()
-                        let routines = try decoder.decode([Routine].self, from: jsonString.data(using: .utf8)!)
-                        
-                        self?.manager.update(routines: routines)
-                        
-                        os_log("updateRoutines: immediate done")
-                        SentrySDK.capture(message: "updateRoutines: immediate done")
-                        result(true)
-                    } catch {
-                        // Return error on main thread
-                        os_log("updateRoutines: immediate failed - \(error)")
-                        SentrySDK.capture(error: error) { (scope) in
-                            scope.setTag(value: "failed to immediately update routines", key: "context")
-                        }
-                        result(FlutterError(code: "JSON_DECODE_ERROR",
-                                            message: "Failed to deserialize: \(error.localizedDescription)",
-                                            details: nil))
                     }
-
                 }
                 return;
+                
             case "updateRoutines":
                 if let args = call.arguments as? [String: Any],
                    let routinesJson = args["routines"] as? [[String: Any]] {
@@ -82,43 +69,22 @@ import Sentry
                         SentrySDK.capture(message: "updateRoutines: start")
                         os_log("updateRoutines: start")
                         
-                        do {
-                            let jsonData = try JSONSerialization.data(withJSONObject: routinesJson)
-                            let jsonString = String(data: jsonData, encoding: .utf8)!
-                            
-                            if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker") {
-                                sharedDefaults.set(jsonString, forKey: "routinesData")
-                                sharedDefaults.synchronize()
-                            } else {
-                                print("Failed to access shared UserDefaults")
-                            }
-                            
-                            let decoder = JSONDecoder()
-                            let routines = try decoder.decode([Routine].self, from: jsonString.data(using: .utf8)!)
-
-                            self?.manager.update(routines: routines)
-
-                            if (self?.manager == nil) {
-                                SentrySDK.capture(message: "updateRoutines: manager is nil")
-                            }
-                            
-                            // Return success on main thread
+                        self?.handleRoutineUpdate(routinesJson: routinesJson) { updateResult in
                             DispatchQueue.main.async {
-                                SentrySDK.capture(message: "updateRoutines: done")
-                                os_log("updateRoutines: done")
-                                result(true)
-                            }
-                            
-                        } catch {
-                            // Return error on main thread
-                            SentrySDK.capture(error: error) { (scope) in
-                                scope.setTag(value: "failed to background update routines", key: "context")
-                            }
-                            DispatchQueue.main.async {
-                                os_log("updateRoutines: failed - \(error)")
-                                result(FlutterError(code: "JSON_DECODE_ERROR",
-                                                    message: "Failed to deserialize: \(error.localizedDescription)",
-                                                    details: nil))
+                                switch updateResult {
+                                case .success(_):
+                                    SentrySDK.capture(message: "updateRoutines: done")
+                                    os_log("updateRoutines: done")
+                                    result(true)
+                                case .failure(let error):
+                                    SentrySDK.capture(error: error) { (scope) in
+                                        scope.setTag(value: "failed to background update routines", key: "context")
+                                    }
+                                    os_log("updateRoutines: failed - \(error)")
+                                    result(FlutterError(code: "JSON_DECODE_ERROR",
+                                                      message: "Failed to deserialize: \(error.localizedDescription)",
+                                                      details: nil))
+                                }
                             }
                         }
                     }
@@ -231,6 +197,31 @@ import Sentry
         
         GeneratedPluginRegistrant.register(with: self)
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    }
+    
+    // MARK: - Routine Update Handling
+    
+    private func handleRoutineUpdate(routinesJson: [[String: Any]], completion: @escaping (Result<Bool, Error>) -> Void) {
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: routinesJson)
+            let jsonString = String(data: jsonData, encoding: .utf8)!
+            
+            if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker") {
+                sharedDefaults.set(jsonString, forKey: "routinesData")
+                sharedDefaults.synchronize()
+            } else {
+                print("Failed to access shared UserDefaults")
+            }
+            
+            let decoder = JSONDecoder()
+            let routines = try decoder.decode([Routine].self, from: jsonString.data(using: .utf8)!)
+            
+            manager.update(routines: routines)
+            completion(.success(true))
+            
+        } catch {
+            completion(.failure(error))
+        }
     }
     
     // MARK: - Extension Error Handling
