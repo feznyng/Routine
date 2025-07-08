@@ -22,7 +22,7 @@ class BreakDialog extends StatefulWidget {
 class _BreakDialogState extends State<BreakDialog> {
   final _codeController = TextEditingController();
   Timer? _delayTimer;
-  int breakDuration = 15;
+  late int breakDuration;
   bool canConfirm = false;
   String? _scanFeedback;
   int? remainingDelay;
@@ -32,6 +32,8 @@ class _BreakDialogState extends State<BreakDialog> {
   void initState() {
     super.initState();
     canConfirm = widget.routine.friction == 'none';
+
+    breakDuration = min(15, widget.routine.maxBreakDuration);
 
     if (widget.routine.friction == 'code') {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
