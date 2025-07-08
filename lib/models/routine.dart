@@ -137,11 +137,11 @@ class Routine implements Syncable {
     }
 
   @override
-  Future<void> save() async {
+  Future<void> save({bool saveGroups = true}) async {
     final changes = this.changes;
 
-    for (final group in _groups.values.where((g) => g.modified)) {
-      group.save();
+    if (saveGroups) {
+      await Future.wait(_groups.values.where((g) => g.modified).map((g) => g.save()));
     }
 
     if (changes.contains('startTime') || changes.contains('endTime')) {
@@ -181,7 +181,8 @@ class Routine implements Syncable {
       conditions: Value(conditions),
       strictMode: Value(strictMode)
     ));
-    SyncService().sync();
+
+    await SyncService().sync();
   }
 
   @override
@@ -203,18 +204,18 @@ class Routine implements Syncable {
 
   Future<void> snooze(DateTime until) async {
     _snoozedUntil = until;
-    await save();
+    await save(saveGroups: false);
   }
 
   Future<void> unsnooze() async {
     _snoozedUntil = null;
-    await save();
+    await save(saveGroups: false);
   }
 
   @override
   Future<void> delete() async {
     await getIt<AppDatabase>().tempDeleteRoutine(_id);
-    SyncService().sync();
+    await SyncService().sync();
   }
 
   @override
@@ -420,7 +421,7 @@ class Routine implements Syncable {
     _pausedUntil = now.add(Duration(minutes: duration));
     _numBreaksTaken = (_numBreaksTaken ?? 0) + 1;
     
-    await save();
+    await save(saveGroups: false);
   }
 
   Future<void> endBreak() async {

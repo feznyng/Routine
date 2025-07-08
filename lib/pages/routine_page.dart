@@ -184,7 +184,7 @@ class _RoutinePageState extends State<RoutinePage> {
       }
     }
     
-    _routine.save();
+    await _routine.save();
     _originalStrictMode = _routine.strictMode;
     _originalIsActive = _routine.isActive;
     widget.onSave(_routine);

@@ -76,7 +76,7 @@ class Group implements Syncable {
   @override
   Future<void> delete() async {
     await getIt<AppDatabase>().tempDeleteGroup(_id);
-    SyncService().sync();
+    await SyncService().sync();
   }
 
   @override

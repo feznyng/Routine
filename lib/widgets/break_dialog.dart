@@ -301,9 +301,11 @@ class _BreakDialogState extends State<BreakDialog> {
           child: const Text('Cancel'),
         ),
         TextButton(
-          onPressed: canConfirm ? () {
-            widget.routine.breakFor(minutes: breakDuration);
-            Navigator.of(context).pop();
+          onPressed: canConfirm ? () async {
+            await widget.routine.breakFor(minutes: breakDuration);
+            if (context.mounted) {
+              Navigator.of(context).pop();
+            }
           } : null,
           child: const Text('Start Break'),
         ),

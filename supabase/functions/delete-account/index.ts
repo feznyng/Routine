@@ -7,14 +7,20 @@ const supabase = createClient(
 
 interface DeleteOperation {
   table: string;
-  idField: string;
-  errorMessage: string;
+  key: string;
 }
 
 interface ErrorDetail {
   error: string;
   message: string;
 }
+
+const operations: DeleteOperation[] = [
+  { table: 'groups', key: 'user_id' },
+  { table: 'routines', key: 'user_id' },
+  { table: 'devices', key: 'user_id' },
+  { table: 'users', key: 'id' }
+];
 
 function createErrorResponse(error: string, message: string): Response {
   return new Response(
@@ -33,11 +39,11 @@ async function deleteFromTable(
   const { error } = await supabase
     .from(operation.table)
     .delete()
-    .eq(operation.idField, userId);
+    .eq(operation.key, userId);
 
   if (error) {
     console.error(`Error deleting ${operation.table}:`, error);
-    throw { error: operation.errorMessage, message: error.message } as ErrorDetail;
+    throw { error: `failed to delete ${operation.table}`, message: error.message } as ErrorDetail;
   }
 
   console.log(`Successfully deleted ${operation.table} data`);
@@ -84,19 +90,8 @@ async function handleRequest(req: Request): Promise<Response> {
 
     console.log(`Starting account deletion process for user: ${user.id}`);
 
-    // Define deletion operations
-    const operations: DeleteOperation[] = [
-      { table: 'groups', idField: 'user_id', errorMessage: 'Failed to delete groups' },
-      { table: 'routines', idField: 'user_id', errorMessage: 'Failed to delete routines' },
-      { table: 'devices', idField: 'user_id', errorMessage: 'Failed to delete devices' },
-      { table: 'users', idField: 'id', errorMessage: 'Failed to delete user data' }
-    ];
-
     try {
-      for (const operation of operations) {
-        await deleteFromTable(user.id, operation);
-      }
-      
+      await Promise.all(operations.map(op => deleteFromTable(user.id, op)))
       await deleteAuthUser(user.id);
     } catch (err) {
       const error = err as ErrorDetail;
