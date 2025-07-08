@@ -57,3 +57,6 @@ macos/Runner/GoogleService-Info.plist
 android/app/google-services.json
 
 sentry.properties
+
+
+firebase.json
