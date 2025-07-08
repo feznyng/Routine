@@ -509,7 +509,7 @@ class Routine implements Syncable {
   }
 
   bool get areConditionsMet {
-    return conditions.isEmpty ? false : conditions.every((c) => isConditionMet(c));
+    return conditions.isNotEmpty && conditions.every((c) => isConditionMet(c));
   }
 
   void completeCondition(Condition condition, {bool complete = true}) {

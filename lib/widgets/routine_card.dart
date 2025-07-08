@@ -54,7 +54,7 @@ class RoutineCard extends StatelessWidget {
                       style: const TextStyle(fontSize: 12, color: Colors.orange),
                     ),
                   ],
-                  if (routine.isActive) ...[  
+                  if (routine.isActive && !routine.areConditionsMet) ...[  
                     const SizedBox(width: 8),
                     _buildBreakButton(context),
                   ],
