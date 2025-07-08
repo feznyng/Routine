@@ -191,10 +191,6 @@ class Routine implements Syncable {
   @override
   bool get modified => _entry == null || changes.isNotEmpty;
   
-  @override
-  void scheduleSyncJob() {
-    SyncService().addJob(SyncJob(remote: false));
-  }
   DateTime? get snoozedUntil => _snoozedUntil;
 
   bool get isSnoozed {

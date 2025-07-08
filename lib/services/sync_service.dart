@@ -44,7 +44,6 @@ class SyncService {
   SyncService._internal() : 
     db = getIt<AppDatabase>(),
     _client = Supabase.instance.client {
-    _startConsumer();
     setupRealtimeSync();
   }
   
@@ -67,7 +66,7 @@ class SyncService {
           event: 'sync', 
           callback: (payload, [_]) {
             logger.i('received remote sync request from ${payload['source']}');
-            addJob(SyncJob(remote: true));
+            sync();
           }
         )
         .onBroadcast(
@@ -98,7 +97,6 @@ class SyncService {
       Util.report('error websocket notifying other devices', e, st);
       setupRealtimeSync();
     }
-
   }
 
   Future<void> _notifyPeers() async {
@@ -119,69 +117,12 @@ class SyncService {
     await _sendRealtimeMessage('sign-out');
   }
   
-  final _jobController = StreamController<SyncJob>();
-  Timer? _batchTimer;
-  final List<SyncJob> _pendingJobs = [];
-  bool _isProcessing = false;
-  
-  void addJob(SyncJob job) {
-    _jobController.add(job);
-  }
-  
-  void _startConsumer() {
-    _jobController.stream.listen((job) {
-      _pendingJobs.add(job);
-      _scheduleBatchProcessing();
-    });
-  }
-  
-  void _scheduleBatchProcessing() {
-    _batchTimer?.cancel();
-    
-    _batchTimer = Timer(Duration(seconds: 1), () {
-      if (!_isProcessing) {
-        _processJobs();
-      }
-    });
-  }
-  
-  Future<void> _processJobs() async {
-    if (_isProcessing || _pendingJobs.isEmpty) return;
-    
-    _isProcessing = true;
-    
-    try {
-      // Add a short delay to allow more jobs to accumulate
-      await Future.delayed(Duration(milliseconds: 100));
-      
-      // Check if more jobs came in during the delay
-      if (!_isProcessing) return;
-      
-      final batchJobs = List<SyncJob>.from(_pendingJobs);
-      
-      if (batchJobs.isNotEmpty) {
-        final isFullSync = batchJobs.any((job) => job.full);
-        await sync(full: isFullSync);
-      }
-    } finally {
-      _isProcessing = false;
-      
-      if (_pendingJobs.isNotEmpty) {
-        _scheduleBatchProcessing();
-      }
-    }
-  }
-  
   Future<void> dispose() async {
-    _batchTimer?.cancel();
     await _syncChannel?.unsubscribe();
-    _jobController.close();
   }
 
   Future<bool> sync({bool full = false}) async {
     logger.i("syncing...");
-
-    _pendingJobs.clear();
     final result = await _sync(full: full);
     
     logger.i("finished syncing - success = ${result != null}");

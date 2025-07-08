@@ -107,9 +107,4 @@ class Group implements Syncable {
   bool get modified {
     return _entry == null || changes.isNotEmpty;
   }
-  
-  @override
-  void scheduleSyncJob() {
-    SyncService().addJob(SyncJob(remote: false));
-  }
 }

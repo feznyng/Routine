@@ -169,11 +169,6 @@ class Device implements Syncable {
   @override
   bool get modified => _entry == null || changes.isNotEmpty;
   
-  @override
-  void scheduleSyncJob() {
-    SyncService().addJob(SyncJob(remote: false));
-  }
-  
   String get formattedType {
     switch (_type) {
       case DeviceType.windows:

@@ -251,7 +251,7 @@ class StrictModeService with ChangeNotifier {
     _notifyEffectiveSettingsChanged();
 
     // Notify other devices of the change
-    SyncService().addJob(SyncJob(remote: true));
+    SyncService().sync();
   }
 
   Future<bool> _setSettingWithConfirmation(

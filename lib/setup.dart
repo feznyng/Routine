@@ -44,7 +44,7 @@ Future<void> setup() async {
 
   await db.initialize();
 
-  SyncService().addJob(SyncJob(remote: false));
+  await SyncService().sync();
 
   if (kReleaseMode) {
     Logger.level = Level.warning;
