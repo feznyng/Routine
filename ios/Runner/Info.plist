@@ -44,6 +44,10 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>sync</string>
+	</array>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>nfc</string>

@@ -9,6 +9,7 @@ import '../database/database.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:drift/drift.dart';
 import 'strict_mode_service.dart';
+import 'package:workmanager/workmanager.dart';
 
 class SyncJob {
   bool remote;
@@ -36,13 +37,11 @@ typedef Changes = ({
 class SyncService {
   static final SyncService _instance = SyncService._internal();
   RealtimeChannel? _syncChannel;
-  final AppDatabase db;
   final SupabaseClient _client;
 
   String get userId => Supabase.instance.client.auth.currentUser?.id ?? '';
   
   SyncService._internal() : 
-    db = getIt<AppDatabase>(),
     _client = Supabase.instance.client {
     setupRealtimeSync();
   }
@@ -51,14 +50,15 @@ class SyncService {
     return _instance;
   }
 
+  SyncService.simple() : 
+    _client = Supabase.instance.client;
+
   void setupRealtimeSync() {
     if (userId.isEmpty) return;
 
-    // Clean up existing subscription if any
     _syncChannel?.unsubscribe();
 
     try {
-      // Subscribe to sync channel for this user
       _syncChannel = _client.channel('sync-$userId');
 
       _syncChannel!
@@ -66,7 +66,7 @@ class SyncService {
           event: 'sync', 
           callback: (payload, [_]) {
             logger.i('received remote sync request from ${payload['source']}');
-            sync();
+            queueSync();
           }
         )
         .onBroadcast(
@@ -121,6 +121,16 @@ class SyncService {
     await _syncChannel?.unsubscribe();
   }
 
+  Future<bool> queueSync({bool full = false}) async {
+    if (Util.isDesktop()) {
+      sync(full: full);
+      return true;
+    } else  {
+      await Workmanager().registerOneOffTask("sync", "sync-task", inputData: {'full': full});
+      return true;
+    }
+  }
+
   Future<bool> sync({bool full = false}) async {
     logger.i("syncing...");
     final result = await _sync(full: full);
@@ -132,7 +142,10 @@ class SyncService {
 
   Future<SyncResult?> _sync({bool full = false}) async {
     try {
-      if (userId.isEmpty) return null;
+      if (userId.isEmpty) {
+        logger.i("can't sync - user is not signed in");
+        return null;
+      }
 
       final db = getIt<AppDatabase>();
       final currDevice = (await db.getThisDevice())!;

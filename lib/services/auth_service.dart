@@ -38,7 +38,7 @@ class AuthService {
   
   AuthService._internal();
 
-  Future<void> init() async {
+  Future<void> init({bool simple = false}) async {
     if (_initialized) return;
     _initialized = true;
     
@@ -58,6 +58,10 @@ class AuthService {
     );
     
     _client = Supabase.instance.client;
+
+    if (simple) {
+      return;
+    }
     
     // Try to restore the refresh token with error handling
     String? refreshToken;
@@ -72,7 +76,9 @@ class AuthService {
         final response = await _client.auth.refreshSession();
         if (response.session != null) {
           logger.i('Restored session for user: ${response.user?.email}');
-          initNotifications();
+          if (!simple) {
+            initNotifications();
+          }
         }
       } catch (e) {
         logger.w('Failed to refresh session $e');
@@ -164,7 +170,7 @@ class AuthService {
 
       if (response.user != null) {
         SyncService().setupRealtimeSync();
-        SyncService().sync();
+        SyncService().queueSync();
         initNotifications();
       }
 

@@ -182,7 +182,7 @@ class Routine implements Syncable {
       strictMode: Value(strictMode)
     ));
 
-    await SyncService().sync();
+    await SyncService().queueSync();
   }
 
   @override
@@ -211,7 +211,7 @@ class Routine implements Syncable {
   @override
   Future<void> delete() async {
     await getIt<AppDatabase>().tempDeleteRoutine(_id);
-    await SyncService().sync();
+    await SyncService().queueSync();
   }
 
   @override

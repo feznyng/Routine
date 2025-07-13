@@ -5,6 +5,7 @@ import FamilyControls
 import ManagedSettings
 import os.log
 import Sentry
+import workmanager_apple
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -32,6 +33,8 @@ import Sentry
             factory,
             withId: "app_site_selector"
         )
+        
+        WorkmanagerPlugin.registerBGProcessingTask(withIdentifier: "sync")
         
         // Setup iOS routine channel
         let routineChannel = FlutterMethodChannel(name: "com.solidsoft.routine",
@@ -206,6 +209,9 @@ import Sentry
         }
         
         GeneratedPluginRegistrant.register(with: self)
+        WorkmanagerPlugin.setPluginRegistrantCallback { registry in
+          GeneratedPluginRegistrant.register(with: registry)
+        }
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
     

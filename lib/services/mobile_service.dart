@@ -34,7 +34,7 @@ class MobileService extends PlatformService {
   Future<void> refresh() async {
     SyncService().setupRealtimeSync();
     await stopWatching();
-    await SyncService().sync();
+    await SyncService().queueSync();
     await init();
   }
   
