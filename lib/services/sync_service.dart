@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:drift/drift.dart';
 import 'strict_mode_service.dart';
 import 'package:workmanager/workmanager.dart';
+import 'package:synchronized/synchronized.dart';
 
 class SyncJob {
   bool remote;
@@ -43,6 +44,7 @@ class SyncService {
   Timer? _syncStatusPollingTimer;
   String? _latestSyncJobId;
   bool _lastKnownSyncStatus = false;
+  Lock _syncLock = Lock();
 
   String get userId => Supabase.instance.client.auth.currentUser?.id ?? '';
   
@@ -155,13 +157,18 @@ class SyncService {
       _startSyncStatusPolling();
       
       await Workmanager().registerOneOffTask("sync", "sync-task", inputData: {'full': full, 'id': id});
+
       return true;
     }
   }
 
   Future<bool> sync({bool full = false, String? id}) async {
     logger.i("syncing...");
-    final result = await _sync(full: full);
+
+    SyncResult? result;
+    await _syncLock.synchronized(() async {
+      result = await _sync(full: full);
+    });
     
     logger.i("finished syncing - success = ${result != null}");
 

@@ -207,7 +207,23 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const CircularProgressIndicator(),
+                      const SizedBox(width: 16),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _isLoading = false;
+                          });
+                        },
+                        child: const Text('Cancel'),
+                      ),
+                    ],
+                  ),
+                )
               : _routines.isEmpty
                   ? _buildEmptyState(context)
                   : RefreshIndicator(
@@ -218,7 +234,7 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                       _isLoading = true;
                     });
                   }
-                  await _syncService.queueSync(full: true);
+                  await _syncService.sync(full: true);
                   if (mounted) {
                     setState(() {
                       _isLoading = false;
