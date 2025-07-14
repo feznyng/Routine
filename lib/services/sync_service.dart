@@ -45,6 +45,9 @@ class SyncService {
   String? _latestSyncJobId;
   bool _lastKnownSyncStatus = false;
   Lock _syncLock = Lock();
+  
+  // Stream controller for sync failure events
+  final StreamController<void> _syncFailureController = StreamController<void>.broadcast();
 
   String get userId => Supabase.instance.client.auth.currentUser?.id ?? '';
   
@@ -56,6 +59,9 @@ class SyncService {
   factory SyncService() {
     return _instance;
   }
+  
+  // Stream that UI components can listen to for sync failure events
+  Stream<void> get onSyncFailure => _syncFailureController.stream;
 
   SyncService.simple() : 
     _client = Supabase.instance.client;
@@ -169,8 +175,9 @@ class SyncService {
     await _syncLock.synchronized(() async {
       result = await _sync(full: full);
     });
-    
-    logger.i("finished syncing - success = ${result != null}");
+  
+    final success = result != null;
+    logger.i("finished syncing - success = $success");
 
     if (id != null) {
       final key = 'sync_job_status_$id';
@@ -180,7 +187,11 @@ class SyncService {
       logger.i("no id for this sync job");
     }
 
-    return result != null;
+    if (!success) {
+      _syncFailureController.add(null);
+    }
+
+    return success;
   }
 
   // Start polling for sync job status changes

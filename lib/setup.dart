@@ -55,27 +55,21 @@ void callbackDispatcher() {
 }
 
 Future<void> setup() async {
-  await dotenv.load(fileName: '.env');
+  final stopwatch = Stopwatch();
+  stopwatch.start();
 
-  Workmanager().initialize(
-    callbackDispatcher, // The top level function, aka callbackDispatcher
-    // isInDebugMode: true // If enabled it will post a notification whenever the task is running. Handy for debugging tasks
-  );
+  await dotenv.load(fileName: '.env');
+  await Workmanager().initialize(callbackDispatcher);
 
   final db = AppDatabase();
   getIt.registerSingleton<AppDatabase>(db);
+
+  final currDevice = await Device.getCurrent();
+  getIt.registerSingleton<Device>(currDevice); 
     
   await AuthService().init();
   await StrictModeService().init();
-
-  final currDevice = await Device.getCurrent();
-
-  getIt.registerSingleton<Device>(currDevice); 
-
-  await db.initialize();
-
   await SyncService().queueSync();
-
 
   if (kReleaseMode) {
     Logger.level = Level.warning;
@@ -103,4 +97,6 @@ Future<void> setup() async {
       await WindowsSingleInstance.ensureSingleInstance([], "routine");
     }
   }
+
+  logger.i("startup in ${stopwatch.elapsed}ms");
 }

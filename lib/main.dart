@@ -14,6 +14,9 @@ import 'services/desktop_service.dart';
 import 'services/mobile_service.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'widgets/global_snackbar.dart';
+import 'services/sync_service.dart';
+import 'dart:async';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -65,6 +68,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Routine',
+      scaffoldMessengerKey: GlobalSnackBar.key,
       themeMode: themeProvider.themeMode,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightBlue),
@@ -77,8 +81,41 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Routine'),
+      home: const SyncFailureListener(child: MyHomePage(title: 'Routine')),
     );
+  }
+}
+
+class SyncFailureListener extends StatefulWidget {
+  final Widget child;
+  
+  const SyncFailureListener({super.key, required this.child});
+  
+  @override
+  State<SyncFailureListener> createState() => _SyncFailureListenerState();
+}
+
+class _SyncFailureListenerState extends State<SyncFailureListener> {
+  late final StreamSubscription<void> _subscription;
+  
+  @override
+  void initState() {
+    super.initState();
+    _subscription = SyncService().onSyncFailure.listen((_) {
+      logger.i("received failure event");
+      GlobalSnackBar.show('Sync failed. Please try again later.');
+    });
+  }
+  
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
   }
 }
 

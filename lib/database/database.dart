@@ -2,7 +2,6 @@ import 'package:Routine/database/database.steps.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/extensions/json1.dart';
 import 'package:drift_flutter/drift_flutter.dart';
-import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import 'string_list_converter.dart';
 import 'package:path_provider/path_provider.dart';
@@ -120,12 +119,6 @@ class AppDatabase extends _$AppDatabase {
         databaseDirectory: getApplicationSupportDirectory,
       ),
     );
-  }
-
-  Future<void> initialize() async {
-    if (!kDebugMode) {
-      return;
-    }
   }
 
   Future<List<RoutineEntry>> getRoutinesById(List<String> ids) {
