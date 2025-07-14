@@ -44,7 +44,9 @@ void callbackDispatcher() {
       final db = AppDatabase();
       getIt.registerSingleton<AppDatabase>(db);
 
-      return await SyncService.simple().sync(full: (inputData ?? {'full': false})['full']);
+      inputData = inputData ?? {'full': false, 'id': null};
+
+      return await SyncService.simple().sync(full: inputData['full'], id: inputData['id']);
     } catch (e) {
       logger.e("bg - failed to complete sync due to $e");
       return Future.value(false);
