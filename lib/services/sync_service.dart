@@ -4,9 +4,11 @@ import 'package:Routine/models/condition.dart';
 import 'package:Routine/models/device.dart';
 import 'package:Routine/services/auth_service.dart';
 import 'package:Routine/util.dart';
+import 'package:uuid/uuid.dart';
 import '../setup.dart';
 import '../database/database.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:drift/drift.dart';
 import 'strict_mode_service.dart';
 import 'package:workmanager/workmanager.dart';
@@ -36,8 +38,11 @@ typedef Changes = ({
 
 class SyncService {
   static final SyncService _instance = SyncService._internal();
-  RealtimeChannel? _syncChannel;
   final SupabaseClient _client;
+  RealtimeChannel? _syncChannel;
+  Timer? _syncStatusPollingTimer;
+  String? _latestSyncJobId;
+  bool _lastKnownSyncStatus = false;
 
   String get userId => Supabase.instance.client.auth.currentUser?.id ?? '';
   
@@ -119,6 +124,7 @@ class SyncService {
   
   Future<void> dispose() async {
     await _syncChannel?.unsubscribe();
+    _stopSyncStatusPolling();
   }
 
   Future<bool> queueSync({bool full = false}) async {
@@ -126,20 +132,115 @@ class SyncService {
       sync(full: full);
       return true;
     } else  {
-      await Workmanager().registerOneOffTask("sync", "sync-task", inputData: {'full': full});
+      // Clear existing keys in shared_preferences prefixed with sync_job_status_
+      final prefs = await SharedPreferences.getInstance();
+      final allKeys = prefs.getKeys();
+      final syncStatusKeys = allKeys.where((key) => key.startsWith('sync_job_status_'));
+      
+      for (final key in syncStatusKeys) {
+        await prefs.remove(key);
+      }
+      
+      // Generate a new UUID for this sync job
+      final id = Uuid().v4();
+      
+      // Store the latest sync job ID
+      _latestSyncJobId = id;
+      _lastKnownSyncStatus = false;
+      
+      // Write false to shared preferences under "sync_job_status_${id}"
+      await prefs.setBool('sync_job_status_$id', false);
+      
+      // Start polling for status changes
+      _startSyncStatusPolling();
+      
+      await Workmanager().registerOneOffTask("sync", "sync-task", inputData: {'full': full, 'id': id});
       return true;
     }
   }
 
-  Future<bool> sync({bool full = false}) async {
+  Future<bool> sync({bool full = false, String? id}) async {
     logger.i("syncing...");
     final result = await _sync(full: full);
     
     logger.i("finished syncing - success = ${result != null}");
 
+    if (id != null) {
+      final key = 'sync_job_status_$id';
+      logger.i("setting sync key $key to true");
+      await SharedPreferencesAsync().setBool(key, true);
+    } else {
+      logger.i("no id for this sync job");
+    }
+
     return result != null;
   }
 
+  // Start polling for sync job status changes
+  void _startSyncStatusPolling() {
+    // Stop any existing polling
+    _stopSyncStatusPolling();
+    
+    // Initialize the last known status
+    _lastKnownSyncStatus = false;
+    
+    // Start a new polling timer
+    _syncStatusPollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
+      await _checkSyncStatusChanges();
+    });
+    
+    logger.i("Started sync status polling");
+  }
+  
+  // Stop polling for sync job status changes
+  void _stopSyncStatusPolling() {
+    if (_syncStatusPollingTimer != null) {
+      _syncStatusPollingTimer!.cancel();
+      _syncStatusPollingTimer = null;
+      logger.i("Stopped sync status polling");
+    }
+  }
+  
+  // Check for changes in the latest sync job status
+  Future<void> _checkSyncStatusChanges() async {
+    try {
+      if (_latestSyncJobId == null) {
+        // No sync job to check
+        logger.i("no sync job to check");
+
+        _stopSyncStatusPolling();
+        return;
+      }
+      
+      final prefs = SharedPreferencesAsync();
+      final key = 'sync_job_status_$_latestSyncJobId';
+
+      logger.i("checking sync status for key $key = ${await prefs.getBool(key)}");
+      
+      final currentStatus = await prefs.getBool(key) ?? false;
+
+      // If status changed from false to true
+      if (!_lastKnownSyncStatus && currentStatus) {
+        logger.i("Latest sync job $_latestSyncJobId completed");
+        
+        // Notify changes
+        logger.i("Sync job status changed, notifying changes");
+        final db = getIt<AppDatabase>();
+        await db.forceNotifyChanges();
+        
+        // Stop polling since the job is complete
+        _stopSyncStatusPolling();
+      }
+      
+      // Update the last known status
+      _lastKnownSyncStatus = currentStatus;
+      
+    } catch (e, st) {
+      logger.e("Error checking sync status changes: $e");
+      Util.report('error checking sync status changes', e, st);
+    }
+  }
+  
   Future<SyncResult?> _sync({bool full = false}) async {
     try {
       if (userId.isEmpty) {
@@ -607,6 +708,8 @@ class SyncService {
       if (madeRemoteChange) {
         _notifyPeers();
       }
+
+      
 
       return SyncResult();
     } catch (e, st) {

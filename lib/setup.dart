@@ -44,7 +44,9 @@ void callbackDispatcher() {
       final db = AppDatabase();
       getIt.registerSingleton<AppDatabase>(db);
 
-      return await SyncService.simple().sync(full: (inputData ?? {'full': false})['full']);
+      inputData = inputData ?? {'full': false, 'id': null};
+
+      return await SyncService.simple().sync(full: inputData['full'], id: inputData['id']);
     } catch (e) {
       logger.e("bg - failed to complete sync due to $e");
       return Future.value(false);
@@ -57,7 +59,7 @@ Future<void> setup() async {
 
   Workmanager().initialize(
     callbackDispatcher, // The top level function, aka callbackDispatcher
-    isInDebugMode: true // If enabled it will post a notification whenever the task is running. Handy for debugging tasks
+    // isInDebugMode: true // If enabled it will post a notification whenever the task is running. Handy for debugging tasks
   );
 
   final db = AppDatabase();
