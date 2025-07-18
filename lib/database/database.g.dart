@@ -143,6 +143,12 @@ class $RoutinesTable extends Routines
   late final GeneratedColumn<DateTime> pausedUntil = GeneratedColumn<DateTime>(
       'paused_until', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _lastBreakEndedAtMeta =
+      const VerificationMeta('lastBreakEndedAt');
+  @override
+  late final GeneratedColumn<DateTime> lastBreakEndedAt =
+      GeneratedColumn<DateTime>('last_break_ended_at', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _maxBreaksMeta =
       const VerificationMeta('maxBreaks');
   @override
@@ -219,6 +225,7 @@ class $RoutinesTable extends Routines
         numBreaksTaken,
         lastBreakAt,
         pausedUntil,
+        lastBreakEndedAt,
         maxBreaks,
         maxBreakDuration,
         friction,
@@ -337,6 +344,12 @@ class $RoutinesTable extends Routines
           pausedUntil.isAcceptableOrUnknown(
               data['paused_until']!, _pausedUntilMeta));
     }
+    if (data.containsKey('last_break_ended_at')) {
+      context.handle(
+          _lastBreakEndedAtMeta,
+          lastBreakEndedAt.isAcceptableOrUnknown(
+              data['last_break_ended_at']!, _lastBreakEndedAtMeta));
+    }
     if (data.containsKey('max_breaks')) {
       context.handle(_maxBreaksMeta,
           maxBreaks.isAcceptableOrUnknown(data['max_breaks']!, _maxBreaksMeta));
@@ -426,6 +439,8 @@ class $RoutinesTable extends Routines
           .read(DriftSqlType.dateTime, data['${effectivePrefix}last_break_at']),
       pausedUntil: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}paused_until']),
+      lastBreakEndedAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}last_break_ended_at']),
       maxBreaks: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}max_breaks']),
       maxBreakDuration: attachedDatabase.typeMapping.read(
@@ -479,6 +494,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
   final int? numBreaksTaken;
   final DateTime? lastBreakAt;
   final DateTime? pausedUntil;
+  final DateTime? lastBreakEndedAt;
   final int? maxBreaks;
   final int maxBreakDuration;
   final String friction;
@@ -507,6 +523,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       this.numBreaksTaken,
       this.lastBreakAt,
       this.pausedUntil,
+      this.lastBreakEndedAt,
       this.maxBreaks,
       required this.maxBreakDuration,
       required this.friction,
@@ -550,6 +567,9 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
     }
     if (!nullToAbsent || pausedUntil != null) {
       map['paused_until'] = Variable<DateTime>(pausedUntil);
+    }
+    if (!nullToAbsent || lastBreakEndedAt != null) {
+      map['last_break_ended_at'] = Variable<DateTime>(lastBreakEndedAt);
     }
     if (!nullToAbsent || maxBreaks != null) {
       map['max_breaks'] = Variable<int>(maxBreaks);
@@ -602,6 +622,9 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       pausedUntil: pausedUntil == null && nullToAbsent
           ? const Value.absent()
           : Value(pausedUntil),
+      lastBreakEndedAt: lastBreakEndedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastBreakEndedAt),
       maxBreaks: maxBreaks == null && nullToAbsent
           ? const Value.absent()
           : Value(maxBreaks),
@@ -644,6 +667,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       numBreaksTaken: serializer.fromJson<int?>(json['numBreaksTaken']),
       lastBreakAt: serializer.fromJson<DateTime?>(json['lastBreakAt']),
       pausedUntil: serializer.fromJson<DateTime?>(json['pausedUntil']),
+      lastBreakEndedAt:
+          serializer.fromJson<DateTime?>(json['lastBreakEndedAt']),
       maxBreaks: serializer.fromJson<int?>(json['maxBreaks']),
       maxBreakDuration: serializer.fromJson<int>(json['maxBreakDuration']),
       friction: serializer.fromJson<String>(json['friction']),
@@ -678,6 +703,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       'numBreaksTaken': serializer.toJson<int?>(numBreaksTaken),
       'lastBreakAt': serializer.toJson<DateTime?>(lastBreakAt),
       'pausedUntil': serializer.toJson<DateTime?>(pausedUntil),
+      'lastBreakEndedAt': serializer.toJson<DateTime?>(lastBreakEndedAt),
       'maxBreaks': serializer.toJson<int?>(maxBreaks),
       'maxBreakDuration': serializer.toJson<int>(maxBreakDuration),
       'friction': serializer.toJson<String>(friction),
@@ -710,6 +736,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           Value<int?> numBreaksTaken = const Value.absent(),
           Value<DateTime?> lastBreakAt = const Value.absent(),
           Value<DateTime?> pausedUntil = const Value.absent(),
+          Value<DateTime?> lastBreakEndedAt = const Value.absent(),
           Value<int?> maxBreaks = const Value.absent(),
           int? maxBreakDuration,
           String? friction,
@@ -739,6 +766,9 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
             numBreaksTaken.present ? numBreaksTaken.value : this.numBreaksTaken,
         lastBreakAt: lastBreakAt.present ? lastBreakAt.value : this.lastBreakAt,
         pausedUntil: pausedUntil.present ? pausedUntil.value : this.pausedUntil,
+        lastBreakEndedAt: lastBreakEndedAt.present
+            ? lastBreakEndedAt.value
+            : this.lastBreakEndedAt,
         maxBreaks: maxBreaks.present ? maxBreaks.value : this.maxBreaks,
         maxBreakDuration: maxBreakDuration ?? this.maxBreakDuration,
         friction: friction ?? this.friction,
@@ -777,6 +807,9 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           data.lastBreakAt.present ? data.lastBreakAt.value : this.lastBreakAt,
       pausedUntil:
           data.pausedUntil.present ? data.pausedUntil.value : this.pausedUntil,
+      lastBreakEndedAt: data.lastBreakEndedAt.present
+          ? data.lastBreakEndedAt.value
+          : this.lastBreakEndedAt,
       maxBreaks: data.maxBreaks.present ? data.maxBreaks.value : this.maxBreaks,
       maxBreakDuration: data.maxBreakDuration.present
           ? data.maxBreakDuration.value
@@ -819,6 +852,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           ..write('numBreaksTaken: $numBreaksTaken, ')
           ..write('lastBreakAt: $lastBreakAt, ')
           ..write('pausedUntil: $pausedUntil, ')
+          ..write('lastBreakEndedAt: $lastBreakEndedAt, ')
           ..write('maxBreaks: $maxBreaks, ')
           ..write('maxBreakDuration: $maxBreakDuration, ')
           ..write('friction: $friction, ')
@@ -852,6 +886,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
         numBreaksTaken,
         lastBreakAt,
         pausedUntil,
+        lastBreakEndedAt,
         maxBreaks,
         maxBreakDuration,
         friction,
@@ -884,6 +919,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           other.numBreaksTaken == this.numBreaksTaken &&
           other.lastBreakAt == this.lastBreakAt &&
           other.pausedUntil == this.pausedUntil &&
+          other.lastBreakEndedAt == this.lastBreakEndedAt &&
           other.maxBreaks == this.maxBreaks &&
           other.maxBreakDuration == this.maxBreakDuration &&
           other.friction == this.friction &&
@@ -914,6 +950,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
   final Value<int?> numBreaksTaken;
   final Value<DateTime?> lastBreakAt;
   final Value<DateTime?> pausedUntil;
+  final Value<DateTime?> lastBreakEndedAt;
   final Value<int?> maxBreaks;
   final Value<int> maxBreakDuration;
   final Value<String> friction;
@@ -943,6 +980,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     this.numBreaksTaken = const Value.absent(),
     this.lastBreakAt = const Value.absent(),
     this.pausedUntil = const Value.absent(),
+    this.lastBreakEndedAt = const Value.absent(),
     this.maxBreaks = const Value.absent(),
     this.maxBreakDuration = const Value.absent(),
     this.friction = const Value.absent(),
@@ -973,6 +1011,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     this.numBreaksTaken = const Value.absent(),
     this.lastBreakAt = const Value.absent(),
     this.pausedUntil = const Value.absent(),
+    this.lastBreakEndedAt = const Value.absent(),
     this.maxBreaks = const Value.absent(),
     this.maxBreakDuration = const Value.absent(),
     required String friction,
@@ -1018,6 +1057,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     Expression<int>? numBreaksTaken,
     Expression<DateTime>? lastBreakAt,
     Expression<DateTime>? pausedUntil,
+    Expression<DateTime>? lastBreakEndedAt,
     Expression<int>? maxBreaks,
     Expression<int>? maxBreakDuration,
     Expression<String>? friction,
@@ -1048,6 +1088,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       if (numBreaksTaken != null) 'num_breaks_taken': numBreaksTaken,
       if (lastBreakAt != null) 'last_break_at': lastBreakAt,
       if (pausedUntil != null) 'paused_until': pausedUntil,
+      if (lastBreakEndedAt != null) 'last_break_ended_at': lastBreakEndedAt,
       if (maxBreaks != null) 'max_breaks': maxBreaks,
       if (maxBreakDuration != null) 'max_break_duration': maxBreakDuration,
       if (friction != null) 'friction': friction,
@@ -1080,6 +1121,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       Value<int?>? numBreaksTaken,
       Value<DateTime?>? lastBreakAt,
       Value<DateTime?>? pausedUntil,
+      Value<DateTime?>? lastBreakEndedAt,
       Value<int?>? maxBreaks,
       Value<int>? maxBreakDuration,
       Value<String>? friction,
@@ -1109,6 +1151,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       numBreaksTaken: numBreaksTaken ?? this.numBreaksTaken,
       lastBreakAt: lastBreakAt ?? this.lastBreakAt,
       pausedUntil: pausedUntil ?? this.pausedUntil,
+      lastBreakEndedAt: lastBreakEndedAt ?? this.lastBreakEndedAt,
       maxBreaks: maxBreaks ?? this.maxBreaks,
       maxBreakDuration: maxBreakDuration ?? this.maxBreakDuration,
       friction: friction ?? this.friction,
@@ -1183,6 +1226,9 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     if (pausedUntil.present) {
       map['paused_until'] = Variable<DateTime>(pausedUntil.value);
     }
+    if (lastBreakEndedAt.present) {
+      map['last_break_ended_at'] = Variable<DateTime>(lastBreakEndedAt.value);
+    }
     if (maxBreaks.present) {
       map['max_breaks'] = Variable<int>(maxBreaks.value);
     }
@@ -1236,6 +1282,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
           ..write('numBreaksTaken: $numBreaksTaken, ')
           ..write('lastBreakAt: $lastBreakAt, ')
           ..write('pausedUntil: $pausedUntil, ')
+          ..write('lastBreakEndedAt: $lastBreakEndedAt, ')
           ..write('maxBreaks: $maxBreaks, ')
           ..write('maxBreakDuration: $maxBreakDuration, ')
           ..write('friction: $friction, ')
@@ -2224,6 +2271,7 @@ typedef $$RoutinesTableCreateCompanionBuilder = RoutinesCompanion Function({
   Value<int?> numBreaksTaken,
   Value<DateTime?> lastBreakAt,
   Value<DateTime?> pausedUntil,
+  Value<DateTime?> lastBreakEndedAt,
   Value<int?> maxBreaks,
   Value<int> maxBreakDuration,
   required String friction,
@@ -2254,6 +2302,7 @@ typedef $$RoutinesTableUpdateCompanionBuilder = RoutinesCompanion Function({
   Value<int?> numBreaksTaken,
   Value<DateTime?> lastBreakAt,
   Value<DateTime?> pausedUntil,
+  Value<DateTime?> lastBreakEndedAt,
   Value<int?> maxBreaks,
   Value<int> maxBreakDuration,
   Value<String> friction,
@@ -2335,6 +2384,10 @@ class $$RoutinesTableFilterComposer
 
   ColumnFilters<DateTime> get pausedUntil => $composableBuilder(
       column: $table.pausedUntil, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get lastBreakEndedAt => $composableBuilder(
+      column: $table.lastBreakEndedAt,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get maxBreaks => $composableBuilder(
       column: $table.maxBreaks, builder: (column) => ColumnFilters(column));
@@ -2432,6 +2485,10 @@ class $$RoutinesTableOrderingComposer
   ColumnOrderings<DateTime> get pausedUntil => $composableBuilder(
       column: $table.pausedUntil, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<DateTime> get lastBreakEndedAt => $composableBuilder(
+      column: $table.lastBreakEndedAt,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<int> get maxBreaks => $composableBuilder(
       column: $table.maxBreaks, builder: (column) => ColumnOrderings(column));
 
@@ -2526,6 +2583,9 @@ class $$RoutinesTableAnnotationComposer
   GeneratedColumn<DateTime> get pausedUntil => $composableBuilder(
       column: $table.pausedUntil, builder: (column) => column);
 
+  GeneratedColumn<DateTime> get lastBreakEndedAt => $composableBuilder(
+      column: $table.lastBreakEndedAt, builder: (column) => column);
+
   GeneratedColumn<int> get maxBreaks =>
       $composableBuilder(column: $table.maxBreaks, builder: (column) => column);
 
@@ -2594,6 +2654,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             Value<int?> numBreaksTaken = const Value.absent(),
             Value<DateTime?> lastBreakAt = const Value.absent(),
             Value<DateTime?> pausedUntil = const Value.absent(),
+            Value<DateTime?> lastBreakEndedAt = const Value.absent(),
             Value<int?> maxBreaks = const Value.absent(),
             Value<int> maxBreakDuration = const Value.absent(),
             Value<String> friction = const Value.absent(),
@@ -2624,6 +2685,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             numBreaksTaken: numBreaksTaken,
             lastBreakAt: lastBreakAt,
             pausedUntil: pausedUntil,
+            lastBreakEndedAt: lastBreakEndedAt,
             maxBreaks: maxBreaks,
             maxBreakDuration: maxBreakDuration,
             friction: friction,
@@ -2654,6 +2716,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             Value<int?> numBreaksTaken = const Value.absent(),
             Value<DateTime?> lastBreakAt = const Value.absent(),
             Value<DateTime?> pausedUntil = const Value.absent(),
+            Value<DateTime?> lastBreakEndedAt = const Value.absent(),
             Value<int?> maxBreaks = const Value.absent(),
             Value<int> maxBreakDuration = const Value.absent(),
             required String friction,
@@ -2684,6 +2747,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             numBreaksTaken: numBreaksTaken,
             lastBreakAt: lastBreakAt,
             pausedUntil: pausedUntil,
+            lastBreakEndedAt: lastBreakEndedAt,
             maxBreaks: maxBreaks,
             maxBreakDuration: maxBreakDuration,
             friction: friction,

@@ -22,16 +22,19 @@ class BreakDialog extends StatefulWidget {
 class _BreakDialogState extends State<BreakDialog> {
   final _codeController = TextEditingController();
   Timer? _delayTimer;
+  Timer? _pomodoroTimer;
   late int breakDuration;
   bool canConfirm = false;
   String? _scanFeedback;
   int? remainingDelay;
+  int? remainingPomodoroSeconds;
   String? generatedCode;
 
   @override
   void initState() {
     super.initState();
-    canConfirm = widget.routine.friction == 'none';
+    canConfirm = widget.routine.friction == 'none' || 
+                (widget.routine.friction == 'pomodoro' && widget.routine.canTakeBreakNowWithPomodoro);
 
     breakDuration = min(15, widget.routine.maxBreakDuration);
 
@@ -44,6 +47,15 @@ class _BreakDialogState extends State<BreakDialog> {
     } else if (widget.routine.friction == 'delay') {
       remainingDelay = widget.routine.frictionLen ?? 30;
       _startDelayTimer();
+    } else if (widget.routine.friction == 'pomodoro') {
+      // Initialize Pomodoro timer if needed
+      if (!widget.routine.canTakeBreakNowWithPomodoro) {
+        final remainingSeconds = widget.routine.getRemainingPomodoroTime;
+        if (remainingSeconds > 0) {
+          remainingPomodoroSeconds = remainingSeconds;
+          _startPomodoroTimer();
+        }
+      }
     }
   }
 
@@ -51,6 +63,7 @@ class _BreakDialogState extends State<BreakDialog> {
   void dispose() {
     _codeController.dispose();
     _delayTimer?.cancel();
+    _pomodoroTimer?.cancel();
     super.dispose();
   }
 
@@ -63,6 +76,23 @@ class _BreakDialogState extends State<BreakDialog> {
       setState(() {
         if (remainingDelay! > 0) {
           remainingDelay = remainingDelay! - 1;
+        } else {
+          canConfirm = true;
+          timer.cancel();
+        }
+      });
+    });
+  }
+  
+  void _startPomodoroTimer() {
+    _pomodoroTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        if (remainingPomodoroSeconds! > 0) {
+          remainingPomodoroSeconds = remainingPomodoroSeconds! - 1;
         } else {
           canConfirm = true;
           timer.cancel();
@@ -140,6 +170,151 @@ class _BreakDialogState extends State<BreakDialog> {
             const SizedBox(height: 16),
             if (widget.routine.friction == 'delay' && remainingDelay! > 0) ...[
               Text('Wait $remainingDelay ${remainingDelay == 1 ? 'second' : 'seconds'}'),
+            ] else if (widget.routine.friction == 'pomodoro') ...[              
+              Builder(builder: (context) {
+                // Use the state variable if available, otherwise get directly from the routine
+                final int remainingSeconds = remainingPomodoroSeconds ?? widget.routine.getRemainingPomodoroTime;
+                final int minutes = remainingSeconds ~/ 60;
+                final int seconds = remainingSeconds % 60;
+                
+                if (remainingSeconds > 0) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Pomodoro',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      Center(
+                        child: SizedBox(
+                          height: 160,
+                          width: 160,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // Background circle
+                              Container(
+                                height: 150,
+                                width: 150,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              // Progress indicator
+                              SizedBox(
+                                height: 150,
+                                width: 150,
+                                child: CircularProgressIndicator(
+                                  value: widget.routine.frictionLen != null && widget.routine.frictionLen! > 0 ?
+                                    1 - (remainingSeconds / (widget.routine.frictionLen! * 60)) : 0,
+                                  backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Theme.of(context).colorScheme.primary,
+                                  ),
+                                  strokeWidth: 10.0,
+                                ),
+                              ),
+                              // Inner circle with time display
+                              Container(
+                                height: 120,
+                                width: 120,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surface,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Theme.of(context).shadowColor.withOpacity(0.1),
+                                      blurRadius: 4,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+                                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Theme.of(context).colorScheme.primary,
+                                      ),
+                                    ),
+                                    Text(
+                                      'remaining',
+                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    ],
+                  );
+                } else {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Pomodoro',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 16),
+                      Center(
+                        child: Container(
+                          height: 160,
+                          width: 160,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Container(
+                              height: 120,
+                              width: 120,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.surface,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Theme.of(context).shadowColor.withOpacity(0.1),
+                                    blurRadius: 4,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.check_circle_outline,
+                                    color: Theme.of(context).colorScheme.primary,
+                                    size: 48,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Ready',
+                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                      color: Theme.of(context).colorScheme.primary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }
+              }),
             ] else if (widget.routine.friction == 'intention') ...[
               const Text('What will you do during this break?'),
               const SizedBox(height: 8),

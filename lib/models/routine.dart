@@ -26,6 +26,7 @@ class Routine implements Syncable {
   int? _numBreaksTaken;
   DateTime? _lastBreakAt;
   DateTime? _pausedUntil;
+  DateTime? _lastBreakEndedAt; // Tracks when a break ended, regardless of how it ended
   int? maxBreaks;
   int _maxBreakDuration;
   String friction;
@@ -60,6 +61,7 @@ class Routine implements Syncable {
     _numBreaksTaken = null,
     _lastBreakAt = null,
     _pausedUntil = null,
+    _lastBreakEndedAt = null,
     maxBreaks = null,
     _maxBreakDuration = 15,
     friction = 'delay',
@@ -83,6 +85,7 @@ class Routine implements Syncable {
     _numBreaksTaken = entry.numBreaksTaken,
     _lastBreakAt = entry.lastBreakAt,
     _pausedUntil = entry.pausedUntil,
+    _lastBreakEndedAt = entry.lastBreakEndedAt,
     maxBreaks = entry.maxBreaks,
     _maxBreakDuration = entry.maxBreakDuration,
     friction = entry.friction,
@@ -96,7 +99,7 @@ class Routine implements Syncable {
       for (final group in groups) {
         _groups[group.device] = Group.fromEntry(group);
       }
-      
+
       if (!isActive || _lastBreakAt == null) {
         _numBreaksTaken = 0;
       } else {
@@ -124,6 +127,7 @@ class Routine implements Syncable {
     _numBreaksTaken = other._numBreaksTaken,
     _lastBreakAt = other._lastBreakAt,
     _pausedUntil = other._pausedUntil,
+    _lastBreakEndedAt = other._lastBreakEndedAt,
     maxBreaks = other.maxBreaks,
     _maxBreakDuration = other._maxBreakDuration,
     friction = other.friction,
@@ -141,10 +145,10 @@ class Routine implements Syncable {
     }
 
   @override
-  Future<void> save({bool saveGroups = true}) async {
+  Future<void> save({bool groups = true}) async {
     final changes = this.changes;
 
-    if (saveGroups) {
+    if (groups) {
       await Future.wait(_groups.values.where((g) => g.modified).map((g) => g.save()));
     }
 
@@ -159,32 +163,33 @@ class Routine implements Syncable {
     }
 
     await getIt<AppDatabase>().upsertRoutine(RoutinesCompanion(
-      id: Value(_id), 
-      name: Value(_name),
-      monday: Value(_days[0]), 
-      tuesday: Value(_days[1]), 
-      wednesday: Value(_days[2]), 
-      thursday: Value(_days[3]), 
-      friday: Value(_days[4]), 
-      saturday: Value(_days[5]), 
-      sunday: Value(_days[6]), 
-      startTime: Value(_startTime), 
-      endTime: Value(_endTime),
-      groups: Value(_groups.values.map<String>((g) => g.id).toList()),
-      changes: Value(changes),
-      numBreaksTaken: Value(_numBreaksTaken),
-      lastBreakAt: Value(_lastBreakAt),
-      pausedUntil: Value(_pausedUntil),
-      maxBreaks: Value(maxBreaks),
-      maxBreakDuration: Value(_maxBreakDuration),
-      friction: Value(friction),
-      frictionLen: Value(frictionLen),
-      snoozedUntil: Value(_snoozedUntil),
-      updatedAt: Value(DateTime.now()),
-      recurrence: Value(1),
-      conditions: Value(conditions),
-      strictMode: Value(strictMode),
-      completableBefore: Value(_completableBefore)
+        id: Value(_id), 
+        name: Value(_name),
+        monday: Value(_days[0]), 
+        tuesday: Value(_days[1]), 
+        wednesday: Value(_days[2]), 
+        thursday: Value(_days[3]), 
+        friday: Value(_days[4]), 
+        saturday: Value(_days[5]), 
+        sunday: Value(_days[6]), 
+        startTime: Value(_startTime), 
+        endTime: Value(_endTime),
+        groups: Value(_groups.values.map<String>((g) => g.id).toList()),
+        changes: Value(changes),
+        numBreaksTaken: Value(_numBreaksTaken),
+        lastBreakAt: Value(_lastBreakAt),
+        lastBreakEndedAt: Value(_lastBreakEndedAt),
+        pausedUntil: Value(_pausedUntil),
+        maxBreaks: Value(maxBreaks),
+        maxBreakDuration: Value(_maxBreakDuration),
+        friction: Value(friction),
+        frictionLen: Value(frictionLen),
+        snoozedUntil: Value(_snoozedUntil),
+        updatedAt: Value(DateTime.now()),
+        recurrence: Value(1),
+        conditions: Value(conditions),
+        strictMode: Value(strictMode),
+        completableBefore: Value(_completableBefore)
     ));
 
     await SyncService().queueSync();
@@ -205,12 +210,12 @@ class Routine implements Syncable {
 
   Future<void> snooze(DateTime until) async {
     _snoozedUntil = until;
-    await save(saveGroups: false);
+    await save(groups: false);
   }
 
   Future<void> unsnooze() async {
     _snoozedUntil = null;
-    await save(saveGroups: false);
+    await save(groups: false);
   }
 
   @override
@@ -285,6 +290,10 @@ class Routine implements Syncable {
 
     if (_entry!.lastBreakAt != _lastBreakAt) {
       changes.add('lastBreakAt');
+    }
+
+    if (_entry!.lastBreakEndedAt != _lastBreakEndedAt) {
+      changes.add('lastBreakEndedAt');
     }
 
     if (_entry!.pausedUntil != _pausedUntil) {
@@ -467,25 +476,36 @@ class Routine implements Syncable {
   bool get canBreak {
     return (numBreaksLeft ?? 1) > 0;
   }
+  
+  bool get canTakeBreakNowWithPomodoro {
+    if (friction != 'pomodoro' || frictionLen == null) return true;
+    
+    // We can take a break when there's no remaining pomodoro time
+    return getRemainingPomodoroTime <= 0;
+  }
 
   DateTime? get pausedUntil => _pausedUntil;
+  
+  DateTime? get lastBreakEndedAt => _lastBreakEndedAt;
 
   Future<void> breakFor({int? minutes}) async {
     if (!canBreak) return;
 
     final duration = minutes ?? _maxBreakDuration;
     final now = DateTime.now();
-    
+
     _lastBreakAt = now;
     _pausedUntil = now.add(Duration(minutes: duration));
+    _lastBreakEndedAt = _pausedUntil;
     _numBreaksTaken = (_numBreaksTaken ?? 0) + 1;
     
-    await save(saveGroups: false);
+    await save(groups: false);
   }
 
   Future<void> endBreak() async {
     _pausedUntil = null;
-    await save();
+    _lastBreakEndedAt = DateTime.now();
+    await save(groups: false);
   }
 
   Map<String, Group> get groups => _groups;
@@ -532,6 +552,26 @@ class Routine implements Syncable {
   int calculateDelay() {
     if (frictionLen != null) return frictionLen!;
     return (_numBreaksTaken ?? 0) * 30; // 30 seconds per break taken
+  }
+  
+  int get getRemainingPomodoroTime {
+    if (friction != 'pomodoro' || frictionLen == null) return 0;
+    
+    final now = DateTime.now();
+
+    logger.i("getRemainingPomodoroTime - ${_numBreaksTaken} - ${_lastBreakEndedAt}");
+    
+    if (_numBreaksTaken == 0 || _numBreaksTaken == null) {
+      final timeSinceStart = now.difference(startedAt).inSeconds;
+      return max(0, (frictionLen! * 60) - timeSinceStart);
+    }
+    
+    if (_lastBreakEndedAt != null) {
+      final timeSinceLastBreak = now.difference(_lastBreakEndedAt!).inSeconds;
+      return max(0, (frictionLen! * 60) - timeSinceLastBreak);
+    }
+    
+    return frictionLen! * 60; // Convert minutes to seconds
   }
 
   int calculateCodeLength() {

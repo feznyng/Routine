@@ -30,6 +30,7 @@ CREATE TABLE routines (
     num_breaks_taken INTEGER,
     last_break_at TIMESTAMPTZ,
     paused_until TIMESTAMPTZ,
+    last_break_ended_at TIMESTAMPTZ,
     max_breaks INTEGER,
     max_break_duration INTEGER NOT NULL DEFAULT 15,
     friction TEXT NOT NULL,

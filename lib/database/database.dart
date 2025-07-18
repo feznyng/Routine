@@ -38,6 +38,7 @@ class Routines extends Table {
   late final numBreaksTaken = integer().nullable()();
   late final lastBreakAt = dateTime().nullable()();
   late final pausedUntil = dateTime().nullable()();
+  late final lastBreakEndedAt = dateTime().nullable()();
   late final maxBreaks = integer().nullable()();
   late final maxBreakDuration = integer().clientDefault(() => 15)();
   late final friction = text()();
@@ -100,7 +101,7 @@ class AppDatabase extends _$AppDatabase {
   bool _skipUpdates = false;
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration {
@@ -112,7 +113,11 @@ class AppDatabase extends _$AppDatabase {
         },
         from2To3: (m, schema) async {
           await m.addColumn(schema.routines, schema.routines.completableBefore);
-        }),
+        },
+        from3To4: (m, schema) async {
+          await m.addColumn(schema.routines, schema.routines.lastBreakEndedAt);
+        }
+      ),
     );
   }
 
