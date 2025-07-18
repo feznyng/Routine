@@ -543,6 +543,7 @@ class SyncService {
                 deleted: Value(overwriteMap['deleted'] ?? routine['deleted']),
                 changes: Value(overwriteMap['changes'] ?? []),
                 strictMode: Value((overwriteMap['strictMode'] ?? routine['strict_mode']) ?? false),
+                completableBefore: Value((overwriteMap['completableBefore'] ?? routine['completable_before']) ?? 0),
                 conditions: Value(conditions),
               ));
             }
@@ -693,6 +694,7 @@ class SyncService {
           'friction_len': routine.frictionLen,
           'snoozed_until': routine.snoozedUntil?.toUtc().toIso8601String(),
           'strict_mode': routine.strictMode,
+          'completable_before': routine.completableBefore,
           'updated_at': routine.updatedAt.toUtc().toIso8601String(),
           'deleted': routine.deleted,
         })

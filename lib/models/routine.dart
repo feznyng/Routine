@@ -33,6 +33,7 @@ class Routine implements Syncable {
   DateTime? _snoozedUntil;
   bool strictMode = false;
   List<Condition> conditions = [];
+  int _completableBefore = 0; // Minutes before routine start when conditions can be completed
 
   late final Map<String, Group> _groups;
 
@@ -66,6 +67,7 @@ class Routine implements Syncable {
     _snoozedUntil = null,
     strictMode = false,
     conditions = [],
+    _completableBefore = 0,
     _entry = null {
       _groups = {
         getIt<Device>().id: Group()
@@ -87,7 +89,8 @@ class Routine implements Syncable {
     conditions = List.from(entry.conditions),
     frictionLen = entry.frictionLen,
     _snoozedUntil = entry.snoozedUntil,
-    strictMode = entry.strictMode {
+    strictMode = entry.strictMode,
+    _completableBefore = entry.completableBefore ?? 0 {
       _entry = entry;
       _groups = {};
       for (final group in groups) {
@@ -128,6 +131,7 @@ class Routine implements Syncable {
     _snoozedUntil = other._snoozedUntil,
     conditions = other.conditions,
     strictMode = other.strictMode,
+    _completableBefore = other._completableBefore,
     _entry = other._entry {
       _groups = Map.fromEntries(
         other._groups.entries.map(
@@ -179,7 +183,8 @@ class Routine implements Syncable {
       updatedAt: Value(DateTime.now()),
       recurrence: Value(1),
       conditions: Value(conditions),
-      strictMode: Value(strictMode)
+      strictMode: Value(strictMode),
+      completableBefore: Value(_completableBefore)
     ));
 
     await SyncService().queueSync();
@@ -305,6 +310,10 @@ class Routine implements Syncable {
     if (_entry!.frictionLen != frictionLen) {
       changes.add('frictionLen');
     }
+
+    if (_entry!.completableBefore != _completableBefore) {
+      changes.add('completableBefore');
+    }
     
     return changes;
   }
@@ -392,6 +401,60 @@ class Routine implements Syncable {
     
     // Regular same-day routine
     return _days[dayOfWeek] && (currMins >= _startTime && currMins < _endTime);
+  }
+  
+  // Determines if conditions can be completed based on the current time and completableBefore setting
+  bool get canCompleteConditions {
+    if (isSnoozed) {
+      return false;
+    }
+
+    final DateTime now = DateTime.now();
+    final int dayOfWeek = now.weekday - 1;
+    final int currMins = now.hour * 60 + now.minute;
+    
+    if (_startTime == -1 && _endTime == -1) {
+      return _days[dayOfWeek];
+    }
+    
+    // Calculate the effective start time with completableBefore minutes subtracted
+    final int effectiveStartTime = _startTime - _completableBefore;
+    
+    // Handle overnight routines (ending on the next day)
+    if (_endTime < _startTime) {
+      if (currMins >= effectiveStartTime || (effectiveStartTime < 0 && currMins >= (effectiveStartTime + 24 * 60))) {
+        // Current time is after effective start time but before midnight
+        // Only need to check if current day is enabled
+        return _days[dayOfWeek];
+      } else if (currMins < _endTime) {
+        // Current time is after midnight but before end time
+        // Check if yesterday was enabled (routine started yesterday)
+        final int yesterdayOfWeek = (dayOfWeek + 6) % 7; // Previous day, wrapping from 0 back to 6
+        return _days[yesterdayOfWeek];
+      }
+      return false;
+    }
+    
+    // Handle the case where effectiveStartTime might be negative (before midnight of previous day)
+    if (effectiveStartTime < 0) {
+      // Check if we're in the window between midnight and the actual start time
+      if (currMins < _startTime) {
+        final int yesterdayOfWeek = (dayOfWeek + 6) % 7; // Previous day
+        return _days[yesterdayOfWeek] && (currMins >= (effectiveStartTime + 24 * 60));
+      }
+    }
+    
+    // Regular same-day routine
+    return _days[dayOfWeek] && (currMins >= effectiveStartTime && currMins < _endTime);
+  }
+
+  int get completableBefore => _completableBefore;
+  
+  set completableBefore(int value) {
+    if (value < 0) {
+      throw Exception("Completable before time must be non-negative");
+    }
+    _completableBefore = value;
   }
 
   bool get isPaused {
@@ -502,7 +565,15 @@ class Routine implements Syncable {
   }
 
   bool isConditionMet(Condition condition) {
-    return condition.lastCompletedAt != null && condition.lastCompletedAt!.isAfter(startedAt);
+    if (condition.lastCompletedAt == null) {
+      return false;
+    }
+  
+    // Calculate the effective start time by subtracting completableBefore minutes
+    final DateTime effectiveStartTime = startedAt.subtract(Duration(minutes: _completableBefore));
+  
+    // Check if the condition was completed after the effective start time
+    return condition.lastCompletedAt!.isAfter(effectiveStartTime);
   }
 
   bool get areConditionsMet {

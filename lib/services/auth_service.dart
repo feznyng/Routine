@@ -62,33 +62,6 @@ class AuthService {
     if (simple) {
       return;
     }
-    
-    // Try to restore the refresh token with error handling
-    String? refreshToken;
-    try {
-      refreshToken = await _storage.read(key: 'supabase_refresh_token');
-    } catch (e) {
-      logger.e('Failed to read refresh token from secure storage: $e');
-    }
-    
-    if (refreshToken != null) {
-      try {
-        final response = await _client.auth.refreshSession();
-        if (response.session != null) {
-          logger.i('Restored session for user: ${response.user?.email}');
-          if (!simple) {
-            initNotifications();
-          }
-        }
-      } catch (e) {
-        logger.w('Failed to refresh session $e');
-        try {
-          await _storage.delete(key: 'supabase_refresh_token');
-        } catch (storageError) {
-          logger.e('Failed to delete refresh token: $storageError');
-        }
-      }
-    }
 
     // Listen for auth state changes
     _client.auth.onAuthStateChange.listen((data) async {

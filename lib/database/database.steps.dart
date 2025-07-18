@@ -328,8 +328,165 @@ i1.GeneratedColumn<String> _column_33(String aliasedName) =>
 i1.GeneratedColumn<String> _column_34(String aliasedName) =>
     i1.GeneratedColumn<String>('categories', aliasedName, false,
         type: i1.DriftSqlType.string);
+
+final class Schema3 extends i0.VersionedSchema {
+  Schema3({required super.database}) : super(version: 3);
+  @override
+  late final List<i1.DatabaseSchemaEntity> entities = [
+    routines,
+    devices,
+    groups,
+  ];
+  late final Shape3 routines = Shape3(
+      source: i0.VersionedTable(
+        entityName: 'routines',
+        withoutRowId: false,
+        isStrict: false,
+        tableConstraints: [
+          'PRIMARY KEY(id)',
+        ],
+        columns: [
+          _column_0,
+          _column_1,
+          _column_2,
+          _column_3,
+          _column_4,
+          _column_5,
+          _column_6,
+          _column_7,
+          _column_8,
+          _column_9,
+          _column_10,
+          _column_11,
+          _column_12,
+          _column_13,
+          _column_14,
+          _column_15,
+          _column_16,
+          _column_17,
+          _column_18,
+          _column_19,
+          _column_20,
+          _column_21,
+          _column_22,
+          _column_23,
+          _column_24,
+          _column_25,
+          _column_35,
+        ],
+        attachedDatabase: database,
+      ),
+      alias: null);
+  late final Shape1 devices = Shape1(
+      source: i0.VersionedTable(
+        entityName: 'devices',
+        withoutRowId: false,
+        isStrict: false,
+        tableConstraints: [
+          'PRIMARY KEY(id)',
+        ],
+        columns: [
+          _column_0,
+          _column_1,
+          _column_26,
+          _column_27,
+          _column_13,
+          _column_12,
+          _column_14,
+          _column_28,
+        ],
+        attachedDatabase: database,
+      ),
+      alias: null);
+  late final Shape2 groups = Shape2(
+      source: i0.VersionedTable(
+        entityName: 'groups',
+        withoutRowId: false,
+        isStrict: false,
+        tableConstraints: [
+          'PRIMARY KEY(id)',
+        ],
+        columns: [
+          _column_0,
+          _column_29,
+          _column_30,
+          _column_31,
+          _column_32,
+          _column_33,
+          _column_34,
+          _column_12,
+          _column_13,
+          _column_14,
+        ],
+        attachedDatabase: database,
+      ),
+      alias: null);
+}
+
+class Shape3 extends i0.VersionedTable {
+  Shape3({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get id =>
+      columnsByName['id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get name =>
+      columnsByName['name']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<bool> get monday =>
+      columnsByName['monday']! as i1.GeneratedColumn<bool>;
+  i1.GeneratedColumn<bool> get tuesday =>
+      columnsByName['tuesday']! as i1.GeneratedColumn<bool>;
+  i1.GeneratedColumn<bool> get wednesday =>
+      columnsByName['wednesday']! as i1.GeneratedColumn<bool>;
+  i1.GeneratedColumn<bool> get thursday =>
+      columnsByName['thursday']! as i1.GeneratedColumn<bool>;
+  i1.GeneratedColumn<bool> get friday =>
+      columnsByName['friday']! as i1.GeneratedColumn<bool>;
+  i1.GeneratedColumn<bool> get saturday =>
+      columnsByName['saturday']! as i1.GeneratedColumn<bool>;
+  i1.GeneratedColumn<bool> get sunday =>
+      columnsByName['sunday']! as i1.GeneratedColumn<bool>;
+  i1.GeneratedColumn<int> get startTime =>
+      columnsByName['start_time']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get endTime =>
+      columnsByName['end_time']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get recurrence =>
+      columnsByName['recurrence']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get changes =>
+      columnsByName['changes']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<bool> get deleted =>
+      columnsByName['deleted']! as i1.GeneratedColumn<bool>;
+  i1.GeneratedColumn<DateTime> get updatedAt =>
+      columnsByName['updated_at']! as i1.GeneratedColumn<DateTime>;
+  i1.GeneratedColumn<String> get groups =>
+      columnsByName['groups']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get numBreaksTaken =>
+      columnsByName['num_breaks_taken']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<DateTime> get lastBreakAt =>
+      columnsByName['last_break_at']! as i1.GeneratedColumn<DateTime>;
+  i1.GeneratedColumn<DateTime> get pausedUntil =>
+      columnsByName['paused_until']! as i1.GeneratedColumn<DateTime>;
+  i1.GeneratedColumn<int> get maxBreaks =>
+      columnsByName['max_breaks']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get maxBreakDuration =>
+      columnsByName['max_break_duration']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get friction =>
+      columnsByName['friction']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get frictionLen =>
+      columnsByName['friction_len']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<DateTime> get snoozedUntil =>
+      columnsByName['snoozed_until']! as i1.GeneratedColumn<DateTime>;
+  i1.GeneratedColumn<String> get conditions =>
+      columnsByName['conditions']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<bool> get strictMode =>
+      columnsByName['strict_mode']! as i1.GeneratedColumn<bool>;
+  i1.GeneratedColumn<int> get completableBefore =>
+      columnsByName['completable_before']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<int> _column_35(String aliasedName) =>
+    i1.GeneratedColumn<int>('completable_before', aliasedName, true,
+        type: i1.DriftSqlType.int);
 i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,
+  required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
 }) {
   return (currentVersion, database) async {
     switch (currentVersion) {
@@ -338,6 +495,11 @@ i0.MigrationStepWithVersion migrationSteps({
         final migrator = i1.Migrator(database, schema);
         await from1To2(migrator, schema);
         return 2;
+      case 2:
+        final schema = Schema3(database: database);
+        final migrator = i1.Migrator(database, schema);
+        await from2To3(migrator, schema);
+        return 3;
       default:
         throw ArgumentError.value('Unknown migration from $currentVersion');
     }
@@ -346,8 +508,10 @@ i0.MigrationStepWithVersion migrationSteps({
 
 i1.OnUpgrade stepByStep({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,
+  required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
 }) =>
     i0.VersionedSchema.stepByStepHelper(
         step: migrationSteps(
       from1To2: from1To2,
+      from2To3: from2To3,
     ));

@@ -36,6 +36,8 @@ CREATE TABLE routines (
     friction_len INTEGER,
     conditions JSONB,
     snoozed_until TIMESTAMPTZ,
+    strict_mode BOOLEAN NOT NULL DEFAULT FALSE,
+    completable_before INTEGER NOT NULL DEFAULT 0,
     user_id uuid not null references auth.users on delete cascade
 );
 

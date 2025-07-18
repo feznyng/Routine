@@ -46,6 +46,7 @@ class Routines extends Table {
 
   late final conditions = text().map(const ConditionConverter())();
   late final strictMode = boolean().clientDefault(() => false)();
+  late final completableBefore = integer().clientDefault(() => 0).nullable()();
 }
 
 @DataClassName('DeviceEntry')
@@ -99,7 +100,7 @@ class AppDatabase extends _$AppDatabase {
   bool _skipUpdates = false;
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -108,6 +109,9 @@ class AppDatabase extends _$AppDatabase {
         from1To2: (m, schema) async {
           await m.dropColumn(schema.routines, 'recurring');
           await m.addColumn(schema.routines, schema.routines.recurrence);
+        },
+        from2To3: (m, schema) async {
+          await m.addColumn(schema.routines, schema.routines.completableBefore);
         }),
     );
   }
