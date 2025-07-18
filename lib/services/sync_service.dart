@@ -44,7 +44,7 @@ class SyncService {
   Timer? _syncStatusPollingTimer;
   String? _latestSyncJobId;
   bool _lastKnownSyncStatus = false;
-  Lock _syncLock = Lock();
+  final Lock _syncLock = Lock();
   
   // Stream controller for sync failure events
   final StreamController<void> _syncFailureController = StreamController<void>.broadcast();
