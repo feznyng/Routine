@@ -55,27 +55,36 @@ void callbackDispatcher() {
 }
 
 Future<void> setup() async {
-  final stopwatch = Stopwatch();
-  stopwatch.start();
-
-  await dotenv.load(fileName: '.env');
-  await Workmanager().initialize(callbackDispatcher);
-
-  final db = AppDatabase();
-  getIt.registerSingleton<AppDatabase>(db);
-
-  final currDevice = await Device.getCurrent();
-  getIt.registerSingleton<Device>(currDevice); 
-    
-  await AuthService().init();
-  await StrictModeService().init();
-  await SyncService().queueSync();
-
   if (kReleaseMode) {
     Logger.level = Level.warning;
   } else {
     Logger.level = Level.trace;
   }
+
+  final stopwatch = Stopwatch();
+  stopwatch.start();
+
+  await dotenv.load(fileName: '.env');
+
+  if (!Util.isDesktop()) {
+    await Workmanager().initialize(callbackDispatcher);
+  }
+
+  await Future.wait([
+    () async {
+      final db = AppDatabase();
+      getIt.registerSingleton<AppDatabase>(db);
+
+      final currDevice = await Device.getCurrent();
+      getIt.registerSingleton<Device>(currDevice); 
+    }(),
+    AuthService().init()
+  ]);
+
+  await Future.wait([
+    StrictModeService().init(), 
+    SyncService().queueSync()
+  ]);
   
   if (Util.isDesktop()) {
     await windowManager.ensureInitialized();
