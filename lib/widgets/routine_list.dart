@@ -198,7 +198,7 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
     
     // Split sorted routines into completed, active, inactive, and snoozed
     final snoozedRoutines = sortedRoutines.where((routine) => routine.isSnoozed).toList();
-    final completedRoutines = sortedRoutines.where((routine) => !routine.isSnoozed && routine.isActive && routine.areConditionsMet).toList();
+    final completedRoutines = sortedRoutines.where((routine) => !routine.isSnoozed && routine.canCompleteConditions && routine.areConditionsMet).toList();
     final activeRoutines = sortedRoutines.where((routine) => routine.isActive && !routine.isSnoozed && !routine.areConditionsMet).toList();
     final inactiveRoutines = sortedRoutines.where((routine) => !routine.isActive && !routine.isSnoozed).toList();
        
