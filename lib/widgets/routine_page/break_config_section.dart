@@ -91,7 +91,7 @@ class BreakConfigSection extends StatelessWidget {
                             ),
                             ButtonSegment(
                               value: 'text',
-                              label: Text('${routine.maxBreaks} breaks'),
+                              label: Text('${routine.maxBreaks} break${(routine.maxBreaks ?? 1) > 1 ? 's' : ''}'),
                             ),
                             ButtonSegment(
                               value: 'plus',
