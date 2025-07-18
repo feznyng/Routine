@@ -101,9 +101,9 @@ class _BreakDialogState extends State<BreakDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
       ),
       title: Row(
         children: [
@@ -122,7 +122,10 @@ class _BreakDialogState extends State<BreakDialog> {
         ],
       ),
       content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 400),
+        constraints: const BoxConstraints(
+          maxWidth: 480,
+          minWidth: 360,
+        ),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -133,7 +136,7 @@ class _BreakDialogState extends State<BreakDialog> {
                 elevation: 0,
                 color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
                   child: Row(
                     children: [
                       Icon(
@@ -154,7 +157,7 @@ class _BreakDialogState extends State<BreakDialog> {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               
               // Friction display (if any)
               if (widget.routine.friction != 'none') ...[
@@ -171,7 +174,7 @@ class _BreakDialogState extends State<BreakDialog> {
                 ),
                 const SizedBox(height: 24),
                 const Divider(),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
               ],
               
               // Duration selector
@@ -184,7 +187,7 @@ class _BreakDialogState extends State<BreakDialog> {
                     : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               SegmentedButton<String>(
                 segments: [
                   ButtonSegment(
