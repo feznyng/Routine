@@ -12,6 +12,8 @@ App/site blocker for iOS, Android, macOS, and Windows.
 
 ## Support
 
+### Platforms
+
 | Platform | Supported | Minimum Version | Tested 
 | -------- | ------- | --------------- | ----- 
 | macOS    | ✅      | 13.5           | 14.6.1      
@@ -19,6 +21,21 @@ App/site blocker for iOS, Android, macOS, and Windows.
 | Windows  | ✅      | 10             | 11 Version 24H2      
 | Android  | ✅      | 8              | 16 (Emulator)
 | Linux    | 🚧      |                |       
+
+### Browsers
+
+| Browser | macOS | Windows | Android | iOS |
+| ------- | ----- | ------- | ------- | --- |
+| Firefox | ✅ | ✅ | ✅ | ✅ |
+| Google Chrome | ✅ | ✅ | ✅ | ✅ |
+| Microsoft Edge | ✅ | ✅ | ✅ | ✅ |
+| Safari | ✅ | ➖ | ➖ | ✅ |
+| Opera | ✅ | ✅ | ✅ | ✅ |
+| Brave | ✅ | ✅ | ✅ | ✅ |
+| Samsung Internet | ➖ | ➖ | ✅ | ➖ |
+| DuckDuckGo | ➖ | ➖ | ✅ | ✅ |
+| UC Browser | ➖ | ➖ | ✅ | ➖ |
+| Vivaldi | ➖ | ➖ | ✅ | ➖ |
 
 ## Development
 
