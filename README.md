@@ -6,9 +6,11 @@ App/site blocker for iOS, Android, macOS, and Windows.
 
 - **Cross-platform:** Works across (almost) all your devices and can automatically sync changes you make to your routines. 
 - **Conditions**: Allows you to define special conditions on lists like needing to visit a location or scan an NFC tag/QR Code before unlocking your apps, allowing you to incentivize good habits like going to the gym.
-- **Local-First**: Routine can run entirely offline on your device with optional remote sync. Specifically blocked apps/sites never leave your device.
+- **Local-First**: Runs offline-first with optional remote sync. Specifically blocked apps/sites never leave your device.
 - **Flexible**: Supports both block and allow lists and multiple active lists at the same time. 
-- **Strict**: Provides strict mode settings to add friction to modifying routines and common bypass methods like the task manager or settings changes. 
+- **Strict**: Provides options to add friction to modifying routines and common bypass methods like the task manager or settings changes. 
+
+## Support
 
 | Platform | Supported | Minimum Version | Tested 
 | -------- | ------- | --------------- | ----- 

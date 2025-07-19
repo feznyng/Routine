@@ -33,7 +33,7 @@ class _BreakDialogState extends State<BreakDialog> {
     canConfirm = widget.routine.friction == 'none' || 
                 (widget.routine.friction == 'pomodoro' && widget.routine.canTakeBreakNowWithPomodoro);
 
-    breakDuration = min(15, widget.routine.maxBreakDuration);
+    breakDuration = widget.routine.maxBreakDuration;
 
     if (widget.routine.friction == 'code') {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
