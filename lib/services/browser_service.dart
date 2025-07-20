@@ -187,7 +187,7 @@ class BrowserService with ChangeNotifier {
   }
   
   bool isBrowserConnected(Browser browser, {bool controlled = true}) {
-    return _connections.containsKey(browser) || (Platform.isMacOS && (!controlled || _controllable.contains(browser)));
+    return _connections.containsKey(browser) || (Platform.isMacOS && getBrowserData(browser).macosControllable && (!controlled || _controllable.contains(browser)));
   }
 
   BrowserData getBrowserData(Browser browser) {
