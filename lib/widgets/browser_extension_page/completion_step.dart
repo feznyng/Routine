@@ -22,7 +22,7 @@ class CompletionStep extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'The browser extension has been set up successfully.',
+          'Browser configuration has been completed successfully.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: 24),
@@ -30,7 +30,7 @@ class CompletionStep extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Connected browsers:',
+              'Configured browsers:',
               style: Theme.of(context).textTheme.titleSmall,
             ),
             const SizedBox(height: 8),

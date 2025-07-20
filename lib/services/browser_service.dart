@@ -128,10 +128,27 @@ class BrowserService with ChangeNotifier {
 
     if (result) {
       _controllable.add(browser);
+      notifyListeners();
+    } else {
+      _controllable.remove(browser);
+      notifyListeners();
+    }
+
+    return result;
+  }
+
+  Future<bool> hasAutomationPermission(Browser browser) async {
+    final data = browserData[browser]!;
+
+    final result = await DesktopChannel.instance.hasAutomationPermission(data.macosPackage);
+
+    if (result) {
+      _controllable.add(browser);
     } else {
       _controllable.remove(browser);
     }
-
+    
+    notifyListeners();
     return result;
   }
 
@@ -170,7 +187,7 @@ class BrowserService with ChangeNotifier {
   }
   
   bool isBrowserConnected(Browser browser, {bool controlled = true}) {
-    return _connections.containsKey(browser) || !controlled || _controllable.contains(browser);
+    return _connections.containsKey(browser) || (Platform.isMacOS && (!controlled || _controllable.contains(browser)));
   }
 
   BrowserData getBrowserData(Browser browser) {

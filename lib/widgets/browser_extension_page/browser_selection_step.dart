@@ -48,7 +48,7 @@ class BrowserSelectionStep extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'The Routine browser extension needs to be installed on each browser you use.',
+          'Select browsers to configure. Some browsers require browser extensions, while others (like Safari and Chrome on macOS) use automation permissions.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: 16),

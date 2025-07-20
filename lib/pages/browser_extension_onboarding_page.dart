@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:Routine/services/browser_config.dart';
 import 'package:Routine/setup.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:Routine/services/strict_mode_service.dart';
 import 'package:Routine/widgets/browser_extension_page/browser_selection_step.dart';
 import 'package:Routine/widgets/browser_extension_page/native_messaging_host_step.dart';
 import 'package:Routine/widgets/browser_extension_page/extension_installation_step.dart';
+import 'package:Routine/widgets/browser_extension_page/automation_permission_step.dart';
 import 'package:Routine/widgets/browser_extension_page/completion_step.dart';
 
 enum MessageType { error, success }
@@ -32,6 +34,7 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
   List<Browser> _selectedBrowsers = [];
   int _currentBrowserIndex = 0;
   Map<Browser, bool> _nmhInstalledMap = {};
+  Map<Browser, bool> _automationPermissionMap = {};
   bool _isLoading = true;
   bool _isExtensionConnecting = false;
   String? _errorMessage;
@@ -84,8 +87,10 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
     
     // Initialize NMH installation status map for each browser
     Map<Browser, bool> nmhMap = {};
+    Map<Browser, bool> automationMap = {};
     for (final browser in browsers) {
       nmhMap[browser] = false;
+      automationMap[browser] = false;
     }
     
     setState(() {
@@ -95,6 +100,7 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
         (b) => !_browserExtensionService.isBrowserConnected(b)
       ).toList();
       _nmhInstalledMap = nmhMap;
+      _automationPermissionMap = automationMap;
       _isLoading = false;
     });
   }
@@ -181,53 +187,84 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
       return;
     }
     
-    if (_currentStep == 1) {
-      final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
-      if (!(_nmhInstalledMap[currentBrowser] ?? false)) {
-        setState(() {
-          _errorMessage = 'Please install the Native Messaging Host first';
-        });
-        return;
-      }
-      
-      _startConnectionAttemptTimer();
-      _startGracePeriodCountdown();
-      
-      setState(() {
-        _currentStep++;
-      });
-
-      return;
-    }
+    final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
+    final browserConfig = browserData[currentBrowser]!;
     
-    if (_currentStep == 2) {
-
-      final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
-      final isConnected = _browserExtensionService.isBrowserConnected(currentBrowser);
-      
-      if (!isConnected) {
+    // Check if this is a macOS controllable browser
+    if (Platform.isMacOS && browserConfig.macosControllable) {
+      // For macOS controllable browsers, we only need automation permission
+      if (_currentStep == 1) {
+        // Check if automation permission is granted
+        if (!(_automationPermissionMap[currentBrowser] ?? false)) {
+          setState(() {
+            _errorMessage = 'Please grant automation permission first';
+          });
+          return;
+        }
+        
+        // Move to the next browser or to the completion step
+        _currentBrowserIndex++;
+        
+        // If we've gone through all browsers, move to the completion step
+        if (_currentBrowserIndex >= _selectedBrowsers.length) {
+          setState(() {
+            _currentStep = 3; // Completion step
+          });
+          return;
+        }
+        
+        // Otherwise, stay on step 1 for the next browser
         setState(() {
-          _errorMessage = 'Please wait for the extension to connect';
+          // Stay on step 1 for next browser
+        });
+        return;
+      }
+    } else {
+      // For extension-based browsers, follow the original flow
+      if (_currentStep == 1) {
+        if (!(_nmhInstalledMap[currentBrowser] ?? false)) {
+          setState(() {
+            _errorMessage = 'Please install the Native Messaging Host first';
+          });
+          return;
+        }
+        
+        _startConnectionAttemptTimer();
+        _startGracePeriodCountdown();
+        
+        setState(() {
+          _currentStep++;
         });
         return;
       }
       
-      // Move to the next browser or to the completion step
-      _currentBrowserIndex++;
-      
-      // If we've gone through all browsers, move to the completion step
-      if (_currentBrowserIndex >= _selectedBrowsers.length) {
+      if (_currentStep == 2) {
+        final isConnected = _browserExtensionService.isBrowserConnected(currentBrowser);
+        
+        if (!isConnected) {
+          setState(() {
+            _errorMessage = 'Please wait for the extension to connect';
+          });
+          return;
+        }
+        
+        // Move to the next browser or to the completion step
+        _currentBrowserIndex++;
+        
+        // If we've gone through all browsers, move to the completion step
+        if (_currentBrowserIndex >= _selectedBrowsers.length) {
+          setState(() {
+            _currentStep = 3; // Completion step
+          });
+          return;
+        }
+        
+        // Otherwise, go back to the NMH installation step for the next browser
         setState(() {
-          _currentStep = 3; // Completion step
+          _currentStep = 1; // Back to NMH installation for next browser
         });
         return;
       }
-      
-      // Otherwise, go back to the NMH installation step for the next browser
-      setState(() {
-        _currentStep = 1; // Back to NMH installation for next browser
-      });
-      return;
     }
     
     // For any other steps, just increment
@@ -423,15 +460,30 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
       case 1:
         if (_currentBrowserIndex < _selectedBrowsers.length) {
           final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
-          final nmhInstalled = _nmhInstalledMap[currentBrowser] ?? false;
+          final browserConfig = browserData[currentBrowser]!;
           
-          return NativeMessagingHostStep(
-            browser: currentBrowser,
-            nmhInstalled: nmhInstalled,
-            onInstall: _installNativeMessagingHost,
-            totalBrowsers: _selectedBrowsers.length,
-            currentBrowserIndex: _currentBrowserIndex,
-          );
+          // Check if this is a macOS controllable browser
+          if (Platform.isMacOS && browserConfig.macosControllable) {
+            return AutomationPermissionStep(
+              browser: currentBrowser,
+              onPermissionGranted: () {
+                setState(() {
+                  _automationPermissionMap[currentBrowser] = true;
+                });
+              },
+            );
+          } else {
+            // For extension-based browsers, show NMH step
+            final nmhInstalled = _nmhInstalledMap[currentBrowser] ?? false;
+            
+            return NativeMessagingHostStep(
+              browser: currentBrowser,
+              nmhInstalled: nmhInstalled,
+              onInstall: _installNativeMessagingHost,
+              totalBrowsers: _selectedBrowsers.length,
+              currentBrowserIndex: _currentBrowserIndex,
+            );
+          }
         }
         return const Center(child: Text('No browsers selected'));
       case 2:
@@ -453,7 +505,7 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
         return const Center(child: Text('No browsers selected'));
       case 3:
         return CompletionStep(
-          connectedBrowsers: [],
+          connectedBrowsers: _selectedBrowsers,
         );
       default:
         return const Center(child: Text('Unknown step'));
