@@ -169,21 +169,21 @@ class BrowserService with ChangeNotifier {
     notifyListeners();
   }
   
-  bool isBrowserConnected(Browser browser) {
-    return _connections.containsKey(browser) || _controllable.contains(browser);
+  bool isBrowserConnected(Browser browser, {bool controlled = true}) {
+    return _connections.containsKey(browser) || !controlled || _controllable.contains(browser);
   }
 
   BrowserData getBrowserData(Browser browser) {
     return browserData[browser]!;
   }
     
-  Future<List<InstalledBrowser>> getInstalledSupportedBrowsers({bool? connected = false}) async {
+  Future<List<InstalledBrowser>> getInstalledSupportedBrowsers({bool? connected = false, bool controlled = true}) async {
     List<InstalledBrowser> browsers = await _getInstalledSupportedBrowsers();
 
     if (connected == true) {
-      return browsers.where((b) => isBrowserConnected(b.browser)).toList();
+      return browsers.where((b) => isBrowserConnected(b.browser, controlled: controlled)).toList();
     } else if (connected == false) {
-      return browsers.where((b) => !isBrowserConnected(b.browser)).toList();
+      return browsers.where((b) => !isBrowserConnected(b.browser, controlled: controlled)).toList();
     }
 
     return browsers;

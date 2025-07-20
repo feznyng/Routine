@@ -163,7 +163,8 @@ class DesktopService extends PlatformService {
     final apps = List<String>.from(_cachedApps);
 
     if (StrictModeService.instance.effectiveBlockBrowsersWithoutExtension && !BrowserService.instance.isInGracePeriod) {
-      final browsers = await BrowserService.instance.getInstalledSupportedBrowsers(connected: false);
+      // we don't include controlled browsers because that check will occur natively on macos
+      final browsers = await BrowserService.instance.getInstalledSupportedBrowsers(connected: false, controlled: false);
       apps.addAll(browsers.map((b) => b.app.filePath));
       logger.i("added disconnected browsers: $browsers");
     }

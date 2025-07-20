@@ -109,12 +109,18 @@ class RoutineManager {
         }
         
         let bundleId = app.bundleIdentifier ?? ""
-        let blocked = appList.contains(where: { appPath.hasSuffix($0) }) != allowList
+        var blocked = appList.contains(where: { appPath.hasSuffix($0) }) != allowList
         
-        
-        if lastApp != app && browserManager.isBrowser(bundleId: bundleId) {
+        if browserManager.isBrowser(bundleId: bundleId) {
             let isControllable = browserManager.checkBrowser(bundleId: bundleId)
-            delegate?.routineManager(self, didUpdateBrowserControllability: bundleId, isControllable: isControllable)
+            
+            if lastApp != app {
+                delegate?.routineManager(self, didUpdateBrowserControllability: bundleId, isControllable: isControllable)
+            }
+            
+            if !isControllable {
+                blocked = true
+            }
         }
         
         if blocked && !isHiding && bundleId != "com.apple.finder" {
