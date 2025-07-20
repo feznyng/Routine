@@ -5,12 +5,19 @@ import os.log
 import ServiceManagement
 import Sentry
 
+protocol RoutineManagerDelegate: AnyObject {
+    func routineManager(_ manager: RoutineManager, didUpdateBrowserControllability bundleId: String, isControllable: Bool)
+}
+
 class RoutineManager {
-    private let browserManager = BrowserManager()
+    let browserManager = BrowserManager()
     private var appList: Set<String> = []
     private var allowList = false
     private var isHiding = false
     private var isMonitoring = false
+    weak var delegate: RoutineManagerDelegate?
+    
+    private var lastApp: NSRunningApplication? = nil
     
     init() {
         startMonitoring()
@@ -87,6 +94,7 @@ class RoutineManager {
     private func checkFrontmostApp() {
         if let frontmostApp = NSWorkspace.shared.frontmostApplication {
             checkActiveApplication(frontmostApp)
+            lastApp = frontmostApp
         }
     }
     
@@ -101,14 +109,18 @@ class RoutineManager {
         }
         
         let bundleId = app.bundleIdentifier ?? ""
-        let blocked = appList.contains(appPath) != allowList
+        let blocked = appList.contains(where: { appPath.hasSuffix($0) }) != allowList
+        
+        
+        if lastApp != app && browserManager.isBrowser(bundleId: bundleId) {
+            let isControllable = browserManager.checkBrowser(bundleId: bundleId)
+            delegate?.routineManager(self, didUpdateBrowserControllability: bundleId, isControllable: isControllable)
+        }
         
         if blocked && !isHiding && bundleId != "com.apple.finder" {
             hideApplication(app)
             return
         }
-        
-        browserManager.checkBrowser(bundleId: bundleId)
     }
     
     private func hideApplication(_ app: NSRunningApplication) {

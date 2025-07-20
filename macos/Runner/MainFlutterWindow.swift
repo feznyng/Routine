@@ -21,6 +21,9 @@ class MainFlutterWindow: NSWindow {
         
         requestNotificationAuthorization()
         
+        // Set up RoutineManager delegate
+        routineManager.delegate = self
+        
         methodChannel = FlutterMethodChannel(
             name: "com.solidsoft.routine",
             binaryMessenger: flutterViewController.engine.binaryMessenger
@@ -60,7 +63,7 @@ class MainFlutterWindow: NSWindow {
                 result(isEnabled)
             case "hasAutomationPermission":
                 if let bundleId = call.arguments as? String {
-                    result(BrowserManager.hasAutomationPermission(for: bundleId))
+                    result(routineManager.browserManager.hasAutomationPermission(for: bundleId))
                 } else {
                     result(FlutterError(code: "INVALID_ARGUMENTS",
                                       message: "Expected bundle ID string",
@@ -70,7 +73,7 @@ class MainFlutterWindow: NSWindow {
                 if let args = call.arguments as? [String: Any],
                    let bundleId = args["bundleId"] as? String,
                    let openPrefsOnReject = args["openPrefsOnReject"] as? Bool {
-                    result(BrowserManager.requestAutomationPermission(for: bundleId, openPrefsOnReject: openPrefsOnReject))
+                    result(routineManager.browserManager.requestAutomationPermission(for: bundleId, openPrefsOnReject: openPrefsOnReject))
                 } else {
                     result(FlutterError(code: "INVALID_ARGUMENTS",
                                       message: "Expected bundleId and openPrefsOnReject arguments",
@@ -179,6 +182,26 @@ class MainFlutterWindow: NSWindow {
                 }
             } else {
                 NSLog("Notification permission granted: %@", String(granted))
+            }
+        }
+    }
+}
+
+// MARK: - RoutineManagerDelegate
+extension MainFlutterWindow: RoutineManagerDelegate {
+    func routineManager(_ manager: RoutineManager, didUpdateBrowserControllability bundleId: String, isControllable: Bool) {
+        let message = [
+            "bundleId": bundleId,
+            "isControllable": isControllable
+        ] as [String : Any]
+        
+        NSLog("[Routine] Sending browserControllabilityChanged event")
+        
+        if isFlutterReady, let channel = methodChannel {
+            channel.invokeMethod("browserControllabilityChanged", arguments: message) { result in
+                if let error = result as? FlutterError {
+                    NSLog("[Routine] Error sending browserControllabilityChanged: %@", error.message ?? "Unknown error")
+                }
             }
         }
     }

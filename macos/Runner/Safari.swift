@@ -4,17 +4,17 @@ class Safari : Browser {
         bundleId: "com.apple.Safari",
        queryScript: """
             tell application id "com.apple.Safari"
-                if not running then return "" -- Safari not running
+                if not running then return "error" -- Safari not running
                 try
-                    if (count of windows) is 0 then return "" -- No windows open
+                    if (count of windows) is 0 then return "error" -- No windows open
                     tell front window
-                        if (count of tabs) is 0 then return "" -- No tabs in front window
+                        if (count of tabs) is 0 then return "error" -- No tabs in front window
                         tell current tab
                             return URL
                         end tell
                     end tell
                 on error errMsg number errNum
-                    return "" -- Error occurred
+                    return "error" -- Error occurred
                 end try
             end tell
     """, redirectScript: """

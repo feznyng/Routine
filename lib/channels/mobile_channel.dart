@@ -72,6 +72,7 @@ class MobileChannel {
           'allow': routine.allow,
           'conditionsMet': routine.areConditionsMet,
           'conditionsLastMet': conditionsLastMet?.toUtc().toIso8601String(),
+          'completeableBefore': routine.completableBefore,
           'strictMode': routine.strictMode,
         };
       }).toList();

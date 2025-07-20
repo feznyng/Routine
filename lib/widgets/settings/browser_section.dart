@@ -1,3 +1,4 @@
+import 'package:Routine/setup.dart';
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
 import 'dart:async';
@@ -53,7 +54,10 @@ class _BrowserSectionState extends State<BrowserSection> {
   }
 
   Future<void> _loadInstalledBrowsers() async {
-    final browsers = await _browserExtensionService.getInstalledSupportedBrowsers();
+    final browsers = await _browserExtensionService.getInstalledSupportedBrowsers(connected: null);
+
+    logger.i("installed browsers: $browsers");
+
     if (mounted) {
       setState(() {
         _installedBrowsers = browsers.map((b) => b.browser).toList();
@@ -143,7 +147,7 @@ class _BrowserSectionState extends State<BrowserSection> {
       );
     }
 
-    final connectedBrowsers = _browserExtensionService.connectedBrowsers;
+    final connectedBrowsers = _installedBrowsers.where((b) => _browserExtensionService.isBrowserConnected(b));
     final disconnectedBrowsers = _installedBrowsers.where((b) => !connectedBrowsers.contains(b));
     final isInCooldown = _browserExtensionService.isInCooldown;
     final remainingCooldownMinutes = _browserExtensionService.remainingCooldownMinutes;

@@ -4,14 +4,14 @@ class Chromium : Browser {
         bundleId: bundleId,
        queryScript: """
         tell application id "\(bundleId)"
-            if not running then return ""
+            if not running then return "error"
             try
                 if (count of windows) is 0 then return ""
                 tell active tab of front window
                     return URL
                 end tell
             on error errMsg number errNum
-                return "" -- Error occurred
+                return "error" -- Error occurred
             end try
         end tell
     """, redirectScript: """

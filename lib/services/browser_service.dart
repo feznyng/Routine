@@ -67,6 +67,30 @@ class BrowserService with ChangeNotifier {
         }
       }
     }
+    
+    // Listen for browser controllability updates from native side
+    if (Platform.isMacOS) {
+      DesktopChannel.instance.browserControllabilityStream.listen((event) {
+        final bundleId = event.bundleId;
+        final isControllable = event.controllable;
+
+        logger.i("Browser event = $bundleId, controllable = $isControllable");
+        
+        final browser = _getBrowserFromBundleId(bundleId);
+        if (browser != null) {
+          if (isControllable) {
+            _controllable.add(browser);
+            logger.i('Browser $browser is now controllable');
+          } else {
+            _controllable.remove(browser);
+            logger.i('Browser $browser is no longer controllable');
+          }
+
+          _connectionStreamController.add(true);
+          notifyListeners();
+        }
+      });
+    }
   }
   
   Stream<bool> get connectionStream => _connectionStreamController.stream;
@@ -152,9 +176,7 @@ class BrowserService with ChangeNotifier {
   BrowserData getBrowserData(Browser browser) {
     return browserData[browser]!;
   }
-  
-  List<Browser> get connectedBrowsers => _connections.keys.toList();
-  
+    
   Future<List<InstalledBrowser>> getInstalledSupportedBrowsers({bool? connected = false}) async {
     List<InstalledBrowser> browsers = await _getInstalledSupportedBrowsers();
 
@@ -533,5 +555,25 @@ class BrowserService with ChangeNotifier {
     _server?.close();
     _server = null;
     _connectionStreamController.close();
+  }
+  
+  // Helper method to map bundle IDs to Browser enum values
+  Browser? _getBrowserFromBundleId(String bundleId) {
+    switch (bundleId) {
+      case 'com.google.Chrome':
+        return Browser.chrome;
+      case 'com.microsoft.edgemac':
+        return Browser.edge;
+      case 'com.apple.Safari':
+        return Browser.safari;
+      case 'com.operasoftware.Opera':
+        return Browser.opera;
+      case 'com.brave.Browser':
+        return Browser.brave;
+      case 'org.mozilla.firefox':
+        return Browser.firefox;
+      default:
+        return null;
+    }
   }
 }

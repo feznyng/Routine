@@ -11,6 +11,11 @@ class Browser {
         self.redirectScript = redirectScript
     }
     
+    func canControl() -> Bool {
+        let url = getUrl()
+        return url != "error" && url != nil;
+    }
+    
     func getUrl() -> String? {
         var error: NSDictionary?
         if let script = NSAppleScript(source: queryScript) {

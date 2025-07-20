@@ -453,7 +453,7 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
         return const Center(child: Text('No browsers selected'));
       case 3:
         return CompletionStep(
-          connectedBrowsers: _browserExtensionService.connectedBrowsers,
+          connectedBrowsers: [],
         );
       default:
         return const Center(child: Text('Unknown step'));

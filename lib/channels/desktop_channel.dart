@@ -1,8 +1,17 @@
+import 'dart:async';
 import 'package:Routine/setup.dart';
 import 'package:flutter/services.dart';
 import 'package:Routine/constants.dart';
 import 'package:Routine/models/installed_app.dart';
 import 'package:Routine/util.dart';
+
+
+class BrowserControlMessage {
+  String bundleId;
+  bool controllable;
+
+  BrowserControlMessage({required this.bundleId, required this.controllable});
+}
 
 class DesktopChannel {
   // Singleton instance
@@ -10,6 +19,8 @@ class DesktopChannel {
   static DesktopChannel get instance => _instance;
 
   final _platform = const MethodChannel(kAppName);
+  final _browserControllabilityController = StreamController<BrowserControlMessage>.broadcast();
+  Future<void> Function()? _systemWakeHandler;
 
   // Private constructor
   DesktopChannel._();
@@ -93,21 +104,8 @@ class DesktopChannel {
 
   // Register system wake event handler
   void registerSystemWakeHandler(Future<void> Function() handler) {
-    _platform.setMethodCallHandler((call) async {
-      switch (call.method) {
-        case 'systemWake':
-          logger.i('=== SYSTEM WAKE EVENT ===');
-          await handler();
-          logger.i('=== SYSTEM WAKE EVENT PROCESSING COMPLETE ===');
-          return null;
-        default:
-          logger.e('Unknown method call: ${call.method}');
-          throw PlatformException(
-            code: 'Unimplemented',
-            message: "Method ${call.method} not implemented",
-          );
-      }
-    });
+    _systemWakeHandler = handler;
+    _platform.setMethodCallHandler(_handleMethodCall);
   }
   Future<bool> hasAutomationPermission(String bundleId) async {
     try {
@@ -130,5 +128,37 @@ class DesktopChannel {
       logger.e('Error requesting automation permission: $e');
       return false;
     }
+  }
+
+  // Stream for browser controllability updates
+  Stream<BrowserControlMessage> get browserControllabilityStream => _browserControllabilityController.stream;
+
+  // Handle method calls from native side
+  Future<void> _handleMethodCall(MethodCall call) async {
+    switch (call.method) {
+      case 'systemWake':
+        if (_systemWakeHandler != null) {
+          logger.i('=== SYSTEM WAKE EVENT ===');
+          await _systemWakeHandler!();
+          logger.i('=== SYSTEM WAKE EVENT PROCESSING COMPLETE ===');
+        }
+        break;
+      case 'browserControllabilityChanged':
+        logger.i("browserControllabilityChanged - args = ${call.arguments}");
+        final args = call.arguments;
+        _browserControllabilityController.add(BrowserControlMessage(bundleId: args['bundleId'], controllable: args['isControllable']));
+        break;
+      default:
+        logger.e('Unknown method call: ${call.method}');
+        throw PlatformException(
+          code: 'Unimplemented',
+          message: "Method ${call.method} not implemented",
+        );
+    }
+  }
+
+  // Dispose method to clean up resources
+  void dispose() {
+    _browserControllabilityController.close();
   }
 }
