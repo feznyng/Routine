@@ -42,8 +42,8 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
   Map<Browser, bool> _nmhInstalledMap = {};
   Map<Browser, bool> _automationPermissionMap = {};
   bool _isLoading = true;
-  bool _isExtensionConnecting = false;
-  bool _isNmhInstalling = false;
+
+
   String? _errorMessage;
   
   // Grace period related variables
@@ -115,14 +115,11 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
   }
 
   void _updateConnectionStatus() {
-    if (_currentStep == 2 && _currentBrowserIndex < _selectedBrowsers.length) {
-      final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
-      final isConnected = _browserExtensionService.isBrowserConnected(currentBrowser);
-      
+    // Trigger a rebuild to update the _canProceed() evaluation
+    // This ensures the Next button is enabled/disabled based on current connection status
+    if (mounted) {
       setState(() {
-        if (isConnected) {
-          _isExtensionConnecting = false;
-        }
+        // No state changes needed, just trigger rebuild
       });
     }
   }
@@ -335,57 +332,6 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
     }
   }
 
-  void _toggleBrowserSelection(Browser browser) {
-    setState(() {
-      if (_selectedBrowsers.contains(browser)) {
-        _selectedBrowsers.remove(browser);
-      } else {
-        _selectedBrowsers.add(browser);
-      }
-    });
-  }
-
-  void _installNativeMessagingHost() async {
-    if (_currentBrowserIndex < _selectedBrowsers.length) {
-      final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
-      
-      setState(() {
-        _isNmhInstalling = true;
-        _errorMessage = null; // Clear any previous errors
-      });
-      
-      // Install NMH - note that the current API doesn't support per-browser installation
-      // but the UI will track it per browser for a better user experience
-      final success = await _browserExtensionService.installNativeMessagingHost(currentBrowser);
-      
-      setState(() {
-        _nmhInstalledMap[currentBrowser] = success;
-        _isNmhInstalling = false;
-      });
-      
-      if (!success) {
-        setState(() {
-          _errorMessage = 'Failed to install native messaging host for $currentBrowser';
-        });
-      }
-    }
-  }
-
-  void _installBrowserExtension() async {
-    if (_currentBrowserIndex < _selectedBrowsers.length) {
-      final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
-      
-      setState(() {
-        _isExtensionConnecting = true;
-      });
-      
-      await _browserExtensionService.installBrowserExtension(currentBrowser);
-      
-      // Start connection attempt timer
-      _startConnectionAttemptTimer();
-    }
-  }
-
   void _finish() {
     if (!_browserExtensionService.endGracePeriod()) {
       Navigator.of(context).pop();
@@ -480,7 +426,16 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
         return BrowserSelectionStep(
           installedBrowsers: _installedBrowsers,
           selectedBrowsers: _selectedBrowsers,
-          onToggleBrowser: _toggleBrowserSelection,
+          onSelectionChanged: (browsers) {
+            setState(() {
+              _selectedBrowsers = browsers;
+            });
+          },
+          onErrorChanged: (error) {
+            setState(() {
+              _errorMessage = error;
+            });
+          },
         );
       case 1:
         if (_currentBrowserIndex < _selectedBrowsers.length) {
@@ -491,21 +446,33 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
           if (Platform.isMacOS && browserConfig.macosControllable) {
             return AutomationPermissionStep(
               browser: currentBrowser,
-              onPermissionGranted: () {
+              onPermissionChanged: (browser, hasPermission) {
                 setState(() {
-                  _automationPermissionMap[currentBrowser] = true;
+                  _automationPermissionMap[browser] = hasPermission;
                 });
               },
+              onErrorChanged: (error) {
+                setState(() {
+                  _errorMessage = error;
+                });
+              },
+              totalBrowsers: _selectedBrowsers.length,
+              currentBrowserIndex: _currentBrowserIndex,
             );
           } else {
             // For extension-based browsers, show NMH step
-            final nmhInstalled = _nmhInstalledMap[currentBrowser] ?? false;
-            
             return NativeMessagingHostStep(
               browser: currentBrowser,
-              nmhInstalled: nmhInstalled,
-              isInstalling: _isNmhInstalling,
-              onInstall: _installNativeMessagingHost,
+              onInstallationChanged: (browser, installed) {
+                setState(() {
+                  _nmhInstalledMap[browser] = installed;
+                });
+              },
+              onErrorChanged: (error) {
+                setState(() {
+                  _errorMessage = error;
+                });
+              },
               totalBrowsers: _selectedBrowsers.length,
               currentBrowserIndex: _currentBrowserIndex,
             );
@@ -515,13 +482,17 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
       case 2:
         if (_currentBrowserIndex < _selectedBrowsers.length) {
           final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
-          final isConnected = _browserExtensionService.isBrowserConnected(currentBrowser);
           
           return ExtensionInstallationStep(
             browser: currentBrowser,
-            isConnected: isConnected,
-            isConnecting: _isExtensionConnecting,
-            onInstall: _installBrowserExtension,
+            onInstallRequested: (browser) {
+              _startConnectionAttemptTimer();
+            },
+            onErrorChanged: (error) {
+              setState(() {
+                _errorMessage = error;
+              });
+            },
             inGracePeriod: _inGracePeriod,
             remainingSeconds: _remainingSeconds,
             totalBrowsers: _selectedBrowsers.length,

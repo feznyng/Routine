@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:Routine/services/browser_config.dart';
 import 'package:flutter/material.dart';
 import 'package:Routine/services/browser_service.dart';
@@ -5,9 +6,8 @@ import 'package:Routine/services/browser_service.dart';
 /// Step 3: Extension Installation
 class ExtensionInstallationStep extends StatefulWidget {
   final Browser browser;
-  final bool isConnected;
-  final bool isConnecting;
-  final VoidCallback onInstall;
+  final Function(Browser) onInstallRequested;
+  final Function(String?) onErrorChanged;
   final bool inGracePeriod;
   final int remainingSeconds;
   final int totalBrowsers;
@@ -16,9 +16,8 @@ class ExtensionInstallationStep extends StatefulWidget {
   const ExtensionInstallationStep({
     Key? key,
     required this.browser,
-    required this.isConnected,
-    required this.isConnecting,
-    required this.onInstall,
+    required this.onInstallRequested,
+    required this.onErrorChanged,
     required this.inGracePeriod,
     required this.remainingSeconds,
     required this.totalBrowsers,
@@ -31,16 +30,71 @@ class ExtensionInstallationStep extends StatefulWidget {
 
 class _ExtensionInstallationStepState extends State<ExtensionInstallationStep> {
   late final ScrollController _scrollController;
+  final BrowserService _browserService = BrowserService.instance;
+  bool _isConnected = false;
+  bool _isConnecting = false;
+  StreamSubscription? _connectionStatusSubscription;
 
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController();
+    _updateConnectionStatus();
+    
+    // Listen for connection status changes
+    _connectionStatusSubscription = _browserService.connectionStream.listen((_) {
+      _updateConnectionStatus();
+    });
+  }
+
+  @override
+  void didUpdateWidget(ExtensionInstallationStep oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.browser != widget.browser) {
+      _updateConnectionStatus();
+    }
+  }
+
+  void _updateConnectionStatus() {
+    final wasConnected = _isConnected;
+    final isNowConnected = _browserService.isBrowserConnected(widget.browser);
+    
+    setState(() {
+      _isConnected = isNowConnected;
+      
+      // If we just connected, stop the connecting state
+      if (!wasConnected && isNowConnected) {
+        _isConnecting = false;
+      }
+    });
+  }
+
+  Future<void> _installBrowserExtension() async {
+    setState(() {
+      _isConnecting = true;
+    });
+    
+    widget.onErrorChanged(null); // Clear any previous errors
+    
+    try {
+      await _browserService.installBrowserExtension(widget.browser);
+      widget.onInstallRequested(widget.browser);
+    } catch (e) {
+      widget.onErrorChanged('Error installing browser extension: $e');
+      setState(() {
+        _isConnecting = false;
+      });
+    }
+  }
+
+  bool canProceed() {
+    return _isConnected;
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _connectionStatusSubscription?.cancel();
     super.dispose();
   }
 
@@ -66,7 +120,7 @@ class _ExtensionInstallationStepState extends State<ExtensionInstallationStep> {
           const SizedBox(height: 24),
           
           // Action button (only show if not connected and not connecting)
-          if (!widget.isConnected && !widget.isConnecting)
+          if (!_isConnected && !_isConnecting)
             _buildActionButton(context, browserData),
         ],
       ),
@@ -129,13 +183,13 @@ class _ExtensionInstallationStepState extends State<ExtensionInstallationStep> {
     Color backgroundColor;
     Widget? statusWidget;
     
-    if (widget.isConnected) {
+    if (_isConnected) {
       statusColor = colorScheme.primary;
       statusIcon = Icons.check_circle_rounded;
       statusText = 'Extension Connected';
       statusDescription = '${browserData.appName} extension is ready to use';
       backgroundColor = colorScheme.primaryContainer.withOpacity(0.3);
-    } else if (widget.isConnecting) {
+    } else if (_isConnecting) {
       statusColor = colorScheme.secondary;
       statusIcon = Icons.hourglass_empty_rounded;
       statusText = 'Connecting...';
@@ -241,7 +295,7 @@ class _ExtensionInstallationStepState extends State<ExtensionInstallationStep> {
   Widget _buildActionButton(BuildContext context, BrowserData browserData) {
     return Center(
       child: FilledButton.icon(
-        onPressed: widget.onInstall,
+        onPressed: _installBrowserExtension,
         icon: const Icon(Icons.open_in_browser_rounded),
         label: Text('Open ${browserData.appName}'),
         style: FilledButton.styleFrom(

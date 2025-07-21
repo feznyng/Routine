@@ -4,19 +4,68 @@ import 'package:Routine/services/strict_mode_service.dart';
 import 'package:flutter/material.dart';
 
 /// Step 1: Browser Selection
-class BrowserSelectionStep extends StatelessWidget {
+class BrowserSelectionStep extends StatefulWidget {
   final List<Browser> installedBrowsers;
   final List<Browser> selectedBrowsers;
-  final Function(Browser) onToggleBrowser;
-  late final StrictModeService _strictModeService;
+  final Function(List<Browser>) onSelectionChanged;
+  final Function(String?) onErrorChanged;
 
-  BrowserSelectionStep({
+  const BrowserSelectionStep({
     Key? key,
     required this.installedBrowsers,
     required this.selectedBrowsers,
-    required this.onToggleBrowser,
-  }) : super(key: key) {
+    required this.onSelectionChanged,
+    required this.onErrorChanged,
+  }) : super(key: key);
+
+  @override
+  State<BrowserSelectionStep> createState() => _BrowserSelectionStepState();
+}
+
+class _BrowserSelectionStepState extends State<BrowserSelectionStep> {
+  late final StrictModeService _strictModeService;
+  late List<Browser> _selectedBrowsers;
+
+  @override
+  void initState() {
+    super.initState();
     _strictModeService = StrictModeService.instance;
+    _selectedBrowsers = List.from(widget.selectedBrowsers);
+  }
+
+  @override
+  void didUpdateWidget(BrowserSelectionStep oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedBrowsers != widget.selectedBrowsers) {
+      _selectedBrowsers = List.from(widget.selectedBrowsers);
+    }
+  }
+
+  void _toggleBrowserSelection(Browser browser) {
+    setState(() {
+      if (_selectedBrowsers.contains(browser)) {
+        _selectedBrowsers.remove(browser);
+      } else {
+        _selectedBrowsers.add(browser);
+      }
+    });
+    
+    // Clear any existing error when selection changes
+    widget.onErrorChanged(null);
+    
+    // Notify parent of selection change
+    widget.onSelectionChanged(_selectedBrowsers);
+  }
+
+  bool canProceed() {
+    return _selectedBrowsers.isNotEmpty;
+  }
+
+  String? validateSelection() {
+    if (_selectedBrowsers.isEmpty) {
+      return 'Please select at least one browser';
+    }
+    return null;
   }
 
   @override
@@ -24,14 +73,14 @@ class BrowserSelectionStep extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     
-    if (installedBrowsers.isEmpty) {
+    if (widget.installedBrowsers.isEmpty) {
       return _buildEmptyState(context);
     }
 
-    final connectedBrowsers = installedBrowsers
+    final connectedBrowsers = widget.installedBrowsers
         .where((b) => BrowserService.instance.isBrowserConnected(b))
         .toList();
-    final unconnectedBrowsers = installedBrowsers
+    final unconnectedBrowsers = widget.installedBrowsers
         .where((b) => !BrowserService.instance.isBrowserConnected(b))
         .toList();
 
@@ -303,7 +352,7 @@ class BrowserSelectionStep extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final browserData = BrowserService.instance.getBrowserData(browser);
-    final isSelected = selectedBrowsers.contains(browser);
+    final isSelected = _selectedBrowsers.contains(browser);
     
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -323,7 +372,7 @@ class BrowserSelectionStep extends StatelessWidget {
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: () => onToggleBrowser(browser),
+          onTap: () => _toggleBrowserSelection(browser),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -340,7 +389,7 @@ class BrowserSelectionStep extends StatelessWidget {
                 ),
                 Checkbox(
                   value: isSelected,
-                  onChanged: (_) => onToggleBrowser(browser),
+                  onChanged: (_) => _toggleBrowserSelection(browser),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(4),
                   ),

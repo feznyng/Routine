@@ -8,12 +8,18 @@ import 'package:flutter/material.dart';
 /// Step for requesting automation permission on macOS for controllable browsers
 class AutomationPermissionStep extends StatefulWidget {
   final Browser browser;
-  final VoidCallback onPermissionGranted;
+  final Function(Browser, bool) onPermissionChanged;
+  final Function(String?) onErrorChanged;
+  final int totalBrowsers;
+  final int currentBrowserIndex;
 
   const AutomationPermissionStep({
     Key? key,
     required this.browser,
-    required this.onPermissionGranted,
+    required this.onPermissionChanged,
+    required this.onErrorChanged,
+    this.totalBrowsers = 1,
+    this.currentBrowserIndex = 0,
   }) : super(key: key);
 
   @override
@@ -69,7 +75,7 @@ class _AutomationPermissionStepState extends State<AutomationPermissionStep> {
     });
 
     if (hasPermission) {
-      widget.onPermissionGranted();
+      widget.onPermissionChanged(widget.browser, true);
     } else {
       // Start polling if permission is not granted
       logger.i('Permission not granted for ${widget.browser}, starting polling');
@@ -103,7 +109,7 @@ class _AutomationPermissionStepState extends State<AutomationPermissionStep> {
           _hasPermission = true;
         });
         timer.cancel();
-        widget.onPermissionGranted();
+        widget.onPermissionChanged(widget.browser, true);
       }
     });
   }

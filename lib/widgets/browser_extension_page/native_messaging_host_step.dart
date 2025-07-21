@@ -3,27 +3,86 @@ import 'package:Routine/services/browser_service.dart';
 import 'package:flutter/material.dart';
 
 /// Step 2: Native Messaging Host Installation
-class NativeMessagingHostStep extends StatelessWidget {
+class NativeMessagingHostStep extends StatefulWidget {
   final Browser browser;
-  final bool nmhInstalled;
-  final bool isInstalling;
-  final VoidCallback onInstall;
+  final Function(Browser, bool) onInstallationChanged;
+  final Function(String?) onErrorChanged;
   final int totalBrowsers;
   final int currentBrowserIndex;
 
   const NativeMessagingHostStep({
     super.key,
     required this.browser,
-    required this.nmhInstalled,
-    required this.isInstalling,
-    required this.onInstall,
+    required this.onInstallationChanged,
+    required this.onErrorChanged,
     required this.totalBrowsers,
     required this.currentBrowserIndex,
   });
 
   @override
+  State<NativeMessagingHostStep> createState() => _NativeMessagingHostStepState();
+}
+
+class _NativeMessagingHostStepState extends State<NativeMessagingHostStep> {
+  final BrowserService _browserService = BrowserService.instance;
+  bool _nmhInstalled = false;
+  bool _isInstalling = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize installation status - for now assume false, but could check actual status
+    _nmhInstalled = false;
+  }
+
+  @override
+  void didUpdateWidget(NativeMessagingHostStep oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.browser != widget.browser) {
+      // Reset state for new browser
+      setState(() {
+        _nmhInstalled = false;
+        _isInstalling = false;
+      });
+    }
+  }
+
+  Future<void> _installNativeMessagingHost() async {
+    setState(() {
+      _isInstalling = true;
+    });
+    
+    // Clear any previous errors
+    widget.onErrorChanged(null);
+    
+    try {
+      final success = await _browserService.installNativeMessagingHost(widget.browser);
+      
+      setState(() {
+        _nmhInstalled = success;
+        _isInstalling = false;
+      });
+      
+      if (success) {
+        widget.onInstallationChanged(widget.browser, true);
+      } else {
+        widget.onErrorChanged('Failed to install native messaging host for ${widget.browser}');
+      }
+    } catch (e) {
+      setState(() {
+        _isInstalling = false;
+      });
+      widget.onErrorChanged('Error installing native messaging host: $e');
+    }
+  }
+
+  bool canProceed() {
+    return _nmhInstalled;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final browserData = BrowserService.instance.getBrowserData(browser);
+    final browserData = BrowserService.instance.getBrowserData(widget.browser);
 
     return SingleChildScrollView(
       child: Column(
@@ -38,7 +97,7 @@ class NativeMessagingHostStep extends StatelessWidget {
           const SizedBox(height: 24),
           
           // Action button
-          if (!nmhInstalled && !isInstalling)
+          if (!_nmhInstalled && !_isInstalling)
             _buildActionButton(context),
         ],
       ),
@@ -98,13 +157,13 @@ class NativeMessagingHostStep extends StatelessWidget {
     String statusDescription;
     Color backgroundColor;
     
-    if (nmhInstalled) {
+    if (_nmhInstalled) {
       statusColor = colorScheme.primary;
       statusIcon = Icons.check_circle_rounded;
       statusText = 'Native Messaging Host Installed';
       statusDescription = 'Ready to communicate with ${browserData.appName}';
       backgroundColor = colorScheme.primaryContainer.withOpacity(0.3);
-    } else if (isInstalling) {
+    } else if (_isInstalling) {
       statusColor = colorScheme.secondary;
       statusIcon = Icons.hourglass_empty_rounded;
       statusText = 'Installing...';
@@ -132,7 +191,7 @@ class NativeMessagingHostStep extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Row(
           children: [
-            if (isInstalling)
+            if (_isInstalling)
               SizedBox(
                 width: 32,
                 height: 32,
@@ -178,7 +237,7 @@ class NativeMessagingHostStep extends StatelessWidget {
   Widget _buildActionButton(BuildContext context) {
     return Center(
       child: FilledButton.icon(
-        onPressed: onInstall,
+        onPressed: _installNativeMessagingHost,
         icon: const Icon(Icons.download_rounded),
         label: const Text('Install Native Messaging Host'),
         style: FilledButton.styleFrom(
