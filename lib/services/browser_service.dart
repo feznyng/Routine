@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:Routine/constants.dart';
+import 'package:Routine/models/browser_connection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:Routine/models/installed_app.dart';
 import 'package:Routine/services/browser_config.dart';
@@ -7,7 +8,7 @@ import 'package:Routine/util.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:io' show Directory, File, Platform, Process, Socket, ServerSocket, InternetAddress;
+import 'dart:io' show Directory, File, Platform, Process, ServerSocket, InternetAddress;
 import 'dart:typed_data' show ByteData, Uint8List;
 import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
@@ -19,24 +20,9 @@ import 'dart:async';
 import 'package:Routine/setup.dart';
 import 'package:collection/src/iterable_extensions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:Routine/channels/desktop_channel.dart';
 
 typedef InstalledBrowser = ({Browser browser, InstalledApp app});
-
-class BrowserConnection {
-  final Socket socket;
-  List<int> buffer = [];
-  int? len;
-
-  BrowserConnection({required this.socket});
-
-  void sendMessage(String action, Map<String, dynamic> data) {
-    final message = json.encode({'action': action, 'data': data});
-    final messageBytes = utf8.encode(message);
-    final lengthBytes = ByteData(4)..setUint32(0, messageBytes.length, Endian.little);
-    socket.add(lengthBytes.buffer.asUint8List());
-    socket.add(messageBytes);
-  }
-}
 
 class BrowserService with ChangeNotifier {
   DateTime? _initialConnectionDeadline;
@@ -47,9 +33,11 @@ class BrowserService with ChangeNotifier {
   
   static final BrowserService _instance = BrowserService._internal();
   final Map<Browser, BrowserConnection> _connections = {};
+  final Set<Browser> _controllable = {};
   final Map<String, BrowserConnection> _pendingConnections = {};
   final StreamController<bool> _connectionStreamController = StreamController<bool>.broadcast();
   final StreamController<bool> _gracePeriodExpirationController = StreamController<bool>.broadcast();
+  late final StreamSubscription<BrowserControlMessage>? controllableListener;
   static const String _connectedBrowsersKey = 'connected_browsers';
   
   factory BrowserService() {
@@ -64,6 +52,56 @@ class BrowserService with ChangeNotifier {
     logger.i("Browser Extension - Init");
     _initialConnectionDeadline = DateTime.now().add(const Duration(seconds: 5));
     await startServer();
+    await initializeControllableBrowsers();
+
+    if (Platform.isMacOS) {
+      controllableListener = DesktopChannel.instance.browserControllabilityStream.listen((event) {
+          final bundleId = event.bundleId;
+          final isControllable = event.controllable;
+
+          logger.i("Browser event = $bundleId, controllable = $isControllable");
+          
+          final browser = _getBrowserFromBundleId(bundleId);
+          if (browser != null) {
+            if (isControllable) {
+              _controllable.add(browser);
+              logger.i('Browser $browser is now controllable');
+            } else {
+              _controllable.remove(browser);
+              logger.i('Browser $browser is no longer controllable');
+            }
+
+            _connectionStreamController.add(true);
+            notifyListeners();
+          }
+        });
+    }
+  }
+
+  Future<void> initializeControllableBrowsers() async {
+    logger.i("initializeControllableBrowsers - start");
+
+    if (Platform.isMacOS) {
+
+      final browsers = await getInstalledSupportedBrowsers(connected: null);
+      for (final installedBrowser in browsers) {
+        final browser = installedBrowser.browser;
+        final data = browserData[installedBrowser.browser]!;
+        if (data.macosControllable) {
+          logger.i("checking if $browser is controllable");
+          final controllable = await DesktopChannel.instance.hasAutomationPermission(data.macosPackage);
+          logger.i("$browser is controllable = $controllable");
+          if (controllable) {
+            _controllable.add(browser);
+          } else {
+            _controllable.remove(browser);
+          }
+        }
+      }
+
+      _connectionStreamController.add(true);
+    }
+    logger.i("initializeControllableBrowsers - end");
   }
   
   Stream<bool> get connectionStream => _connectionStreamController.stream;
@@ -92,6 +130,37 @@ class BrowserService with ChangeNotifier {
   int get remainingCooldownMinutes {
     if (!isInCooldown) return 0;
     return _extensionCooldownEnd!.difference(DateTime.now()).inMinutes + 1; // +1 to round up
+  }
+
+  Future<bool> requestAutomationPermission(Browser browser, {bool openPrefsOnReject = false}) async {
+    final data = browserData[browser]!;
+
+    final result = await DesktopChannel.instance.requestAutomationPermission(data.macosPackage, openPrefsOnReject: openPrefsOnReject);
+
+    if (result) {
+      _controllable.add(browser);
+      notifyListeners();
+    } else {
+      _controllable.remove(browser);
+      notifyListeners();
+    }
+
+    return result;
+  }
+
+  Future<bool> hasAutomationPermission(Browser browser) async {
+    final data = browserData[browser]!;
+
+    final result = await DesktopChannel.instance.hasAutomationPermission(data.macosPackage);
+
+    if (result) {
+      _controllable.add(browser);
+    } else {
+      _controllable.remove(browser);
+    }
+    
+    notifyListeners();
+    return result;
   }
 
   Stream<bool> get gracePeriodStream => _gracePeriodExpirationController.stream;
@@ -128,23 +197,21 @@ class BrowserService with ChangeNotifier {
     notifyListeners();
   }
   
-  bool isBrowserConnected(Browser browser) {
-    return _connections.containsKey(browser);
+  bool isBrowserConnected(Browser browser, {bool controlled = true}) {
+    return _connections.containsKey(browser) || (Platform.isMacOS && getBrowserData(browser).macosControllable && (!controlled || _controllable.contains(browser)));
   }
 
   BrowserData getBrowserData(Browser browser) {
     return browserData[browser]!;
   }
-  
-  List<Browser> get connectedBrowsers => _connections.keys.toList();
-  
-  Future<List<InstalledBrowser>> getInstalledSupportedBrowsers({bool? connected = false}) async {
+    
+  Future<List<InstalledBrowser>> getInstalledSupportedBrowsers({bool? connected = false, bool controlled = true}) async {
     List<InstalledBrowser> browsers = await _getInstalledSupportedBrowsers();
 
     if (connected == true) {
-      return browsers.where((b) => _connections.containsKey(b.browser)).toList();
+      return browsers.where((b) => isBrowserConnected(b.browser, controlled: controlled)).toList();
     } else if (connected == false) {
-      return browsers.where((b) => !_connections.containsKey(b.browser)).toList();
+      return browsers.where((b) => !isBrowserConnected(b.browser, controlled: controlled)).toList();
     }
 
     return browsers;
@@ -239,7 +306,7 @@ class BrowserService with ChangeNotifier {
         final Map<String, dynamic> manifest = _createManifestContent(browser, '$nmhPath/$nmhName');
         final String manifestJson = json.encode(manifest);
         
-        String mozillaRegistryPath = "${data.registryPath}\\$kAppName";
+        String mozillaRegistryPath = "${data.windowsRegistryPath}\\$kAppName";
         final Pointer<HKEY> hKey = calloc<HKEY>();
         
         try {
@@ -516,5 +583,25 @@ class BrowserService with ChangeNotifier {
     _server?.close();
     _server = null;
     _connectionStreamController.close();
+  }
+  
+  // Helper method to map bundle IDs to Browser enum values
+  Browser? _getBrowserFromBundleId(String bundleId) {
+    switch (bundleId) {
+      case 'com.google.Chrome':
+        return Browser.chrome;
+      case 'com.microsoft.edgemac':
+        return Browser.edge;
+      case 'com.apple.Safari':
+        return Browser.safari;
+      case 'com.operasoftware.Opera':
+        return Browser.opera;
+      case 'com.brave.Browser':
+        return Browser.brave;
+      case 'org.mozilla.firefox':
+        return Browser.firefox;
+      default:
+        return null;
+    }
   }
 }

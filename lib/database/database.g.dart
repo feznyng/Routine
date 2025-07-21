@@ -143,6 +143,12 @@ class $RoutinesTable extends Routines
   late final GeneratedColumn<DateTime> pausedUntil = GeneratedColumn<DateTime>(
       'paused_until', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _lastBreakEndedAtMeta =
+      const VerificationMeta('lastBreakEndedAt');
+  @override
+  late final GeneratedColumn<DateTime> lastBreakEndedAt =
+      GeneratedColumn<DateTime>('last_break_ended_at', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _maxBreaksMeta =
       const VerificationMeta('maxBreaks');
   @override
@@ -190,6 +196,14 @@ class $RoutinesTable extends Routines
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('CHECK ("strict_mode" IN (0, 1))'),
       clientDefault: () => false);
+  static const VerificationMeta _completableBeforeMeta =
+      const VerificationMeta('completableBefore');
+  @override
+  late final GeneratedColumn<int> completableBefore = GeneratedColumn<int>(
+      'completable_before', aliasedName, true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      clientDefault: () => 0);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -211,13 +225,15 @@ class $RoutinesTable extends Routines
         numBreaksTaken,
         lastBreakAt,
         pausedUntil,
+        lastBreakEndedAt,
         maxBreaks,
         maxBreakDuration,
         friction,
         frictionLen,
         snoozedUntil,
         conditions,
-        strictMode
+        strictMode,
+        completableBefore
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -328,6 +344,12 @@ class $RoutinesTable extends Routines
           pausedUntil.isAcceptableOrUnknown(
               data['paused_until']!, _pausedUntilMeta));
     }
+    if (data.containsKey('last_break_ended_at')) {
+      context.handle(
+          _lastBreakEndedAtMeta,
+          lastBreakEndedAt.isAcceptableOrUnknown(
+              data['last_break_ended_at']!, _lastBreakEndedAtMeta));
+    }
     if (data.containsKey('max_breaks')) {
       context.handle(_maxBreaksMeta,
           maxBreaks.isAcceptableOrUnknown(data['max_breaks']!, _maxBreaksMeta));
@@ -361,6 +383,12 @@ class $RoutinesTable extends Routines
           _strictModeMeta,
           strictMode.isAcceptableOrUnknown(
               data['strict_mode']!, _strictModeMeta));
+    }
+    if (data.containsKey('completable_before')) {
+      context.handle(
+          _completableBeforeMeta,
+          completableBefore.isAcceptableOrUnknown(
+              data['completable_before']!, _completableBeforeMeta));
     }
     return context;
   }
@@ -411,6 +439,8 @@ class $RoutinesTable extends Routines
           .read(DriftSqlType.dateTime, data['${effectivePrefix}last_break_at']),
       pausedUntil: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}paused_until']),
+      lastBreakEndedAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}last_break_ended_at']),
       maxBreaks: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}max_breaks']),
       maxBreakDuration: attachedDatabase.typeMapping.read(
@@ -426,6 +456,8 @@ class $RoutinesTable extends Routines
           .read(DriftSqlType.string, data['${effectivePrefix}conditions'])!),
       strictMode: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}strict_mode'])!,
+      completableBefore: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}completable_before']),
     );
   }
 
@@ -462,6 +494,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
   final int? numBreaksTaken;
   final DateTime? lastBreakAt;
   final DateTime? pausedUntil;
+  final DateTime? lastBreakEndedAt;
   final int? maxBreaks;
   final int maxBreakDuration;
   final String friction;
@@ -469,6 +502,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
   final DateTime? snoozedUntil;
   final List<Condition> conditions;
   final bool strictMode;
+  final int? completableBefore;
   const RoutineEntry(
       {required this.id,
       required this.name,
@@ -489,13 +523,15 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       this.numBreaksTaken,
       this.lastBreakAt,
       this.pausedUntil,
+      this.lastBreakEndedAt,
       this.maxBreaks,
       required this.maxBreakDuration,
       required this.friction,
       this.frictionLen,
       this.snoozedUntil,
       required this.conditions,
-      required this.strictMode});
+      required this.strictMode,
+      this.completableBefore});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -532,6 +568,9 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
     if (!nullToAbsent || pausedUntil != null) {
       map['paused_until'] = Variable<DateTime>(pausedUntil);
     }
+    if (!nullToAbsent || lastBreakEndedAt != null) {
+      map['last_break_ended_at'] = Variable<DateTime>(lastBreakEndedAt);
+    }
     if (!nullToAbsent || maxBreaks != null) {
       map['max_breaks'] = Variable<int>(maxBreaks);
     }
@@ -548,6 +587,9 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           $RoutinesTable.$converterconditions.toSql(conditions));
     }
     map['strict_mode'] = Variable<bool>(strictMode);
+    if (!nullToAbsent || completableBefore != null) {
+      map['completable_before'] = Variable<int>(completableBefore);
+    }
     return map;
   }
 
@@ -580,6 +622,9 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       pausedUntil: pausedUntil == null && nullToAbsent
           ? const Value.absent()
           : Value(pausedUntil),
+      lastBreakEndedAt: lastBreakEndedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastBreakEndedAt),
       maxBreaks: maxBreaks == null && nullToAbsent
           ? const Value.absent()
           : Value(maxBreaks),
@@ -593,6 +638,9 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           : Value(snoozedUntil),
       conditions: Value(conditions),
       strictMode: Value(strictMode),
+      completableBefore: completableBefore == null && nullToAbsent
+          ? const Value.absent()
+          : Value(completableBefore),
     );
   }
 
@@ -619,6 +667,8 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       numBreaksTaken: serializer.fromJson<int?>(json['numBreaksTaken']),
       lastBreakAt: serializer.fromJson<DateTime?>(json['lastBreakAt']),
       pausedUntil: serializer.fromJson<DateTime?>(json['pausedUntil']),
+      lastBreakEndedAt:
+          serializer.fromJson<DateTime?>(json['lastBreakEndedAt']),
       maxBreaks: serializer.fromJson<int?>(json['maxBreaks']),
       maxBreakDuration: serializer.fromJson<int>(json['maxBreakDuration']),
       friction: serializer.fromJson<String>(json['friction']),
@@ -627,6 +677,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       conditions: $RoutinesTable.$converterconditions
           .fromJson(serializer.fromJson<List<dynamic>>(json['conditions'])),
       strictMode: serializer.fromJson<bool>(json['strictMode']),
+      completableBefore: serializer.fromJson<int?>(json['completableBefore']),
     );
   }
   @override
@@ -652,6 +703,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       'numBreaksTaken': serializer.toJson<int?>(numBreaksTaken),
       'lastBreakAt': serializer.toJson<DateTime?>(lastBreakAt),
       'pausedUntil': serializer.toJson<DateTime?>(pausedUntil),
+      'lastBreakEndedAt': serializer.toJson<DateTime?>(lastBreakEndedAt),
       'maxBreaks': serializer.toJson<int?>(maxBreaks),
       'maxBreakDuration': serializer.toJson<int>(maxBreakDuration),
       'friction': serializer.toJson<String>(friction),
@@ -660,6 +712,7 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
       'conditions': serializer.toJson<List<dynamic>>(
           $RoutinesTable.$converterconditions.toJson(conditions)),
       'strictMode': serializer.toJson<bool>(strictMode),
+      'completableBefore': serializer.toJson<int?>(completableBefore),
     };
   }
 
@@ -683,13 +736,15 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           Value<int?> numBreaksTaken = const Value.absent(),
           Value<DateTime?> lastBreakAt = const Value.absent(),
           Value<DateTime?> pausedUntil = const Value.absent(),
+          Value<DateTime?> lastBreakEndedAt = const Value.absent(),
           Value<int?> maxBreaks = const Value.absent(),
           int? maxBreakDuration,
           String? friction,
           Value<int?> frictionLen = const Value.absent(),
           Value<DateTime?> snoozedUntil = const Value.absent(),
           List<Condition>? conditions,
-          bool? strictMode}) =>
+          bool? strictMode,
+          Value<int?> completableBefore = const Value.absent()}) =>
       RoutineEntry(
         id: id ?? this.id,
         name: name ?? this.name,
@@ -711,6 +766,9 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
             numBreaksTaken.present ? numBreaksTaken.value : this.numBreaksTaken,
         lastBreakAt: lastBreakAt.present ? lastBreakAt.value : this.lastBreakAt,
         pausedUntil: pausedUntil.present ? pausedUntil.value : this.pausedUntil,
+        lastBreakEndedAt: lastBreakEndedAt.present
+            ? lastBreakEndedAt.value
+            : this.lastBreakEndedAt,
         maxBreaks: maxBreaks.present ? maxBreaks.value : this.maxBreaks,
         maxBreakDuration: maxBreakDuration ?? this.maxBreakDuration,
         friction: friction ?? this.friction,
@@ -719,6 +777,9 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
             snoozedUntil.present ? snoozedUntil.value : this.snoozedUntil,
         conditions: conditions ?? this.conditions,
         strictMode: strictMode ?? this.strictMode,
+        completableBefore: completableBefore.present
+            ? completableBefore.value
+            : this.completableBefore,
       );
   RoutineEntry copyWithCompanion(RoutinesCompanion data) {
     return RoutineEntry(
@@ -746,6 +807,9 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           data.lastBreakAt.present ? data.lastBreakAt.value : this.lastBreakAt,
       pausedUntil:
           data.pausedUntil.present ? data.pausedUntil.value : this.pausedUntil,
+      lastBreakEndedAt: data.lastBreakEndedAt.present
+          ? data.lastBreakEndedAt.value
+          : this.lastBreakEndedAt,
       maxBreaks: data.maxBreaks.present ? data.maxBreaks.value : this.maxBreaks,
       maxBreakDuration: data.maxBreakDuration.present
           ? data.maxBreakDuration.value
@@ -760,6 +824,9 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           data.conditions.present ? data.conditions.value : this.conditions,
       strictMode:
           data.strictMode.present ? data.strictMode.value : this.strictMode,
+      completableBefore: data.completableBefore.present
+          ? data.completableBefore.value
+          : this.completableBefore,
     );
   }
 
@@ -785,13 +852,15 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           ..write('numBreaksTaken: $numBreaksTaken, ')
           ..write('lastBreakAt: $lastBreakAt, ')
           ..write('pausedUntil: $pausedUntil, ')
+          ..write('lastBreakEndedAt: $lastBreakEndedAt, ')
           ..write('maxBreaks: $maxBreaks, ')
           ..write('maxBreakDuration: $maxBreakDuration, ')
           ..write('friction: $friction, ')
           ..write('frictionLen: $frictionLen, ')
           ..write('snoozedUntil: $snoozedUntil, ')
           ..write('conditions: $conditions, ')
-          ..write('strictMode: $strictMode')
+          ..write('strictMode: $strictMode, ')
+          ..write('completableBefore: $completableBefore')
           ..write(')'))
         .toString();
   }
@@ -817,13 +886,15 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
         numBreaksTaken,
         lastBreakAt,
         pausedUntil,
+        lastBreakEndedAt,
         maxBreaks,
         maxBreakDuration,
         friction,
         frictionLen,
         snoozedUntil,
         conditions,
-        strictMode
+        strictMode,
+        completableBefore
       ]);
   @override
   bool operator ==(Object other) =>
@@ -848,13 +919,15 @@ class RoutineEntry extends DataClass implements Insertable<RoutineEntry> {
           other.numBreaksTaken == this.numBreaksTaken &&
           other.lastBreakAt == this.lastBreakAt &&
           other.pausedUntil == this.pausedUntil &&
+          other.lastBreakEndedAt == this.lastBreakEndedAt &&
           other.maxBreaks == this.maxBreaks &&
           other.maxBreakDuration == this.maxBreakDuration &&
           other.friction == this.friction &&
           other.frictionLen == this.frictionLen &&
           other.snoozedUntil == this.snoozedUntil &&
           other.conditions == this.conditions &&
-          other.strictMode == this.strictMode);
+          other.strictMode == this.strictMode &&
+          other.completableBefore == this.completableBefore);
 }
 
 class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
@@ -877,6 +950,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
   final Value<int?> numBreaksTaken;
   final Value<DateTime?> lastBreakAt;
   final Value<DateTime?> pausedUntil;
+  final Value<DateTime?> lastBreakEndedAt;
   final Value<int?> maxBreaks;
   final Value<int> maxBreakDuration;
   final Value<String> friction;
@@ -884,6 +958,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
   final Value<DateTime?> snoozedUntil;
   final Value<List<Condition>> conditions;
   final Value<bool> strictMode;
+  final Value<int?> completableBefore;
   final Value<int> rowid;
   const RoutinesCompanion({
     this.id = const Value.absent(),
@@ -905,6 +980,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     this.numBreaksTaken = const Value.absent(),
     this.lastBreakAt = const Value.absent(),
     this.pausedUntil = const Value.absent(),
+    this.lastBreakEndedAt = const Value.absent(),
     this.maxBreaks = const Value.absent(),
     this.maxBreakDuration = const Value.absent(),
     this.friction = const Value.absent(),
@@ -912,6 +988,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     this.snoozedUntil = const Value.absent(),
     this.conditions = const Value.absent(),
     this.strictMode = const Value.absent(),
+    this.completableBefore = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   RoutinesCompanion.insert({
@@ -934,6 +1011,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     this.numBreaksTaken = const Value.absent(),
     this.lastBreakAt = const Value.absent(),
     this.pausedUntil = const Value.absent(),
+    this.lastBreakEndedAt = const Value.absent(),
     this.maxBreaks = const Value.absent(),
     this.maxBreakDuration = const Value.absent(),
     required String friction,
@@ -941,6 +1019,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     this.snoozedUntil = const Value.absent(),
     required List<Condition> conditions,
     this.strictMode = const Value.absent(),
+    this.completableBefore = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name),
@@ -978,6 +1057,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     Expression<int>? numBreaksTaken,
     Expression<DateTime>? lastBreakAt,
     Expression<DateTime>? pausedUntil,
+    Expression<DateTime>? lastBreakEndedAt,
     Expression<int>? maxBreaks,
     Expression<int>? maxBreakDuration,
     Expression<String>? friction,
@@ -985,6 +1065,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     Expression<DateTime>? snoozedUntil,
     Expression<String>? conditions,
     Expression<bool>? strictMode,
+    Expression<int>? completableBefore,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1007,6 +1088,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       if (numBreaksTaken != null) 'num_breaks_taken': numBreaksTaken,
       if (lastBreakAt != null) 'last_break_at': lastBreakAt,
       if (pausedUntil != null) 'paused_until': pausedUntil,
+      if (lastBreakEndedAt != null) 'last_break_ended_at': lastBreakEndedAt,
       if (maxBreaks != null) 'max_breaks': maxBreaks,
       if (maxBreakDuration != null) 'max_break_duration': maxBreakDuration,
       if (friction != null) 'friction': friction,
@@ -1014,6 +1096,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       if (snoozedUntil != null) 'snoozed_until': snoozedUntil,
       if (conditions != null) 'conditions': conditions,
       if (strictMode != null) 'strict_mode': strictMode,
+      if (completableBefore != null) 'completable_before': completableBefore,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1038,6 +1121,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       Value<int?>? numBreaksTaken,
       Value<DateTime?>? lastBreakAt,
       Value<DateTime?>? pausedUntil,
+      Value<DateTime?>? lastBreakEndedAt,
       Value<int?>? maxBreaks,
       Value<int>? maxBreakDuration,
       Value<String>? friction,
@@ -1045,6 +1129,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       Value<DateTime?>? snoozedUntil,
       Value<List<Condition>>? conditions,
       Value<bool>? strictMode,
+      Value<int?>? completableBefore,
       Value<int>? rowid}) {
     return RoutinesCompanion(
       id: id ?? this.id,
@@ -1066,6 +1151,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       numBreaksTaken: numBreaksTaken ?? this.numBreaksTaken,
       lastBreakAt: lastBreakAt ?? this.lastBreakAt,
       pausedUntil: pausedUntil ?? this.pausedUntil,
+      lastBreakEndedAt: lastBreakEndedAt ?? this.lastBreakEndedAt,
       maxBreaks: maxBreaks ?? this.maxBreaks,
       maxBreakDuration: maxBreakDuration ?? this.maxBreakDuration,
       friction: friction ?? this.friction,
@@ -1073,6 +1159,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
       snoozedUntil: snoozedUntil ?? this.snoozedUntil,
       conditions: conditions ?? this.conditions,
       strictMode: strictMode ?? this.strictMode,
+      completableBefore: completableBefore ?? this.completableBefore,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1139,6 +1226,9 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     if (pausedUntil.present) {
       map['paused_until'] = Variable<DateTime>(pausedUntil.value);
     }
+    if (lastBreakEndedAt.present) {
+      map['last_break_ended_at'] = Variable<DateTime>(lastBreakEndedAt.value);
+    }
     if (maxBreaks.present) {
       map['max_breaks'] = Variable<int>(maxBreaks.value);
     }
@@ -1160,6 +1250,9 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
     }
     if (strictMode.present) {
       map['strict_mode'] = Variable<bool>(strictMode.value);
+    }
+    if (completableBefore.present) {
+      map['completable_before'] = Variable<int>(completableBefore.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -1189,6 +1282,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
           ..write('numBreaksTaken: $numBreaksTaken, ')
           ..write('lastBreakAt: $lastBreakAt, ')
           ..write('pausedUntil: $pausedUntil, ')
+          ..write('lastBreakEndedAt: $lastBreakEndedAt, ')
           ..write('maxBreaks: $maxBreaks, ')
           ..write('maxBreakDuration: $maxBreakDuration, ')
           ..write('friction: $friction, ')
@@ -1196,6 +1290,7 @@ class RoutinesCompanion extends UpdateCompanion<RoutineEntry> {
           ..write('snoozedUntil: $snoozedUntil, ')
           ..write('conditions: $conditions, ')
           ..write('strictMode: $strictMode, ')
+          ..write('completableBefore: $completableBefore, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2176,6 +2271,7 @@ typedef $$RoutinesTableCreateCompanionBuilder = RoutinesCompanion Function({
   Value<int?> numBreaksTaken,
   Value<DateTime?> lastBreakAt,
   Value<DateTime?> pausedUntil,
+  Value<DateTime?> lastBreakEndedAt,
   Value<int?> maxBreaks,
   Value<int> maxBreakDuration,
   required String friction,
@@ -2183,6 +2279,7 @@ typedef $$RoutinesTableCreateCompanionBuilder = RoutinesCompanion Function({
   Value<DateTime?> snoozedUntil,
   required List<Condition> conditions,
   Value<bool> strictMode,
+  Value<int?> completableBefore,
   Value<int> rowid,
 });
 typedef $$RoutinesTableUpdateCompanionBuilder = RoutinesCompanion Function({
@@ -2205,6 +2302,7 @@ typedef $$RoutinesTableUpdateCompanionBuilder = RoutinesCompanion Function({
   Value<int?> numBreaksTaken,
   Value<DateTime?> lastBreakAt,
   Value<DateTime?> pausedUntil,
+  Value<DateTime?> lastBreakEndedAt,
   Value<int?> maxBreaks,
   Value<int> maxBreakDuration,
   Value<String> friction,
@@ -2212,6 +2310,7 @@ typedef $$RoutinesTableUpdateCompanionBuilder = RoutinesCompanion Function({
   Value<DateTime?> snoozedUntil,
   Value<List<Condition>> conditions,
   Value<bool> strictMode,
+  Value<int?> completableBefore,
   Value<int> rowid,
 });
 
@@ -2286,6 +2385,10 @@ class $$RoutinesTableFilterComposer
   ColumnFilters<DateTime> get pausedUntil => $composableBuilder(
       column: $table.pausedUntil, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<DateTime> get lastBreakEndedAt => $composableBuilder(
+      column: $table.lastBreakEndedAt,
+      builder: (column) => ColumnFilters(column));
+
   ColumnFilters<int> get maxBreaks => $composableBuilder(
       column: $table.maxBreaks, builder: (column) => ColumnFilters(column));
 
@@ -2309,6 +2412,10 @@ class $$RoutinesTableFilterComposer
 
   ColumnFilters<bool> get strictMode => $composableBuilder(
       column: $table.strictMode, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get completableBefore => $composableBuilder(
+      column: $table.completableBefore,
+      builder: (column) => ColumnFilters(column));
 }
 
 class $$RoutinesTableOrderingComposer
@@ -2378,6 +2485,10 @@ class $$RoutinesTableOrderingComposer
   ColumnOrderings<DateTime> get pausedUntil => $composableBuilder(
       column: $table.pausedUntil, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<DateTime> get lastBreakEndedAt => $composableBuilder(
+      column: $table.lastBreakEndedAt,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<int> get maxBreaks => $composableBuilder(
       column: $table.maxBreaks, builder: (column) => ColumnOrderings(column));
 
@@ -2400,6 +2511,10 @@ class $$RoutinesTableOrderingComposer
 
   ColumnOrderings<bool> get strictMode => $composableBuilder(
       column: $table.strictMode, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get completableBefore => $composableBuilder(
+      column: $table.completableBefore,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$RoutinesTableAnnotationComposer
@@ -2468,6 +2583,9 @@ class $$RoutinesTableAnnotationComposer
   GeneratedColumn<DateTime> get pausedUntil => $composableBuilder(
       column: $table.pausedUntil, builder: (column) => column);
 
+  GeneratedColumn<DateTime> get lastBreakEndedAt => $composableBuilder(
+      column: $table.lastBreakEndedAt, builder: (column) => column);
+
   GeneratedColumn<int> get maxBreaks =>
       $composableBuilder(column: $table.maxBreaks, builder: (column) => column);
 
@@ -2489,6 +2607,9 @@ class $$RoutinesTableAnnotationComposer
 
   GeneratedColumn<bool> get strictMode => $composableBuilder(
       column: $table.strictMode, builder: (column) => column);
+
+  GeneratedColumn<int> get completableBefore => $composableBuilder(
+      column: $table.completableBefore, builder: (column) => column);
 }
 
 class $$RoutinesTableTableManager extends RootTableManager<
@@ -2533,6 +2654,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             Value<int?> numBreaksTaken = const Value.absent(),
             Value<DateTime?> lastBreakAt = const Value.absent(),
             Value<DateTime?> pausedUntil = const Value.absent(),
+            Value<DateTime?> lastBreakEndedAt = const Value.absent(),
             Value<int?> maxBreaks = const Value.absent(),
             Value<int> maxBreakDuration = const Value.absent(),
             Value<String> friction = const Value.absent(),
@@ -2540,6 +2662,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             Value<DateTime?> snoozedUntil = const Value.absent(),
             Value<List<Condition>> conditions = const Value.absent(),
             Value<bool> strictMode = const Value.absent(),
+            Value<int?> completableBefore = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               RoutinesCompanion(
@@ -2562,6 +2685,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             numBreaksTaken: numBreaksTaken,
             lastBreakAt: lastBreakAt,
             pausedUntil: pausedUntil,
+            lastBreakEndedAt: lastBreakEndedAt,
             maxBreaks: maxBreaks,
             maxBreakDuration: maxBreakDuration,
             friction: friction,
@@ -2569,6 +2693,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             snoozedUntil: snoozedUntil,
             conditions: conditions,
             strictMode: strictMode,
+            completableBefore: completableBefore,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -2591,6 +2716,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             Value<int?> numBreaksTaken = const Value.absent(),
             Value<DateTime?> lastBreakAt = const Value.absent(),
             Value<DateTime?> pausedUntil = const Value.absent(),
+            Value<DateTime?> lastBreakEndedAt = const Value.absent(),
             Value<int?> maxBreaks = const Value.absent(),
             Value<int> maxBreakDuration = const Value.absent(),
             required String friction,
@@ -2598,6 +2724,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             Value<DateTime?> snoozedUntil = const Value.absent(),
             required List<Condition> conditions,
             Value<bool> strictMode = const Value.absent(),
+            Value<int?> completableBefore = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               RoutinesCompanion.insert(
@@ -2620,6 +2747,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             numBreaksTaken: numBreaksTaken,
             lastBreakAt: lastBreakAt,
             pausedUntil: pausedUntil,
+            lastBreakEndedAt: lastBreakEndedAt,
             maxBreaks: maxBreaks,
             maxBreakDuration: maxBreakDuration,
             friction: friction,
@@ -2627,6 +2755,7 @@ class $$RoutinesTableTableManager extends RootTableManager<
             snoozedUntil: snoozedUntil,
             conditions: conditions,
             strictMode: strictMode,
+            completableBefore: completableBefore,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

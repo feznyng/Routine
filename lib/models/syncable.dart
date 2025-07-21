@@ -1,5 +1,3 @@
-import '../services/sync_service.dart';
-
 /// An abstract class that defines the interface for entities that can be synced
 /// across devices in the Routine app.
 /// 
@@ -26,9 +24,4 @@ abstract class Syncable {
   
   /// Returns true if the entity has been saved to the database
   bool get saved;
-  
-  /// Helper method to schedule a sync job after save or delete operations
-  void scheduleSyncJob() {
-    SyncService().addJob(SyncJob(remote: false));
-  }
 }

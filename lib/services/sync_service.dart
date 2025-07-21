@@ -4,11 +4,15 @@ import 'package:Routine/models/condition.dart';
 import 'package:Routine/models/device.dart';
 import 'package:Routine/services/auth_service.dart';
 import 'package:Routine/util.dart';
+import 'package:uuid/uuid.dart';
 import '../setup.dart';
 import '../database/database.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:drift/drift.dart';
 import 'strict_mode_service.dart';
+import 'package:workmanager/workmanager.dart';
+import 'package:synchronized/synchronized.dart';
 
 class SyncJob {
   bool remote;
@@ -35,31 +39,39 @@ typedef Changes = ({
 
 class SyncService {
   static final SyncService _instance = SyncService._internal();
-  RealtimeChannel? _syncChannel;
-  final AppDatabase db;
   final SupabaseClient _client;
+  RealtimeChannel? _syncChannel;
+  Timer? _syncStatusPollingTimer;
+  String? _latestSyncJobId;
+  bool _lastKnownSyncStatus = false;
+  final Lock _syncLock = Lock();
+  
+  // Stream controller for sync failure events
+  final StreamController<void> _syncFailureController = StreamController<void>.broadcast();
 
   String get userId => Supabase.instance.client.auth.currentUser?.id ?? '';
   
   SyncService._internal() : 
-    db = getIt<AppDatabase>(),
     _client = Supabase.instance.client {
-    _startConsumer();
     setupRealtimeSync();
   }
   
   factory SyncService() {
     return _instance;
   }
+  
+  // Stream that UI components can listen to for sync failure events
+  Stream<void> get onSyncFailure => _syncFailureController.stream;
+
+  SyncService.simple() : 
+    _client = Supabase.instance.client;
 
   void setupRealtimeSync() {
     if (userId.isEmpty) return;
 
-    // Clean up existing subscription if any
     _syncChannel?.unsubscribe();
 
     try {
-      // Subscribe to sync channel for this user
       _syncChannel = _client.channel('sync-$userId');
 
       _syncChannel!
@@ -67,7 +79,7 @@ class SyncService {
           event: 'sync', 
           callback: (payload, [_]) {
             logger.i('received remote sync request from ${payload['source']}');
-            addJob(SyncJob(remote: true));
+            queueSync();
           }
         )
         .onBroadcast(
@@ -98,7 +110,6 @@ class SyncService {
       Util.report('error websocket notifying other devices', e, st);
       setupRealtimeSync();
     }
-
   }
 
   Future<void> _notifyPeers() async {
@@ -119,79 +130,141 @@ class SyncService {
     await _sendRealtimeMessage('sign-out');
   }
   
-  final _jobController = StreamController<SyncJob>();
-  Timer? _batchTimer;
-  final List<SyncJob> _pendingJobs = [];
-  bool _isProcessing = false;
-  
-  void addJob(SyncJob job) {
-    _jobController.add(job);
+  Future<void> dispose() async {
+    await _syncChannel?.unsubscribe();
+    _stopSyncStatusPolling();
   }
-  
-  void _startConsumer() {
-    _jobController.stream.listen((job) {
-      _pendingJobs.add(job);
-      _scheduleBatchProcessing();
+
+  Future<bool> queueSync({bool full = false}) async {
+    if (Util.isDesktop()) {
+      sync(full: full);
+      return true;
+    } else  {
+      // Clear existing keys in shared_preferences prefixed with sync_job_status_
+      final prefs = await SharedPreferences.getInstance();
+      final allKeys = prefs.getKeys();
+      final syncStatusKeys = allKeys.where((key) => key.startsWith('sync_job_status_'));
+      
+      for (final key in syncStatusKeys) {
+        await prefs.remove(key);
+      }
+      
+      // Generate a new UUID for this sync job
+      final id = Uuid().v4();
+      
+      // Store the latest sync job ID
+      _latestSyncJobId = id;
+      _lastKnownSyncStatus = false;
+      
+      // Write false to shared preferences under "sync_job_status_${id}"
+      await prefs.setBool('sync_job_status_$id', false);
+      
+      // Start polling for status changes
+      _startSyncStatusPolling();
+      
+      await Workmanager().registerOneOffTask("sync", "sync-task", inputData: {'full': full, 'id': id});
+
+      return true;
+    }
+  }
+
+  Future<bool> sync({bool full = false, String? id}) async {
+    logger.i("syncing...");
+
+    SyncResult? result;
+    await _syncLock.synchronized(() async {
+      result = await _sync(full: full);
     });
-  }
   
-  void _scheduleBatchProcessing() {
-    _batchTimer?.cancel();
+    final success = result != null;
+    logger.i("finished syncing - success = $success");
+
+    if (id != null) {
+      final key = 'sync_job_status_$id';
+      logger.i("setting sync key $key to true");
+      await SharedPreferencesAsync().setBool(key, true);
+    } else {
+      logger.i("no id for this sync job");
+    }
+
+    if (!success) {
+      _syncFailureController.add(null);
+    }
+
+    return success;
+  }
+
+  // Start polling for sync job status changes
+  void _startSyncStatusPolling() {
+    // Stop any existing polling
+    _stopSyncStatusPolling();
     
-    _batchTimer = Timer(Duration(seconds: 1), () {
-      if (!_isProcessing) {
-        _processJobs();
-      }
+    // Initialize the last known status
+    _lastKnownSyncStatus = false;
+    
+    // Start a new polling timer
+    _syncStatusPollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
+      await _checkSyncStatusChanges();
     });
+    
+    logger.i("Started sync status polling");
   }
   
-  Future<void> _processJobs() async {
-    if (_isProcessing || _pendingJobs.isEmpty) return;
-    
-    _isProcessing = true;
-    
-    try {
-      // Add a short delay to allow more jobs to accumulate
-      await Future.delayed(Duration(milliseconds: 100));
-      
-      // Check if more jobs came in during the delay
-      if (!_isProcessing) return;
-      
-      final batchJobs = List<SyncJob>.from(_pendingJobs);
-      
-      if (batchJobs.isNotEmpty) {
-        final isFullSync = batchJobs.any((job) => job.full);
-        await sync(full: isFullSync);
-      }
-    } finally {
-      _isProcessing = false;
-      
-      if (_pendingJobs.isNotEmpty) {
-        _scheduleBatchProcessing();
-      }
+  // Stop polling for sync job status changes
+  void _stopSyncStatusPolling() {
+    if (_syncStatusPollingTimer != null) {
+      _syncStatusPollingTimer!.cancel();
+      _syncStatusPollingTimer = null;
+      logger.i("Stopped sync status polling");
     }
   }
   
-  Future<void> dispose() async {
-    _batchTimer?.cancel();
-    await _syncChannel?.unsubscribe();
-    _jobController.close();
+  // Check for changes in the latest sync job status
+  Future<void> _checkSyncStatusChanges() async {
+    try {
+      if (_latestSyncJobId == null) {
+        // No sync job to check
+        logger.i("no sync job to check");
+
+        _stopSyncStatusPolling();
+        return;
+      }
+      
+      final prefs = SharedPreferencesAsync();
+      final key = 'sync_job_status_$_latestSyncJobId';
+
+      logger.i("checking sync status for key $key = ${await prefs.getBool(key)}");
+      
+      final currentStatus = await prefs.getBool(key) ?? false;
+
+      // If status changed from false to true
+      if (!_lastKnownSyncStatus && currentStatus) {
+        logger.i("Latest sync job $_latestSyncJobId completed");
+        
+        // Notify changes
+        logger.i("Sync job status changed, notifying changes");
+        final db = getIt<AppDatabase>();
+        await db.forceNotifyChanges();
+        
+        // Stop polling since the job is complete
+        _stopSyncStatusPolling();
+      }
+      
+      // Update the last known status
+      _lastKnownSyncStatus = currentStatus;
+      
+    } catch (e, st) {
+      logger.e("Error checking sync status changes: $e");
+      Util.report('error checking sync status changes', e, st);
+    }
   }
-
-  Future<bool> sync({bool full = false}) async {
-    logger.i("syncing...");
-
-    _pendingJobs.clear();
-    final result = await _sync(full: full);
-    
-    logger.i("finished syncing - success = ${result != null}");
-
-    return result != null;
-  }
-
+  
   Future<SyncResult?> _sync({bool full = false}) async {
     try {
-      if (userId.isEmpty) return null;
+      if (userId.isEmpty) {
+        logger.i("can't sync - user is not signed in");
+        return null;
+      }
 
       final db = getIt<AppDatabase>();
       final currDevice = (await db.getThisDevice())!;
@@ -461,6 +534,7 @@ class SyncService {
                 numBreaksTaken: Value(overwriteMap['num_breaks_taken'] ?? routine['num_breaks_taken']),
                 lastBreakAt: Value(overwriteMap['last_break_at'] != null ? DateTime.parse(overwriteMap['last_break_at']) : routine['last_break_at'] != null ? DateTime.parse(routine['last_break_at']) : null),
                 pausedUntil: Value(overwriteMap['paused_until'] != null ? DateTime.parse(overwriteMap['paused_until']) : routine['paused_until'] != null ? DateTime.parse(routine['paused_until']) : null),
+                lastBreakEndedAt: Value(overwriteMap['last_break_ended_at'] != null ? DateTime.parse(overwriteMap['last_break_ended_at']) : routine['last_break_ended_at'] != null ? DateTime.parse(routine['last_break_ended_at']) : null),
                 maxBreaks: Value(overwriteMap['max_breaks'] ?? routine['max_breaks']),
                 maxBreakDuration: Value(overwriteMap['max_break_duration'] ?? routine['max_break_duration']),
                 friction: Value(overwriteMap['friction'] ?? routine['friction']),
@@ -470,6 +544,7 @@ class SyncService {
                 deleted: Value(overwriteMap['deleted'] ?? routine['deleted']),
                 changes: Value(overwriteMap['changes'] ?? []),
                 strictMode: Value((overwriteMap['strictMode'] ?? routine['strict_mode']) ?? false),
+                completableBefore: Value((overwriteMap['completableBefore'] ?? routine['completable_before']) ?? 0),
                 conditions: Value(conditions),
               ));
             }
@@ -614,12 +689,14 @@ class SyncService {
           'num_breaks_taken': routine.numBreaksTaken,
           'last_break_at': routine.lastBreakAt?.toUtc().toIso8601String(),
           'paused_until': routine.pausedUntil?.toUtc().toIso8601String(),
+          'last_break_ended_at': routine.lastBreakEndedAt?.toUtc().toIso8601String(),
           'max_breaks': routine.maxBreaks,
           'max_break_duration': routine.maxBreakDuration,
           'friction': routine.friction,
           'friction_len': routine.frictionLen,
           'snoozed_until': routine.snoozedUntil?.toUtc().toIso8601String(),
           'strict_mode': routine.strictMode,
+          'completable_before': routine.completableBefore,
           'updated_at': routine.updatedAt.toUtc().toIso8601String(),
           'deleted': routine.deleted,
         })
@@ -653,6 +730,8 @@ class SyncService {
       if (madeRemoteChange) {
         _notifyPeers();
       }
+
+      
 
       return SyncResult();
     } catch (e, st) {

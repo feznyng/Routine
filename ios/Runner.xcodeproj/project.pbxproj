@@ -115,10 +115,6 @@
 			exceptions = (
 				A7E6A3D12D72935C0029FD40 /* Exceptions for "ActivityMonitor" folder in "ActivityMonitor" target */,
 			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
 			path = ActivityMonitor;
 			sourceTree = "<group>";
 		};
@@ -329,7 +325,6 @@
 				};
 			};
 			buildConfigurationList = 97C146E91CF9000F007C117D /* Build configuration list for PBXProject "Runner" */;
-			compatibilityVersion = "Xcode 9.3";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -337,6 +332,7 @@
 				Base,
 			);
 			mainGroup = 97C146E51CF9000F007C117D;
+			preferredProjectObjectVersion = 77;
 			productRefGroup = 97C146EF1CF9000F007C117D /* Products */;
 			projectDirPath = "";
 			projectRoot = "";

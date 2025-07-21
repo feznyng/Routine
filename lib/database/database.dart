@@ -2,7 +2,6 @@ import 'package:Routine/database/database.steps.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/extensions/json1.dart';
 import 'package:drift_flutter/drift_flutter.dart';
-import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import 'string_list_converter.dart';
 import 'package:path_provider/path_provider.dart';
@@ -39,6 +38,7 @@ class Routines extends Table {
   late final numBreaksTaken = integer().nullable()();
   late final lastBreakAt = dateTime().nullable()();
   late final pausedUntil = dateTime().nullable()();
+  late final lastBreakEndedAt = dateTime().nullable()();
   late final maxBreaks = integer().nullable()();
   late final maxBreakDuration = integer().clientDefault(() => 15)();
   late final friction = text()();
@@ -47,6 +47,7 @@ class Routines extends Table {
 
   late final conditions = text().map(const ConditionConverter())();
   late final strictMode = boolean().clientDefault(() => false)();
+  late final completableBefore = integer().clientDefault(() => 0).nullable()();
 }
 
 @DataClassName('DeviceEntry')
@@ -100,7 +101,7 @@ class AppDatabase extends _$AppDatabase {
   bool _skipUpdates = false;
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration {
@@ -109,7 +110,14 @@ class AppDatabase extends _$AppDatabase {
         from1To2: (m, schema) async {
           await m.dropColumn(schema.routines, 'recurring');
           await m.addColumn(schema.routines, schema.routines.recurrence);
-        }),
+        },
+        from2To3: (m, schema) async {
+          await m.addColumn(schema.routines, schema.routines.completableBefore);
+        },
+        from3To4: (m, schema) async {
+          await m.addColumn(schema.routines, schema.routines.lastBreakEndedAt);
+        }
+      ),
     );
   }
 
@@ -120,12 +128,6 @@ class AppDatabase extends _$AppDatabase {
         databaseDirectory: getApplicationSupportDirectory,
       ),
     );
-  }
-
-  Future<void> initialize() async {
-    if (!kDebugMode) {
-      return;
-    }
   }
 
   Future<List<RoutineEntry>> getRoutinesById(List<String> ids) {

@@ -184,7 +184,7 @@ class _RoutinePageState extends State<RoutinePage> {
       }
     }
     
-    _routine.save();
+    await _routine.save();
     _originalStrictMode = _routine.strictMode;
     _originalIsActive = _routine.isActive;
     widget.onSave(_routine);
@@ -377,10 +377,9 @@ class _RoutinePageState extends State<RoutinePage> {
                         );
                         
                         if (selectedDate != null) {
-                          // Show time picker
                           final TimeOfDay? selectedTime = await showTimePicker(
                             context: context,
-                            initialTime: TimeOfDay.now(),
+                            initialTime: TimeOfDay(hour: widget.routine.startHour, minute: widget.routine.startMinute),
                           );
                           
                           if (selectedTime != null) {

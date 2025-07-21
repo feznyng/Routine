@@ -37,12 +37,26 @@ class _SyncSettingsSectionState extends State<SyncSettingsSection> {
         leading: const Icon(Icons.sync),
         subtitle: const Text('Perform a full sync between your devices.'),
         trailing: _isSyncing
-          ? const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.0,
-              ),
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.0,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _isSyncing = false;
+                    });
+                  },
+                  child: const Text('Cancel'),
+                ),
+              ],
             )
           : TextButton(
               onPressed: _performSync,

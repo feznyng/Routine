@@ -87,7 +87,7 @@ class Device implements Syncable {
   @override
   Future<void> delete() async { 
     await getIt<AppDatabase>().tempDeleteDevice(id);
-    SyncService().sync();
+    await SyncService().queueSync();
   }
   
   @override
@@ -108,7 +108,7 @@ class Device implements Syncable {
       changes: Value(changes),
     ));
 
-    SyncService().sync();
+    await SyncService().queueSync();
   }
 
   Device.fromEntry(DeviceEntry entry)
@@ -168,11 +168,6 @@ class Device implements Syncable {
   
   @override
   bool get modified => _entry == null || changes.isNotEmpty;
-  
-  @override
-  void scheduleSyncJob() {
-    SyncService().addJob(SyncJob(remote: false));
-  }
   
   String get formattedType {
     switch (_type) {

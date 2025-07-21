@@ -198,7 +198,7 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
     
     // Split sorted routines into completed, active, inactive, and snoozed
     final snoozedRoutines = sortedRoutines.where((routine) => routine.isSnoozed).toList();
-    final completedRoutines = sortedRoutines.where((routine) => !routine.isSnoozed && routine.isActive && routine.areConditionsMet).toList();
+    final completedRoutines = sortedRoutines.where((routine) => !routine.isSnoozed && routine.canCompleteConditions && routine.areConditionsMet).toList();
     final activeRoutines = sortedRoutines.where((routine) => routine.isActive && !routine.isSnoozed && !routine.areConditionsMet).toList();
     final inactiveRoutines = sortedRoutines.where((routine) => !routine.isActive && !routine.isSnoozed).toList();
        
@@ -207,7 +207,23 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const CircularProgressIndicator(),
+                      const SizedBox(width: 16),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _isLoading = false;
+                          });
+                        },
+                        child: const Text('Cancel'),
+                      ),
+                    ],
+                  ),
+                )
               : _routines.isEmpty
                   ? _buildEmptyState(context)
                   : RefreshIndicator(

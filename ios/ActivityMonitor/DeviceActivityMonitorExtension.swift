@@ -17,41 +17,41 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
     
     // Log an error to shared UserDefaults for the main app to report to Sentry
     private func logError(_ context: String, _ error: Error?) {
-        if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker") {
-            // Create error entry
-            let errorEntry: [String: Any] = [
-                "timestamp": Date().timeIntervalSince1970,
-                "context": context,
-                "error": error?.localizedDescription ?? ""
-            ]
-            
-            // Convert to JSON
-            if let errorData = try? JSONSerialization.data(withJSONObject: errorEntry),
-               let errorString = String(data: errorData, encoding: .utf8) {
-                
-                // Get existing errors array or create new one
-                var errorsArray: [String] = []
-                if let existingErrors = sharedDefaults.array(forKey: "extensionErrors") as? [String] {
-                    errorsArray = existingErrors
-                }
-                
-                // Add new error and limit array size to prevent excessive storage
-                errorsArray.append(errorString)
-                if errorsArray.count > 10 {
-                    errorsArray.removeFirst(errorsArray.count - 10)
-                }
-                
-                // Save back to shared UserDefaults
-                sharedDefaults.set(errorsArray, forKey: "extensionErrors")
-                sharedDefaults.synchronize()
-                
-                os_log("DeviceActivityMonitorExtension: Error logged to shared UserDefaults: %{public}s", context)
-            } else {
-                os_log("DeviceActivityMonitorExtension: Failed to serialize error for logging")
-            }
-        } else {
-            os_log("DeviceActivityMonitorExtension: Failed to access shared UserDefaults for error logging")
-        }
+//        if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker") {
+//            // Create error entry
+//            let errorEntry: [String: Any] = [
+//                "timestamp": Date().timeIntervalSince1970,
+//                "context": context,
+//                "error": error?.localizedDescription ?? ""
+//            ]
+//            
+//            // Convert to JSON
+//            if let errorData = try? JSONSerialization.data(withJSONObject: errorEntry),
+//               let errorString = String(data: errorData, encoding: .utf8) {
+//                
+//                // Get existing errors array or create new one
+//                var errorsArray: [String] = []
+//                if let existingErrors = sharedDefaults.array(forKey: "extensionErrors") as? [String] {
+//                    errorsArray = existingErrors
+//                }
+//                
+//                // Add new error and limit array size to prevent excessive storage
+//                errorsArray.append(errorString)
+//                if errorsArray.count > 10 {
+//                    errorsArray.removeFirst(errorsArray.count - 10)
+//                }
+//                
+//                // Save back to shared UserDefaults
+//                sharedDefaults.set(errorsArray, forKey: "extensionErrors")
+//                sharedDefaults.synchronize()
+//                
+//                os_log("DeviceActivityMonitorExtension: Error logged to shared UserDefaults: %{public}s", context)
+//            } else {
+//                os_log("DeviceActivityMonitorExtension: Failed to serialize error for logging")
+//            }
+//        } else {
+//            os_log("DeviceActivityMonitorExtension: Failed to access shared UserDefaults for error logging")
+//        }
     }
     
     override func intervalDidStart(for activity: DeviceActivityName) {

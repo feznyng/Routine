@@ -26,6 +26,7 @@ class Routine implements Syncable {
   int? _numBreaksTaken;
   DateTime? _lastBreakAt;
   DateTime? _pausedUntil;
+  DateTime? _lastBreakEndedAt; // Tracks when a break ended, regardless of how it ended
   int? maxBreaks;
   int _maxBreakDuration;
   String friction;
@@ -33,6 +34,7 @@ class Routine implements Syncable {
   DateTime? _snoozedUntil;
   bool strictMode = false;
   List<Condition> conditions = [];
+  int _completableBefore = 0; // Minutes before routine start when conditions can be completed
 
   late final Map<String, Group> _groups;
 
@@ -59,6 +61,7 @@ class Routine implements Syncable {
     _numBreaksTaken = null,
     _lastBreakAt = null,
     _pausedUntil = null,
+    _lastBreakEndedAt = null,
     maxBreaks = null,
     _maxBreakDuration = 15,
     friction = 'delay',
@@ -66,6 +69,7 @@ class Routine implements Syncable {
     _snoozedUntil = null,
     strictMode = false,
     conditions = [],
+    _completableBefore = 0,
     _entry = null {
       _groups = {
         getIt<Device>().id: Group()
@@ -81,19 +85,21 @@ class Routine implements Syncable {
     _numBreaksTaken = entry.numBreaksTaken,
     _lastBreakAt = entry.lastBreakAt,
     _pausedUntil = entry.pausedUntil,
+    _lastBreakEndedAt = entry.lastBreakEndedAt,
     maxBreaks = entry.maxBreaks,
     _maxBreakDuration = entry.maxBreakDuration,
     friction = entry.friction,
     conditions = List.from(entry.conditions),
     frictionLen = entry.frictionLen,
     _snoozedUntil = entry.snoozedUntil,
-    strictMode = entry.strictMode {
+    strictMode = entry.strictMode,
+    _completableBefore = entry.completableBefore ?? 0 {
       _entry = entry;
       _groups = {};
       for (final group in groups) {
         _groups[group.device] = Group.fromEntry(group);
       }
-      
+
       if (!isActive || _lastBreakAt == null) {
         _numBreaksTaken = 0;
       } else {
@@ -121,6 +127,7 @@ class Routine implements Syncable {
     _numBreaksTaken = other._numBreaksTaken,
     _lastBreakAt = other._lastBreakAt,
     _pausedUntil = other._pausedUntil,
+    _lastBreakEndedAt = other._lastBreakEndedAt,
     maxBreaks = other.maxBreaks,
     _maxBreakDuration = other._maxBreakDuration,
     friction = other.friction,
@@ -128,6 +135,7 @@ class Routine implements Syncable {
     _snoozedUntil = other._snoozedUntil,
     conditions = other.conditions,
     strictMode = other.strictMode,
+    _completableBefore = other._completableBefore,
     _entry = other._entry {
       _groups = Map.fromEntries(
         other._groups.entries.map(
@@ -137,11 +145,11 @@ class Routine implements Syncable {
     }
 
   @override
-  Future<void> save() async {
+  Future<void> save({bool groups = true}) async {
     final changes = this.changes;
 
-    for (final group in _groups.values.where((g) => g.modified)) {
-      group.save();
+    if (groups) {
+      await Future.wait(_groups.values.where((g) => g.modified).map((g) => g.save()));
     }
 
     if (changes.contains('startTime') || changes.contains('endTime')) {
@@ -155,33 +163,36 @@ class Routine implements Syncable {
     }
 
     await getIt<AppDatabase>().upsertRoutine(RoutinesCompanion(
-      id: Value(_id), 
-      name: Value(_name),
-      monday: Value(_days[0]), 
-      tuesday: Value(_days[1]), 
-      wednesday: Value(_days[2]), 
-      thursday: Value(_days[3]), 
-      friday: Value(_days[4]), 
-      saturday: Value(_days[5]), 
-      sunday: Value(_days[6]), 
-      startTime: Value(_startTime), 
-      endTime: Value(_endTime),
-      groups: Value(_groups.values.map<String>((g) => g.id).toList()),
-      changes: Value(changes),
-      numBreaksTaken: Value(_numBreaksTaken),
-      lastBreakAt: Value(_lastBreakAt),
-      pausedUntil: Value(_pausedUntil),
-      maxBreaks: Value(maxBreaks),
-      maxBreakDuration: Value(_maxBreakDuration),
-      friction: Value(friction),
-      frictionLen: Value(frictionLen),
-      snoozedUntil: Value(_snoozedUntil),
-      updatedAt: Value(DateTime.now()),
-      recurrence: Value(1),
-      conditions: Value(conditions),
-      strictMode: Value(strictMode)
+        id: Value(_id), 
+        name: Value(_name),
+        monday: Value(_days[0]), 
+        tuesday: Value(_days[1]), 
+        wednesday: Value(_days[2]), 
+        thursday: Value(_days[3]), 
+        friday: Value(_days[4]), 
+        saturday: Value(_days[5]), 
+        sunday: Value(_days[6]), 
+        startTime: Value(_startTime), 
+        endTime: Value(_endTime),
+        groups: Value(_groups.values.map<String>((g) => g.id).toList()),
+        changes: Value(changes),
+        numBreaksTaken: Value(_numBreaksTaken),
+        lastBreakAt: Value(_lastBreakAt),
+        lastBreakEndedAt: Value(_lastBreakEndedAt),
+        pausedUntil: Value(_pausedUntil),
+        maxBreaks: Value(maxBreaks),
+        maxBreakDuration: Value(_maxBreakDuration),
+        friction: Value(friction),
+        frictionLen: Value(frictionLen),
+        snoozedUntil: Value(_snoozedUntil),
+        updatedAt: Value(DateTime.now()),
+        recurrence: Value(1),
+        conditions: Value(conditions),
+        strictMode: Value(strictMode),
+        completableBefore: Value(_completableBefore)
     ));
-    SyncService().sync();
+
+    await SyncService().queueSync();
   }
 
   @override
@@ -190,10 +201,6 @@ class Routine implements Syncable {
   @override
   bool get modified => _entry == null || changes.isNotEmpty;
   
-  @override
-  void scheduleSyncJob() {
-    SyncService().addJob(SyncJob(remote: false));
-  }
   DateTime? get snoozedUntil => _snoozedUntil;
 
   bool get isSnoozed {
@@ -203,18 +210,18 @@ class Routine implements Syncable {
 
   Future<void> snooze(DateTime until) async {
     _snoozedUntil = until;
-    await save();
+    await save(groups: false);
   }
 
   Future<void> unsnooze() async {
     _snoozedUntil = null;
-    await save();
+    await save(groups: false);
   }
 
   @override
   Future<void> delete() async {
     await getIt<AppDatabase>().tempDeleteRoutine(_id);
-    SyncService().sync();
+    await SyncService().queueSync();
   }
 
   @override
@@ -285,6 +292,10 @@ class Routine implements Syncable {
       changes.add('lastBreakAt');
     }
 
+    if (_entry!.lastBreakEndedAt != _lastBreakEndedAt) {
+      changes.add('lastBreakEndedAt');
+    }
+
     if (_entry!.pausedUntil != _pausedUntil) {
       changes.add('pausedUntil');
     }
@@ -307,6 +318,10 @@ class Routine implements Syncable {
 
     if (_entry!.frictionLen != frictionLen) {
       changes.add('frictionLen');
+    }
+
+    if (_entry!.completableBefore != _completableBefore) {
+      changes.add('completableBefore');
     }
     
     return changes;
@@ -396,6 +411,60 @@ class Routine implements Syncable {
     // Regular same-day routine
     return _days[dayOfWeek] && (currMins >= _startTime && currMins < _endTime);
   }
+  
+  // Determines if conditions can be completed based on the current time and completableBefore setting
+  bool get canCompleteConditions {
+    if (isSnoozed) {
+      return false;
+    }
+
+    final DateTime now = DateTime.now();
+    final int dayOfWeek = now.weekday - 1;
+    final int currMins = now.hour * 60 + now.minute;
+    
+    if (_startTime == -1 && _endTime == -1) {
+      return _days[dayOfWeek];
+    }
+    
+    // Calculate the effective start time with completableBefore minutes subtracted
+    final int effectiveStartTime = _startTime - _completableBefore;
+    
+    // Handle overnight routines (ending on the next day)
+    if (_endTime < _startTime) {
+      if (currMins >= effectiveStartTime || (effectiveStartTime < 0 && currMins >= (effectiveStartTime + 24 * 60))) {
+        // Current time is after effective start time but before midnight
+        // Only need to check if current day is enabled
+        return _days[dayOfWeek];
+      } else if (currMins < _endTime) {
+        // Current time is after midnight but before end time
+        // Check if yesterday was enabled (routine started yesterday)
+        final int yesterdayOfWeek = (dayOfWeek + 6) % 7; // Previous day, wrapping from 0 back to 6
+        return _days[yesterdayOfWeek];
+      }
+      return false;
+    }
+    
+    // Handle the case where effectiveStartTime might be negative (before midnight of previous day)
+    if (effectiveStartTime < 0) {
+      // Check if we're in the window between midnight and the actual start time
+      if (currMins < _startTime) {
+        final int yesterdayOfWeek = (dayOfWeek + 6) % 7; // Previous day
+        return _days[yesterdayOfWeek] && (currMins >= (effectiveStartTime + 24 * 60));
+      }
+    }
+    
+    // Regular same-day routine
+    return _days[dayOfWeek] && (currMins >= effectiveStartTime && currMins < _endTime);
+  }
+
+  int get completableBefore => _completableBefore;
+  
+  set completableBefore(int value) {
+    if (value < 0) {
+      throw Exception("Completable before time must be non-negative");
+    }
+    _completableBefore = value;
+  }
 
   bool get isPaused {
     if (_pausedUntil == null) return false;
@@ -407,25 +476,36 @@ class Routine implements Syncable {
   bool get canBreak {
     return (numBreaksLeft ?? 1) > 0;
   }
+  
+  bool get canTakeBreakNowWithPomodoro {
+    if (friction != 'pomodoro' || frictionLen == null) return true;
+    
+    // We can take a break when there's no remaining pomodoro time
+    return getRemainingPomodoroTime <= 0;
+  }
 
   DateTime? get pausedUntil => _pausedUntil;
+  
+  DateTime? get lastBreakEndedAt => _lastBreakEndedAt;
 
   Future<void> breakFor({int? minutes}) async {
     if (!canBreak) return;
 
     final duration = minutes ?? _maxBreakDuration;
     final now = DateTime.now();
-    
+
     _lastBreakAt = now;
     _pausedUntil = now.add(Duration(minutes: duration));
+    _lastBreakEndedAt = _pausedUntil;
     _numBreaksTaken = (_numBreaksTaken ?? 0) + 1;
     
-    await save();
+    await save(groups: false);
   }
 
   Future<void> endBreak() async {
     _pausedUntil = null;
-    await save();
+    _lastBreakEndedAt = DateTime.now();
+    await save(groups: false);
   }
 
   Map<String, Group> get groups => _groups;
@@ -473,6 +553,26 @@ class Routine implements Syncable {
     if (frictionLen != null) return frictionLen!;
     return (_numBreaksTaken ?? 0) * 30; // 30 seconds per break taken
   }
+  
+  int get getRemainingPomodoroTime {
+    if (friction != 'pomodoro' || frictionLen == null) return 0;
+    
+    final now = DateTime.now();
+
+    logger.i("getRemainingPomodoroTime - ${_numBreaksTaken} - ${_lastBreakEndedAt}");
+    
+    if (_numBreaksTaken == 0 || _numBreaksTaken == null) {
+      final timeSinceStart = now.difference(startedAt).inSeconds;
+      return max(0, (frictionLen! * 60) - timeSinceStart);
+    }
+    
+    if (_lastBreakEndedAt != null) {
+      final timeSinceLastBreak = now.difference(_lastBreakEndedAt!).inSeconds;
+      return max(0, (frictionLen! * 60) - timeSinceLastBreak);
+    }
+    
+    return frictionLen! * 60; // Convert minutes to seconds
+  }
 
   int calculateCodeLength() {
     if (frictionLen != null) return frictionLen!;
@@ -505,11 +605,19 @@ class Routine implements Syncable {
   }
 
   bool isConditionMet(Condition condition) {
-    return condition.lastCompletedAt != null && condition.lastCompletedAt!.isAfter(startedAt);
+    if (condition.lastCompletedAt == null) {
+      return false;
+    }
+  
+    // Calculate the effective start time by subtracting completableBefore minutes
+    final DateTime effectiveStartTime = startedAt.subtract(Duration(minutes: _completableBefore));
+  
+    // Check if the condition was completed after the effective start time
+    return condition.lastCompletedAt!.isAfter(effectiveStartTime);
   }
 
   bool get areConditionsMet {
-    return conditions.isEmpty ? false : conditions.every((c) => isConditionMet(c));
+    return conditions.isNotEmpty && conditions.every((c) => isConditionMet(c));
   }
 
   void completeCondition(Condition condition, {bool complete = true}) {

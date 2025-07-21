@@ -5,12 +5,15 @@ import FamilyControls
 import ManagedSettings
 import os.log
 import Sentry
+import workmanager_apple
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
     // Timer for checking extension errors
     var extensionErrorCheckTimer: Timer?
     let manager = RoutineManager()
+    
+    var backgroundTaskID: UIBackgroundTaskIdentifier = UIBackgroundTaskIdentifier.invalid
     
     override func application(
         _ application: UIApplication,
@@ -31,6 +34,8 @@ import Sentry
             withId: "app_site_selector"
         )
         
+        WorkmanagerPlugin.registerBGProcessingTask(withIdentifier: "sync")
+        
         // Setup iOS routine channel
         let routineChannel = FlutterMethodChannel(name: "com.solidsoft.routine",
                                                   binaryMessenger: controller.binaryMessenger)
@@ -38,89 +43,63 @@ import Sentry
             os_log("AppDelegate: %{public}s", call.method)
             switch call.method {
             case "immediateUpdateRoutines":
-                os_log("updateRoutines: immediate start")
-                SentrySDK.capture(message: "updateRoutines: immediate start")
+                os_log("updateRoutines: fg start")
+                SentrySDK.capture(message: "updateRoutines: fg start")
                 if let args = call.arguments as? [String: Any],
                    let routinesJson = args["routines"] as? [[String: Any]] {
-                    do {
-                        let jsonData = try JSONSerialization.data(withJSONObject: routinesJson)
-                        let jsonString = String(data: jsonData, encoding: .utf8)!
-                        
-                        if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker") {
-                            sharedDefaults.set(jsonString, forKey: "routinesData")
-                            sharedDefaults.synchronize()
-                        } else {
-                            print("Failed to access shared UserDefaults")
+                    self?.handleRoutineUpdate(routinesJson: routinesJson) { updateResult in
+                        switch updateResult {
+                        case .success(_):
+                            os_log("updateRoutines: fg done")
+                            SentrySDK.capture(message: "updateRoutines: fg done")
+                            result(true)
+                        case .failure(let error):
+                            os_log("updateRoutines: fg failed - \(error)")
+                            SentrySDK.capture(error: error) { (scope) in
+                                scope.setTag(value: "failed to immediately update routines", key: "context")
+                            }
+                            result(FlutterError(code: "JSON_DECODE_ERROR",
+                                              message: "Failed to deserialize: \(error.localizedDescription)",
+                                              details: nil))
                         }
-                        
-                        let decoder = JSONDecoder()
-                        let routines = try decoder.decode([Routine].self, from: jsonString.data(using: .utf8)!)
-                        
-                        self?.manager.update(routines: routines)
-                        
-                        os_log("updateRoutines: immediate done")
-                        SentrySDK.capture(message: "updateRoutines: immediate done")
-                        result(true)
-                    } catch {
-                        // Return error on main thread
-                        os_log("updateRoutines: immediate failed - \(error)")
-                        SentrySDK.capture(error: error) { (scope) in
-                            scope.setTag(value: "failed to immediately update routines", key: "context")
-                        }
-                        result(FlutterError(code: "JSON_DECODE_ERROR",
-                                            message: "Failed to deserialize: \(error.localizedDescription)",
-                                            details: nil))
                     }
-
                 }
                 return;
+                
             case "updateRoutines":
                 if let args = call.arguments as? [String: Any],
                    let routinesJson = args["routines"] as? [[String: Any]] {
                     
-                    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                    DispatchQueue.global().async { [weak self] in
                         SentrySDK.capture(message: "updateRoutines: start")
-                        os_log("updateRoutines: start")
+                        os_log("updateRoutines: bg start")
                         
-                        do {
-                            let jsonData = try JSONSerialization.data(withJSONObject: routinesJson)
-                            let jsonString = String(data: jsonData, encoding: .utf8)!
-                            
-                            if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker") {
-                                sharedDefaults.set(jsonString, forKey: "routinesData")
-                                sharedDefaults.synchronize()
-                            } else {
-                                print("Failed to access shared UserDefaults")
-                            }
-                            
-                            let decoder = JSONDecoder()
-                            let routines = try decoder.decode([Routine].self, from: jsonString.data(using: .utf8)!)
-
-                            self?.manager.update(routines: routines)
-
-                            if (self?.manager == nil) {
-                                SentrySDK.capture(message: "updateRoutines: manager is nil")
-                            }
-                            
-                            // Return success on main thread
+                        let backgroundTaskID = UIApplication.shared.beginBackgroundTask (withName: "Finish updating routines") {
+                            UIApplication.shared.endBackgroundTask(self!.backgroundTaskID)
+                            self!.backgroundTaskID = UIBackgroundTaskIdentifier.invalid
+                        }
+                        
+                        self?.handleRoutineUpdate(routinesJson: routinesJson) { updateResult in
                             DispatchQueue.main.async {
-                                SentrySDK.capture(message: "updateRoutines: done")
-                                os_log("updateRoutines: done")
-                                result(true)
-                            }
-                            
-                        } catch {
-                            // Return error on main thread
-                            SentrySDK.capture(error: error) { (scope) in
-                                scope.setTag(value: "failed to background update routines", key: "context")
-                            }
-                            DispatchQueue.main.async {
-                                os_log("updateRoutines: failed - \(error)")
-                                result(FlutterError(code: "JSON_DECODE_ERROR",
-                                                    message: "Failed to deserialize: \(error.localizedDescription)",
-                                                    details: nil))
+                                switch updateResult {
+                                case .success(_):
+                                    SentrySDK.capture(message: "updateRoutines: bg done")
+                                    os_log("updateRoutines: bg done")
+                                    result(true)
+                                case .failure(let error):
+                                    SentrySDK.capture(error: error) { (scope) in
+                                        scope.setTag(value: "failed to background update routines", key: "context")
+                                    }
+                                    os_log("updateRoutines: bg failed - \(error)")
+                                    result(FlutterError(code: "JSON_DECODE_ERROR",
+                                                      message: "Failed to deserialize: \(error.localizedDescription)",
+                                                      details: nil))
+                                }
                             }
                         }
+                        
+                        UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                        self?.backgroundTaskID = UIBackgroundTaskIdentifier.invalid
                     }
                 } else {
                     print("Error: Invalid arguments for updateRoutines")
@@ -230,7 +209,35 @@ import Sentry
         }
         
         GeneratedPluginRegistrant.register(with: self)
+        WorkmanagerPlugin.setPluginRegistrantCallback { registry in
+          GeneratedPluginRegistrant.register(with: registry)
+        }
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    }
+    
+    // MARK: - Routine Update Handling
+    
+    private func handleRoutineUpdate(routinesJson: [[String: Any]], completion: @escaping (Result<Bool, Error>) -> Void) {
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: routinesJson)
+            let jsonString = String(data: jsonData, encoding: .utf8)!
+            
+            if let sharedDefaults = UserDefaults(suiteName: "group.routineblocker") {
+                sharedDefaults.set(jsonString, forKey: "routinesData")
+                sharedDefaults.synchronize()
+            } else {
+                print("Failed to access shared UserDefaults")
+            }
+            
+            let decoder = JSONDecoder()
+            let routines = try decoder.decode([Routine].self, from: jsonString.data(using: .utf8)!)
+            
+            manager.update(routines: routines)
+            completion(.success(true))
+            
+        } catch {
+            completion(.failure(error))
+        }
     }
     
     // MARK: - Extension Error Handling

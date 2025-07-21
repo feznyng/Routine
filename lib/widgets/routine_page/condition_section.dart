@@ -120,7 +120,7 @@ class ConditionSection extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               if (routine.conditions.isEmpty)
                 Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -149,12 +149,80 @@ class ConditionSection extends StatelessWidget {
                     );
                   },
                 ),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: ElevatedButton.icon(
-                  onPressed: enabled ? () => _addCondition(context) : null,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Condition'),
+              TextButton.icon(
+                onPressed: enabled ? () => _addCondition(context) : null,
+                icon: const Icon(Icons.add),
+                label: const Text('Add Condition'),
+              ),
+              const Divider(),
+              // Advanced section with expandable panel
+              Theme(
+                data: Theme.of(context).copyWith(
+                  dividerColor: Colors.transparent,
+                ),
+                child: ExpansionTile(
+                  title: Text(
+                    'Advanced',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  leading: const Icon(Icons.settings),
+                  childrenPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'Completion Window',
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: SegmentedButton<String>(
+                              segments: [
+                                ButtonSegment(
+                                  value: 'minus',
+                                  icon: const Icon(Icons.remove),
+                                  enabled: enabled && routine.completableBefore > 5,
+                                ),
+                                ButtonSegment(
+                                  value: 'text',
+                                  label: Text('${routine.completableBefore} min'),
+                                ),
+                                ButtonSegment(
+                                  value: 'plus',
+                                  icon: const Icon(Icons.add),
+                                  enabled: enabled && routine.completableBefore < 120,
+                                ),
+                              ],
+                              emptySelectionAllowed: true,
+                              selected: const {},
+                              onSelectionChanged: enabled ? (Set<String> selected) {
+                                if (selected.first == 'minus' && routine.completableBefore > 5) {
+                                  routine.completableBefore = routine.completableBefore - 10;
+                                  onChanged();
+                                } else if (selected.first == 'plus' && routine.completableBefore < 120) {
+                                  routine.completableBefore = routine.completableBefore + 10;
+                                  onChanged();
+                                }
+                              } : null,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Allows you to complete conditions a certain amount of time prior to the routine becoming active.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

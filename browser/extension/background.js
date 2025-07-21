@@ -48,6 +48,9 @@ async function connectToNative() {
         // Re-register blocking rules with new patterns
         registerBlockingRules();
         
+        // Check and redirect any currently open tabs that are now blocked
+        checkAndRedirectBlockedTabs();
+        
         console.log("Updated blocked sites:", sites, allowList);
       }
     });
@@ -240,6 +243,75 @@ chrome.alarms.onAlarm.addListener((alarm) => {
       console.log("Keep-alive alarm triggered reconnection");
       connectToNative();
     }
+  }
+});
+
+// Function to check if a URL should be blocked
+function shouldBlockUrl(url) {
+  if (!isAppConnected || sites.length === 0) {
+    return false;
+  }
+  
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname;
+    
+    if (allowList) {
+      // Allowlist mode: block if not in the allowed sites
+      return !sites.some(site => hostname === site || hostname.endsWith('.' + site));
+    } else {
+      // Blocklist mode: block if in the blocked sites
+      return sites.some(site => hostname === site || hostname.endsWith('.' + site));
+    }
+  } catch (error) {
+    console.error('Error parsing URL:', url, error);
+    return false;
+  }
+}
+
+// Function to check and redirect currently open tabs that are now blocked
+async function checkAndRedirectBlockedTabs() {
+  if (!isAppConnected) {
+    return;
+  }
+  
+  try {
+    const tabs = await chrome.tabs.query({});
+    
+    for (const tab of tabs) {
+      // Skip special pages (chrome://, moz-extension://, etc.)
+      if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('moz-extension://') || 
+          tab.url.startsWith('chrome-extension://') || tab.url.startsWith('about:') ||
+          tab.url.includes('routineblocker.com/blocked.html')) {
+        continue;
+      }
+      
+      if (shouldBlockUrl(tab.url)) {
+        console.log(`Redirecting tab ${tab.id} from blocked URL: ${tab.url}`);
+        try {
+          await chrome.tabs.update(tab.id, {
+            url: 'https://www.routineblocker.com/blocked.html'
+          });
+        } catch (error) {
+          console.error(`Failed to redirect tab ${tab.id}:`, error);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error checking blocked tabs:', error);
+  }
+}
+
+// Listen for tab updates to block navigation to blocked sites
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  // Only check when the URL changes and is loading
+  if (changeInfo.status === 'loading' && changeInfo.url && shouldBlockUrl(changeInfo.url)) {
+    console.log(`Blocking navigation to: ${changeInfo.url}`);
+    chrome.tabs.update(tabId, {
+      url: 'https://www.routineblocker.com/blocked.html'
+    }).catch(error => {
+      console.error(`Failed to block navigation in tab ${tabId}:`, error);
+    });
   }
 });
 

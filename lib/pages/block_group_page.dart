@@ -72,19 +72,23 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
       MaterialPageRoute<void>(
         builder: (context) => EditBlockGroupPage(
           group: _selectedGroup,
-          onSave: (updatedGroup) {
-            updatedGroup.save();
-            Navigator.of(context).pop();
-            setState(() {
-              _selectedGroup = updatedGroup;
-            });
+          onSave: (updatedGroup) async {
+            await updatedGroup.save();
+            if (context.mounted) {
+              Navigator.of(context).pop();
+              setState(() {
+                _selectedGroup = updatedGroup;
+              });
+            }
           },
-          onDelete: _selectedGroup.saved ? () {
-            _selectedGroup.delete();
-            Navigator.of(context).pop();
-            setState(() {
-              _selectedGroup = Group(); // Reset to custom group if the selected one was deleted
-            });
+          onDelete: _selectedGroup.saved ? () async {
+            await _selectedGroup.delete();
+            if (context.mounted) {
+              Navigator.of(context).pop();
+              setState(() {
+                _selectedGroup = Group(); // Reset to custom group if the selected one was deleted
+              });
+            }
           } : null,
         ),
       ),

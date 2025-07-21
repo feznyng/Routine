@@ -38,11 +38,16 @@
 	<array>
 		<string>remote-notification</string>
 		<string>fetch</string>
+		<string>processing</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>sync</string>
+	</array>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>nfc</string>

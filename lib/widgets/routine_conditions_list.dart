@@ -19,7 +19,9 @@ class RoutineConditionsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!routine.isActive || routine.conditions.isEmpty) {
+    // Show conditions if they can be completed (based on completableBefore setting)
+    // or if the routine is currently active
+    if ((!routine.canCompleteConditions && !routine.isActive) || routine.conditions.isEmpty) {
       return const SizedBox.shrink();
     }
 

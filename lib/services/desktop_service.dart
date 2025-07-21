@@ -1,19 +1,20 @@
-import 'package:Routine/constants.dart';
-import 'package:Routine/models/installed_app.dart';
-import 'package:Routine/services/auth_service.dart';
-import 'package:Routine/services/platform_service.dart';
-import 'package:Routine/util.dart';
-import 'package:flutter/services.dart';
 import 'dart:io';
 import 'dart:async';
-import '../models/routine.dart';
-import 'strict_mode_service.dart';
-import 'browser_service.dart';
-import 'sync_service.dart';
+
+import 'package:Routine/setup.dart';
 import 'package:cron/cron.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:Routine/setup.dart';
+
+import 'package:Routine/channels/desktop_channel.dart';
+import 'package:Routine/models/installed_app.dart';
+import '../models/routine.dart';
+import 'package:Routine/services/auth_service.dart';
+import 'package:Routine/services/platform_service.dart';
+import 'package:Routine/util.dart';
+import 'strict_mode_service.dart';
+import 'browser_service.dart';
+import 'sync_service.dart';
 
 class DesktopService extends PlatformService {
   // Singleton instance
@@ -26,7 +27,7 @@ class DesktopService extends PlatformService {
 
   static DesktopService get instance => _instance;
 
-  final _platform = const MethodChannel(kAppName);
+  final _desktopChannel = DesktopChannel.instance;
   // Cache fields for blocked items
   List<String> _cachedSites = [];
   List<String> _cachedApps = [];
@@ -43,11 +44,7 @@ class DesktopService extends PlatformService {
   Future<void> init() async {
     _stopWatching();
 
-    try {
-      await _platform.invokeMethod('engineReady');
-    } catch (e, st) {
-      Util.report('Failed to signal engine start', e, st);
-    }
+    await _desktopChannel.signalEngineReady();
 
     await BrowserService.instance.init();
 
@@ -72,27 +69,13 @@ class DesktopService extends PlatformService {
       }
     });
     
-    // Setup platform method channel handler for system wake events
-    _platform.setMethodCallHandler((call) async {
-      switch (call.method) {
-        case 'systemWake':
-          logger.i('=== SYSTEM WAKE EVENT ===');
-          await AuthService().refreshSessionIfNeeded().then((_) async {
-            _stopWatching();
-            await SyncService().sync();
-            await init();
-          });
-          
-          logger.i('=== SYSTEM WAKE EVENT PROCESSING COMPLETE ===');
-
-          return null;
-        default:
-          logger.e('Unknown method call: ${call.method}');
-          throw PlatformException(
-            code: 'Unimplemented',
-            message: "Method ${call.method} not implemented",
-          );
-      }
+    // Setup system wake event handler
+    _desktopChannel.registerSystemWakeHandler(() async {
+      await AuthService().refreshSessionIfNeeded().then((_) async {
+        _stopWatching();
+        await SyncService().queueSync();
+        await init();
+      });
     });
   }
 
@@ -180,16 +163,18 @@ class DesktopService extends PlatformService {
     final apps = List<String>.from(_cachedApps);
 
     if (StrictModeService.instance.effectiveBlockBrowsersWithoutExtension && !BrowserService.instance.isInGracePeriod) {
-      final browsers = await BrowserService.instance.getInstalledSupportedBrowsers(connected: false);
+      // we don't include controlled browsers because that check will occur natively on macos
+      final browsers = await BrowserService.instance.getInstalledSupportedBrowsers(connected: false, controlled: false);
       apps.addAll(browsers.map((b) => b.app.filePath));
-      logger.i("added disconnected browsers: $apps");
+      logger.i("added disconnected browsers: $browsers");
     }
 
-    await _platform.invokeMethod('updateAppList', {
-      'apps': apps,
-      'categories': _cachedCategories,
-      'allowList': _isAllowList,
-    });
+    await _desktopChannel.updateBlockingList(
+      apps: apps,
+      sites: _cachedSites,
+      categories: _cachedCategories,
+      allowList: _isAllowList,
+    );
   }
   
   // Update blocked sites in the browser extension
@@ -230,11 +215,7 @@ class DesktopService extends PlatformService {
         Util.report('error setting start on login to $enabled', e, st);
       }
     } else {
-      try {
-        await _platform.invokeMethod('setStartOnLogin', enabled);
-      } catch (e, st) {
-        Util.report('error setting start on login to $enabled', e, st);
-      }
+      await _desktopChannel.setStartOnLogin(enabled);
     }
   }
 
@@ -255,13 +236,7 @@ class DesktopService extends PlatformService {
         return false;
       }
     } else {
-      try {
-        final bool enabled = await _platform.invokeMethod('getStartOnLogin');
-        return enabled;
-      } catch (e, st) {
-        Util.report('failed retrieving startup on login status', e, st);
-        return false;
-      }
+      return await _desktopChannel.getStartOnLogin();
     }
   }
 
@@ -270,33 +245,7 @@ class DesktopService extends PlatformService {
     List<InstalledApp> installedApps = [];
 
     if (Platform.isWindows) {
-      try {
-        final List<dynamic> runningApps = await _platform.invokeMethod('getRunningApplications');
-        
-        // Convert the result to InstalledApplication objects
-        for (final app in runningApps) {
-          final String name = app['name'];
-          final String path = app['path'];
-          final String? displayName = app['displayName'];
-          
-          // Skip system processes and empty names
-          if (name.isEmpty || 
-              path.toLowerCase().contains('\\windows\\system32\\') ||
-              path.toLowerCase().contains('\\windows\\syswow64\\')) {
-            continue;
-          }
-          
-          // Add to the list if not already present
-          if (!installedApps.any((existingApp) => existingApp.filePath == path)) {
-            installedApps.add(InstalledApp(
-              name: displayName ?? name,
-              filePath: path
-            ));
-          }
-        }
-      } catch (e, st) {
-        Util.report('error retrieving installed applications', e, st);
-      }
+      installedApps = await _desktopChannel.getRunningApplications();
     } else if (Platform.isMacOS) {  
       Directory appDir = Directory('/Applications');
       if (await appDir.exists()) {

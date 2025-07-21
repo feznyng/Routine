@@ -1,12 +1,11 @@
 import 'dart:async';
 import 'dart:io' show Platform;
-import 'package:Routine/constants.dart';
+
+import 'package:Routine/channels/mobile_channel.dart';
 import 'package:Routine/models/installed_app.dart';
 import 'package:Routine/services/platform_service.dart';
 import 'package:Routine/services/sync_service.dart';
 import 'package:Routine/setup.dart';
-import 'package:Routine/util.dart';
-import 'package:flutter/services.dart';
 import '../models/routine.dart';
 import 'strict_mode_service.dart';
 
@@ -17,7 +16,7 @@ class MobileService extends PlatformService {
   
   MobileService._internal();
   
-  final MethodChannel _channel = const MethodChannel(kAppName);
+  final _mobileChannel = MobileChannel.instance;
   
   StreamSubscription? _routineSubscription;
   StreamSubscription? _strictModeSubscription;
@@ -36,7 +35,7 @@ class MobileService extends PlatformService {
   Future<void> refresh() async {
     SyncService().setupRealtimeSync();
     await stopWatching();
-    await SyncService().sync();
+    await SyncService().queueSync();
     await init();
   }
   
@@ -48,11 +47,7 @@ class MobileService extends PlatformService {
   }
   
   Future<void> _sendStrictModeSettings(Map<String, bool> settings) async {
-    try {
-      await _channel.invokeMethod('updateStrictModeSettings', settings);
-    } catch (e, st) {
-      Util.report('error sending strict mode settings', e, st);
-    }
+    await _mobileChannel.updateStrictModeSettings(settings);
   }
 
   Future<void> updateRoutines({bool immediate = false}) async {
@@ -61,84 +56,39 @@ class MobileService extends PlatformService {
   }
 
   Future<List<InstalledApp>> getInstalledApps() async {
-    List<InstalledApp> installedApps = [];
-
-    logger.i("retrieving apps");
-
-    final dynamic appList = await _channel.invokeMethod('retrieveAllApps');
-
-    logger.i("finished retrieving apps = ${appList.length}");
-
-    for (final app in appList) {
-      installedApps.add(InstalledApp(name: app['name']!, filePath: app['filePath']!));
-    }
-
-    return installedApps;
+    return await _mobileChannel.getInstalledApps();
   }
   
   Future<void> _sendRoutines(List<Routine> routines, bool immediate) async {
-    try {
-      final List<Map<String, dynamic>> routineMaps = routines.where((routine) => routine.getGroup() != null).map((routine) {
-        DateTime? conditionsLastMet;
-        if (routine.conditions.isNotEmpty) {
-          if (routine.conditions.any((condition) => condition.lastCompletedAt == null)) {
-            conditionsLastMet = null;
-          } else {
-            conditionsLastMet = routine.conditions
-                .map((condition) => condition.lastCompletedAt!)
-                .reduce((earliest, date) => earliest.isBefore(date) ? earliest : date);
-          }
-        }
-        
-        return {
-          'id': routine.id,
-          'name': routine.name,
-          'days': routine.days,
-          'startTime': routine.startTime,
-          'endTime': routine.endTime,
-          'allDay': routine.allDay,
-          'pausedUntil': routine.pausedUntil?.toUtc().toIso8601String(),
-          'snoozedUntil': routine.snoozedUntil?.toUtc().toIso8601String(),
-          'apps': routine.apps,
-          'sites': routine.sites,
-          'categories': routine.categories,
-          'allow': routine.allow,
-          'conditionsMet': routine.areConditionsMet,
-          'conditionsLastMet': conditionsLastMet?.toUtc().toIso8601String(),
-          'strictMode': routine.strictMode,
-        };
-      }).toList();
-            
-      await _channel.invokeMethod(immediate ? 'immediateUpdateRoutines' : 'updateRoutines', {'routines': routineMaps});
-    } catch (e, st) {
-      Util.report('error updating routines', e, st);
-    }
+    logger.i("sendRoutines: start");
+    await _mobileChannel.updateRoutines(routines, immediate: immediate);
+    logger.i("sendRoutines: end");
   }
   
   static MobileService get instance => _instance;
   
   Future<bool> getBlockPermissions({bool request = false}) async {
     if (Platform.isIOS) {
-      final bool isAuthorized = await _channel.invokeMethod('checkFamilyControlsAuthorization');
+      final bool isAuthorized = await _mobileChannel.checkFamilyControlsAuthorization();
 
       if (isAuthorized) {
         return true;
       } else if (request) {
-        return await _channel.invokeMethod('requestFamilyControlsAuthorization');
+        return await _mobileChannel.requestFamilyControlsAuthorization();
       } else {
         return false;
       }
     } else {
-      bool hasOverlayPermission = await checkOverlayPermission();
-      bool hasAccessibilityPermission = await checkAccessibilityPermission();
+      bool hasOverlayPermission = await _mobileChannel.checkOverlayPermission();
+      bool hasAccessibilityPermission = await _mobileChannel.checkAccessibilityPermission();
       
       if (request) {
         if (!hasOverlayPermission) {
-          hasOverlayPermission = await requestOverlayPermission();
+          hasOverlayPermission = await _mobileChannel.requestOverlayPermission();
         }
         
         if (!hasAccessibilityPermission) {
-          hasAccessibilityPermission = await requestAccessibilityPermission();
+          hasAccessibilityPermission = await _mobileChannel.requestAccessibilityPermission();
         }
       }
       
@@ -147,22 +97,18 @@ class MobileService extends PlatformService {
   }
   
   Future<bool> checkOverlayPermission() async {
-    if (!Platform.isAndroid) return false;
-    return await _channel.invokeMethod('checkOverlayPermission');
+    return await _mobileChannel.checkOverlayPermission();
   }
   
   Future<bool> requestOverlayPermission() async {
-    if (!Platform.isAndroid) return false;
-    return await _channel.invokeMethod('requestOverlayPermission');
+    return await _mobileChannel.requestOverlayPermission();
   }
   
   Future<bool> checkAccessibilityPermission() async {
-    if (!Platform.isAndroid) return false;
-    return await _channel.invokeMethod('checkAccessibilityPermission');
+    return await _mobileChannel.checkAccessibilityPermission();
   }
   
   Future<bool> requestAccessibilityPermission() async {
-    if (!Platform.isAndroid) return false;
-    return await _channel.invokeMethod('requestAccessibilityPermission');
+    return await _mobileChannel.requestAccessibilityPermission();
   }
 }

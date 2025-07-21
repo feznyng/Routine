@@ -91,7 +91,7 @@ class BreakConfigSection extends StatelessWidget {
                             ),
                             ButtonSegment(
                               value: 'text',
-                              label: Text('${routine.maxBreaks} breaks'),
+                              label: Text('${routine.maxBreaks} break${(routine.maxBreaks ?? 1) > 1 ? 's' : ''}'),
                             ),
                             ButtonSegment(
                               value: 'plus',
@@ -165,6 +165,10 @@ class BreakConfigSection extends StatelessWidget {
                               label: Text('Delay'),
                             ),
                             ButtonSegment(
+                              value: 'pomodoro',
+                              label: Text('Pomodoro'),
+                            ),
+                            ButtonSegment(
                               value: 'intention',
                               label: Text('Intention'),
                             ),
@@ -197,13 +201,15 @@ class BreakConfigSection extends StatelessWidget {
                         Text(
                           routine.friction == 'delay'
                               ? 'Wait a bit before taking a break. Can be fixed or increase with each break.'
-                              : routine.friction == 'intention'
-                                  ? 'Describe why you want to take a break before taking one.'
-                                  : routine.friction == 'code'
-                                      ? 'Enter a random code to take a break. Code length can increase with each break or be fixed.'
-                                      : routine.friction == 'qr'
-                                          ? 'Scan a QR code to take a break.'
-                                          : 'Scan an NFC tag to take a break.',
+                              : routine.friction == 'pomodoro'
+                                  ? 'Wait a specified number of minutes from the start of the routine or the end of the last break.'
+                                  : routine.friction == 'intention'
+                                      ? 'Describe why you want to take a break before taking one.'
+                                      : routine.friction == 'code'
+                                          ? 'Enter a random code to take a break. Code length can increase with each break or be fixed.'
+                                          : routine.friction == 'qr'
+                                              ? 'Scan a QR code to take a break.'
+                                              : 'Scan an NFC tag to take a break.',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
@@ -353,7 +359,9 @@ class BreakConfigSection extends StatelessWidget {
                       const SizedBox(height: 16),
                       Row(
                         children: [
-                          Text(routine.friction == 'delay' ? 'Delay Length' : 'Code Length'),
+                          Text(routine.friction == 'delay' 
+                              ? 'Delay Length' 
+                              : 'Code Length'),
                           const SizedBox(width: 8)
                         ],
                       ),
@@ -374,13 +382,16 @@ class BreakConfigSection extends StatelessWidget {
                           selected: {routine.frictionLen != null},
                           onSelectionChanged: enabled ? (Set<bool> selection) {
                             routine.frictionLen = selection.first 
-                              ? (routine.friction == 'delay' ? 30 : 6)
-                              : null;
+                              ? (routine.friction == 'delay' 
+                                  ? 30 
+                                  : 6)
+                               : null;
                             onChanged();
                           } : null,
                         ),
                       ),
                       if (routine.frictionLen != null) ...[                
+
                         const SizedBox(height: 16),
                         SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
@@ -389,35 +400,90 @@ class BreakConfigSection extends StatelessWidget {
                               ButtonSegment(
                                 value: 'minus',
                                 icon: const Icon(Icons.remove),
-                                enabled: enabled && routine.frictionLen! > (routine.friction == 'delay' ? 5 : 4),
+                                enabled: enabled && routine.frictionLen! > (routine.friction == 'delay' ? 5 : routine.friction == 'pomodoro' ? 5 : 4),
                               ),
                               ButtonSegment(
                                 value: 'text',
                                 label: Text(routine.friction == 'delay' 
                                   ? '${routine.frictionLen} sec'
-                                  : '${routine.frictionLen}'),
+                                  : routine.friction == 'pomodoro'
+                                      ? '${routine.frictionLen} min'
+                                      : '${routine.frictionLen}'),
                               ),
                               ButtonSegment(
                                 value: 'plus',
                                 icon: const Icon(Icons.add),
-                                enabled: enabled && routine.frictionLen! < (routine.friction == 'delay' ? 60 : 20),
+                                enabled: enabled && routine.frictionLen! < (routine.friction == 'delay' ? 60 : routine.friction == 'pomodoro' ? 120 : 20),
                               ),
                             ],
                             emptySelectionAllowed: true,
                             selected: const {},
                             onSelectionChanged: enabled ? (Set<String> selected) {
                               if (selected.first == 'minus' && 
-                                  routine.frictionLen! > (routine.friction == 'delay' ? 5 : 4)) {
-                                routine.frictionLen = routine.frictionLen! - (routine.friction == 'delay' ? 5 : 1);
+                                  routine.frictionLen! > (routine.friction == 'delay' ? 5 : routine.friction == 'pomodoro' ? 5 : 4)) {
+                                routine.frictionLen = routine.frictionLen! - (routine.friction == 'delay' ? 5 : routine.friction == 'pomodoro' ? 5 : 1);
                               } else if (selected.first == 'plus' && 
-                                  routine.frictionLen! < (routine.friction == 'delay' ? 60 : 20)) {
-                                routine.frictionLen = routine.frictionLen! + (routine.friction == 'delay' ? 5 : 1);
+                                  routine.frictionLen! < (routine.friction == 'delay' ? 60 : routine.friction == 'pomodoro' ? 120 : 20)) {
+                                routine.frictionLen = routine.frictionLen! + (routine.friction == 'delay' ? 5 : routine.friction == 'pomodoro' ? 5 : 1);
                               }
                               onChanged();
                             } : null,
                           ),
                         ),
                       ],
+                    ],
+                    if (routine.maxBreaks != 0 && routine.friction == 'pomodoro') ...[                
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          const Text('Work Duration'),
+                          const SizedBox(width: 8)
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Always set a default value for pomodoro
+                      Builder(builder: (context) {
+                        if (routine.frictionLen == null) {
+                          // Set default value of 25 minutes
+                          Future.microtask(() {
+                            routine.frictionLen = 25;
+                            onChanged();
+                          });
+                        }
+                        return SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: SegmentedButton<String>(
+                            segments: [
+                              ButtonSegment(
+                                value: 'minus',
+                                icon: const Icon(Icons.remove),
+                                enabled: enabled && (routine.frictionLen ?? 25) > 5,
+                              ),
+                              ButtonSegment(
+                                value: 'text',
+                                label: Text('${routine.frictionLen ?? 25} min'),
+                              ),
+                              ButtonSegment(
+                                value: 'plus',
+                                icon: const Icon(Icons.add),
+                                enabled: enabled && (routine.frictionLen ?? 25) < 120,
+                              ),
+                            ],
+                            emptySelectionAllowed: true,
+                            selected: const {},
+                            onSelectionChanged: enabled ? (Set<String> selected) {
+                              if (selected.first == 'minus' && 
+                                  (routine.frictionLen ?? 25) > 5) {
+                                routine.frictionLen = (routine.frictionLen ?? 25) - 5;
+                              } else if (selected.first == 'plus' && 
+                                  (routine.frictionLen ?? 25) < 120) {
+                                routine.frictionLen = (routine.frictionLen ?? 25) + 5;
+                              }
+                              onChanged();
+                            } : null,
+                          ),
+                        );
+                      }),
                     ],
                   ],
                 ),

@@ -64,7 +64,7 @@ class _DeviceOptionsBottomSheetState extends State<DeviceOptionsBottomSheet> {
     
     try {
       widget.device.name = _nameController.text.trim();
-      widget.device.save();
+      await widget.device.save();
       if (mounted) {
         Navigator.of(context).pop();
       }
@@ -115,7 +115,7 @@ class _DeviceOptionsBottomSheetState extends State<DeviceOptionsBottomSheet> {
     setState(() => _isLoading = true);
     
     try {
-      widget.device.delete();
+      await widget.device.delete();
       if (mounted) {
         Navigator.of(context).pop();
       }
