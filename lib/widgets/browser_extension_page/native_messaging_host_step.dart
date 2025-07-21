@@ -12,14 +12,14 @@ class NativeMessagingHostStep extends StatelessWidget {
   final int currentBrowserIndex;
 
   const NativeMessagingHostStep({
-    Key? key,
+    super.key,
     required this.browser,
     required this.nmhInstalled,
     required this.isInstalling,
     required this.onInstall,
     required this.totalBrowsers,
     required this.currentBrowserIndex,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

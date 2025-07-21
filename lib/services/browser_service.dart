@@ -37,6 +37,7 @@ class BrowserService with ChangeNotifier {
   final Map<String, BrowserConnection> _pendingConnections = {};
   final StreamController<bool> _connectionStreamController = StreamController<bool>.broadcast();
   final StreamController<bool> _gracePeriodExpirationController = StreamController<bool>.broadcast();
+  late final StreamSubscription<BrowserControlMessage>? controllableListener;
   static const String _connectedBrowsersKey = 'connected_browsers';
   
   factory BrowserService() {
@@ -51,9 +52,38 @@ class BrowserService with ChangeNotifier {
     logger.i("Browser Extension - Init");
     _initialConnectionDeadline = DateTime.now().add(const Duration(seconds: 5));
     await startServer();
+    await initializeControllableBrowsers();
 
     if (Platform.isMacOS) {
-      final browsers = await getInstalledSupportedBrowsers();
+      controllableListener = DesktopChannel.instance.browserControllabilityStream.listen((event) {
+          final bundleId = event.bundleId;
+          final isControllable = event.controllable;
+
+          logger.i("Browser event = $bundleId, controllable = $isControllable");
+          
+          final browser = _getBrowserFromBundleId(bundleId);
+          if (browser != null) {
+            if (isControllable) {
+              _controllable.add(browser);
+              logger.i('Browser $browser is now controllable');
+            } else {
+              _controllable.remove(browser);
+              logger.i('Browser $browser is no longer controllable');
+            }
+
+            _connectionStreamController.add(true);
+            notifyListeners();
+          }
+        });
+    }
+  }
+
+  Future<void> initializeControllableBrowsers() async {
+    logger.i("initializeControllableBrowsers - start");
+
+    if (Platform.isMacOS) {
+
+      final browsers = await getInstalledSupportedBrowsers(connected: null);
       for (final installedBrowser in browsers) {
         final browser = installedBrowser.browser;
         final data = browserData[installedBrowser.browser]!;
@@ -63,34 +93,15 @@ class BrowserService with ChangeNotifier {
           logger.i("$browser is controllable = $controllable");
           if (controllable) {
             _controllable.add(browser);
+          } else {
+            _controllable.remove(browser);
           }
         }
       }
-    }
-    
-    // Listen for browser controllability updates from native side
-    if (Platform.isMacOS) {
-      DesktopChannel.instance.browserControllabilityStream.listen((event) {
-        final bundleId = event.bundleId;
-        final isControllable = event.controllable;
 
-        logger.i("Browser event = $bundleId, controllable = $isControllable");
-        
-        final browser = _getBrowserFromBundleId(bundleId);
-        if (browser != null) {
-          if (isControllable) {
-            _controllable.add(browser);
-            logger.i('Browser $browser is now controllable');
-          } else {
-            _controllable.remove(browser);
-            logger.i('Browser $browser is no longer controllable');
-          }
-
-          _connectionStreamController.add(true);
-          notifyListeners();
-        }
-      });
+      _connectionStreamController.add(true);
     }
+    logger.i("initializeControllableBrowsers - end");
   }
   
   Stream<bool> get connectionStream => _connectionStreamController.stream;

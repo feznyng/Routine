@@ -88,8 +88,10 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
       _isLoading = true;
     });
     
+    await _browserExtensionService.initializeControllableBrowsers();
+ 
     // Get installed browsers
-    final browsers = (await _browserExtensionService.getInstalledSupportedBrowsers())
+    final browsers = (await _browserExtensionService.getInstalledSupportedBrowsers(connected: null))
       .map((b) => b.browser).toList();
     
     // Initialize NMH installation status map for each browser

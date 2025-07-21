@@ -47,19 +47,6 @@ class BrowserSelectionStep extends StatelessWidget {
           if (_strictModeService.effectiveBlockBrowsersWithoutExtension && unconnectedBrowsers.isNotEmpty)
             _buildWarningMessage(context),
           
-          // Connected browsers section
-          if (connectedBrowsers.isNotEmpty) ...[
-            _buildSectionHeader(
-              context,
-              'Already Connected',
-              Icons.check_circle_rounded,
-              colorScheme.primary,
-            ),
-            const SizedBox(height: 12),
-            ...connectedBrowsers.map((browser) => _buildConnectedBrowserCard(context, browser)),
-            const SizedBox(height: 24),
-          ],
-          
           // Available browsers section
           if (unconnectedBrowsers.isNotEmpty) ...[
             _buildSectionHeader(
@@ -70,6 +57,19 @@ class BrowserSelectionStep extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             ...unconnectedBrowsers.map((browser) => _buildBrowserCard(context, browser)),
+            const SizedBox(height: 24),
+          ],
+          
+          // Connected browsers section
+          if (connectedBrowsers.isNotEmpty) ...[
+            _buildSectionHeader(
+              context,
+              'Already Connected',
+              Icons.check_circle_rounded,
+              colorScheme.primary,
+            ),
+            const SizedBox(height: 12),
+            ...connectedBrowsers.map((browser) => _buildConnectedBrowserCard(context, browser)),
           ],
           
           // Add some bottom padding to ensure content doesn't get cut off
