@@ -46,112 +46,208 @@ class _ExtensionInstallationStepState extends State<ExtensionInstallationStep> {
 
   @override
   Widget build(BuildContext context) {
-    final name = BrowserService.instance.getBrowserData(widget.browser).appName;
+    final browserData = BrowserService.instance.getBrowserData(widget.browser);
 
     return SingleChildScrollView(
       controller: _scrollController,
       child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          _buildHeader(context, browserData),
+          const SizedBox(height: 24),
+          
+          // Grace period warning (only show if in grace period)
+          if (widget.inGracePeriod && widget.remainingSeconds > 0)
+            _buildGracePeriodWarning(context),
+          
+          // Status card
+          _buildStatusCard(context, browserData),
+          const SizedBox(height: 24),
+          
+          // Action button (only show if not connected and not connecting)
+          if (!widget.isConnected && !widget.isConnecting)
+            _buildActionButton(context, browserData),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildHeader(BuildContext context, BrowserData browserData) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    return Row(
       children: [
-        Text(
-          'Install Extension for $name',
-          style: Theme.of(context).textTheme.titleLarge,
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: colorScheme.tertiaryContainer,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            Icons.extension_rounded,
+            color: colorScheme.onTertiaryContainer,
+            size: 24,
+          ),
         ),
-        Text(
-          'Browser ${widget.currentBrowserIndex + 1} of ${widget.totalBrowsers}',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'The browser extension needs to be installed to block distracting websites and applications.',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: 24),
-        Center(
+        const SizedBox(width: 16),
+        Expanded(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (widget.isConnected)
-                const Icon(
-                  Icons.check_circle,
-                  color: Colors.green,
-                  size: 64,
-                )
-              else if (widget.isConnecting)
-                Column(
-                  children: [
-                    const CircularProgressIndicator(),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Waiting for extension to connect...',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                )
-              else
-                const Icon(
-                  Icons.extension,
-                  color: Colors.blue,
-                  size: 64,
-                ),
-              const SizedBox(height: 16),
               Text(
-                widget.isConnected
-                    ? '$name extension is connected'
-                    : '$name extension needs to be installed',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 24),
-              if (!widget.isConnected)
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.open_in_browser),
-                  label: Text('Open $name to Install Extension'),
-                  onPressed: widget.onInstall,
+                'Install Browser Extension',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
                 ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Required for ${browserData.appName}',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface.withOpacity(0.7),
+                ),
+              ),
             ],
           ),
         ),
-        const SizedBox(height: 24),
-        
-        // Grace period warning if applicable and extension is not connected
-        if (widget.inGracePeriod && !widget.isConnected)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.amber.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.amber),
+      ],
+    );
+  }
+  
+
+  
+  Widget _buildStatusCard(BuildContext context, BrowserData browserData) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    Color statusColor;
+    IconData statusIcon;
+    String statusText;
+    String statusDescription;
+    Color backgroundColor;
+    Widget? statusWidget;
+    
+    if (widget.isConnected) {
+      statusColor = colorScheme.primary;
+      statusIcon = Icons.check_circle_rounded;
+      statusText = 'Extension Connected';
+      statusDescription = '${browserData.appName} extension is ready to use';
+      backgroundColor = colorScheme.primaryContainer.withOpacity(0.3);
+    } else if (widget.isConnecting) {
+      statusColor = colorScheme.secondary;
+      statusIcon = Icons.hourglass_empty_rounded;
+      statusText = 'Connecting...';
+      statusDescription = 'Waiting for ${browserData.appName} extension to connect';
+      backgroundColor = colorScheme.secondaryContainer.withOpacity(0.3);
+      statusWidget = SizedBox(
+        width: 32,
+        height: 32,
+        child: CircularProgressIndicator(
+          strokeWidth: 3,
+          color: statusColor,
+        ),
+      );
+    } else {
+      statusColor = colorScheme.outline;
+      statusIcon = Icons.extension_rounded;
+      statusText = 'Extension Required';
+      statusDescription = '${browserData.appName} extension needs to be installed';
+      backgroundColor = colorScheme.surfaceVariant.withOpacity(0.3);
+    }
+    
+    return Card(
+      elevation: 0,
+      color: backgroundColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: statusColor.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            statusWidget ?? Icon(
+              statusIcon,
+              color: statusColor,
+              size: 32,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.warning, color: Colors.amber),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Grace Period Active',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.amber[800],
-                      ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    statusText,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: statusColor,
+                      fontWeight: FontWeight.w600,
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Time remaining: ${widget.remainingSeconds} seconds',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Since strict mode is enabled, you must complete the extension setup before the grace period expires. '
-                  'If the grace period expires before setup is complete, browsers will be blocked for 10 minutes.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    statusDescription,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurface.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildGracePeriodWarning(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.amber.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.amber.withOpacity(0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.amber[800]!,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Grace period active: ${widget.remainingSeconds}s remaining. '
+              'Complete setup before time expires to avoid browser blocking.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: Colors.amber[800]!,
+              ),
             ),
           ),
-      ],
-    ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildActionButton(BuildContext context, BrowserData browserData) {
+    return Center(
+      child: FilledButton.icon(
+        onPressed: widget.onInstall,
+        icon: const Icon(Icons.open_in_browser_rounded),
+        label: Text('Open ${browserData.appName}'),
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        ),
+      ),
     );
   }
 }
