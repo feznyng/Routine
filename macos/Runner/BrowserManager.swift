@@ -19,10 +19,21 @@ class BrowserManager {
         self.browsers = browsers
     }
     
+    private func isBrowserRunning(bundleId: String) -> Bool {
+        let runningApps = NSWorkspace.shared.runningApplications
+        return runningApps.contains { $0.bundleIdentifier == bundleId }
+    }
+    
     func hasAutomationPermission(for bundleId: String) -> Bool {
         guard let browser = browsers[bundleId] else {
             NSLog("[Routine] hasAutomationPermission - could not find browser %@ ", bundleId)
             return false
+        }
+        
+        // Check if browser is running first
+        if !isBrowserRunning(bundleId: bundleId) {
+            NSLog("[Routine] hasAutomationPermission - browser %@ is not running, returning true", bundleId)
+            return true
         }
         
         let canControl = browser.canControl()
@@ -51,7 +62,17 @@ class BrowserManager {
     }
     
     func checkBrowser(bundleId: String) -> Bool {
-        guard let browser = browsers[bundleId], let activeUrl = browser.getUrl() else {
+        guard let browser = browsers[bundleId] else {
+            return false
+        }
+        
+        // Check if browser is running first
+        if !isBrowserRunning(bundleId: bundleId) {
+            NSLog("[Routine] checkBrowser - browser %@ is not running, returning true", bundleId)
+            return true
+        }
+        
+        guard let activeUrl = browser.getUrl() else {
             return false
         }
         
