@@ -120,7 +120,7 @@ class SyncService {
     await _sendRealtimeMessage('sync');
 
     try {
-      _client.functions.invoke('push', body: {'content': 'sample message', 'source_id': currDevice.id});
+      await _client.functions.invoke('push', body: {'content': 'sample message', 'source_id': currDevice.id});
     } catch (e, st) {
       Util.report('error fcm notifying other devices', e, st);
     }
@@ -726,7 +726,7 @@ class SyncService {
     
       // notify other clients
       if (madeRemoteChange) {
-        _notifyPeers();
+        await _notifyPeers();
       }
 
       return SyncResult();

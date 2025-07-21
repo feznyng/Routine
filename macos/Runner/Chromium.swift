@@ -6,7 +6,7 @@ class Chromium : Browser {
         tell application id "\(bundleId)"
             if not running then return "error"
             try
-                if (count of windows) is 0 then return ""
+                if (count of windows) is 0 then return "error"
                 tell active tab of front window
                     return URL
                 end tell

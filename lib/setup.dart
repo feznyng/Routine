@@ -46,7 +46,7 @@ void callbackDispatcher() {
 
       inputData = inputData ?? {'full': false, 'id': null};
 
-      return await SyncService.simple().sync(full: inputData['full'], id: inputData['id']);
+      return await SyncService().sync(full: inputData['full'], id: inputData['id']);
     } catch (e) {
       logger.e("bg - failed to complete sync due to $e");
       return Future.value(false);
