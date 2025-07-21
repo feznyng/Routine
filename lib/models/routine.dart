@@ -26,7 +26,6 @@ class Routine implements Syncable {
   int? _numBreaksTaken;
   DateTime? _lastBreakAt;
   DateTime? _pausedUntil;
-  DateTime? _lastBreakEndedAt; // Tracks when a break ended, regardless of how it ended
   int? maxBreaks;
   int _maxBreakDuration;
   String friction;
@@ -61,7 +60,6 @@ class Routine implements Syncable {
     _numBreaksTaken = null,
     _lastBreakAt = null,
     _pausedUntil = null,
-    _lastBreakEndedAt = null,
     maxBreaks = null,
     _maxBreakDuration = 15,
     friction = 'delay',
@@ -85,7 +83,6 @@ class Routine implements Syncable {
     _numBreaksTaken = entry.numBreaksTaken,
     _lastBreakAt = entry.lastBreakAt,
     _pausedUntil = entry.pausedUntil,
-    _lastBreakEndedAt = entry.lastBreakEndedAt,
     maxBreaks = entry.maxBreaks,
     _maxBreakDuration = entry.maxBreakDuration,
     friction = entry.friction,
@@ -127,7 +124,6 @@ class Routine implements Syncable {
     _numBreaksTaken = other._numBreaksTaken,
     _lastBreakAt = other._lastBreakAt,
     _pausedUntil = other._pausedUntil,
-    _lastBreakEndedAt = other._lastBreakEndedAt,
     maxBreaks = other.maxBreaks,
     _maxBreakDuration = other._maxBreakDuration,
     friction = other.friction,
@@ -178,7 +174,6 @@ class Routine implements Syncable {
         changes: Value(changes),
         numBreaksTaken: Value(_numBreaksTaken),
         lastBreakAt: Value(_lastBreakAt),
-        lastBreakEndedAt: Value(_lastBreakEndedAt),
         pausedUntil: Value(_pausedUntil),
         maxBreaks: Value(maxBreaks),
         maxBreakDuration: Value(_maxBreakDuration),
@@ -214,7 +209,7 @@ class Routine implements Syncable {
   }
 
   Future<void> unsnooze() async {
-    _snoozedUntil = DateTime.now().subtract(const Duration(minutes: 1));
+    _snoozedUntil = DateTime.now().subtract(const Duration(seconds: 1));
     await save(groups: false);
   }
 
@@ -290,10 +285,6 @@ class Routine implements Syncable {
 
     if (_entry!.lastBreakAt != _lastBreakAt) {
       changes.add('lastBreakAt');
-    }
-
-    if (_entry!.lastBreakEndedAt != _lastBreakEndedAt) {
-      changes.add('lastBreakEndedAt');
     }
 
     if (_entry!.pausedUntil != _pausedUntil) {
@@ -486,8 +477,6 @@ class Routine implements Syncable {
 
   DateTime? get pausedUntil => _pausedUntil;
   
-  DateTime? get lastBreakEndedAt => _lastBreakEndedAt;
-
   Future<void> breakFor({int? minutes}) async {
     if (!canBreak) return;
 
@@ -496,15 +485,13 @@ class Routine implements Syncable {
 
     _lastBreakAt = now;
     _pausedUntil = now.add(Duration(minutes: duration));
-    _lastBreakEndedAt = _pausedUntil;
     _numBreaksTaken = (_numBreaksTaken ?? 0) + 1;
     
     await save(groups: false);
   }
 
   Future<void> endBreak() async {
-    _pausedUntil = null;
-    _lastBreakEndedAt = DateTime.now();
+    _pausedUntil = DateTime.now().subtract(const Duration(seconds: 1));
     await save(groups: false);
   }
 
@@ -565,17 +552,13 @@ class Routine implements Syncable {
       effectiveStartTime = snoozedUntil!;
     }
     
-    if (_numBreaksTaken == 0 || _numBreaksTaken == null) {
-      final timeSinceStart = now.difference(effectiveStartTime).inSeconds;
-      return max(0, (frictionLen! * 60) - timeSinceStart);
-    }
-    
-    if (_lastBreakEndedAt != null) {
-      final timeSinceLastBreak = now.difference(_lastBreakEndedAt!).inSeconds;
+    if (_pausedUntil != null && _pausedUntil!.isAfter(startedAt)) {
+      final timeSinceLastBreak = now.difference(_pausedUntil!).inSeconds;
       return max(0, (frictionLen! * 60) - timeSinceLastBreak);
     }
     
-    return frictionLen! * 60; // Convert minutes to seconds
+    final timeSinceStart = now.difference(effectiveStartTime).inSeconds;
+    return max(0, (frictionLen! * 60) - timeSinceStart);
   }
 
   int calculateCodeLength() {
@@ -598,7 +581,6 @@ class Routine implements Syncable {
       );
     }
     
-    // Regular same-day routine or after start time but before midnight
     return DateTime(
       now.year,
       now.month,
@@ -606,6 +588,11 @@ class Routine implements Syncable {
       startHour,
       startMinute, 
     );
+  }
+
+  DateTime get completableAt {
+    final startedAt = this.startedAt;
+    return startedAt.subtract(Duration(minutes: completableBefore));
   }
 
   bool isConditionMet(Condition condition) {

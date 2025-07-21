@@ -54,6 +54,11 @@ class MobileChannel {
             conditionsLastMet = routine.conditions
                 .map((condition) => condition.lastCompletedAt!)
                 .reduce((earliest, date) => earliest.isBefore(date) ? earliest : date);
+
+            // we need to take into account early completion
+            if (conditionsLastMet.isAfter(routine.completableAt)) {
+              conditionsLastMet = routine.startedAt.add(Duration(minutes: 1));
+            }
           }
         }
         
@@ -72,7 +77,6 @@ class MobileChannel {
           'allow': routine.allow,
           'conditionsMet': routine.areConditionsMet,
           'conditionsLastMet': conditionsLastMet?.toUtc().toIso8601String(),
-          'completeableBefore': routine.completableBefore,
           'strictMode': routine.strictMode,
         };
       }).toList();
