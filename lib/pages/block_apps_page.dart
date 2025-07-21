@@ -267,7 +267,7 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
                   },
                 ),
               ),
-              if (Util.isDesktop()) ...[
+              if (Platform.isWindows || Platform.isLinux) ...[
                 const SizedBox(width: 8),
                 ElevatedButton.icon(
                   onPressed: widget.inLockdown && !widget.blockSelected ? null : _pickCustomApp,
