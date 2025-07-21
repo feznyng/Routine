@@ -214,7 +214,7 @@ class Routine implements Syncable {
   }
 
   Future<void> unsnooze() async {
-    _snoozedUntil = null;
+    _snoozedUntil = DateTime.now().subtract(const Duration(minutes: 1));
     await save(groups: false);
   }
 
@@ -558,11 +558,15 @@ class Routine implements Syncable {
     if (friction != 'pomodoro' || frictionLen == null) return 0;
     
     final now = DateTime.now();
-
-    logger.i("getRemainingPomodoroTime - ${_numBreaksTaken} - ${_lastBreakEndedAt}");
+    
+    // Determine the effective start time, accounting for snooze
+    DateTime effectiveStartTime = startedAt;
+    if (snoozedUntil != null && snoozedUntil!.isAfter(effectiveStartTime)) {
+      effectiveStartTime = snoozedUntil!;
+    }
     
     if (_numBreaksTaken == 0 || _numBreaksTaken == null) {
-      final timeSinceStart = now.difference(startedAt).inSeconds;
+      final timeSinceStart = now.difference(effectiveStartTime).inSeconds;
       return max(0, (frictionLen! * 60) - timeSinceStart);
     }
     
