@@ -44,14 +44,12 @@ import workmanager_apple
             switch call.method {
             case "immediateUpdateRoutines":
                 os_log("updateRoutines: fg start")
-                SentrySDK.capture(message: "updateRoutines: fg start")
                 if let args = call.arguments as? [String: Any],
                    let routinesJson = args["routines"] as? [[String: Any]] {
                     self?.handleRoutineUpdate(routinesJson: routinesJson) { updateResult in
                         switch updateResult {
                         case .success(_):
                             os_log("updateRoutines: fg done")
-                            SentrySDK.capture(message: "updateRoutines: fg done")
                             result(true)
                         case .failure(let error):
                             os_log("updateRoutines: fg failed - \(error)")
@@ -71,7 +69,6 @@ import workmanager_apple
                    let routinesJson = args["routines"] as? [[String: Any]] {
                     
                     DispatchQueue.global().async { [weak self] in
-                        SentrySDK.capture(message: "updateRoutines: start")
                         os_log("updateRoutines: bg start")
                         
                         let backgroundTaskID = UIApplication.shared.beginBackgroundTask (withName: "Finish updating routines") {
@@ -83,7 +80,6 @@ import workmanager_apple
                             DispatchQueue.main.async {
                                 switch updateResult {
                                 case .success(_):
-                                    SentrySDK.capture(message: "updateRoutines: bg done")
                                     os_log("updateRoutines: bg done")
                                     result(true)
                                 case .failure(let error):
