@@ -81,29 +81,41 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const SyncFailureListener(child: MyHomePage(title: 'Routine')),
+      home: const SyncStatusListener(child: MyHomePage(title: 'Routine')),
     );
   }
 }
 
-class SyncFailureListener extends StatefulWidget {
+class SyncStatusListener extends StatefulWidget {
   final Widget child;
   
-  const SyncFailureListener({super.key, required this.child});
+  const SyncStatusListener({super.key, required this.child});
   
   @override
-  State<SyncFailureListener> createState() => _SyncFailureListenerState();
+  State<SyncStatusListener> createState() => _SyncStatusListenerState();
 }
 
-class _SyncFailureListenerState extends State<SyncFailureListener> {
-  late final StreamSubscription<void> _subscription;
+class _SyncStatusListenerState extends State<SyncStatusListener> {
+  late final StreamSubscription<SyncStatus> _subscription;
   
   @override
   void initState() {
     super.initState();
-    _subscription = SyncService().onSyncFailure.listen((_) {
-      logger.i("received failure event");
-      GlobalSnackBar.show('Sync failed. Please try again later.');
+    _subscription = SyncService().onSyncStatus.listen((status) {
+      switch (status) {
+        case SyncStatus.success:
+          logger.i("received sync success event");
+          // Optionally show success message or handle success
+          break;
+        case SyncStatus.failure:
+          logger.i("received sync failure event");
+          GlobalSnackBar.show('Sync failed. Please try again later.');
+          break;
+        case SyncStatus.notSignedIn:
+          logger.i("received sync not signed in event");
+          GlobalSnackBar.show('Please sign in to sync your routines.');
+          break;
+      }
     });
   }
   

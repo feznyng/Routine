@@ -19,7 +19,7 @@ class _SyncSettingsSectionState extends State<SyncSettingsSection> {
     });
     
     try {
-      await SyncService().sync(full: true);
+      await SyncService().sync(full: true, manual: true);
     } finally {
       if (mounted) {
         setState(() {

@@ -24,6 +24,12 @@ class SyncJob {
 class SyncResult {
 }
 
+enum SyncStatus {
+  success,
+  failure,
+  notSignedIn
+}
+
 class TableChanges {
   List<Map<String, dynamic>> upserts;
   List<String> deletes;
@@ -46,8 +52,8 @@ class SyncService {
   bool _lastKnownSyncStatus = false;
   final Lock _syncLock = Lock();
   
-  // Stream controller for sync failure events
-  final StreamController<void> _syncFailureController = StreamController<void>.broadcast();
+  // Stream controller for sync status events
+  final StreamController<SyncStatus> _syncStatusController = StreamController<SyncStatus>.broadcast();
 
   String get userId => Supabase.instance.client.auth.currentUser?.id ?? '';
   
@@ -61,7 +67,7 @@ class SyncService {
   }
   
   // Stream that UI components can listen to for sync failure events
-  Stream<void> get onSyncFailure => _syncFailureController.stream;
+  Stream<SyncStatus> get onSyncStatus => _syncStatusController.stream;
 
   SyncService.simple() : 
     _client = Supabase.instance.client;
@@ -133,10 +139,19 @@ class SyncService {
   Future<void> dispose() async {
     await _syncChannel?.unsubscribe();
     _stopSyncStatusPolling();
+    await _syncStatusController.close();
   }
 
   // async sync method 
-  Future<bool> queueSync({bool full = false}) async {
+  Future<bool> queueSync({bool full = false, bool manual = false}) async {
+    if (userId.isEmpty) {
+      logger.i("can't sync - user is not signed in");
+      if (manual) {
+        _syncStatusController.add(SyncStatus.notSignedIn);
+      }
+      return false;
+    }
+
     if (Util.isDesktop()) {
       sync(full: full);
       return true;
@@ -170,8 +185,16 @@ class SyncService {
   }
 
   // synchronous syncs - mostly used directly on desktop
-  Future<bool> sync({bool full = false, String? id}) async {
+  Future<bool> sync({bool full = false, String? id, bool manual = false}) async {
     logger.i("syncing...");
+
+    if (userId.isEmpty) {
+      logger.i("can't sync - user is not signed in");
+      if (manual) {
+        _syncStatusController.add(SyncStatus.notSignedIn);
+      }
+      return false;
+    }
 
     SyncResult? result;
     await _syncLock.synchronized(() async {
@@ -189,9 +212,8 @@ class SyncService {
       logger.i("no id for this sync job");
     }
 
-    if (!success) {
-      _syncFailureController.add(null);
-    }
+    // Notify about sync status
+    _syncStatusController.add(success ? SyncStatus.success : SyncStatus.failure);
 
     return success;
   }

@@ -234,7 +234,7 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                       _isLoading = true;
                     });
                   }
-                  await _syncService.sync(full: true);
+                  await _syncService.sync(full: true, manual: true);
                   if (mounted) {
                     setState(() {
                       _isLoading = false;
