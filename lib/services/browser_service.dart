@@ -37,7 +37,7 @@ class BrowserService with ChangeNotifier {
   final Map<String, BrowserConnection> _pendingConnections = {};
   final StreamController<bool> _connectionStreamController = StreamController<bool>.broadcast();
   final StreamController<bool> _gracePeriodExpirationController = StreamController<bool>.broadcast();
-  late final StreamSubscription<BrowserControlMessage>? controllableListener;
+  StreamSubscription<BrowserControlMessage>? controllableListener;
   static const String _connectedBrowsersKey = 'connected_browsers';
   
   factory BrowserService() {
@@ -55,6 +55,9 @@ class BrowserService with ChangeNotifier {
     await initializeControllableBrowsers();
 
     if (Platform.isMacOS) {
+      // Cancel existing listener if it exists
+      await controllableListener?.cancel();
+      
       controllableListener = DesktopChannel.instance.browserControllabilityStream.listen((event) {
           final bundleId = event.bundleId;
           final isControllable = event.controllable;
@@ -583,6 +586,7 @@ class BrowserService with ChangeNotifier {
     _server?.close();
     _server = null;
     _connectionStreamController.close();
+    controllableListener?.cancel();
   }
   
   // Helper method to map bundle IDs to Browser enum values
