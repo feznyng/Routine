@@ -135,6 +135,7 @@ class SyncService {
     _stopSyncStatusPolling();
   }
 
+  // async sync method 
   Future<bool> queueSync({bool full = false}) async {
     if (Util.isDesktop()) {
       sync(full: full);
@@ -168,6 +169,7 @@ class SyncService {
     }
   }
 
+  // synchronous syncs - mostly used directly on desktop
   Future<bool> sync({bool full = false, String? id}) async {
     logger.i("syncing...");
 

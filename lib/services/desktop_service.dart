@@ -73,7 +73,7 @@ class DesktopService extends PlatformService {
     _desktopChannel.registerSystemWakeHandler(() async {
       await AuthService().refreshSessionIfNeeded().then((_) async {
         await _stopWatching();
-        await SyncService().queueSync();
+        await SyncService().sync();
         await init();
       });
     });
