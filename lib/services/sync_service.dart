@@ -719,6 +719,11 @@ class SyncService {
         })
         .eq('id', routine.id);
       }
+    
+      // notify other clients
+      if (madeRemoteChange) {
+        await _notifyPeers();
+      }
 
       // clean up soft deleted entries
       await db.clearChangesSince(pulledAt);
@@ -741,11 +746,6 @@ class SyncService {
           await _client.from('groups').delete().lt('updated_at', pulledAt).eq('deleted', true);
           await _client.from('devices').delete().lt('updated_at', pulledAt).eq('deleted', true);
         }
-      }
-    
-      // notify other clients
-      if (madeRemoteChange) {
-        await _notifyPeers();
       }
 
       return SyncResult();

@@ -414,7 +414,7 @@ class BrowserService with ChangeNotifier {
           boundPort = port;
           break;
         } catch (e) {
-          logger.d('Port $port is not available');
+          logger.i('Port $port is not available');
         }
       }
       
@@ -468,19 +468,19 @@ class BrowserService with ChangeNotifier {
       return;
     }
 
-    logger.d('Received ${data.length} bytes from socket $socketId');
+    logger.i('Received ${data.length} bytes from socket $socketId');
     connection.buffer.addAll(data);
     
     while (connection.buffer.length >= 4) {
       if (connection.len == null) {
         connection.len = ByteData.view(Uint8List.fromList(connection.buffer.sublist(0, 4)).buffer).getUint32(0, Endian.little);
         connection.buffer.removeRange(0, 4);
-        logger.d('Message length: ${connection.len} bytes');
+        logger.i('Message length: ${connection.len} bytes');
       }
 
       if (connection.buffer.length >= connection.len!) {
         final message = utf8.decode(connection.buffer.sublist(0, connection.len!));
-        logger.d('Decoded message from socket $socketId: $message');
+        logger.i('Decoded message from socket $socketId: $message');
         connection.buffer.removeRange(0, connection.len!);
         connection.len = null;
 
@@ -492,7 +492,7 @@ class BrowserService with ChangeNotifier {
           Util.report('Error decoding message from NMH', e, st);
         }
       } else {
-        logger.d('Waiting for more data. Have ${connection.buffer.length} bytes, need ${connection.len}');
+        logger.i('Waiting for more data. Have ${connection.buffer.length} bytes, need ${connection.len}');
         break;
       }
     }

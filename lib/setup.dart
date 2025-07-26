@@ -19,13 +19,8 @@ import 'package:workmanager/workmanager.dart';
 final getIt = GetIt.instance; 
 
 final logger = Logger(
-  printer: PrettyPrinter(
-      methodCount: 2, 
-      errorMethodCount: 8,
-      lineLength: 120,
+  printer: SimplePrinter(
       colors: true,
-      printEmojis: true,
-      dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
   ),
 );
 
@@ -46,7 +41,12 @@ void callbackDispatcher() {
 
       inputData = inputData ?? {'full': false, 'id': null};
 
-      return await SyncService().sync(full: inputData['full'], id: inputData['id']);
+      final syncService = SyncService();
+
+      final result = await syncService.sync(full: inputData['full'], id: inputData['id']);
+      syncService.dispose();
+
+      return result;
     } catch (e) {
       logger.e("bg - failed to complete sync due to $e");
       return Future.value(false);
