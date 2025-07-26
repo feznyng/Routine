@@ -52,7 +52,6 @@ class SyncService {
   bool _lastKnownSyncStatus = false;
   final Lock _syncLock = Lock();
   
-  // Stream controller for sync status events
   final StreamController<SyncStatus> _syncStatusController = StreamController<SyncStatus>.broadcast();
 
   String get userId => Supabase.instance.client.auth.currentUser?.id ?? '';
@@ -66,11 +65,7 @@ class SyncService {
     return _instance;
   }
   
-  // Stream that UI components can listen to for sync failure events
   Stream<SyncStatus> get onSyncStatus => _syncStatusController.stream;
-
-  SyncService.simple() : 
-    _client = Supabase.instance.client;
 
   void setupRealtimeSync() {
     if (userId.isEmpty) return;
@@ -121,7 +116,7 @@ class SyncService {
   Future<void> _notifyPeers() async {
     final currDevice = await Device.getCurrent();
 
-    logger.i("notfying peers");
+    logger.i("notifying peers");
 
     await _sendRealtimeMessage('sync');
 

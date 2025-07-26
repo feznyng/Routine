@@ -105,8 +105,9 @@ class Routine implements Syncable {
 
         final now = DateTime.now();
         final yesterday = now.subtract(const Duration(days: 1));
+        final nowTime = now.minute * 60 + 1;
 
-        final routineStartTime = startTime < endTime ? DateTime(now.year, now.month, now.day, startTimeHours, startTimeMinutes) 
+        final routineStartTime = (startTime < endTime || nowTime > startTime) ? DateTime(now.year, now.month, now.day, startTimeHours, startTimeMinutes) 
           : DateTime(yesterday.year, yesterday.month, yesterday.day, startTimeHours, startTimeMinutes);
         
         if (_lastBreakAt!.isBefore(routineStartTime)) {
