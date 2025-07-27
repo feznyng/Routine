@@ -22,7 +22,10 @@ class MobileService extends PlatformService {
   StreamSubscription? _strictModeSubscription;
   
   @override
-  Future<void> init() async {    
+  Future<void> init() async {
+    // call this immediately to "initialize" permissions
+    await MobileService.instance.getBlockPermissions();
+
     _routineSubscription = Routine
       .watchAll()
       .listen((routines) => _sendRoutines(routines, false));

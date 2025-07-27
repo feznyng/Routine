@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:Routine/services/mobile_service.dart';
+import 'package:Routine/setup.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:app_settings/app_settings.dart';
@@ -46,7 +47,10 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
     final notificationStatus = await Permission.notification.status;    
     final cameraStatus = await Permission.camera.status;
     final locationStatus = await Permission.location.status;
+    
     final blockStatus = await MobileService.instance.getBlockPermissions();
+
+    logger.i("block perms = $blockStatus");
 
     if (!mounted) return;
 
