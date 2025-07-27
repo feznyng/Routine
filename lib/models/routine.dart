@@ -205,12 +205,22 @@ class Routine implements Syncable {
   }
 
   Future<void> snooze(DateTime until) async {
+    if (until.isBefore(DateTime.now())) {
+      return;
+    }
+
     _snoozedUntil = until;
     await save(groups: false);
   }
 
   Future<void> unsnooze() async {
-    _snoozedUntil = DateTime.now().subtract(const Duration(seconds: 1));
+    final now = DateTime.now().subtract(const Duration(seconds: 1));
+
+    if (_snoozedUntil == null || now.isAfter(_snoozedUntil!)) {
+      return;
+    }
+
+    _snoozedUntil = now;
     await save(groups: false);
   }
 
@@ -612,11 +622,11 @@ class Routine implements Syncable {
     return conditions.isNotEmpty && conditions.every((c) => isConditionMet(c));
   }
 
-  void completeCondition(Condition condition, {bool complete = true}) {
+  Future<void> completeCondition(Condition condition, {bool complete = true}) async {
     final index = conditions.indexWhere((c) => c.id == condition.id);
     if (index != -1) {
       conditions[index].lastCompletedAt = complete ? DateTime.now() : null;
-      save();
+      await save();
     }
   }
 }

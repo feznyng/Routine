@@ -46,14 +46,14 @@ class RoutineConditionsList extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: InkWell(
-        onTap: () => _handleConditionTap(context, condition),
+        onTap: () async => await _handleConditionTap(context, condition),
         child: Row(
           children: [
             Icon(ConditionTypeUtils.getIcon(condition.type), size: 16),
             const SizedBox(width: 8),
             Checkbox(
               value: isMet,
-              onChanged: (_) => _handleConditionTap(context, condition),
+              onChanged: (_) async => await _handleConditionTap(context, condition),
             ),
             Expanded(
               child: Text(
@@ -91,7 +91,7 @@ class RoutineConditionsList extends StatelessWidget {
     }
   }
 
-  void _handleConditionTap(BuildContext context, Condition condition) {
+  Future<void> _handleConditionTap(BuildContext context, Condition condition) async {
     final isMet = routine.isConditionMet(condition);
     
     // If the condition is already completed, show a confirmation dialog
@@ -104,7 +104,7 @@ class RoutineConditionsList extends StatelessWidget {
     switch (condition.type) {
       case ConditionType.todo:
         // Todo conditions can be completed directly
-        routine.completeCondition(condition);
+        await routine.completeCondition(condition);
         if (onRoutineUpdated != null) {
           onRoutineUpdated!();
         }
@@ -112,17 +112,17 @@ class RoutineConditionsList extends StatelessWidget {
         
       case ConditionType.location:
         // Check current location against condition location
-        _handleLocationCondition(context, condition);
+        await _handleLocationCondition(context, condition);
         break;
         
       case ConditionType.qr:
         // Open QR code scanner for QR conditions
-        _handleQrCondition(context, condition);
+        await _handleQrCondition(context, condition);
         break;
         
       case ConditionType.nfc:
         // Handle NFC condition
-        _handleNfcCondition(context, condition);
+        await _handleNfcCondition(context, condition);
         break;
         
       default:
@@ -143,20 +143,20 @@ class RoutineConditionsList extends StatelessWidget {
     }
   }
 
-  void _handleQrCondition(BuildContext context, Condition condition) {
+  Future<void> _handleQrCondition(BuildContext context, Condition condition) async {
     // Check if running on a mobile device
     bool isMobileDevice = !Util.isDesktop();
     
     if (isMobileDevice) {
       // Navigate to the QR scanner page on mobile devices
-      Navigator.of(context).push(
+      await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (context) => QrScannerPage(
-            onCodeScanned: (scannedData) {
+            onCodeScanned: (scannedData) async {
               // Compare scanned data with condition data
               if (scannedData == condition.data) {
                 // QR code matches, complete the condition
-                routine.completeCondition(condition);
+                await routine.completeCondition(condition);
                 if (onRoutineUpdated != null) {
                   onRoutineUpdated!();
                 }
@@ -175,7 +175,7 @@ class RoutineConditionsList extends StatelessWidget {
       );
     } else {
       // Show a dialog on desktop platforms
-      showDialog(
+      await showDialog(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Mobile Device Required'),
@@ -205,7 +205,7 @@ class RoutineConditionsList extends StatelessWidget {
     }
   }
 
-  void _handleNfcCondition(BuildContext context, Condition condition) async {
+  Future<void> _handleNfcCondition(BuildContext context, Condition condition) async {
     // Check if running on a mobile device
     bool isMobileDevice = !Util.isDesktop();
     
@@ -254,7 +254,7 @@ class RoutineConditionsList extends StatelessWidget {
       }
 
       // Start NFC session
-      NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
+      await NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
         try {
           // Read NDEF message from the tag
           String? tagData;
@@ -288,7 +288,7 @@ class RoutineConditionsList extends StatelessWidget {
             // Compare tag data with condition data
             if (tagData == condition.data) {
               // NFC tag matches, complete the condition
-              routine.completeCondition(condition);
+              await routine.completeCondition(condition);
               if (onRoutineUpdated != null) {
                 onRoutineUpdated!();
               }
@@ -335,7 +335,7 @@ class RoutineConditionsList extends StatelessWidget {
     }
   }
 
-  void _handleLocationCondition(BuildContext context, Condition condition) async {
+  Future<void> _handleLocationCondition(BuildContext context, Condition condition) async {
     if (condition.latitude == null || condition.longitude == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Location not set for this condition')),
@@ -386,7 +386,7 @@ class RoutineConditionsList extends StatelessWidget {
       
       if (distance <= proximity) {
         // User is within the proximity radius
-        routine.completeCondition(condition);
+        await routine.completeCondition(condition);
         if (onRoutineUpdated != null) {
           onRoutineUpdated!();
         }
@@ -418,8 +418,8 @@ class RoutineConditionsList extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              routine.completeCondition(condition, complete: false);
+            onPressed: () async {
+              await routine.completeCondition(condition, complete: false);
               if (onRoutineUpdated != null) {
                 onRoutineUpdated!();
               }
