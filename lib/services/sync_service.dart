@@ -78,9 +78,9 @@ class SyncService {
       _syncChannel!
         .onBroadcast( 
           event: 'sync', 
-          callback: (payload, [_]) {
+          callback: (payload, [_]) async {
             logger.i('received remote sync request from ${payload['source']}');
-            queueSync();
+            await queueSync();
           }
         )
         .onBroadcast(
@@ -203,11 +203,8 @@ class SyncService {
       final key = 'sync_job_status_$id';
       logger.i("setting sync key $key to true");
       await SharedPreferencesAsync().setBool(key, true);
-    } else {
-      logger.i("no id for this sync job");
     }
 
-    // Notify about sync status
     _syncStatusController.add(success ? SyncStatus.success : SyncStatus.failure);
 
     return success;
@@ -225,8 +222,6 @@ class SyncService {
     _syncStatusPollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
       await _checkSyncStatusChanges();
     });
-    
-    logger.i("Started sync status polling");
   }
   
   // Stop polling for sync job status changes
@@ -234,7 +229,6 @@ class SyncService {
     if (_syncStatusPollingTimer != null) {
       _syncStatusPollingTimer!.cancel();
       _syncStatusPollingTimer = null;
-      logger.i("Stopped sync status polling");
     }
   }
   
@@ -242,26 +236,17 @@ class SyncService {
   Future<void> _checkSyncStatusChanges() async {
     try {
       if (_latestSyncJobId == null) {
-        // No sync job to check
-        logger.i("no sync job to check");
-
         _stopSyncStatusPolling();
         return;
       }
       
       final prefs = SharedPreferencesAsync();
       final key = 'sync_job_status_$_latestSyncJobId';
-
-      logger.i("checking sync status for key $key = ${await prefs.getBool(key)}");
       
       final currentStatus = await prefs.getBool(key) ?? false;
 
       // If status changed from false to true
       if (!_lastKnownSyncStatus && currentStatus) {
-        logger.i("Latest sync job $_latestSyncJobId completed");
-        
-        // Notify changes
-        logger.i("Sync job status changed, notifying changes");
         final db = getIt<AppDatabase>();
         await db.forceNotifyChanges();
         
@@ -358,9 +343,9 @@ class SyncService {
           }
         }
         
-        logger.i("localEvents: ${localEvents.map((e) => e.toJson())}");
-        logger.i("remoteEvents: ${remoteEvents.map((e) => e.toJson())}");
-        logger.i("mergedEvents: ${mergedEvents.map((e) => e.toJson())}");
+        //logger.i("localEvents: ${localEvents.map((e) => e.toJson())}");
+        //logger.i("remoteEvents: ${remoteEvents.map((e) => e.toJson())}");
+        //logger.i("mergedEvents: ${mergedEvents.map((e) => e.toJson())}");
         
         madeRemoteChange = madeRemoteChange || (mergedEvents.length != remoteEvents.length);
         for (final event in mergedEvents) {
@@ -384,11 +369,11 @@ class SyncService {
               .or('updated_at.gt.${lastPulledAt.toUtc().toIso8601String()},id.eq.${currDevice.id}');
           final localDevices = await db.getDevicesById(remoteDevices.map((device) => device['id'] as String).toList());
           final localDeviceMap = {for (final device in localDevices) device.id: device};
-          logger.i("remote devices: $remoteDevices");
+          //logger.i("remote devices: $remoteDevices");
           
           final deviceSyncedBefore = remoteDevices.any((device) => device['id'] == currDevice.id);
 
-          logger.i("device synced before: $deviceSyncedBefore");
+          //logger.i("device synced before: $deviceSyncedBefore");
 
           // if the current device doesn't exist remotely, we need to do a full sync
           full = full || !deviceSyncedBefore;
@@ -452,7 +437,7 @@ class SyncService {
           final remoteGroups = await _client.from('groups').select().eq('user_id', userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
           final localGroups = await db.getGroupsById(remoteGroups.map((group) => group['id'] as String).toList());
           final localGroupMap = {for (final group in localGroups) group.id: group};
-          logger.i("remote groups: $remoteGroups");
+          //logger.i("remote groups: $remoteGroups");
           for (final group in remoteGroups) {            
             final overwriteMap = {};
             final localGroup = localGroupMap[group['id']];
@@ -503,7 +488,7 @@ class SyncService {
           final localRoutines = await db.getRoutinesById(remoteRoutines.map((routine) => routine['id'] as String).toList());
           final localRoutineMap = {for (final routine in localRoutines) routine.id: routine};
           
-          logger.i("remote routines: $remoteRoutines");
+          //logger.i("remote routines: $remoteRoutines");
           for (final routine in remoteRoutines) {            
             final overwriteMap = {};
             final localRoutine = localRoutineMap[routine['id']];
@@ -581,7 +566,7 @@ class SyncService {
       // push devices
       final localDevices = await db.getDeviceChanges(full ? null : lastPulledAt);
 
-      logger.i("local devices: $localDevices");
+      //logger.i("local devices: $localDevices");
       final remoteDevices = await _client
         .from('devices')
         .select()
@@ -599,7 +584,7 @@ class SyncService {
 
       // push groups    
       final localGroups = await db.getGroupChanges(full ? null : lastPulledAt);
-      logger.i("local groups: $localGroups");
+      //logger.i("local groups: $localGroups");
       final remoteGroups = await _client
         .from('groups')
         .select()
@@ -618,7 +603,7 @@ class SyncService {
 
       // push routines
       final localRoutines = await db.getRoutineChanges(full ? null : lastPulledAt);
-      logger.i("local routines: $localRoutines");
+      //logger.i("local routines: $localRoutines");
       final remoteRoutines = await _client
         .from('routines')
         .select()
