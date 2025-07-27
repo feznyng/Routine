@@ -611,11 +611,11 @@ class Routine implements Syncable {
     return conditions.isNotEmpty && conditions.every((c) => isConditionMet(c));
   }
 
-  void completeCondition(Condition condition, {bool complete = true}) {
+  Future<void> completeCondition(Condition condition, {bool complete = true}) async {
     final index = conditions.indexWhere((c) => c.id == condition.id);
     if (index != -1) {
       conditions[index].lastCompletedAt = complete ? DateTime.now() : null;
-      save();
+      await save();
     }
   }
 }
