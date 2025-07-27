@@ -79,14 +79,14 @@ class SyncService {
         .onBroadcast( 
           event: 'sync', 
           callback: (payload, [_]) async {
-            logger.i('received remote sync request from ${payload['source']}');
+            print('received remote sync request from ${payload['source']}');
             await queueSync();
           }
         )
         .onBroadcast(
           event: 'sign-out', 
           callback: (payload, [_]) {
-            logger.i('received remote sign out event');
+            print('received remote sign out event');
             AuthService().signOut(forced: true);
           }
         )
@@ -116,7 +116,7 @@ class SyncService {
   Future<void> _notifyPeers() async {
     final currDevice = await Device.getCurrent();
 
-    logger.i("notifying peers");
+    print("notifying peers");
 
     await _sendRealtimeMessage('sync');
 
@@ -140,7 +140,7 @@ class SyncService {
   // async sync method 
   Future<bool> queueSync({bool full = false, bool manual = false}) async {
     if (userId.isEmpty) {
-      logger.i("can't sync - user is not signed in");
+      print("can't sync - user is not signed in");
       if (manual) {
         _syncStatusController.add(SyncStatus.notSignedIn);
       }
@@ -181,10 +181,10 @@ class SyncService {
 
   // synchronous syncs - mostly used directly on desktop
   Future<bool> sync({bool full = false, String? id, bool manual = false}) async {
-    logger.i("syncing...");
+    print("syncing...");
 
     if (userId.isEmpty) {
-      logger.i("can't sync - user is not signed in");
+      print("can't sync - user is not signed in");
       if (manual) {
         _syncStatusController.add(SyncStatus.notSignedIn);
       }
@@ -197,11 +197,11 @@ class SyncService {
     });
   
     final success = result != null;
-    logger.i("finished syncing - success = $success");
+    print("finished syncing - success = $success");
 
     if (id != null) {
       final key = 'sync_job_status_$id';
-      logger.i("setting sync key $key to true");
+      print("setting sync key $key to true");
       await SharedPreferencesAsync().setBool(key, true);
     }
 
@@ -266,7 +266,7 @@ class SyncService {
   Future<SyncResult?> _sync({bool full = false}) async {
     try {
       if (userId.isEmpty) {
-        logger.i("can't sync - user is not signed in");
+        print("can't sync - user is not signed in");
         return null;
       }
 
@@ -343,9 +343,9 @@ class SyncService {
           }
         }
         
-        //logger.i("localEvents: ${localEvents.map((e) => e.toJson())}");
-        //logger.i("remoteEvents: ${remoteEvents.map((e) => e.toJson())}");
-        //logger.i("mergedEvents: ${mergedEvents.map((e) => e.toJson())}");
+        //print("localEvents: ${localEvents.map((e) => e.toJson())}");
+        //print("remoteEvents: ${remoteEvents.map((e) => e.toJson())}");
+        //print("mergedEvents: ${mergedEvents.map((e) => e.toJson())}");
         
         madeRemoteChange = madeRemoteChange || (mergedEvents.length != remoteEvents.length);
         for (final event in mergedEvents) {
@@ -369,11 +369,11 @@ class SyncService {
               .or('updated_at.gt.${lastPulledAt.toUtc().toIso8601String()},id.eq.${currDevice.id}');
           final localDevices = await db.getDevicesById(remoteDevices.map((device) => device['id'] as String).toList());
           final localDeviceMap = {for (final device in localDevices) device.id: device};
-          //logger.i("remote devices: $remoteDevices");
+          //print("remote devices: $remoteDevices");
           
           final deviceSyncedBefore = remoteDevices.any((device) => device['id'] == currDevice.id);
 
-          //logger.i("device synced before: $deviceSyncedBefore");
+          //print("device synced before: $deviceSyncedBefore");
 
           // if the current device doesn't exist remotely, we need to do a full sync
           full = full || !deviceSyncedBefore;
@@ -437,7 +437,7 @@ class SyncService {
           final remoteGroups = await _client.from('groups').select().eq('user_id', userId).gt('updated_at', lastPulledAt.toUtc().toIso8601String());
           final localGroups = await db.getGroupsById(remoteGroups.map((group) => group['id'] as String).toList());
           final localGroupMap = {for (final group in localGroups) group.id: group};
-          //logger.i("remote groups: $remoteGroups");
+          //print("remote groups: $remoteGroups");
           for (final group in remoteGroups) {            
             final overwriteMap = {};
             final localGroup = localGroupMap[group['id']];
@@ -488,7 +488,7 @@ class SyncService {
           final localRoutines = await db.getRoutinesById(remoteRoutines.map((routine) => routine['id'] as String).toList());
           final localRoutineMap = {for (final routine in localRoutines) routine.id: routine};
           
-          //logger.i("remote routines: $remoteRoutines");
+          //print("remote routines: $remoteRoutines");
           for (final routine in remoteRoutines) {            
             final overwriteMap = {};
             final localRoutine = localRoutineMap[routine['id']];
@@ -566,7 +566,7 @@ class SyncService {
       // push devices
       final localDevices = await db.getDeviceChanges(full ? null : lastPulledAt);
 
-      //logger.i("local devices: $localDevices");
+      //print("local devices: $localDevices");
       final remoteDevices = await _client
         .from('devices')
         .select()
@@ -577,14 +577,14 @@ class SyncService {
       for (final device in localDevices) {
         final remoteDevice = remoteDeviceMap[device.id];
         if (remoteDevice != null && remoteDevice['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
-          logger.i("device conflict detected - cancelling sync");
+          print("device conflict detected - cancelling sync");
           return null;
         }
       }
 
       // push groups    
       final localGroups = await db.getGroupChanges(full ? null : lastPulledAt);
-      //logger.i("local groups: $localGroups");
+      //print("local groups: $localGroups");
       final remoteGroups = await _client
         .from('groups')
         .select()
@@ -596,14 +596,14 @@ class SyncService {
       for (final group in localGroups) {
         final remoteGroup = remoteGroupMap[group.id];
         if (remoteGroup != null && remoteGroup['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
-          logger.i("group conflict detected - cancelling sync");
+          print("group conflict detected - cancelling sync");
           return null;
         }
       }
 
       // push routines
       final localRoutines = await db.getRoutineChanges(full ? null : lastPulledAt);
-      //logger.i("local routines: $localRoutines");
+      //print("local routines: $localRoutines");
       final remoteRoutines = await _client
         .from('routines')
         .select()
@@ -614,7 +614,7 @@ class SyncService {
       for (final routine in localRoutines) {
         final remoteRoutine = remoteRoutineMap[routine.id];
         if (remoteRoutine != null && remoteRoutine['updated_at'].compareTo(pulledAt.toUtc().toIso8601String()) > 0) {
-          logger.i("routine conflict detected - cancelling sync");
+          print("routine conflict detected - cancelling sync");
           return null;
         }
       }
@@ -735,6 +735,7 @@ class SyncService {
 
       return SyncResult();
     } catch (e, st) {
+      print("error syncing: $e");
       Util.report('error syncing', e, st);
       return null;
     }
