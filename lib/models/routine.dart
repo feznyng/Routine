@@ -204,12 +204,22 @@ class Routine implements Syncable {
   }
 
   Future<void> snooze(DateTime until) async {
+    if (until.isBefore(DateTime.now())) {
+      return;
+    }
+
     _snoozedUntil = until;
     await save(groups: false);
   }
 
   Future<void> unsnooze() async {
-    _snoozedUntil = DateTime.now().subtract(const Duration(seconds: 1));
+    final now = DateTime.now().subtract(const Duration(seconds: 1));
+
+    if (_snoozedUntil == null || now.isAfter(_snoozedUntil!)) {
+      return;
+    }
+
+    _snoozedUntil = now;
     await save(groups: false);
   }
 
