@@ -183,7 +183,6 @@ class RoutineCard extends StatelessWidget {
       return BreakTimerDisplay(
         routine: routine,
         onEndBreak: () {
-          routine.endBreak();
           if (onRoutineUpdated != null) {
             onRoutineUpdated!();
           }

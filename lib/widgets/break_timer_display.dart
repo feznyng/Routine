@@ -134,7 +134,8 @@ class _BreakTimerDisplayState extends State<BreakTimerDisplay> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
+              await widget.routine.endBreak();
               widget.onEndBreak();
               Navigator.of(context).pop();
             },
