@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/routine.dart';
 import '../database/database.dart';
@@ -21,7 +22,7 @@ class RoutinePage extends StatefulWidget {
   State<RoutinePage> createState() => _RoutinePageState();
 }
 
-class _RoutinePageState extends State<RoutinePage> {
+class _RoutinePageState extends State<RoutinePage> with WidgetsBindingObserver {
   late TextEditingController _nameController;
   late Routine _routine;
   bool _isValid = false;
@@ -29,15 +30,18 @@ class _RoutinePageState extends State<RoutinePage> {
   bool _originalStrictMode = false;
   bool _originalIsActive = false;
   final _strictModeService = StrictModeService.instance;
+  Timer? _snoozeTimer;
 
   late Map<String, DeviceEntry> _devices = {};
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initializeRoutine();
     _loadDevices();
     _refreshRoutine();
+    _scheduleSnoozeCheck();
   }
 
   void _initializeRoutine() {
@@ -88,8 +92,37 @@ class _RoutinePageState extends State<RoutinePage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _snoozeTimer?.cancel();
     _nameController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      setState(() {});
+    }
+  }
+
+  void _scheduleSnoozeCheck() {
+    _snoozeTimer?.cancel();
+    
+    if (_routine.isSnoozed && _routine.snoozedUntil != null) {
+      final now = DateTime.now();
+      final snoozeEnd = _routine.snoozedUntil!;
+      
+      if (snoozeEnd.isAfter(now)) {
+        final duration = snoozeEnd.difference(now) + Duration(seconds: 1);
+        
+        _snoozeTimer = Timer(duration, () {
+          if (mounted) {
+            setState(() {});
+          }
+        });
+      }
+    }
   }
 
   void _validateRoutine() {
@@ -366,6 +399,8 @@ class _RoutinePageState extends State<RoutinePage> {
                           setState(() {
                             _validateRoutine();
                           });
+                          // Reschedule snooze check after unsnoozing
+                          _scheduleSnoozeCheck();
                         }
                       } else {
                         // Show date picker to snooze the routine
@@ -396,6 +431,8 @@ class _RoutinePageState extends State<RoutinePage> {
                             setState(() {
                               _validateRoutine();
                             });
+                            // Reschedule snooze check after snoozing
+                            _scheduleSnoozeCheck();
                           }
                         }
                       }
