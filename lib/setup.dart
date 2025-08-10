@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:isolate';
-import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -27,7 +26,7 @@ final logger = Logger(
   ),
 );
 
-@pragma('vm:entry-point') // Mandatory if the App is obfuscated or using Flutter 3.1+
+@pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     final isolateId = Isolate.current.hashCode.toString();
@@ -43,15 +42,26 @@ void callbackDispatcher() {
 
       const syncLockKey = 'sync_in_progress';
       const syncLockTimestampKey = 'sync_lock_timestamp';
+      const syncTimestampKey = 'sync_latest_started_at';
       const lockTimeoutMs = 30000;
       const pollIntervalMs = 500;
       const maxWaitTimeMs = 60000;
-      
-      final startWaitTime = DateTime.now().millisecondsSinceEpoch;
-      final prefs = SharedPreferencesAsync();
-      final random = Random();
+      const debounceTimeMs = 2000;
 
-      await Future.delayed(Duration(milliseconds: random.nextInt(5) * 100));
+      final prefs = SharedPreferencesAsync();
+
+      // debounce rapid sync requests
+      final startTime = DateTime.now().millisecondsSinceEpoch;
+      prefs.setInt(syncTimestampKey, startTime);
+
+      await Future.delayed(Duration(milliseconds: debounceTimeMs));
+
+      if ((await prefs.getInt(syncTimestampKey) ?? 0) > startTime) {
+        return Future.value(false);
+      }
+
+      // lock concurrent sync requests
+      final startWaitTime = DateTime.now().millisecondsSinceEpoch;
       while (true) {
         final currentTime = DateTime.now().millisecondsSinceEpoch;
         final lockTimestamp = await prefs.getInt(syncLockTimestampKey) ?? 0;
