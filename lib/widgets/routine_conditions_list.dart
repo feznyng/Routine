@@ -314,9 +314,7 @@ class RoutineConditionsList extends StatelessWidget {
             }
           }
         } catch (e) {
-          // Close the scanning dialog if open
           if (context.mounted) {
-            Navigator.of(context, rootNavigator: true).pop();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Error reading NFC tag: $e')),
             );
