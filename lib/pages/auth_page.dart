@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import 'forgot_password_page.dart';
 
@@ -28,6 +29,12 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   Future<void> _handleSubmit() async {
+    if (_isRegistering) {
+      // Open waitlist signup form instead of registering
+      await _openWaitlistForm();
+      return;
+    }
+
     setState(() {
       _errorText = null;
       _bannerMessage = null;
@@ -35,26 +42,43 @@ class _AuthPageState extends State<AuthPage> {
     });
 
     try {
-      if (_isRegistering) {
-        // If email is not registered, proceed with signup
-        final success = await _authService.signUp(_emailController.text, _passwordController.text);
-        if (success && mounted) {
-          setState(() {
-            _bannerMessage = "Please check your email to confirm your account or try signing in.";
-            _isRegistering = false;
-          });
-        }
-      } else {
-        // Handle sign in
-        final success = await _authService.signIn(_emailController.text, _passwordController.text);
-        if (success && mounted) {
-          Navigator.of(context).pop();
-        }
+      // Handle sign in
+      final success = await _authService.signIn(_emailController.text, _passwordController.text);
+      if (success && mounted) {
+        Navigator.of(context).pop();
       }
     } catch (e) {
       setState(() {
         _errorText = e.toString();
         _isLoading = false;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _openWaitlistForm() async {
+    setState(() {
+      _isLoading = true;
+      _errorText = null;
+    });
+
+    try {
+      final uri = Uri.parse('https://ajan2.typeform.com/to/yeUrh6hI');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        setState(() {
+          _errorText = 'Could not open signup form. Please try again.';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorText = 'Error opening signup form: ${e.toString()}';
       });
     } finally {
       if (mounted) {
@@ -85,7 +109,7 @@ class _AuthPageState extends State<AuthPage> {
                 ),
               )
             : null,
-        title: Text(_isRegistering ? 'Register' : 'Sign In'),
+        title: Text(_isRegistering ? 'Join Beta Waitlist' : 'Sign In'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
@@ -171,10 +195,10 @@ class _AuthPageState extends State<AuthPage> {
                     children: [
                       SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
                       SizedBox(width: 12),
-                      Text('Processing...'),
+                      Text('Loading...'),
                     ],
                   )
-                : Text(_isRegistering ? 'Register' : 'Sign In'),
+                : Text(_isRegistering ? 'Join Beta Waitlist' : 'Sign In'),
             ),
             const SizedBox(height: 8),
             if (!_isRegistering) TextButton(
@@ -194,15 +218,19 @@ class _AuthPageState extends State<AuthPage> {
             ),
             TextButton(
               onPressed: () {
-                setState(() {
-                  _isRegistering = !_isRegistering;
-                  _errorText = null;
-                  _bannerMessage = null;
-                });
+                if (_isRegistering) {
+                  setState(() {
+                    _isRegistering = false;
+                    _errorText = null;
+                    _bannerMessage = null;
+                  });
+                } else {
+                  _openWaitlistForm();
+                }
               },
               child: Text(_isRegistering
                   ? 'Already have an account? Sign in'
-                  : 'Need an account? Register'),
+                  : 'Need an account? Sign up for one.'),
             ),
           ],
         ),

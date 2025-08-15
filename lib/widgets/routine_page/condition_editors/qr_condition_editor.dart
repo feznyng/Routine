@@ -184,7 +184,7 @@ class _QrConditionEditorState extends State<QrConditionEditor> {
                   child: CircularProgressIndicator(strokeWidth: 2)
                 ) 
               : const Icon(Icons.download),
-            label: Text(_isLoading ? 'Processing...' : 
+            label: Text(_isLoading ? 'Loading...' : 
               (_name == null || _name!.isEmpty) ? 'Enter a name first' : 'Download QR Code'),
             onPressed: _isLoading || _name == null || _name!.isEmpty ? null : _saveQrCode,
           ),
