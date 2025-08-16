@@ -200,8 +200,6 @@ class AuthService {
       throw 'Unable to sign out. Please try again later.';
     }
   }
-  
-
 
   String getRedirectLink(String endpoint) {
     return "${dotenv.env['SITE_URL']}/$endpoint";
