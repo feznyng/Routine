@@ -42,6 +42,32 @@ Deno.serve(async (req) => {
 
       try {
         const { payload } = await jwtVerify(body.token, secret)
+        
+        // Check if an account already exists for this email
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        
+        const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        })
+
+        // Check if user already exists by listing all users and filtering by email
+        const { data: users } = await supabase.auth.admin.listUsers()
+        const userExists = users.users.some(user => user.email === payload.email)
+
+        if (userExists) {
+          return new Response(JSON.stringify({ 
+            error: 'ACCOUNT_EXISTS',
+            message: 'An account with this email already exists' 
+          }), {
+            status: 409,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
         return new Response(JSON.stringify(payload), {
           headers: { 'Content-Type': 'application/json' }
         })
