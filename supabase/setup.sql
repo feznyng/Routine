@@ -57,18 +57,11 @@ CREATE TABLE users (
     emergencies JSONB
 );
 
-create table invites (
-  email text primary key,
-  token text,
-  created_at timestamptz default now()
-)
-
 -- Enable Row Level Security for all tables
 ALTER TABLE devices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE routines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE groups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE invites ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies for devices table
 -- Policy for selecting devices (read)
@@ -157,8 +150,3 @@ CREATE POLICY users_update_policy ON users
 CREATE POLICY users_delete_policy ON users
     FOR DELETE
     USING (auth.uid() = id);
-
-CREATE POLICY "service_role_only" ON invites
-FOR ALL TO authenticated, anon
-USING (false)
-WITH CHECK (false);
