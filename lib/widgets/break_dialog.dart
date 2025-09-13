@@ -239,7 +239,7 @@ class _BreakDialogState extends State<BreakDialog> {
         FilledButton(
           onPressed: canConfirm ? () async {
             await widget.routine.breakFor(minutes: breakDuration);
-            if (context.mounted) {
+            if (context.mounted && Navigator.canPop(context)) {
               Navigator.of(context).pop();
             }
           } : null,
