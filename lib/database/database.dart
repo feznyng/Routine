@@ -125,6 +125,7 @@ class AppDatabase extends _$AppDatabase {
     return driftDatabase(
       name: 'routine_db',
       native: DriftNativeOptions(
+        shareAcrossIsolates: true,
         databaseDirectory: getApplicationSupportDirectory,
       ),
     );
