@@ -245,12 +245,12 @@ class SyncService {
       
       final currentStatus = await prefs.getBool(key) ?? false;
 
-      // If status changed from false to true
+      // If status changed from false to true we've finished a sync so lets notify everyone
       if (!_lastKnownSyncStatus && currentStatus) {
         final db = getIt<AppDatabase>();
         await db.forceNotifyChanges();
+        await StrictModeService().reloadEmergencyEvents();
         
-        // Stop polling since the job is complete
         _stopSyncStatusPolling();
       }
       
@@ -263,12 +263,16 @@ class SyncService {
     }
   }
   
+
+  // reminder: this runs in a separate thread and you cannot rely on instance data being up to date
   Future<SyncResult?> _sync({bool full = false}) async {
     try {
       if (userId.isEmpty) {
         print("can't sync - user is not signed in");
         return null;
       }
+      
+      final prefs = await SharedPreferences.getInstance();
 
       final db = getIt<AppDatabase>();
       final currDevice = (await db.getThisDevice())!;
@@ -298,7 +302,7 @@ class SyncService {
             remoteEvents.add(EmergencyEvent.fromJson(Map<String, dynamic>.from(event)));
           }
         }
-        final localEvents = StrictModeService().emergencyEvents;
+        final localEvents = StrictModeService.loadEmergencyEvents(prefs);
 
          // Create maps for local and remote events (id -> event)
         final Map<String, EmergencyEvent> localEventMap = {
@@ -343,9 +347,9 @@ class SyncService {
           }
         }
         
-        //print("localEvents: ${localEvents.map((e) => e.toJson())}");
-        //print("remoteEvents: ${remoteEvents.map((e) => e.toJson())}");
-        //print("mergedEvents: ${mergedEvents.map((e) => e.toJson())}");
+        print("localEvents: ${localEvents.map((e) => e.toJson())}");
+        print("remoteEvents: ${remoteEvents.map((e) => e.toJson())}");
+        print("mergedEvents: ${mergedEvents.map((e) => e.toJson())}");
         
         madeRemoteChange = madeRemoteChange || (mergedEvents.length != remoteEvents.length);
         for (final event in mergedEvents) {

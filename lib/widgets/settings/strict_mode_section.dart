@@ -282,13 +282,14 @@ class _StrictModeSectionState extends State<StrictModeSection> {
                         if (confirm != true) return;
                       } else {
                         // Show confirmation dialog for disabling emergency mode
+                        final numEmergenciesLeft = _strictModeService.remainingEmergencies;
                         final confirm = await showDialog<bool>(
                           context: context,
                           builder: (context) => AlertDialog(
                             title: const Text('End Emergency Mode'),
                             content: Text(
                               'This will re-enable all strict mode restrictions.\n\n'
-                              'You will have ${_strictModeService.remainingEmergencies} emergenc${_strictModeService.remainingEmergencies == 1 ? 'y' : 'ies'} '
+                              'You will have $numEmergenciesLeft emergenc${numEmergenciesLeft == 1 ? 'y' : 'ies'} '
                               'remaining this week.\n\n'
                               'Are you sure you want to proceed?'
                             ),

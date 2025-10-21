@@ -31,4 +31,9 @@ class EmergencyEvent {
   };
 
   bool get isActive => endedAt == null;
+
+  @override
+  String toString() {
+    return 'EmergencyEvent(id: $id, startedAt: $startedAt, endedAt: $endedAt, isActive: $isActive)';
+  }
 }

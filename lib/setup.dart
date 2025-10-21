@@ -22,7 +22,7 @@ final getIt = GetIt.instance;
 
 final logger = Logger(
   printer: SimplePrinter(
-      colors: true,
+      colors: false,
   ),
 );
 

@@ -60,30 +60,36 @@ class StrictModeService with ChangeNotifier {
     _blockUninstallingApps = prefs.getBool(_blockUninstallingAppsKey) ?? false;
     _blockInstallingApps = prefs.getBool(_blockInstallingAppsKey) ?? false;
 
-    // Load emergency events
-    final eventsJson = prefs.getString(_emergencyEventsKey);
-    if (eventsJson != null) {
-      final List<dynamic> eventsList = jsonDecode(eventsJson);
-      _emergencyEvents = eventsList
-          .map((e) => EmergencyEvent.fromJson(Map<String, dynamic>.from(e)))
-          .toList();
-    } else {
-      _emergencyEvents = [];
-    }
-    
-    // Store events to ensure they're properly persisted
-    await _storeEmergencyEvents();
-    
     _initialized = true;
-    
-    _notifyEffectiveSettingsChanged();
-
+   
+    // Load emergency events
+    reloadEmergencyEvents();
+  
     Routine.watchAll().listen((routines) {
       evaluateStrictMode(routines);
       Util.scheduleEvaluationTimes(routines, _scheduledTasks, () async {
         evaluateStrictMode(routines);
       });
     });
+  }
+
+  static List<EmergencyEvent> loadEmergencyEvents(SharedPreferences prefs) {
+    final eventsJson = prefs.getString(_emergencyEventsKey);
+    if (eventsJson != null) {
+      final List<dynamic> eventsList = jsonDecode(eventsJson);
+      return eventsList
+          .map((e) => EmergencyEvent.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    } else {
+      return [];
+    }
+  }
+
+  Future<void> reloadEmergencyEvents() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    _emergencyEvents = loadEmergencyEvents(prefs);
+    print("loading events $_emergencyEvents");
+    _notifyEffectiveSettingsChanged();
   }
   
   void evaluateStrictMode(List<Routine> routines) {
@@ -117,19 +123,19 @@ class StrictModeService with ChangeNotifier {
   bool get blockUninstallingApps => _blockUninstallingApps && !emergencyMode;
   bool get blockInstallingApps => _blockInstallingApps;
   
-
-  
   bool get emergencyMode => _emergencyEvents.any((e) => e.isActive);
   List<EmergencyEvent> get emergencyEvents => _emergencyEvents;
   List<DateTime> get emergencyTimestamps => _emergencyEvents.map((e) => e.startedAt).toList();
 
   Future<void> updateEmergencyEvents(List<EmergencyEvent> events) async {
     _emergencyEvents = events;
+    print("updating events $_emergencyEvents to $events");
     await _storeEmergencyEvents();
     _notifyEffectiveSettingsChanged();
   }
 
   Future<void> _storeEmergencyEvents() async {
+    print("storing events $_emergencyEvents");
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_emergencyEventsKey, 
       jsonEncode(_emergencyEvents.map((e) => e.toJson()).toList()));
@@ -246,12 +252,15 @@ class StrictModeService with ChangeNotifier {
       final activeEvent = _emergencyEvents.last;
       activeEvent.endedAt = DateTime.now();
     }
+
+    print("setting emergency mode $_emergencyEvents");
+
     await _storeEmergencyEvents();
 
     _notifyEffectiveSettingsChanged();
 
     // Notify other devices of the change
-    SyncService().queueSync();
+    await SyncService().queueSync();
   }
 
   Future<bool> _setSettingWithConfirmation(
