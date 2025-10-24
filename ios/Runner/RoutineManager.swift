@@ -38,7 +38,7 @@ class RoutineManager {
         if hasAllDay {
             do {
                 let intervalStart = self.minutesOfDayToDateComponents(0)
-                let intervalEnd = self.minutesOfDayToDateComponents(15)
+                let intervalEnd = self.minutesOfDayToDateComponents(1439)
 
                 let name = DeviceActivityName("midnight-eval")
                 let schedule = DeviceActivitySchedule(intervalStart: intervalStart, intervalEnd: intervalEnd, repeats: true)
@@ -48,7 +48,7 @@ class RoutineManager {
                 // Add midnight eval to the list
                 regularEvalTimes.append((id: "midnight-eval", startTime: 0, endTime: 15))
             } catch {
-                print("failed to register device activity \(error.localizedDescription)")
+                print("failed to register all-day device activity \(error.localizedDescription)")
                 SentrySDK.capture(message: "failed to register all day routine")
             }
         }
@@ -58,8 +58,8 @@ class RoutineManager {
                 let startTime = routine.startTime!
                 let endTime = routine.endTime!
                 
-                let intervalStart = self.minutesOfDayToDateComponents(startTime)
-                let intervalEnd = self.minutesOfDayToDateComponents(endTime)
+                let intervalStart = DateComponents(hour: 0, minute: 0)
+                let intervalEnd = DateComponents(hour: 23, minute: 59, second: 59)
 
                 let name = DeviceActivityName(routine.id)
                 let schedule = DeviceActivitySchedule(intervalStart: intervalStart, intervalEnd: intervalEnd, repeats: true)

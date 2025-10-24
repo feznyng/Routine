@@ -98,7 +98,7 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
         }
         
         routines = routines.filter { $0.isActive() && !$0.areConditionsMet() }
-        os_log("DeviceActivityMonitorExtension: filtered routine count = %d", routines.count)
+        os_log("DeviceActivityMonitorExtension: active routine count = %d", routines.count)
 
         let allow = routines.contains(where: { $0.allow })
 
@@ -139,6 +139,8 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
         for domain in domains {
             webDomains.insert(WebDomain(domain: domain))
         }
+        
+        os_log("blocking \(apps.count) apps \(sites.count) sites \(webDomains.count) domains \(allow)")
         
         if (allow) {
             store.shield.applications = nil
