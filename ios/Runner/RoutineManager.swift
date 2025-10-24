@@ -37,8 +37,8 @@ class RoutineManager {
         // always schedule for midnight to handle all day routines
         if hasAllDay {
             do {
-                let intervalStart = self.minutesOfDayToDateComponents(0)
-                let intervalEnd = self.minutesOfDayToDateComponents(1439)
+                let intervalStart = DateComponents(hour: 0, minute: 0)
+                let intervalEnd = DateComponents(hour: 23, minute: 59, second: 59)
 
                 let name = DeviceActivityName("midnight-eval")
                 let schedule = DeviceActivitySchedule(intervalStart: intervalStart, intervalEnd: intervalEnd, repeats: true)
@@ -57,9 +57,9 @@ class RoutineManager {
             if routine.startTime != nil && routine.endTime != nil && !routine.allDay {
                 let startTime = routine.startTime!
                 let endTime = routine.endTime!
-                
-                let intervalStart = DateComponents(hour: 0, minute: 0)
-                let intervalEnd = DateComponents(hour: 23, minute: 59, second: 59)
+
+                let intervalStart = self.minutesOfDayToDateComponents(startTime)
+                let intervalEnd = self.minutesOfDayToDateComponents(endTime)
 
                 let name = DeviceActivityName(routine.id)
                 let schedule = DeviceActivitySchedule(intervalStart: intervalStart, intervalEnd: intervalEnd, repeats: true)

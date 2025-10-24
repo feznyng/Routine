@@ -142,17 +142,21 @@ class StrictModeService with ChangeNotifier {
   }
 
   int get remainingEmergencies {
-    // Remove events older than a week
-    final oneWeekAgo = DateTime.now().subtract(const Duration(days: 7));
-    _emergencyEvents.removeWhere((e) => e.startedAt.isBefore(oneWeekAgo));
+    cleanEmergencyEvents(_emergencyEvents);
     return max(0, _maxEmergenciesPerWeek - _emergencyEvents.length);
   }
 
   bool get canStartEmergency {
-    // Remove events older than a week
-    final oneWeekAgo = DateTime.now().subtract(const Duration(days: 7));
-    _emergencyEvents.removeWhere((e) => e.startedAt.isBefore(oneWeekAgo));
+    cleanEmergencyEvents(_emergencyEvents);
     return _emergencyEvents.length < _maxEmergenciesPerWeek;
+  }
+
+  static void cleanEmergencyEvents(List<EmergencyEvent> events) {
+    final d = DateTime.now();
+    final daysSinceSunday = d.weekday % 7; // Mon=1..Sun=7 -> 0 on Sunday
+    final localMidnight = DateTime(d.year, d.month, d.day);
+    final lastSunday = localMidnight.subtract(Duration(days: daysSinceSunday));
+    events.removeWhere((e) => e.startedAt.isBefore(lastSunday));
   }
 
   bool get effectiveBlockAppExit => _blockAppExit && _inStrictMode && !emergencyMode;

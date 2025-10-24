@@ -331,9 +331,7 @@ class SyncService {
         }
         
         // Filter out events older than one week
-        final oneWeekAgo = DateTime.now().subtract(const Duration(days: 7));
-        mergedEvents.removeWhere((event) => 
-          event.endedAt != null && event.endedAt!.isBefore(oneWeekAgo));
+        StrictModeService.cleanEmergencyEvents(mergedEvents);
         
         // Sort events by startedAt to find the latest
         mergedEvents.sort((a, b) => a.startedAt.compareTo(b.startedAt));
