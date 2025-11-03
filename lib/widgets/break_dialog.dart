@@ -16,7 +16,7 @@ class BreakDialog extends StatefulWidget {
   State<BreakDialog> createState() => _BreakDialogState();
 }
 
-class _BreakDialogState extends State<BreakDialog> {
+class _BreakDialogState extends State<BreakDialog> with WidgetsBindingObserver {
   final _codeController = TextEditingController();
   Timer? _delayTimer;
   Timer? _pomodoroTimer;
@@ -26,10 +26,12 @@ class _BreakDialogState extends State<BreakDialog> {
   int? remainingDelay;
   int? remainingPomodoroSeconds;
   String? generatedCode;
+  DateTime? _delayEndAt;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     canConfirm = widget.routine.friction == 'none' || 
                 (widget.routine.friction == 'pomodoro' && widget.routine.canTakeBreakNowWithPomodoro);
 
@@ -43,6 +45,7 @@ class _BreakDialogState extends State<BreakDialog> {
       generatedCode = List.generate(codeLength, (index) => chars[random.nextInt(chars.length)]).join();
     } else if (widget.routine.friction == 'delay') {
       remainingDelay = widget.routine.frictionLen ?? 30;
+      _delayEndAt = DateTime.now().add(Duration(seconds: remainingDelay!));
       _startDelayTimer();
     } else if (widget.routine.friction == 'pomodoro') {
       // Initialize Pomodoro timer if needed
@@ -58,10 +61,56 @@ class _BreakDialogState extends State<BreakDialog> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _codeController.dispose();
     _delayTimer?.cancel();
     _pomodoroTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _handleAppResumed();
+    }
+  }
+
+  void _handleAppResumed() {
+    if (!mounted) return;
+
+    // Close if routine is no longer active
+    if (!widget.routine.isActive) {
+      if (Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
+      return;
+    }
+
+    setState(() {
+      if (widget.routine.friction == 'pomodoro') {
+        final remaining = widget.routine.getRemainingPomodoroTime;
+        remainingPomodoroSeconds = remaining > 0 ? remaining : 0;
+        canConfirm = widget.routine.canTakeBreakNowWithPomodoro;
+
+        if (remainingPomodoroSeconds! > 0) {
+          if (_pomodoroTimer == null) _startPomodoroTimer();
+        } else {
+          _pomodoroTimer?.cancel();
+        }
+      } else if (widget.routine.friction == 'delay') {
+        if (_delayEndAt != null) {
+          final now = DateTime.now();
+          final diff = _delayEndAt!.difference(now).inSeconds;
+          remainingDelay = max(0, diff);
+          if (remainingDelay == 0) {
+            canConfirm = true;
+            _delayTimer?.cancel();
+          } else {
+            if (_delayTimer == null) _startDelayTimer();
+          }
+        }
+      }
+    });
   }
 
   void _startDelayTimer() {
