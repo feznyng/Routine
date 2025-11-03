@@ -22,7 +22,9 @@ class RoutineList extends StatefulWidget {
 class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
   late List<Routine> _routines;
   late StreamSubscription<List<Routine>> _routineSubscription;
+  late StreamSubscription<bool> _syncingSubscription;
   bool _isLoading = false;
+  bool _isSyncing = false;
   bool _activeRoutinesExpanded = true;
   bool _inactiveRoutinesExpanded = true;
   bool _snoozedRoutinesExpanded = true;
@@ -68,12 +70,21 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
         });
       }
     });
+
+    _syncingSubscription = _syncService.isSyncing.listen((value) {
+      if (mounted) {
+        setState(() {
+          _isSyncing = value;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _routineSubscription.cancel();
+    _syncingSubscription.cancel();
     authServiceSubscription.cancel();
     super.dispose();
   }
@@ -247,6 +258,25 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                     // Emergency mode banner
                     if (_strictModeService.emergencyMode)
                       const EmergencyModeBanner(),
+                    // Syncing indicator
+                    if (_isSyncing)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: const CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Syncing…',
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                            ),
+                          ],
+                        ),
+                      ),
                     // Signed out banner
                     if (_showSignedOutBanner)
                       SignedOutBanner(

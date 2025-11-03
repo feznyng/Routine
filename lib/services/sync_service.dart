@@ -53,6 +53,7 @@ class SyncService {
   final Lock _syncLock = Lock();
   
   final StreamController<SyncStatus> _syncStatusController = StreamController<SyncStatus>.broadcast();
+  final StreamController<bool> _syncingController = StreamController<bool>.broadcast();
 
   String get userId => Supabase.instance.client.auth.currentUser?.id ?? '';
   
@@ -66,6 +67,13 @@ class SyncService {
   }
   
   Stream<SyncStatus> get onSyncStatus => _syncStatusController.stream;
+  Stream<bool> get isSyncing => _syncingController.stream;
+
+  void _setSyncing(bool value) {
+    try {
+      _syncingController.add(value);
+    } catch (_) {}
+  }
 
   void setupRealtimeSync() {
     if (userId.isEmpty) return;
@@ -135,6 +143,7 @@ class SyncService {
     await _syncChannel?.unsubscribe();
     _stopSyncStatusPolling();
     await _syncStatusController.close();
+    await _syncingController.close();
   }
 
   // async sync method 
@@ -148,7 +157,8 @@ class SyncService {
     }
 
     if (Util.isDesktop()) {
-      sync(full: full);
+      _setSyncing(true);
+      sync(full: full).whenComplete(() => _setSyncing(false));
       return true;
     } else  {
       // Clear existing keys in shared_preferences prefixed with sync_job_status_
@@ -172,6 +182,7 @@ class SyncService {
       
       // Start polling for status changes
       _startSyncStatusPolling();
+      _setSyncing(true);
       
       await Workmanager().registerOneOffTask("sync", "sync-task", inputData: {'full': full, 'id': id});
 
@@ -193,6 +204,7 @@ class SyncService {
 
     SyncResult? result;
     await _syncLock.synchronized(() async {
+      _setSyncing(true);
       result = await _sync(full: full);
     });
   
@@ -206,6 +218,7 @@ class SyncService {
     }
 
     _syncStatusController.add(success ? SyncStatus.success : SyncStatus.failure);
+    _setSyncing(false);
 
     return success;
   }
@@ -252,6 +265,7 @@ class SyncService {
         await StrictModeService().reloadEmergencyEvents();
         
         _stopSyncStatusPolling();
+        _setSyncing(false);
       }
       
       // Update the last known status
