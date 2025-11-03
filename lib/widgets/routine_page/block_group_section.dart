@@ -40,12 +40,8 @@ class _BlockGroupSectionState extends State<BlockGroupSection> {
   }
 
   String _buildGroupSummary(Group? group, bool currDevice) {
-    if (!currDevice) {
-      return group?.name ?? 'Custom';
-    }
-
     if (group == null) {
-      return 'No block group configured';
+      return 'None';
     } else if (group.name != null) {
       return group.name!;
     } else if (group.apps.isEmpty && group.sites.isEmpty && group.categories.isEmpty) {
@@ -127,14 +123,13 @@ class _BlockGroupSectionState extends State<BlockGroupSection> {
   @override
   Widget build(BuildContext context) {
     final currentDeviceId = getIt<Device>().id;
-    final hasCurrentDeviceGroup = widget.routine.getGroup() != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ...widget.routine.groups.entries.map((entry) {
+        ...widget.devices.entries.map((entry) {
           final deviceId = entry.key;
-          final group = entry.value;
+          final group = widget.routine.getGroup(deviceId);
           final currDevice = deviceId == currentDeviceId;
           return Card(
             child: ListTile(
@@ -161,15 +156,6 @@ class _BlockGroupSectionState extends State<BlockGroupSection> {
             ),
           );
         }),
-        if (!hasCurrentDeviceGroup)
-          Padding(
-            padding: const EdgeInsets.only(top: 8.0),
-            child: ElevatedButton.icon(
-              onPressed: () => _toggleBlockGroup(context, currentDeviceId),
-              icon: Icon(Icons.add),
-              label: Text('Add Device Group'),
-            ),
-          ),
       ],
     );
   }
