@@ -154,29 +154,9 @@ class _BlockGroupSectionState extends State<BlockGroupSection> {
                   color: Theme.of(context).textTheme.bodyMedium?.color
                 ),
               ),
-              trailing: currDevice
-                  ? Icon(Icons.chevron_right)
-                  : null,
+              trailing: Icon(Icons.chevron_right),
               onTap: () {
-                if (deviceId == currentDeviceId) {
-                  _toggleBlockGroup(context, deviceId);
-                } else {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: Text('Modify ${widget.devices[deviceId]?.name ?? 'Device'} Group'),
-                        content: Text('Please use Routine on ${widget.devices[deviceId]?.name ?? 'the device'} to configure this block group.'),
-                        actions: <Widget>[
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: const Text('OK'),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                }
+                _toggleBlockGroup(context, deviceId);
               },
             ),
           );

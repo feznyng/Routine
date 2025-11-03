@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../widgets/block_group_editor.dart';
 import 'block_groups_page.dart';
 import '../models/group.dart';
+import '../models/device.dart';
 
 class BlockGroupPage extends StatefulWidget {
   final Group? selectedGroup;
@@ -31,12 +32,38 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
   late StreamSubscription<List<Group>> _subscription;
   // Key to force dropdown rebuild
   Key _dropdownKey = UniqueKey();
+  bool _isCurrentDevice = true;
+
+  Future<void> _showNotAllowedDialog(String message) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        content: Text(message),
+        title: const Text('Modify Group'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   void initState() {
     super.initState();
     _selectedGroup = widget.selectedGroup ?? Group();
     _blockGroups = [];
+
+    // Determine if the device being edited is the current device
+    Device.getCurrent().then((currDevice) {
+      if (!mounted) return;
+      setState(() {
+        _isCurrentDevice = currDevice.id == widget.deviceId;
+      });
+    });
 
     _subscription = Group.watchAllNamed(deviceId: widget.deviceId).listen((event) {
       if (mounted) {
@@ -51,6 +78,13 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
           if (newGroups.isNotEmpty) {
             final lastNewGroup = newGroups.last;
             _selectedGroup = lastNewGroup;
+          }
+
+          // If not current device, and currently on a custom group, try to switch to a named group
+          if (!_isCurrentDevice && !_blockGroups.any((g) => g.id == _selectedGroup.id)) {
+            if (_blockGroups.isNotEmpty) {
+              _selectedGroup = _blockGroups.first;
+            }
           }
         });
       }
@@ -110,6 +144,10 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
         actions: [
           TextButton(
             onPressed: () {
+              if (!_isCurrentDevice && !usingNamedGroup) {
+                _showNotAllowedDialog('Please use this device to create a custom group.');
+                return;
+              }
               widget.onSave(_selectedGroup);
               widget.onBack();
             },
@@ -140,9 +178,10 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                         contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       ),
                       items: [
-                        const DropdownMenuItem<String>(
+                        DropdownMenuItem<String>(
                           value: null,
-                          child: Text('Custom'),
+                          enabled: true,
+                          child: const Text('Custom'),
                         ),
                         ..._blockGroups.map((blockGroup) {
                           return DropdownMenuItem<String>(
@@ -156,13 +195,23 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                           enabled: false,
                           child: Divider(),
                         ),
-                        const DropdownMenuItem<String>(
+                        DropdownMenuItem<String>(
                           value: 'edit_groups',
-                          child: Text('Edit Groups'),
+                          enabled: true,
+                          child: const Text('Edit Groups'),
                         ),
                       ],
                       onChanged: widget.inLockdown ? null : (String? newId) async {
                         if (newId == 'edit_groups') {
+                          if (!_isCurrentDevice) {
+                            await _showNotAllowedDialog('Please use this device to create or edit a group.');
+                            if (mounted) {
+                              setState(() {
+                                _dropdownKey = UniqueKey();
+                              });
+                            }
+                            return;
+                          }
                           // Store current selection before navigating
                           final Group currentGroup = _selectedGroup;
                           
@@ -184,6 +233,15 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                               // Ensure we're using the same group instance
                               _selectedGroup = currentGroup;
                               // Force dropdown to rebuild with new key
+                              _dropdownKey = UniqueKey();
+                            });
+                          }
+                          return;
+                        }
+                        if (newId == null && !_isCurrentDevice) {
+                          await _showNotAllowedDialog('Please use this device to create a new group.');
+                          if (mounted) {
+                            setState(() {
                               _dropdownKey = UniqueKey();
                             });
                           }
@@ -224,10 +282,19 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.edit),
-                    onPressed: usingNamedGroup ? _editCurrentGroup : null,
-                    tooltip: usingNamedGroup ? 'Edit Group' : 'Cannot edit custom group',
-                    // Disable the button if not using a named group
-                    color: usingNamedGroup ? null : Theme.of(context).disabledColor,
+                    onPressed: () async {
+                      if (!usingNamedGroup) {
+                        await _showNotAllowedDialog('Custom groups can only be created and edited on this device. Select a named group.');
+                        return;
+                      }
+                      if (!_isCurrentDevice) {
+                        await _showNotAllowedDialog('Please use this device to edit this group.');
+                        return;
+                      }
+                      await _editCurrentGroup();
+                    },
+                    tooltip: 'Edit Group',
+                    color: null,
                   ),
                 ],
               ),
@@ -243,7 +310,7 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                     textAlign: TextAlign.center,
                   ),
                 ),
-              if (!usingNamedGroup) 
+              if (!usingNamedGroup && _isCurrentDevice) 
                 BlockGroupEditor(
                   groupId: _selectedGroup.id,
                   selectedApps: _selectedGroup.apps,
