@@ -182,17 +182,40 @@ class SyncService {
     return madeRemoteChange;
   }
 
-  Future<({bool accidentalDeletion, bool requireFullSync})> _pullDevices(
-    AppDatabase db,
+  Future<({List<dynamic> devices, List<dynamic> groups, List<dynamic> routines})> _fetchRemoteLists(
     String currDeviceId,
     DateTime lastPulledAt,
-    DateTime pulledAt,
   ) async {
-    final remoteDevices = await _client
+    final devicesFuture = _client
         .from('devices')
         .select()
         .eq('user_id', userId)
         .or('updated_at.gt.${lastPulledAt.toUtc().toIso8601String()},id.eq.$currDeviceId');
+    final groupsFuture = _client
+        .from('groups')
+        .select()
+        .eq('user_id', userId)
+        .gt('updated_at', lastPulledAt.toUtc().toIso8601String());
+    final routinesFuture = _client
+        .from('routines')
+        .select()
+        .eq('user_id', userId)
+        .gt('updated_at', lastPulledAt.toUtc().toIso8601String());
+
+    final results = await Future.wait([devicesFuture, groupsFuture, routinesFuture]);
+    return (
+      devices: results[0] as List<dynamic>,
+      groups: results[1] as List<dynamic>,
+      routines: results[2] as List<dynamic>,
+    );
+  }
+
+  Future<({bool accidentalDeletion, bool requireFullSync})> _pullDevices(
+    AppDatabase db,
+    String currDeviceId,
+    List<dynamic> remoteDevices,
+    DateTime pulledAt,
+  ) async {
     final localDevices = await db.getDevicesById(remoteDevices.map((d) => d['id'] as String).toList());
     final localDeviceMap = {for (final device in localDevices) device.id: device};
 
@@ -243,15 +266,10 @@ class SyncService {
   Future<void> _pullGroups(
     AppDatabase db,
     String currDeviceId,
-    DateTime lastPulledAt,
+    List<dynamic> remoteGroups,
     DateTime pulledAt,
     bool accidentalDeletion,
   ) async {
-    final remoteGroups = await _client
-        .from('groups')
-        .select()
-        .eq('user_id', userId)
-        .gt('updated_at', lastPulledAt.toUtc().toIso8601String());
     final localGroups = await db.getGroupsById(remoteGroups.map((group) => group['id'] as String).toList());
     final localGroupMap = {for (final group in localGroups) group.id: group};
 
@@ -289,14 +307,9 @@ class SyncService {
 
   Future<void> _pullRoutines(
     AppDatabase db,
-    DateTime lastPulledAt,
+    List<dynamic> remoteRoutines,
     DateTime pulledAt,
   ) async {
-    final remoteRoutines = await _client
-        .from('routines')
-        .select()
-        .eq('user_id', userId)
-        .gt('updated_at', lastPulledAt.toUtc().toIso8601String());
     final localRoutines = await db.getRoutinesById(remoteRoutines.map((routine) => routine['id'] as String).toList());
     final localRoutineMap = {for (final routine in localRoutines) routine.id: routine};
 
@@ -367,6 +380,7 @@ class SyncService {
     }
 
     bool updatedCurrDevice = false;
+    final futures = <Future<void>>[];
     for (final device in localDevices) {
       updatedCurrDevice = updatedCurrDevice || device.id == currDeviceId;
       final Map<String, dynamic> data = {
@@ -379,7 +393,10 @@ class SyncService {
         'deleted': device.deleted,
       };
 
-      await _client.from('devices').upsert(data).eq('id', device.id);
+      futures.add(_client.from('devices').upsert(data).eq('id', device.id));
+    }
+    if (futures.isNotEmpty) {
+      await Future.wait(futures);
     }
 
     if (!updatedCurrDevice) {
@@ -403,8 +420,9 @@ class SyncService {
       return (changed: false, conflict: true);
     }
 
+    final futures = <Future<void>>[];
     for (final group in localGroups) {
-      await _client
+      futures.add(_client
           .from('groups')
           .upsert({
             'id': group.id,
@@ -415,7 +433,10 @@ class SyncService {
             'updated_at': group.updatedAt.toUtc().toIso8601String(),
             'deleted': group.deleted,
           })
-          .eq('id', group.id);
+          .eq('id', group.id));
+    }
+    if (futures.isNotEmpty) {
+      await Future.wait(futures);
     }
 
     return (changed: localGroups.isNotEmpty, conflict: false);
@@ -432,8 +453,9 @@ class SyncService {
       return (changed: false, conflict: true);
     }
 
+    final futures = <Future<void>>[];
     for (final routine in localRoutines) {
-      await _client
+      futures.add(_client
           .from('routines')
           .upsert({
             'id': routine.id,
@@ -464,7 +486,10 @@ class SyncService {
             'updated_at': routine.updatedAt.toUtc().toIso8601String(),
             'deleted': routine.deleted,
           })
-          .eq('id', routine.id);
+          .eq('id', routine.id));
+    }
+    if (futures.isNotEmpty) {
+      await Future.wait(futures);
     }
 
     return (changed: localRoutines.isNotEmpty, conflict: false);
@@ -696,13 +721,16 @@ class SyncService {
         madeRemoteChange = await _syncEmergencyEvents(prefs) || madeRemoteChange;
       }
       
+      // parallel remote fetches before transaction
+      final remote = await _fetchRemoteLists(currDevice.id, lastPulledAt);
+
       final result = await db.transaction(() async {
-        final devicePull = await _pullDevices(db, currDevice.id, lastPulledAt, pulledAt);
+        final devicePull = await _pullDevices(db, currDevice.id, remote.devices, pulledAt);
         full = full || devicePull.requireFullSync; // if the current device doesn't exist remotely, we need to do a full sync
         accidentalDeletion = devicePull.accidentalDeletion;
 
-        await _pullGroups(db, currDevice.id, lastPulledAt, pulledAt, accidentalDeletion);
-        await _pullRoutines(db, lastPulledAt, pulledAt);
+        await _pullGroups(db, currDevice.id, remote.groups, pulledAt, accidentalDeletion);
+        await _pullRoutines(db, remote.routines, pulledAt);
 
         await db.updateDevice(DevicesCompanion(
           id: Value(currDevice.id),
