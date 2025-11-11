@@ -24,8 +24,6 @@ class _BreakTimerDisplayState extends State<BreakTimerDisplay> {
   @override
   void initState() {
     super.initState();
-    
-    // Delay timer initialization slightly to ensure all data is loaded
     Future.delayed(const Duration(milliseconds: 100), () {
       if (mounted && widget.routine.isPaused && widget.routine.pausedUntil != null) {
         _updateRemainingBreakTime();
@@ -38,13 +36,9 @@ class _BreakTimerDisplayState extends State<BreakTimerDisplay> {
   @override
   void didUpdateWidget(BreakTimerDisplay oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
-    // Always check break status when widget updates
     final wasPaused = oldWidget.routine.isPaused;
     final isPaused = widget.routine.isPaused;
     final pausedUntilChanged = oldWidget.routine.pausedUntil != widget.routine.pausedUntil;
-    
-    // If pause status or pausedUntil time changed, update timer
     if (wasPaused != isPaused || pausedUntilChanged) {      
       if (isPaused && widget.routine.pausedUntil != null) {
         _updateRemainingBreakTime();
@@ -58,7 +52,6 @@ class _BreakTimerDisplayState extends State<BreakTimerDisplay> {
         _timerInitialized = false;
       }
     } else if (isPaused && widget.routine.pausedUntil != null && !_timerInitialized) {
-      // Catch cases where the widget might have been rebuilt without status change
       _updateRemainingBreakTime();
       _startBreakTimer();
       _timerInitialized = true;
@@ -72,10 +65,7 @@ class _BreakTimerDisplayState extends State<BreakTimerDisplay> {
   }
 
   void _startBreakTimer() {
-    // Cancel existing timer if any
     _cancelBreakTimer();
-    
-    // Create a new timer that updates every second
     _breakTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       _updateRemainingBreakTime();
     });
@@ -87,7 +77,6 @@ class _BreakTimerDisplayState extends State<BreakTimerDisplay> {
   }
 
   void _updateRemainingBreakTime() {
-    // Skip update if widget is no longer mounted
     if (!mounted) return;
     
     if (widget.routine.pausedUntil == null) {
@@ -112,8 +101,6 @@ class _BreakTimerDisplayState extends State<BreakTimerDisplay> {
     final remaining = pausedUntil.difference(now);
     final minutes = remaining.inMinutes.toString().padLeft(2, '0');
     final seconds = (remaining.inSeconds % 60).toString().padLeft(2, '0');
-    
-    // Only update if the time has changed to reduce unnecessary setState calls
     final newTimeString = "($minutes:$seconds)";
     if (_remainingBreakTime != newTimeString) {
       setState(() {
@@ -148,9 +135,7 @@ class _BreakTimerDisplayState extends State<BreakTimerDisplay> {
 
   @override
   Widget build(BuildContext context) {
-    // Force timer initialization if needed
     if (!_timerInitialized) {
-      // Use post-frame callback to avoid setState during build
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _updateRemainingBreakTime();

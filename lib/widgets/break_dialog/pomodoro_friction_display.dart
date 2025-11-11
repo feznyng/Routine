@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/routine.dart';
 
-/// Pomodoro friction display widget
+
 class PomodoroFrictionDisplay extends StatelessWidget {
   final Routine routine;
   final int? remainingPomodoroSeconds;
@@ -36,7 +36,6 @@ class PomodoroFrictionDisplay extends StatelessWidget {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Background circle
                   Container(
                     height: 170,
                     width: 170,
@@ -45,7 +44,6 @@ class PomodoroFrictionDisplay extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                   ),
-                  // Progress indicator
                   SizedBox(
                     height: 170,
                     width: 170,
@@ -59,7 +57,6 @@ class PomodoroFrictionDisplay extends StatelessWidget {
                       strokeWidth: 8.0,
                     ),
                   ),
-                  // Inner circle with time display
                   Container(
                     height: 140,
                     width: 140,

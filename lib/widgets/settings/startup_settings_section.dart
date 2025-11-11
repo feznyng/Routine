@@ -24,7 +24,6 @@ class _StartupSettingsSectionState extends State<StartupSettingsSection> {
 
   Future<void> _loadStartupSetting() async {
     try {
-      // Add a small delay to ensure desktop service is initialized
       await Future.delayed(const Duration(milliseconds: 100));
       final startOnLogin = await _desktopService.getStartOnLogin();
       if (mounted) {
@@ -60,7 +59,6 @@ class _StartupSettingsSectionState extends State<StartupSettingsSection> {
               onChanged: (_strictModeService.effectiveBlockDisablingSystemStartup && _startOnLogin)
                 ? null  // Disable the switch completely when in strict mode
                 : (value) async {
-                    // If trying to disable while effective block is on, show dialog
                     if (!value && _strictModeService.effectiveBlockDisablingSystemStartup) {
                       _strictModeService.showStrictModeActiveDialog(context);
                       return;

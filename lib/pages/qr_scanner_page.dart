@@ -40,7 +40,6 @@ class _QrScannerPageState extends State<QrScannerPage> {
       appBar: AppBar(
         title: const Text('Scan QR Code'),
         actions: [
-          // Torch button
           ValueListenableBuilder(
             valueListenable: controller,
             builder: (context, state, child) {
@@ -54,7 +53,6 @@ class _QrScannerPageState extends State<QrScannerPage> {
               );
             },
           ),
-          // Camera switch button
           IconButton(
             icon: const Icon(Icons.flip_camera_ios),
             onPressed: () => controller.switchCamera(),
@@ -76,7 +74,6 @@ class _QrScannerPageState extends State<QrScannerPage> {
                     _hasScanned = true;
                     _isValidCode = true;
                   });
-                  // Show success feedback for a moment before closing
                   Future.delayed(const Duration(milliseconds: 500), () {
                     if (mounted) {
                       widget.onCodeScanned(code);
@@ -88,7 +85,6 @@ class _QrScannerPageState extends State<QrScannerPage> {
               }
             },
           ),
-          // Overlay with scanning instructions and feedback
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(

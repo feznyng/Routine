@@ -7,7 +7,7 @@ import 'code_friction_display.dart';
 import 'qr_friction_display.dart';
 import 'nfc_friction_display.dart';
 
-/// Main friction display widget that routes to specific friction type widgets
+
 class FrictionDisplay extends StatelessWidget {
   final Routine routine;
   final int? remainingDelay;

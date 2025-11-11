@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Delay friction display widget
+
 class DelayFrictionDisplay extends StatelessWidget {
   final int? remainingDelay;
 

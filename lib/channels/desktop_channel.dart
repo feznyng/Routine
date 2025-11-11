@@ -14,18 +14,13 @@ class BrowserControlMessage {
 }
 
 class DesktopChannel {
-  // Singleton instance
   static final DesktopChannel _instance = DesktopChannel._();
   static DesktopChannel get instance => _instance;
 
   final _platform = const MethodChannel(kAppName);
   final _browserControllabilityController = StreamController<BrowserControlMessage>.broadcast();
   Future<void> Function()? _systemWakeHandler;
-
-  // Private constructor
   DesktopChannel._();
-
-  // Signal that the engine is ready
   Future<void> signalEngineReady() async {
     try {
       await _platform.invokeMethod('engineReady');
@@ -33,8 +28,6 @@ class DesktopChannel {
       Util.report('Failed to signal engine start', e, st);
     }
   }
-
-  // Update app and site blocking list
   Future<void> updateBlockingList({
     required List<String> apps,
     required List<String> sites,
@@ -48,8 +41,6 @@ class DesktopChannel {
       'allowList': allowList,
     });
   }
-
-  // Set start on login for macOS
   Future<void> setStartOnLogin(bool enabled) async {
     try {
       await _platform.invokeMethod('setStartOnLogin', enabled);
@@ -57,8 +48,6 @@ class DesktopChannel {
       Util.report('error setting start on login to $enabled', e, st);
     }
   }
-
-  // Get start on login status for macOS
   Future<bool> getStartOnLogin() async {
     try {
       final bool enabled = await _platform.invokeMethod('getStartOnLogin');
@@ -68,27 +57,19 @@ class DesktopChannel {
       return false;
     }
   }
-
-  // Get running applications for Windows
   Future<List<InstalledApp>> getRunningApplications() async {
     List<InstalledApp> installedApps = [];
     try {
       final List<dynamic> runningApps = await _platform.invokeMethod('getRunningApplications');
-      
-      // Convert the result to InstalledApplication objects
       for (final app in runningApps) {
         final String name = app['name'];
         final String path = app['path'];
         final String? displayName = app['displayName'];
-        
-        // Skip system processes and empty names
         if (name.isEmpty || 
             path.toLowerCase().contains('\\windows\\system32\\') ||
             path.toLowerCase().contains('\\windows\\syswow64\\')) {
           continue;
         }
-        
-        // Add to the list if not already present
         if (!installedApps.any((existingApp) => existingApp.filePath == path)) {
           installedApps.add(InstalledApp(
             name: displayName ?? name,
@@ -101,8 +82,6 @@ class DesktopChannel {
     }
     return installedApps;
   }
-
-  // Register system wake event handler
   void registerSystemWakeHandler(Future<void> Function() handler) {
     _systemWakeHandler = handler;
     _platform.setMethodCallHandler(_handleMethodCall);
@@ -129,11 +108,7 @@ class DesktopChannel {
       return false;
     }
   }
-
-  // Stream for browser controllability updates
   Stream<BrowserControlMessage> get browserControllabilityStream => _browserControllabilityController.stream;
-
-  // Handle method calls from native side
   Future<void> _handleMethodCall(MethodCall call) async {
     switch (call.method) {
       case 'systemWake':
@@ -156,8 +131,6 @@ class DesktopChannel {
         );
     }
   }
-
-  // Dispose method to clean up resources
   void dispose() {
     _browserControllabilityController.close();
   }

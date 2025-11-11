@@ -67,8 +67,6 @@ class Device implements Syncable {
     } else if (Platform.isIOS) {
       final deviceInfo = DeviceInfoPlugin();
       final iosInfo = await deviceInfo.iosInfo;
-      
-      // Check if the device is an iPad
       if (iosInfo.model.toLowerCase().contains('ipad')) {
         name = "iPad";
         _type = DeviceType.ipad;

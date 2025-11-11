@@ -30,7 +30,6 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
   late List<Group> _blockGroups;
   late Group _selectedGroup;
   late StreamSubscription<List<Group>> _subscription;
-  // Key to force dropdown rebuild
   Key _dropdownKey = UniqueKey();
   bool _isCurrentDevice = true;
 
@@ -56,8 +55,6 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
     super.initState();
     _selectedGroup = widget.selectedGroup ?? Group();
     _blockGroups = [];
-
-    // Determine if the device being edited is the current device
     Device.getCurrent().then((currDevice) {
       if (!mounted) return;
       setState(() {
@@ -68,19 +65,14 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
     _subscription = Group.watchAllNamed(deviceId: widget.deviceId).listen((event) {
       if (mounted) {
         setState(() {
-          // Find any new groups that weren't in the previous list
           final newGroups = event.where((group) => 
             !_blockGroups.any((oldGroup) => oldGroup.id == group.id));
           
           _blockGroups = event;
-          
-          // If we found new groups, select the last one created
           if (newGroups.isNotEmpty) {
             final lastNewGroup = newGroups.last;
             _selectedGroup = lastNewGroup;
           }
-
-          // If not current device, and currently on a custom group, try to switch to a named group
           if (!_isCurrentDevice && !_blockGroups.any((g) => g.id == _selectedGroup.id)) {
             if (_blockGroups.isNotEmpty) {
               _selectedGroup = _blockGroups.first;
@@ -162,15 +154,12 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Group selection row
               Row(
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String?>(
-                      // Never allow 'edit_groups' to be the selected value
                       value: _selectedGroup.id == 'edit_groups' ? null : 
                              _blockGroups.any((group) => group.id == _selectedGroup.id) ? _selectedGroup.id : null,
-                      // Use a key that changes to force rebuild of the dropdown
                       key: _dropdownKey,
                       decoration: const InputDecoration(
                         labelText: 'Block Group',
@@ -189,7 +178,6 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                             child: Text(blockGroup.name ?? 'Unnamed List'),
                           );
                         }),
-                        // Add a divider and Edit Groups option at the bottom
                         if (_blockGroups.isNotEmpty) const DropdownMenuItem<String>(
                           value: 'divider',
                           enabled: false,
@@ -212,7 +200,6 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                             }
                             return;
                           }
-                          // Store current selection before navigating
                           final Group currentGroup = _selectedGroup;
                           
                           final Group? result = await Navigator.of(context).push<Group>(
@@ -224,15 +211,11 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                           if (result != null && mounted) {
                             setState(() {
                               _selectedGroup = result;
-                              // Force dropdown to rebuild with new key
                               _dropdownKey = UniqueKey();
                             });
                           } else if (mounted) {
-                            // Force rebuild with the previous selection
                             setState(() {
-                              // Ensure we're using the same group instance
                               _selectedGroup = currentGroup;
-                              // Force dropdown to rebuild with new key
                               _dropdownKey = UniqueKey();
                             });
                           }
@@ -251,27 +234,22 @@ class _BlockGroupPageState extends State<BlockGroupPage> {
                           _selectedGroup = newId == null ? Group() : _blockGroups.firstWhere((group) => group.id == newId);
                         });
                       },
-                      // Ensure 'edit_groups' is never shown as the selected value
                       selectedItemBuilder: (BuildContext context) {
                         return [
-                          // Custom option
                           const DropdownMenuItem<String>(
                             value: null,
                             child: Text('Custom'),
                           ),
-                          // Named groups
                           ..._blockGroups.map((blockGroup) {
                             return DropdownMenuItem<String>(
                               value: blockGroup.id,
                               child: Text(blockGroup.name ?? 'Unnamed List'),
                             );
                           }),
-                          // Placeholder for divider (will never be shown)
                           if (_blockGroups.isNotEmpty) const DropdownMenuItem<String>(
                             value: 'divider',
                             child: Text(''),
                           ),
-                          // Edit groups option (will never be shown)
                           const DropdownMenuItem<String>(
                             value: 'edit_groups',
                             child: Text('Custom'), // Fallback to show 'Custom' if somehow selected

@@ -43,11 +43,7 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
     _routines = [];
     _isLoading = true;
     WidgetsBinding.instance.addObserver(this);
-    
-    // Check if we need to show the signed out banner
     _checkAuthStatus();
-    
-    // Listen for auth state changes using the custom stream
     authServiceSubscription = _authService.authStateChange.listen((data) {
       if (mounted) {
         _checkAuthStatus();
@@ -92,10 +88,7 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // Check auth status when app is resumed
       _checkAuthStatus();
-      
-      // Refresh the list when app is resumed
       setState(() {
         _routines = _routines;
       });
@@ -112,33 +105,22 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-
-    // Sort all routines by next active time, except active ones which are sorted by start time
     final sortedRoutines = List<Routine>.from(_routines);
     sortedRoutines.sort((a, b) {
-      // Handle snoozed routines - sort by when they'll be unsnoozed
       if (a.isSnoozed && b.isSnoozed) {
         return a.snoozedUntil!.compareTo(b.snoozedUntil!);
       }
       if (a.isSnoozed) return 1; // Snoozed routines come after active ones
       if (b.isSnoozed) return -1;
-      
-      // If both routines are active, sort by start time (most recent first)
       if (a.isActive && b.isActive && !a.areConditionsMet && !b.areConditionsMet) {
         final aStartTime = a.startTime;
         final bStartTime = b.startTime;
-        // For routines that started today, compare their start times
-        // Later start times should come first (reverse order)
         return bStartTime.compareTo(aStartTime);
       }
-      
-      // Otherwise, sort by next active time
       final aNextActive = a.nextActiveTime;
       final bNextActive = b.nextActiveTime;
       return aNextActive.compareTo(bNextActive);
     });
-    
-    // Split sorted routines into completed, active, inactive, and snoozed
     final snoozedRoutines = sortedRoutines.where((routine) => routine.isSnoozed).toList();
     final completedRoutines = sortedRoutines.where((routine) => !routine.isSnoozed && routine.canCompleteConditions && routine.areConditionsMet).toList();
     final activeRoutines = sortedRoutines.where((routine) => routine.isActive && !routine.isSnoozed && !completedRoutines.contains(routine)).toList();
@@ -170,7 +152,6 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                   ? _buildEmptyState(context)
                   : RefreshIndicator(
                 onRefresh: () async {
-                  // Trigger a full sync
                   if (mounted) {
                     setState(() {
                       _isLoading = true;
@@ -186,10 +167,8 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                 child: ListView(
                   padding: EdgeInsets.zero,
                   children: [
-                    // Emergency mode banner
                     if (_strictModeService.emergencyMode)
                       const EmergencyModeBanner(),
-                    // Syncing indicator
                     if (_isSyncing)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -208,18 +187,15 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                           ],
                         ),
                       ),
-                    // Signed out banner
                     if (_showSignedOutBanner)
                       SignedOutBanner(
                         onDismiss: () {
-                          // Clear the banner and the persistent flag
                           _authService.clearSignedInFlag();
                           setState(() {
                             _showSignedOutBanner = false;
                           });
                         },
                       ),
-                    // Active routines section
                     if (activeRoutines.isNotEmpty) ...[  
                       _buildSectionHeader(
                         context, 
@@ -233,12 +209,8 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                           onRoutineUpdated: () => setState(() {}),
                         )),
                     ],
-
-                    // Add padding between sections only if one is expanded
                     if (_activeRoutinesExpanded || _completedRoutinesExpanded)
                       const SizedBox(height: 24),
-
-                    // Completed routines section
                     if (completedRoutines.isNotEmpty) ...[  
                       _buildSectionHeader(
                         context, 
@@ -252,12 +224,8 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                           onRoutineUpdated: () => setState(() {}),
                         )),
                     ],
-
-                    // Add padding between sections only if one is expanded
                     if (_completedRoutinesExpanded || _inactiveRoutinesExpanded)
                       const SizedBox(height: 24),
-
-                    // Inactive routines section
                     if (inactiveRoutines.isNotEmpty) ...[
                       _buildSectionHeader(
                         context, 
@@ -271,8 +239,6 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                           onRoutineUpdated: () => setState(() {}),
                         )),
                     ],
-                    
-                    // Snoozed routines section
                     if (snoozedRoutines.isNotEmpty) ...[  
                       _buildSectionHeader(
                         context, 
@@ -286,8 +252,6 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                           onRoutineUpdated: () => setState(() {}),
                         )),
                     ],
-                    
-                    // Add padding between sections
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -354,8 +318,6 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
   }
 
   void _showRoutinePage(BuildContext context, Routine? routine) {
-    // If creating a new routine (routine is null) and we already have 20 or more routines,
-    // show a limit reached dialog
     if (routine == null && _routines.length >= kMaxRoutines) {
       showDialog(
         context: context,

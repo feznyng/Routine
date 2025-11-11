@@ -86,7 +86,6 @@ class AccountSettingsPage extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: TextButton(
               onPressed: () async {
-                // Show confirmation dialog with text field
                 final TextEditingController confirmController = TextEditingController();
                 bool isConfirmationValid = false;
                 
@@ -140,7 +139,6 @@ class AccountSettingsPage extends StatelessWidget {
                 );
 
                 if (shouldDelete == true && context.mounted) {
-                  // Show loading indicator
                   showDialog(
                     context: context,
                     barrierDismissible: false,
@@ -153,17 +151,14 @@ class AccountSettingsPage extends StatelessWidget {
                     final success = await authService.deleteAccount();
                     
                     if (context.mounted) {
-                      // Close loading dialog
                       Navigator.of(context).pop();
                       
                       if (success) {
-                        // Show success message and navigate back to login
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Account successfully deleted')),
                         );
                         Navigator.of(context).popUntil((route) => route.isFirst);
                       } else {
-                        // Show error message
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Failed to delete account. Please try again later.')),
                         );
@@ -171,10 +166,7 @@ class AccountSettingsPage extends StatelessWidget {
                     }
                   } catch (e) {
                     if (context.mounted) {
-                      // Close loading dialog
                       Navigator.of(context).pop();
-                      
-                      // Show error message
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Error: ${e.toString()}')),
                       );

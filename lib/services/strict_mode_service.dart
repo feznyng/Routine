@@ -34,13 +34,9 @@ class StrictModeService with ChangeNotifier {
   static const int _maxEmergenciesPerWeek = 2;
 
   List<EmergencyEvent> _emergencyEvents = [];
-
-  // Desktop strict mode settings
   bool _blockAppExit = false;
   bool _blockDisablingSystemStartup = false;
   bool _blockBrowsersWithoutExtension = false;
-  
-  // iOS strict mode settings
   bool _blockChangingTimeSettings = false;
   bool _blockUninstallingApps = false;
   bool _blockInstallingApps = false;
@@ -49,20 +45,14 @@ class StrictModeService with ChangeNotifier {
     if (_initialized) return;
     
     final prefs = await SharedPreferences.getInstance();
-    
-    // Load desktop settings
     _blockAppExit = prefs.getBool(_blockAppExitKey) ?? false;
     _blockDisablingSystemStartup = prefs.getBool(_blockDisablingSystemStartupKey) ?? false;
     _blockBrowsersWithoutExtension = prefs.getBool(_blockBrowsersWithoutExtensionKey) ?? false;
-    
-    // Load iOS settings
     _blockChangingTimeSettings = prefs.getBool(_blockChangingTimeSettingsKey) ?? false;
     _blockUninstallingApps = prefs.getBool(_blockUninstallingAppsKey) ?? false;
     _blockInstallingApps = prefs.getBool(_blockInstallingAppsKey) ?? false;
 
     _initialized = true;
-   
-    // Load emergency events
     reloadEmergencyEvents();
   
     Routine.watchAll().listen((routines) {
@@ -262,8 +252,6 @@ class StrictModeService with ChangeNotifier {
     await _storeEmergencyEvents();
 
     _notifyEffectiveSettingsChanged();
-
-    // Notify other devices of the change
     await SyncService().queueSync();
   }
 
@@ -434,7 +422,6 @@ class StrictModeService with ChangeNotifier {
   void _notifySettingsChanged() {
     final settings = getCurrentSettings();
     _settingsStreamController.add(settings);
-    // we don't need to notify listeners since _notifyEffectiveSettingsChanged will do that for us
   }
   
   Stream<Map<String, bool>> get effectiveSettingsStream => _effectiveSettingsStreamController.stream;

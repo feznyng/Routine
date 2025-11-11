@@ -15,8 +15,6 @@ class Routines extends Table {
 
   @override
   Set<Column<Object>> get primaryKey => {id};
-
-  // scheduling
   late final monday = boolean()();
   late final tuesday = boolean()();
   late final wednesday = boolean()();
@@ -33,8 +31,6 @@ class Routines extends Table {
   late final updatedAt = dateTime()();
 
   late final groups = text().map(StringListTypeConverter())();
-
-  // breaks
   late final numBreaksTaken = integer().nullable()();
   late final lastBreakAt = dateTime().nullable()();
   late final pausedUntil = dateTime().nullable()();
@@ -78,8 +74,6 @@ class Groups extends Table {
   late final name = text().nullable()();
   late final device = text().references(Devices, #id)();
   late final allow = boolean()();
-
-  // device only
   late final apps = text().clientDefault(() => '[]').map(StringListTypeConverter())();
   late final sites = text().clientDefault(() => '[]').map(StringListTypeConverter())();
   late final categories = text().clientDefault(() => '[]').map(StringListTypeConverter())();
@@ -217,7 +211,6 @@ class AppDatabase extends _$AppDatabase {
     return transaction(() async {
       final existingEntry = await (select(routines)..where((t) => t.id.equals(routine.id.value))).getSingleOrNull();
       if (existingEntry == null) {
-        // don't need to worry about cleaning up removed groups
         await into(routines).insert(routine);
       } else {
         final existingGroups = await (select(groups)..where((t) => t.id.isIn(existingEntry.groups))).get();
@@ -243,13 +236,10 @@ class AppDatabase extends _$AppDatabase {
     });
   }
   
-  /// Restores groups that were mistakenly deleted with a device
+
   Future<void> restoreDeviceGroups(String deviceId) async {
     await transaction(() async {
-      // Find all groups for this device that are marked as deleted
       final deletedGroups = await (select(groups)..where((t) => t.device.equals(deviceId) & t.deleted.equals(true))).get();
-      
-      // Restore each group by setting deleted to false
       for (final group in deletedGroups) {
         await (update(groups)..where((t) => t.id.equals(group.id)))
           .write(GroupsCompanion(

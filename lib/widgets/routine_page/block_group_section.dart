@@ -68,8 +68,6 @@ class _BlockGroupSectionState extends State<BlockGroupSection> {
   void _toggleBlockGroup(BuildContext context, String deviceId) async {
     final group = widget.routine.getGroup(deviceId);
     final currentDevice = getIt<Device>();
-    
-    // Check iOS block group limit only when adding a new group on iOS
     if ((group == null || !widget.routine.saved) && currentDevice.type == DeviceType.ios) {
       final allRoutines = await Routine.getAll();
       final iosBlockGroups = allRoutines.where((r) => r.getGroup(currentDevice.id) != null).length;

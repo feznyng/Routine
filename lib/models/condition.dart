@@ -44,8 +44,6 @@ class Condition {
         _type = type,
         _name = name,
         _original = null;
-
-  // Getters
   bool get modified {
     if (_original == null) {
       return true;
@@ -69,15 +67,13 @@ class Condition {
   double? get proximity => _proximity;
   String? get nfcQrCode => _nfcQrCode;
   
-  /// Returns the data to be used for QR code generation and NFC tag writing.
-  /// This is based on the condition name.
+
+
   String get data => name != null ? 'condition:$name' : '';
   String? get activityType => _activityType;
   String? get activityAmt => _activityAmt;
   String? get name => _name;
   DateTime? get lastCompletedAt => _lastCompletedAt;
-
-  // Setters
   set type(ConditionType value) {
     _type = value;
   }
@@ -130,8 +126,6 @@ class Condition {
         : DateTime.parse(json['lastCompletedAt'] as String),
       original: json
     );
-    
-    // Handle legacy data that might have a name field
     if (json.containsKey('name') && json['name'] != null && condition.name == null) {
       condition.name = json['name'] as String?;
     }

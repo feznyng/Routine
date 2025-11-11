@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Code friction display widget
+
 class CodeFrictionDisplay extends StatelessWidget {
   final String? generatedCode;
   final TextEditingController codeController;

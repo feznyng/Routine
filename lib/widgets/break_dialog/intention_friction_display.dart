@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Intention friction display widget
+
 class IntentionFrictionDisplay extends StatelessWidget {
   final ValueChanged<bool> onCanConfirmChanged;
 

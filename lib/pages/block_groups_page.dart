@@ -72,7 +72,6 @@ class _BlockGroupsPageState extends State<BlockGroupsPage> {
             if (context.mounted) {
               Navigator.of(context).pop();
               setState(() {});
-              // Pop back to BlockGroupPage with the updated group
               Navigator.of(context).pop(updatedGroup);
             }
           },

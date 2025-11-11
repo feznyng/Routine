@@ -23,7 +23,6 @@ class MobileService extends PlatformService {
   
   @override
   Future<void> init() async {
-    // call this immediately to "initialize" permissions
     await MobileService.instance.getBlockPermissions();
 
     _routineSubscription = Routine

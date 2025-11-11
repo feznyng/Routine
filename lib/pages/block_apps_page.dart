@@ -75,7 +75,6 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
   }
 
   Future<void> _selectFolder() async {
-    // Don't allow adding folders in lockdown mode for allow lists
     if (widget.inLockdown && !widget.blockSelected) {
       return;
     }
@@ -176,10 +175,7 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
                 ? TabBarView(
                     controller: _tabController,
                     children: [
-                      // Applications Tab
                       _buildApplicationsTab(),
-                      
-                      // Folders Tab
                       _buildFoldersTab(),
                     ],
                   )
@@ -192,13 +188,9 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
   }
 
   Widget _buildApplicationsTab() {
-    // Create two lists: one for selected apps and one for unselected apps
     List<InstalledApp> selectedAppObjects = [];
     List<InstalledApp> unselectedAppObjects = [];
-    
-    // First, handle all selected apps (including those not in _availableApps)
     for (final appPath in _selectedApps) {
-      // Check if this app is in the available apps list
       final existingApp = _availableApps.firstWhere(
         (app) => app.filePath == appPath,
         orElse: () => InstalledApp(
@@ -208,21 +200,16 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
       );
       selectedAppObjects.add(existingApp);
     }
-    
-    // Then, add all unselected available apps
     for (final app in _availableApps) {
       if (!_selectedApps.contains(app.filePath)) {
         unselectedAppObjects.add(app);
       }
     }
-    
-    // Sort both lists by name
     selectedAppObjects.sort((a, b) => (a.name).compareTo(b.name));
     unselectedAppObjects.sort((a, b) => (a.name).compareTo(b.name));
     
     return Column(
       children: [
-        // Info message with refresh button - only on Windows
         if (Platform.isWindows)
           Container(
             padding: const EdgeInsets.all(12),
@@ -246,8 +233,6 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
               ],
             ),
           ),
-        
-        // Search field and custom app button
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 12.0),
           child: Row(
@@ -281,8 +266,6 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
             ],
           ),
         ),
-        
-        // Loading indicator or app lists
         Expanded(
           child: _isLoadingApps
             ? const Center(child: CircularProgressIndicator())
@@ -309,7 +292,6 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
   }
 
   Future<void> _pickCustomApp() async {
-    // Don't allow adding apps in lockdown mode for allow lists
     if (widget.inLockdown && !widget.blockSelected) {
       return;
     }
@@ -327,8 +309,6 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
     
     if (result != null && result.files.single.path != null) {
       final filePath = result.files.single.path!;
-      
-      // Validate based on platform
       bool isValidApp = Platform.isWindows 
         ? filePath.toLowerCase().endsWith('.exe')
         : Platform.isMacOS 
@@ -361,7 +341,6 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
   }
 
   Widget _buildAppLists(List<InstalledApp> selectedApps, List<InstalledApp> unselectedApps) {
-    // Filter apps based on search query
     final filteredSelectedApps = _appSearchQuery.isEmpty
         ? selectedApps
         : selectedApps.where((app) {
@@ -375,8 +354,6 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
             final name = (app.name).toLowerCase();
             return name.contains(_appSearchQuery);
           }).toList();
-    
-    // If nothing matches the search query
     if (filteredSelectedApps.isEmpty && filteredUnselectedApps.isEmpty) {
       return const Center(
         child: Text('No applications found matching your search'),
@@ -385,7 +362,6 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
     
     return ListView(
       children: [
-        // Selected apps section
         if (filteredSelectedApps.isNotEmpty) ...[
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 8.0),
@@ -397,8 +373,6 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
           ...filteredSelectedApps.map((app) => _buildAppTile(app, true)),
           const Divider(),
         ],
-        
-        // Unselected apps section
         if (filteredUnselectedApps.isNotEmpty) ...[
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 8.0),
@@ -444,7 +418,6 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Search field and add folder button
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 12.0),
           child: Row(
@@ -476,8 +449,6 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
             ],
           ),
         ),
-        
-        // Selected folders list
         Expanded(
           child: _buildFoldersList(),
         ),
@@ -493,7 +464,6 @@ class _BlockAppsPageState extends State<BlockAppsPage> with SingleTickerProvider
   }
 
   Widget _buildFoldersList() {
-    // Filter folders based on search query
     final filteredFolders = _folderSearchQuery.isEmpty
         ? _selectedCategories
         : _selectedCategories.where((folder) => 

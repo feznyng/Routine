@@ -54,7 +54,6 @@ class _NfcConditionWidgetState extends State<NfcConditionWidget> {
             'The condition name will be written to the NFC tag. You can use the same tag in another condition by entering the same name.',
           ),
         ),
-        // Show callout for desktop users
         if (!kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux))
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -67,7 +66,6 @@ class _NfcConditionWidgetState extends State<NfcConditionWidget> {
                 icon: const Icon(Icons.nfc),
                 label: Text('Scan NFC Tag'),
                 onPressed: _name == null || _name!.isEmpty ? null : () async {
-                  // Check if we're on desktop
                   if (!kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux)) {
                     widget.onStatusMessage(
                       'NFC scanning is only supported on mobile devices. Please use a mobile device.',
@@ -96,8 +94,6 @@ class _NfcConditionWidgetState extends State<NfcConditionWidget> {
                       }
                       return;
                     }
-
-                    // Start NFC session
                     NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
                       try {
                         bool writeSuccess = false;

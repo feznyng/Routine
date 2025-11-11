@@ -2,7 +2,7 @@ import 'package:Routine/services/browser_config.dart';
 import 'package:Routine/services/browser_service.dart';
 import 'package:flutter/material.dart';
 
-/// Step 2: Native Messaging Host Installation
+
 class NativeMessagingHostStep extends StatefulWidget {
   final Browser browser;
   final Function(Browser, bool) onInstallationChanged;
@@ -31,7 +31,6 @@ class _NativeMessagingHostStepState extends State<NativeMessagingHostStep> {
   @override
   void initState() {
     super.initState();
-    // Initialize installation status - for now assume false, but could check actual status
     _nmhInstalled = false;
   }
 
@@ -39,7 +38,6 @@ class _NativeMessagingHostStepState extends State<NativeMessagingHostStep> {
   void didUpdateWidget(NativeMessagingHostStep oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.browser != widget.browser) {
-      // Reset state for new browser
       setState(() {
         _nmhInstalled = false;
         _isInstalling = false;
@@ -51,8 +49,6 @@ class _NativeMessagingHostStepState extends State<NativeMessagingHostStep> {
     setState(() {
       _isInstalling = true;
     });
-    
-    // Clear any previous errors
     widget.onErrorChanged(null);
     
     try {
@@ -88,15 +84,10 @@ class _NativeMessagingHostStepState extends State<NativeMessagingHostStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           _buildHeader(context, browserData),
           const SizedBox(height: 24),
-
-          // Status card
           _buildStatusCard(context, browserData),
           const SizedBox(height: 24),
-          
-          // Action button
           if (!_nmhInstalled && !_isInstalling)
             _buildActionButton(context),
         ],

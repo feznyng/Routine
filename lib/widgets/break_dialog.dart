@@ -48,7 +48,6 @@ class _BreakDialogState extends State<BreakDialog> with WidgetsBindingObserver {
       _delayEndAt = DateTime.now().add(Duration(seconds: remainingDelay!));
       _startDelayTimer();
     } else if (widget.routine.friction == 'pomodoro') {
-      // Initialize Pomodoro timer if needed
       if (!widget.routine.canTakeBreakNowWithPomodoro) {
         final remainingSeconds = widget.routine.getRemainingPomodoroTime;
         if (remainingSeconds > 0) {
@@ -77,8 +76,6 @@ class _BreakDialogState extends State<BreakDialog> with WidgetsBindingObserver {
 
   void _handleAppResumed() {
     if (!mounted) return;
-
-    // Close if routine is no longer active
     if (!widget.routine.isActive) {
       if (Navigator.canPop(context)) {
         Navigator.of(context).pop();
@@ -180,7 +177,6 @@ class _BreakDialogState extends State<BreakDialog> with WidgetsBindingObserver {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Breaks information card
               Card(
                 elevation: 0,
                 color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
@@ -207,8 +203,6 @@ class _BreakDialogState extends State<BreakDialog> with WidgetsBindingObserver {
                 ),
               ),
               const SizedBox(height: 24),
-              
-              // Friction display (if any)
               if (widget.routine.friction != 'none') ...[
                 FrictionDisplay(
                   routine: widget.routine,
@@ -225,8 +219,6 @@ class _BreakDialogState extends State<BreakDialog> with WidgetsBindingObserver {
                 const Divider(),
                 const SizedBox(height: 24),
               ],
-              
-              // Duration selector
               Text(
                 'Break Duration',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(

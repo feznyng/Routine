@@ -5,7 +5,7 @@ import 'package:Routine/services/browser_service.dart';
 import 'package:Routine/setup.dart';
 import 'package:flutter/material.dart';
 
-/// Step for requesting automation permission on macOS for controllable browsers
+
 class AutomationPermissionStep extends StatefulWidget {
   final Browser browser;
   final Function(Browser, bool) onPermissionChanged;
@@ -41,15 +41,12 @@ class _AutomationPermissionStepState extends State<AutomationPermissionStep> {
   @override
   void didUpdateWidget(AutomationPermissionStep oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
-    // If the browser changed, reset state and check permission for new browser
     if (oldWidget.browser != widget.browser) {
       _pollTimer?.cancel();
       setState(() {
         _hasPermission = false;
         _isChecking = false;
       });
-      // Check permission for new browser (this will start polling if needed)
       _checkPermission();
     }
   }
@@ -77,7 +74,6 @@ class _AutomationPermissionStepState extends State<AutomationPermissionStep> {
     if (hasPermission) {
       widget.onPermissionChanged(widget.browser, true);
     } else {
-      // Start polling if permission is not granted
       logger.i('Permission not granted for ${widget.browser}, starting polling');
       _startPolling();
     }
@@ -90,9 +86,6 @@ class _AutomationPermissionStepState extends State<AutomationPermissionStep> {
       widget.browser,
       openPrefsOnReject: true,
     );
-
-    // Polling will already be started from _checkPermission if needed
-    // But restart it to ensure it's active after the permission request
     _startPolling();
   }
 
@@ -122,15 +115,10 @@ class _AutomationPermissionStepState extends State<AutomationPermissionStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           _buildHeader(context, browserConfig),
           const SizedBox(height: 24),
-          
-          // Status card
           _buildStatusCard(context, browserConfig),
           const SizedBox(height: 24),
-          
-          // Instructions (only show if permission not granted)
           if (!_hasPermission) ...[
             _buildActionButton(context),
             const SizedBox(height: 24),
@@ -302,8 +290,6 @@ class _AutomationPermissionStepState extends State<AutomationPermissionStep> {
               ],
             ),
             const SizedBox(height: 16),
-            
-            // Step-by-step instructions
             ..._buildInstructionSteps(context, browserConfig),
           ],
         ),

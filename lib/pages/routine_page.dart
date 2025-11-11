@@ -135,7 +135,6 @@ class _RoutinePageState extends State<RoutinePage> with WidgetsBindingObserver {
   }
   
   String _formatDateTime(DateTime dateTime) {
-    // Convert to local time if in UTC
     if (dateTime.isUtc) {
       dateTime = dateTime.toLocal();
     }
@@ -162,7 +161,6 @@ class _RoutinePageState extends State<RoutinePage> with WidgetsBindingObserver {
   }
 
   Future<void> _saveRoutine() async {
-    // Check if this is an all-day, every-day routine with strict mode enabled
     bool isAllDayEveryDay = _routine.allDay && 
         _routine.days.every((day) => day == true) && 
         _routine.strictMode;
@@ -187,8 +185,6 @@ class _RoutinePageState extends State<RoutinePage> with WidgetsBindingObserver {
       );
       return;
     }
-
-    // If strict mode is being enabled, show a confirmation dialog
     if (!_originalStrictMode && _routine.strictMode) {
       final bool? confirm = await showDialog<bool>(
         context: context,
@@ -346,7 +342,6 @@ class _RoutinePageState extends State<RoutinePage> with WidgetsBindingObserver {
               ),
               const SizedBox(height: 32),
               if (_routine.saved) ...[
-                // Snooze Button
                 SizedBox(
                   width: double.infinity,
                   child: TextButton.icon(
@@ -373,7 +368,6 @@ class _RoutinePageState extends State<RoutinePage> with WidgetsBindingObserver {
                         ? null
                         : () async {
                       if (_routine.isSnoozed) {
-                        // Unsnooze the routine
                         final bool? confirm = await showDialog<bool>(
                           context: context,
                           builder: (BuildContext context) {
@@ -399,11 +393,9 @@ class _RoutinePageState extends State<RoutinePage> with WidgetsBindingObserver {
                           setState(() {
                             _validateRoutine();
                           });
-                          // Reschedule snooze check after unsnoozing
                           _scheduleSnoozeCheck();
                         }
                       } else {
-                        // Show date picker to snooze the routine
                         final DateTime now = DateTime.now();
                         final nextActiveTime = _routine.nextActiveTime;
                         
@@ -424,7 +416,6 @@ class _RoutinePageState extends State<RoutinePage> with WidgetsBindingObserver {
                           );
                           
                           if (selectedTime != null) {
-                            // Combine date and time
                             final DateTime snoozeUntil = DateTime(
                               selectedDate.year,
                               selectedDate.month,
@@ -437,7 +428,6 @@ class _RoutinePageState extends State<RoutinePage> with WidgetsBindingObserver {
                             setState(() {
                               _validateRoutine();
                             });
-                            // Reschedule snooze check after snoozing
                             _scheduleSnoozeCheck();
                           }
                         }
@@ -446,7 +436,6 @@ class _RoutinePageState extends State<RoutinePage> with WidgetsBindingObserver {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Delete Button
                 SizedBox(
                   width: double.infinity,
                   child: TextButton.icon(

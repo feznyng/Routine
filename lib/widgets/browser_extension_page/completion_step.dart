@@ -2,7 +2,7 @@ import 'package:Routine/services/browser_config.dart';
 import 'package:flutter/material.dart';
 import 'package:Routine/services/browser_service.dart';
 
-/// Step 4: Completion
+
 class CompletionStep extends StatelessWidget {
   final List<Browser> connectedBrowsers;
 
@@ -19,12 +19,8 @@ class CompletionStep extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 24),
-          
-          // Header
           _buildHeader(context),
           const SizedBox(height: 24),
-          
-          // Browser list
           _buildBrowserList(context),
           const SizedBox(height: 32),
         ],
@@ -107,8 +103,6 @@ class CompletionStep extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            
-            // Browser list
             ...connectedBrowsers.map((browser) => _buildBrowserItem(context, browser)),
           ],
         ),
@@ -156,8 +150,6 @@ class CompletionStep extends StatelessWidget {
   Widget _getBrowserIcon(Browser browser) {
     IconData iconData;
     Color iconColor;
-    
-    // Map browsers to appropriate icons and colors
     switch (browser) {
       case Browser.firefox:
         iconData = Icons.web_rounded;

@@ -565,8 +565,6 @@ class SyncService {
     await _syncStatusController.close();
     await _syncingController.close();
   }
-
-  // async sync method 
   Future<bool> queueSync({bool full = false, bool manual = false}) async {
     if (userId.isEmpty) {
       print("can't sync - user is not signed in");
@@ -581,7 +579,6 @@ class SyncService {
       sync(full: full).whenComplete(() => _setSyncing(false));
       return true;
     } else  {
-      // Clear existing keys in shared_preferences prefixed with sync_job_status_
       final prefs = await SharedPreferences.getInstance();
       final allKeys = prefs.getKeys();
       final syncStatusKeys = allKeys.where((key) => key.startsWith('sync_job_status_'));
@@ -589,18 +586,10 @@ class SyncService {
       for (final key in syncStatusKeys) {
         await prefs.remove(key);
       }
-      
-      // Generate a new UUID for this sync job
       final id = Uuid().v4();
-      
-      // Store the latest sync job ID
       _latestSyncJobId = id;
       _lastKnownSyncStatus = false;
-      
-      // Write false to shared preferences under "sync_job_status_${id}"
       await prefs.setBool('sync_job_status_$id', false);
-      
-      // Start polling for status changes
       _startSyncStatusPolling();
       _setSyncing(true);
       
@@ -609,8 +598,6 @@ class SyncService {
       return true;
     }
   }
-
-  // synchronous syncs - mostly used directly on desktop
   Future<bool> sync({bool full = false, String? id, bool manual = false}) async {
     print("syncing...");
 
@@ -642,30 +629,19 @@ class SyncService {
 
     return success;
   }
-
-  // Start polling for sync job status changes
   void _startSyncStatusPolling() {
-    // Stop any existing polling
     _stopSyncStatusPolling();
-    
-    // Initialize the last known status
     _lastKnownSyncStatus = false;
-    
-    // Start a new polling timer
     _syncStatusPollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
       await _checkSyncStatusChanges();
     });
   }
-  
-  // Stop polling for sync job status changes
   void _stopSyncStatusPolling() {
     if (_syncStatusPollingTimer != null) {
       _syncStatusPollingTimer!.cancel();
       _syncStatusPollingTimer = null;
     }
   }
-  
-  // Check for changes in the latest sync job status
   Future<void> _checkSyncStatusChanges() async {
     try {
       if (_latestSyncJobId == null) {
@@ -677,8 +653,6 @@ class SyncService {
       final key = 'sync_job_status_$_latestSyncJobId';
       
       final currentStatus = await prefs.getBool(key) ?? false;
-
-      // If status changed from false to true we've finished a sync so lets notify everyone
       if (!_lastKnownSyncStatus && currentStatus) {
         final db = getIt<AppDatabase>();
         await db.forceNotifyChanges();
@@ -687,8 +661,6 @@ class SyncService {
         _stopSyncStatusPolling();
         _setSyncing(false);
       }
-      
-      // Update the last known status
       _lastKnownSyncStatus = currentStatus;
       
     } catch (e, st) {
@@ -696,8 +668,6 @@ class SyncService {
       Util.report('error checking sync status changes', e, st);
     }
   }
-
-  // reminder: this runs in a separate thread and you cannot rely on instance data being up to date
   Future<SyncResult?> _sync({bool full = false}) async {
     try {
       if (userId.isEmpty) {
@@ -715,13 +685,9 @@ class SyncService {
 
       bool madeRemoteChange = false;
       bool accidentalDeletion = false;
-
-      // sync emergencies first due to criticality
       {
         madeRemoteChange = await _syncEmergencyEvents(prefs) || madeRemoteChange;
       }
-      
-      // parallel remote fetches before transaction
       final remote = await _fetchRemoteLists(currDevice.id, lastPulledAt);
 
       final result = await db.transaction(() async {
@@ -740,28 +706,18 @@ class SyncService {
       });
 
       print("sync result: $result");
-
-      // push devices
       final devicesResult = await _pushDevices(db, full ? null : lastPulledAt, pulledAt, currDevice.id);
       if (devicesResult.conflict) return null;
       if (devicesResult.changed) madeRemoteChange = true;
-
-      // push groups
       final groupsResult = await _pushGroups(db, full ? null : lastPulledAt, pulledAt);
       if (groupsResult.conflict) return null;
       if (groupsResult.changed) madeRemoteChange = true;
-
-      // push routines
       final routinesResult = await _pushRoutines(db, full ? null : lastPulledAt, pulledAt);
       if (routinesResult.conflict) return null;
       if (routinesResult.changed) madeRemoteChange = true;
-    
-      // notify other clients
       if (madeRemoteChange) {
         await _notifyPeers();
       }
-
-      // clean up soft deleted entries
       await db.clearChangesSince(pulledAt);
       {
         final remoteDevices = (await _client

@@ -3,7 +3,7 @@ import 'package:Routine/services/browser_config.dart';
 import 'package:flutter/material.dart';
 import 'package:Routine/services/browser_service.dart';
 
-/// Step 3: Extension Installation
+
 class ExtensionInstallationStep extends StatefulWidget {
   final Browser browser;
   final Function(Browser) onInstallRequested;
@@ -40,8 +40,6 @@ class _ExtensionInstallationStepState extends State<ExtensionInstallationStep> {
     super.initState();
     _scrollController = ScrollController();
     _updateConnectionStatus();
-    
-    // Listen for connection status changes
     _connectionStatusSubscription = _browserService.connectionStream.listen((_) {
       _updateConnectionStatus();
     });
@@ -61,8 +59,6 @@ class _ExtensionInstallationStepState extends State<ExtensionInstallationStep> {
     
     setState(() {
       _isConnected = isNowConnected;
-      
-      // If we just connected, stop the connecting state
       if (!wasConnected && isNowConnected) {
         _isConnecting = false;
       }
@@ -107,19 +103,12 @@ class _ExtensionInstallationStepState extends State<ExtensionInstallationStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           _buildHeader(context, browserData),
           const SizedBox(height: 24),
-          
-          // Grace period warning (only show if in grace period)
           if (widget.inGracePeriod && widget.remainingSeconds > 0)
             _buildGracePeriodWarning(context),
-          
-          // Status card
           _buildStatusCard(context, browserData),
           const SizedBox(height: 24),
-          
-          // Action button (only show if not connected and not connecting)
           if (!_isConnected && !_isConnecting)
             _buildActionButton(context, browserData),
         ],

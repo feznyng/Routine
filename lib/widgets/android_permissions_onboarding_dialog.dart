@@ -31,24 +31,20 @@ class _AndroidPermissionsOnboardingDialogState extends State<AndroidPermissionsO
     _checkPermissions();
   }
   
-  /// Returns true if only one permission is needed (the other is already granted)
+
   bool get _needsOnlyOnePermission {
     return (_hasOverlayPermission && !_hasAccessibilityPermission) || 
            (!_hasOverlayPermission && _hasAccessibilityPermission);
   }
   
-  /// Returns the list of steps needed based on current permissions
+
   List<String> _getStepTitles() {
     if (_needsOnlyOnePermission) {
-      // If overlay permission is granted, we only need accessibility
       if (_hasOverlayPermission) {
         return ['Accessibility Service'];
       }
-      // If accessibility permission is granted, we only need overlay
       return ['Display Over Other Apps'];
     }
-    
-    // Otherwise, we need both permissions
     return [
       'Display Over Other Apps',
       'Accessibility Service',
@@ -64,7 +60,6 @@ class _AndroidPermissionsOnboardingDialogState extends State<AndroidPermissionsO
   
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Check permissions when the app is resumed
     if (state == AppLifecycleState.resumed) {
       logger.i("detected app resume");
       _checkPermissions();
@@ -78,29 +73,19 @@ class _AndroidPermissionsOnboardingDialogState extends State<AndroidPermissionsO
     
     try {
       final mobileService = MobileService();
-      
-      // Check current permission status
       _hasOverlayPermission = await mobileService.checkOverlayPermission();
       _hasAccessibilityPermission = await mobileService.checkAccessibilityPermission();
-      
-      // If both permissions are granted, complete the onboarding
       if (_hasOverlayPermission && _hasAccessibilityPermission) {
         widget.onComplete();
         return;
       }
-
-
-      
-      // Update the UI based on which permissions are needed
       setState(() {
-        // If only accessibility permission is needed, start at that step
         if (_hasOverlayPermission && !_hasAccessibilityPermission) {
           _currentStep = _needsOnlyOnePermission ? 0 : 1;
           _pageController.jumpToPage(_currentStep);
         }
       });
     } catch (e) {
-      // Handle error
     } finally {
       setState(() {
         _isLoading = false;
@@ -112,21 +97,14 @@ class _AndroidPermissionsOnboardingDialogState extends State<AndroidPermissionsO
     try {
       final mobileService = MobileService();
       await mobileService.requestOverlayPermission();
-      
-      // Wait a moment for the user to return from the settings
       await Future.delayed(const Duration(seconds: 1));
-      
-      // Check if permission was granted
       _hasOverlayPermission = await mobileService.checkOverlayPermission();
       
       setState(() {});
-      
-      // If permission was granted, move to the next step
       if (_hasOverlayPermission) {
         _nextStep();
       }
     } catch (e) {
-      // Handle error
     }
   }
   
@@ -134,21 +112,14 @@ class _AndroidPermissionsOnboardingDialogState extends State<AndroidPermissionsO
     try {
       final mobileService = MobileService();
       await mobileService.requestAccessibilityPermission();
-      
-      // Wait a moment for the user to return from the settings
       await Future.delayed(const Duration(seconds: 1));
-      
-      // Check if permission was granted
       _hasAccessibilityPermission = await mobileService.checkAccessibilityPermission();
       
       setState(() {});
-      
-      // If permission was granted, complete the onboarding
       if (_hasAccessibilityPermission) {
         widget.onComplete();
       }
     } catch (e) {
-      // Handle error
     }
   }
   
@@ -163,7 +134,6 @@ class _AndroidPermissionsOnboardingDialogState extends State<AndroidPermissionsO
         curve: Curves.easeInOut,
       );
     } else {
-      // Complete the onboarding
       widget.onComplete();
     }
   }
@@ -322,7 +292,6 @@ class _AndroidPermissionsOnboardingDialogState extends State<AndroidPermissionsO
                 ],
               ),
               const SizedBox(height: 8),
-              // Step indicator - only show if we have multiple steps
               if (!_needsOnlyOnePermission) ...[  
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -336,34 +305,29 @@ class _AndroidPermissionsOnboardingDialogState extends State<AndroidPermissionsO
                 ),
                 const SizedBox(height: 8),
               ],
-              // Step title
               Text(
                 stepTitles[_currentStep],
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-              // Step content
               Expanded(
                 child: PageView(
                   controller: _pageController,
                   physics: const NeverScrollableScrollPhysics(),
                   children: _needsOnlyOnePermission
                     ? [
-                        // Only show the step that's needed
                         _hasOverlayPermission
                           ? _buildAccessibilityPermissionStep()
                           : _buildOverlayPermissionStep(),
                       ]
                     : [
-                        // Show both steps
                         _buildOverlayPermissionStep(),
                         _buildAccessibilityPermissionStep(),
                       ],
                 ),
               ),
               const SizedBox(height: 16),
-              // Navigation buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -401,7 +365,6 @@ class _AndroidPermissionsOnboardingDialogState extends State<AndroidPermissionsO
     return Expanded(
       child: Row(
         children: [
-          // Line before (except for first item)
           if (index > 0)
             Expanded(
               child: Container(
@@ -411,7 +374,6 @@ class _AndroidPermissionsOnboardingDialogState extends State<AndroidPermissionsO
                     : Theme.of(context).colorScheme.surfaceVariant,
               ),
             ),
-          // Circle indicator
           GestureDetector(
             onTap: () {
               if (_currentStep > index) {
@@ -457,7 +419,6 @@ class _AndroidPermissionsOnboardingDialogState extends State<AndroidPermissionsO
               ),
             ),
           ),
-          // Line after (except for last item)
           if (index < _getStepTitles().length - 1)
             Expanded(
               child: Container(
@@ -473,17 +434,12 @@ class _AndroidPermissionsOnboardingDialogState extends State<AndroidPermissionsO
   }
   
   bool _getNextButtonEnabled() {
-    // When only one permission is needed
     if (_needsOnlyOnePermission) {
-      // If overlay permission is already granted, we're showing the accessibility step
       if (_hasOverlayPermission) {
         return _hasAccessibilityPermission;
       }
-      // If accessibility permission is already granted, we're showing the overlay step
       return _hasOverlayPermission;
     }
-    
-    // When both permissions are needed
     switch (_currentStep) {
       case 0:
         return _hasOverlayPermission;

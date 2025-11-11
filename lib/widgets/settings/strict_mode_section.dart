@@ -35,11 +35,8 @@ class _StrictModeSectionState extends State<StrictModeSection> {
   }
   
   void _startTimersIfNeeded() {
-    // Cancel existing timers
     _gracePeriodTimer?.cancel();
     _cooldownTimer?.cancel();
-    
-    // Start grace period timer if in grace period
     if (_browserService.isInGracePeriod) {
       _gracePeriodTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
         if (!_browserService.isInGracePeriod) {
@@ -50,8 +47,6 @@ class _StrictModeSectionState extends State<StrictModeSection> {
         }
       });
     }
-    
-    // Start cooldown timer if in cooldown
     if (_browserService.isInCooldown) {
       _cooldownTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
         if (!_browserService.isInCooldown) {
@@ -89,10 +84,7 @@ class _StrictModeSectionState extends State<StrictModeSection> {
             ),
           ),
           const Divider(height: 1),
-          
-          // Emergency mode banner and warnings
           if (_strictModeService.inStrictMode || _strictModeService.emergencyMode) ...[  
-            // Show emergency mode banner if emergency mode is active, otherwise show strict mode warning if in strict mode
             if (_strictModeService.emergencyMode)
               const EmergencyModeBanner()
             else if (_strictModeService.inStrictMode)
@@ -131,8 +123,6 @@ class _StrictModeSectionState extends State<StrictModeSection> {
                 ),
               ),
           ],
-          
-          // Desktop strict mode options
           if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) ...[
             SwitchListTile(
               title: const Text('Block app exit'),
@@ -140,7 +130,6 @@ class _StrictModeSectionState extends State<StrictModeSection> {
               onChanged: (_strictModeService.inStrictMode && _strictModeService.blockAppExit && !_strictModeService.emergencyMode)
                 ? null // Disable the switch when trying to turn it off in strict mode (unless in emergency mode)
                 : (value) async {
-                  // Only prevent turning off in strict mode when not in emergency mode
                   if (_strictModeService.inStrictMode && !value && !_strictModeService.emergencyMode) return;
                   
                   final success = await _strictModeService.setBlockAppExitWithConfirmation(context, value);
@@ -155,7 +144,6 @@ class _StrictModeSectionState extends State<StrictModeSection> {
               onChanged: (_strictModeService.inStrictMode && _strictModeService.blockDisablingSystemStartup && !_strictModeService.emergencyMode)
                 ? null // Disable the switch when trying to turn it off in strict mode (unless in emergency mode)
                 : (value) async {
-                  // Only prevent turning off in strict mode when not in emergency mode
                   if (_strictModeService.inStrictMode && !value && !_strictModeService.emergencyMode) return;
                   
                   final success = await _strictModeService.setBlockDisablingSystemStartupWithConfirmation(context, value);
@@ -170,7 +158,6 @@ class _StrictModeSectionState extends State<StrictModeSection> {
               onChanged: (_strictModeService.inStrictMode && _strictModeService.blockBrowsersWithoutExtension && !_strictModeService.emergencyMode)
                 ? null // Disable the switch when trying to turn it off in strict mode (unless in emergency mode)
                 : (value) async {
-                  // Only prevent turning off in strict mode when not in emergency mode
                   if (_strictModeService.inStrictMode && !value && !_strictModeService.emergencyMode) return;
                   
                   final success = await _strictModeService.setBlockBrowsersWithoutExtensionWithConfirmation(context, value);
@@ -180,8 +167,6 @@ class _StrictModeSectionState extends State<StrictModeSection> {
                 },
             )
           ],
-          
-          // iOS strict mode options
           if (!Util.isDesktop()) ...[            SwitchListTile(
               title: const Text('Block changing time settings'),
               value: _strictModeService.blockChangingTimeSettings,
@@ -219,8 +204,6 @@ class _StrictModeSectionState extends State<StrictModeSection> {
                 },
             ),
           ],
-          
-          // Emergency mode option at the bottom
           if (_strictModeService.inStrictMode || _strictModeService.emergencyMode) ...[
             const Divider(height: 1),
             Container(
@@ -251,7 +234,6 @@ class _StrictModeSectionState extends State<StrictModeSection> {
                 onChanged: _strictModeService.emergencyMode || _strictModeService.canStartEmergency
                   ? (value) async {
                       if (value) {
-                        // Show confirmation dialog for enabling emergency mode
                         final remainingEmergencies = _strictModeService.remainingEmergencies;
                         final confirm = await showDialog<bool>(
                           context: context,
@@ -281,7 +263,6 @@ class _StrictModeSectionState extends State<StrictModeSection> {
                         
                         if (confirm != true) return;
                       } else {
-                        // Show confirmation dialog for disabling emergency mode
                         final numEmergenciesLeft = _strictModeService.remainingEmergencies;
                         final confirm = await showDialog<bool>(
                           context: context,

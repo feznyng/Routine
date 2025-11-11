@@ -3,7 +3,7 @@ import 'package:Routine/services/browser_service.dart';
 import 'package:Routine/services/strict_mode_service.dart';
 import 'package:flutter/material.dart';
 
-/// Step 1: Browser Selection
+
 class BrowserSelectionStep extends StatefulWidget {
   final List<Browser> installedBrowsers;
   final List<Browser> selectedBrowsers;
@@ -49,11 +49,7 @@ class _BrowserSelectionStepState extends State<BrowserSelectionStep> {
         _selectedBrowsers.add(browser);
       }
     });
-    
-    // Clear any existing error when selection changes
     widget.onErrorChanged(null);
-    
-    // Notify parent of selection change
     widget.onSelectionChanged(_selectedBrowsers);
   }
 
@@ -88,15 +84,10 @@ class _BrowserSelectionStepState extends State<BrowserSelectionStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           _buildHeader(context),
           const SizedBox(height: 24),
-          
-          // Warning message if strict mode is enabled
           if (_strictModeService.effectiveBlockBrowsersWithoutExtension && unconnectedBrowsers.isNotEmpty)
             _buildWarningMessage(context),
-          
-          // Available browsers section
           if (unconnectedBrowsers.isNotEmpty) ...[
             _buildSectionHeader(
               context,
@@ -108,8 +99,6 @@ class _BrowserSelectionStepState extends State<BrowserSelectionStep> {
             ...unconnectedBrowsers.map((browser) => _buildBrowserCard(context, browser)),
             const SizedBox(height: 24),
           ],
-          
-          // Connected browsers section
           if (connectedBrowsers.isNotEmpty) ...[
             _buildSectionHeader(
               context,
@@ -120,8 +109,6 @@ class _BrowserSelectionStepState extends State<BrowserSelectionStep> {
             const SizedBox(height: 12),
             ...connectedBrowsers.map((browser) => _buildConnectedBrowserCard(context, browser)),
           ],
-          
-          // Add some bottom padding to ensure content doesn't get cut off
           const SizedBox(height: 24),
         ],
       ),
@@ -406,8 +393,6 @@ class _BrowserSelectionStepState extends State<BrowserSelectionStep> {
     
     IconData iconData;
     Color iconColor;
-    
-    // Map browsers to appropriate icons and colors
     switch (browser) {
       case Browser.firefox:
         iconData = Icons.web_rounded;

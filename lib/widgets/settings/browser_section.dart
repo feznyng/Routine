@@ -31,25 +31,17 @@ class _BrowserSectionState extends State<BrowserSection> {
   @override
   void initState() {
     super.initState();
-    
-    // Subscribe to connection status changes
     _connectionSubscription = _browserExtensionService.connectionStream.listen((isConnected) {
       if (mounted) {
         setState(() {});
       }
     });
-    
-    // Start a timer to update the cooldown time display and check initial connection period
     _startCooldownTimer();
-    
-    // Force refresh when initial connection period ends
     if (_browserExtensionService.isInitialConnectionPeriod) {
       Future.delayed(const Duration(seconds: 5), () {
         if (mounted) setState(() {});
       });
     }
-
-    // Load installed browsers
     _loadInstalledBrowsers();
   }
 
@@ -67,7 +59,6 @@ class _BrowserSectionState extends State<BrowserSection> {
 
   @override
   void dispose() {
-    // Cancel the subscription when the widget is disposed
     _connectionSubscription?.cancel();
     _gracePeriodTimer?.cancel();
     _cooldownTimer?.cancel();
@@ -75,14 +66,10 @@ class _BrowserSectionState extends State<BrowserSection> {
   }
   
   void _startCooldownTimer() {
-    // Cancel any existing timer
     _cooldownTimer?.cancel();
-    
-    // Create a new timer that fires every second
     _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
         setState(() {
-          // This will trigger a rebuild with the updated cooldown time
         });
       }
     });
@@ -97,8 +84,6 @@ class _BrowserSectionState extends State<BrowserSection> {
           ),
         ),
       );
-      
-      // Update state after dialog is closed
       setState(() {});
 
     }
@@ -110,7 +95,6 @@ class _BrowserSectionState extends State<BrowserSection> {
 
   @override
   Widget build(BuildContext context) {
-    // Show loading during initial connection period
     if (_browserExtensionService.isInitialConnectionPeriod) {
       return Card(
         child: Column(
@@ -224,9 +208,7 @@ class _BrowserSectionState extends State<BrowserSection> {
                       ],
                     ),
                   ),
-                // Browser Lists
                 if (connectedBrowsers.isNotEmpty || disconnectedBrowsers.isNotEmpty) ...[
-                  // Connected browsers
                   if (connectedBrowsers.isNotEmpty)
                     ...connectedBrowsers.map((browser) => ListTile(
                       leading: const Icon(Icons.check_circle, color: Colors.green),
@@ -234,8 +216,6 @@ class _BrowserSectionState extends State<BrowserSection> {
                       subtitle: const Text('Connected'),
                       dense: true,
                     )),
-
-                  // Unconnected but installed browsers
                   if (disconnectedBrowsers.isNotEmpty)
                     ...disconnectedBrowsers.map((browser) => ListTile(
                       leading: const Icon(Icons.warning_amber_rounded, color: Colors.orange),

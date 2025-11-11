@@ -75,7 +75,6 @@ class ConditionSection extends StatelessWidget {
                         Navigator.pop(context);
                       },
                       onDelete: () {
-                        // Just close the dialog since we haven't added the condition yet
                         Navigator.pop(context);
                       },
                     ),
@@ -155,7 +154,6 @@ class ConditionSection extends StatelessWidget {
                 label: const Text('Add Condition'),
               ),
               const Divider(),
-              // Advanced section with expandable panel
               Theme(
                 data: Theme.of(context).copyWith(
                   dividerColor: Colors.transparent,
@@ -257,13 +255,9 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
   late TextEditingController _activityTypeController;
   late TextEditingController _activityAmtController;
   late TextEditingController _nameController;
-  
-  // Status message for all operations
   String? _statusMessage;
   bool _isSuccess = false;
   bool _isError = false;
-  
-  // Show a status message in the UI
   void _showStatusMessage(String message, {bool isSuccess = false, bool isError = false, bool isLoading = false}) {
     if (mounted) {
       setState(() {
@@ -273,8 +267,6 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
       });
     }
   }
-  
-  // Clear the status message
   void _clearStatusMessage() {
     if (mounted) {
       setState(() {
@@ -288,7 +280,6 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
   @override
   void initState() {
     super.initState();
-    // Create a new condition with the same values instead of using fromJson
     _condition = Condition(
       id: widget.condition.id,
       type: widget.condition.type,
@@ -461,7 +452,6 @@ class _ConditionEditSheetState extends State<_ConditionEditSheet> {
               setState(() {});
             },
           ),
-          // Display status message if available
           _buildStatusMessage(),
           const SizedBox(height: 16),
           _buildConditionFields(),

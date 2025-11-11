@@ -51,7 +51,6 @@ class _DeviceManagementSectionState extends State<DeviceManagementSection> {
           StreamBuilder<List<Device>>(
             stream: Device.watchAll(),
             builder: (context, snapshot) {
-              // Show loading indicator only if we haven't loaded data before
               if (snapshot.connectionState == ConnectionState.waiting && !_hasLoadedBefore) {
                 return const Padding(
                   padding: EdgeInsets.all(16.0),
@@ -67,8 +66,6 @@ class _DeviceManagementSectionState extends State<DeviceManagementSection> {
               }
               
               final devices = snapshot.data ?? [];
-              
-              // Mark that we've loaded data at least once
               if (!_hasLoadedBefore && snapshot.connectionState != ConnectionState.waiting) {
                 _hasLoadedBefore = true;
               }

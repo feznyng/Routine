@@ -35,8 +35,6 @@ class ThemeProvider extends ChangeNotifier {
   
   Future<void> toggleTheme() async {
     ThemeMode newMode;
-    
-    // Cycle through the theme modes: light -> dark -> system -> light
     switch (_themeMode) {
       case ThemeMode.light:
         newMode = ThemeMode.dark;

@@ -8,11 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'sync_service.dart';
 import 'package:sentry/sentry.dart';
-
-// MARK:REMOVE
 import 'package:Routine/services/notification_service.dart';
-
-// Custom AuthState class to match the structure of Supabase's auth state change events
 class CustomAuthState {
   final AuthChangeEvent event;
   final Session? session;
@@ -31,8 +27,6 @@ class AuthService {
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
     mOptions: MacOsOptions(accessibility: KeychainAccessibility.first_unlock)
   );
-  
-  // Custom auth state change controller
   final _authStateController = StreamController<CustomAuthState>.broadcast();
   Stream<CustomAuthState> get authStateChange => _authStateController.stream;
   
@@ -62,16 +56,11 @@ class AuthService {
     if (simple) {
       return;
     }
-
-    // Listen for auth state changes
     _client.auth.onAuthStateChange.listen((data) async {
       final AuthChangeEvent event = data.event;
       final Session? session = data.session;
       final prefs = await SharedPreferences.getInstance();
-      
-      // Store or remove refresh token based on auth state
       if (session != null) {
-        // Update signed_in flag
         await prefs.setBool('signed_in', true);
         Sentry.configureScope(
           (scope) => scope.setUser(SentryUser(id: session.user.id)),
@@ -118,8 +107,6 @@ class AuthService {
         default:
           logger.i('Auth event: $event');
       }
-      
-      // Emit the auth state change through our custom stream after initializing local variables
       _authStateController.add(CustomAuthState(event: event, session: session));
     });
   }
@@ -276,7 +263,6 @@ class AuthService {
   }
 
   void initNotifications() {
-    // MARK:REMOVE
     NotificationService().init();
   }
   
@@ -321,8 +307,6 @@ class AuthService {
       }
       
       logger.i('Account successfully deleted');
-      
-      // Sign out the user after successful account deletion
       await clearSignedInFlag();
       await _client.auth.signOut();
 
@@ -339,7 +323,7 @@ class AuthService {
     await prefs.remove('signed_in');
   }
   
-  /// Disposes resources used by the AuthService
+
   void dispose() {
     _authStateController.close();
   }

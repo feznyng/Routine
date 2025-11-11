@@ -49,8 +49,6 @@ void callbackDispatcher() {
       const debounceTimeMs = 2000;
 
       final prefs = SharedPreferencesAsync();
-
-      // debounce rapid sync requests
       final startTime = DateTime.now().millisecondsSinceEpoch;
       prefs.setInt(syncTimestampKey, startTime);
 
@@ -59,8 +57,6 @@ void callbackDispatcher() {
       if ((await prefs.getInt(syncTimestampKey) ?? 0) > startTime) {
         return Future.value(false);
       }
-
-      // lock concurrent sync requests
       final startWaitTime = DateTime.now().millisecondsSinceEpoch;
       while (true) {
         final currentTime = DateTime.now().millisecondsSinceEpoch;

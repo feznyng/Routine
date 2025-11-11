@@ -7,16 +7,11 @@ import 'package:Routine/setup.dart';
 import 'package:Routine/util.dart';
 
 class MobileChannel {
-  // Singleton instance
   static final MobileChannel _instance = MobileChannel._();
   static MobileChannel get instance => _instance;
 
   final _channel = const MethodChannel(kAppName);
-
-  // Private constructor
   MobileChannel._();
-
-  // Update strict mode settings
   Future<void> updateStrictModeSettings(Map<String, bool> settings) async {
     try {
       await _channel.invokeMethod('updateStrictModeSettings', settings);
@@ -24,8 +19,6 @@ class MobileChannel {
       Util.report('error sending strict mode settings', e, st);
     }
   }
-
-  // Get installed apps
   Future<List<InstalledApp>> getInstalledApps() async {
     List<InstalledApp> installedApps = [];
 
@@ -41,8 +34,6 @@ class MobileChannel {
 
     return installedApps;
   }
-
-  // Update routines
   Future<void> updateRoutines(List<Routine> routines, {bool immediate = false}) async {
     try {
       final List<Map<String, dynamic>> routineMaps = routines.where((routine) => routine.getGroup() != null).map((routine) {
@@ -54,8 +45,6 @@ class MobileChannel {
             conditionsLastMet = routine.conditions
                 .map((condition) => condition.lastCompletedAt!)
                 .reduce((earliest, date) => earliest.isBefore(date) ? earliest : date);
-
-            // we need to take into account early completion
             if (conditionsLastMet.isAfter(routine.completableAt)) {
               conditionsLastMet = routine.startedAt.add(Duration(minutes: 1));
             }
@@ -86,8 +75,6 @@ class MobileChannel {
       Util.report('error updating routines', e, st);
     }
   }
-
-  // iOS Family Controls Authorization
   Future<bool> checkFamilyControlsAuthorization() async {
     if (!Platform.isIOS) return false;
     return await _channel.invokeMethod('checkFamilyControlsAuthorization');
@@ -97,8 +84,6 @@ class MobileChannel {
     if (!Platform.isIOS) return false;
     return await _channel.invokeMethod('requestFamilyControlsAuthorization');
   }
-
-  // Android Permissions
   Future<bool> checkOverlayPermission() async {
     if (!Platform.isAndroid) return false;
     return await _channel.invokeMethod('checkOverlayPermission');

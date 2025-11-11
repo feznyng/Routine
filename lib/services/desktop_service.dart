@@ -17,7 +17,6 @@ import 'browser_service.dart';
 import 'sync_service.dart';
 
 class DesktopService extends PlatformService {
-  // Singleton instance
   static final DesktopService _instance = DesktopService();
 
   final cron = Cron();
@@ -28,13 +27,10 @@ class DesktopService extends PlatformService {
   static DesktopService get instance => _instance;
 
   final _desktopChannel = DesktopChannel.instance;
-  // Cache fields for blocked items
   List<String> _cachedSites = [];
   List<String> _cachedApps = [];
   List<String> _cachedCategories = [];
   bool _isAllowList = false;
-  
-  // Subscriptions
   StreamSubscription? _routineSubscription;
   StreamSubscription? _appSubscription;
   StreamSubscription? _strictModeSettingsSubscription;
@@ -68,8 +64,6 @@ class DesktopService extends PlatformService {
         updateAppList();
       }
     });
-    
-    // Setup system wake event handler
     _desktopChannel.registerSystemWakeHandler(() async {
       await AuthService().refreshSessionIfNeeded().then((_) async {
         await _stopWatching();
@@ -80,12 +74,8 @@ class DesktopService extends PlatformService {
       });
     });
   }
-
-  // Clean up resources
   void dispose() {
     _stopWatching();
-    
-    // Cancel all scheduled tasks
     for (final task in _scheduledTasks) {
       task.cancel();
     }
@@ -149,14 +139,10 @@ class DesktopService extends PlatformService {
       sites.addAll(routine.sites.where((s) => !excludeSites.contains(s)));
       categories.addAll(routine.categories.where((c) => !excludeCategories.contains(c)));
     }
-    
-    // Update cached values
     _cachedSites = sites.toList();
     _cachedApps = apps.toList();
     _cachedCategories = categories.toList();
     _isAllowList = allowList;
-
-    // Update both apps and sites
     updateAppList();
     updateBlockedSites();
   }
@@ -165,7 +151,6 @@ class DesktopService extends PlatformService {
     final apps = List<String>.from(_cachedApps);
 
     if (StrictModeService.instance.effectiveBlockBrowsersWithoutExtension && !BrowserService.instance.isInGracePeriod) {
-      // we don't include controlled browsers because that check will occur natively on macos
       final browsers = await BrowserService.instance.getInstalledSupportedBrowsers(connected: false, controlled: false);
       apps.addAll(browsers.map((b) => b.app.filePath));
       logger.i("added disconnected browsers: $browsers");
@@ -178,8 +163,6 @@ class DesktopService extends PlatformService {
       allowList: _isAllowList,
     );
   }
-  
-  // Update blocked sites in the browser extension
   Future<void> updateBlockedSites() async {
     logger.i("updateBlockedSites");
     await BrowserService.instance.sendToBrowser('updateBlockedSites', {
@@ -189,7 +172,6 @@ class DesktopService extends PlatformService {
   }
 
   Future<void> setStartOnLogin(bool enabled) async {
-    // Check if strict mode is enabled and we're trying to disable startup
     final strictModeService = StrictModeService.instance;
     if (!enabled && strictModeService.blockDisablingSystemStartup) {
       return;
@@ -197,7 +179,6 @@ class DesktopService extends PlatformService {
     
     if (Platform.isWindows || Platform.isLinux) {
       try {
-        // Ensure setup is done
         PackageInfo packageInfo = await PackageInfo.fromPlatform();
         launchAtStartup.setup(
           appName: packageInfo.appName,
@@ -224,7 +205,6 @@ class DesktopService extends PlatformService {
   Future<bool> getStartOnLogin() async {
     if (Platform.isWindows || Platform.isLinux) {
       try {
-        // Ensure setup is done
         PackageInfo packageInfo = await PackageInfo.fromPlatform();
         launchAtStartup.setup(
           appName: packageInfo.appName,

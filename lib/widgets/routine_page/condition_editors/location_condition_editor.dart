@@ -61,7 +61,6 @@ class LocationConditionWidget extends StatelessWidget {
               try {
                 condition.latitude = double.parse(value);
               } catch (e) {
-                // Handle parsing error
               }
             } else {
               condition.latitude = null;
@@ -81,7 +80,6 @@ class LocationConditionWidget extends StatelessWidget {
               try {
                 condition.longitude = double.parse(value);
               } catch (e) {
-                // Handle parsing error
               }
             } else {
               condition.longitude = null;
@@ -101,7 +99,6 @@ class LocationConditionWidget extends StatelessWidget {
               try {
                 condition.proximity = double.parse(value);
               } catch (e) {
-                // Handle parsing error
               }
             } else {
               condition.proximity = 100; // Default to 100 meters

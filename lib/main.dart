@@ -105,7 +105,6 @@ class _SyncStatusListenerState extends State<SyncStatusListener> {
       switch (status) {
         case SyncStatus.success:
           logger.i("received sync success event");
-          // Optionally show success message or handle success
           break;
         case SyncStatus.failure:
           logger.i("received sync failure event");
@@ -149,8 +148,6 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
     RoutineList(),
     SettingsPage(),
   ];
-
-  // We're using the ChangeNotifier mechanism for StrictModeService
   
   @override
   void initState() {
@@ -163,8 +160,6 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
       _initializeTray();
       windowManager.addListener(this);
       trayManager.addListener(this);
-      
-      // Use the ChangeNotifier mechanism for UI updates
       StrictModeService.instance.addListener(_updateTrayMenu);
     }
   }
@@ -185,8 +180,6 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // although supabase should handle this by itself, 
-      // we aren't guaranteed that it will be done before we need to refresh
       AuthService().refreshSessionIfNeeded().then((_) {
         _platService.refresh();
       });

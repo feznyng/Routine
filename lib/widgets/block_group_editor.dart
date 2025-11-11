@@ -92,12 +92,9 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
         return;
       }
     } else if (Platform.isAndroid) {
-      // Check if permissions are already granted
       final mobileService = MobileService.instance;
       final hasOverlay = await mobileService.checkOverlayPermission();
       final hasAccessibility = await mobileService.checkAccessibilityPermission();
-      
-      // If any permission is missing, show the onboarding dialog
       if (!hasOverlay || !hasAccessibility) {
         if (!mounted) return;
         
@@ -179,11 +176,9 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
   }
 
   Future<void> _openSitesDialog() async {
-    // Check if browser extension setup has been completed
     final browserExtensionService = BrowserService.instance;
     
     if (!browserExtensionService.isExtensionConnected && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
-      // Show onboarding dialog if setup is not completed
       await Navigator.of(context).push<void>(
         MaterialPageRoute(
           builder: (context) => BrowserExtensionOnboardingPage(
@@ -198,7 +193,6 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
         widget.onSave(_selectedApps, _selectedSites, _selectedCategories);
       }
     } else {
-      // Show regular sites page if setup is completed
       final result = await Navigator.of(context).push<List<String>>(
         MaterialPageRoute(
           builder: (context) => BlockSitesPage(
@@ -228,8 +222,6 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
   String _getAppSubtitle() {
     String appText = '';
     String categoryText = '';
-    
-    // Handle apps text
     if (_selectedApps.isEmpty) {
       appText = _blockSelected
           ? 'No applications blocked'
@@ -240,8 +232,6 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
           ? '${_selectedApps.length} $appLabel blocked'
           : '${_selectedApps.length} $appLabel allowed';
     }
-    
-    // Handle categories text
     if (_selectedCategories != null && _selectedCategories!.isNotEmpty) {
       String categoryLabel = Platform.isIOS 
           ? (_selectedCategories!.length == 1 ? 'category' : 'categories')
@@ -250,28 +240,20 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
       categoryText = _blockSelected
           ? '${_selectedCategories!.length} $categoryLabel blocked'
           : '${_selectedCategories!.length} $categoryLabel allowed';
-      
-      // Combine both texts if both are present
       if (_selectedApps.isNotEmpty) {
         return '$appText, $categoryText';
       }
     }
-    
-    // If no categories or no apps, return the appropriate text
     return categoryText.isNotEmpty ? categoryText : appText;
   }
   
   String _getCombinedSubtitle() {
     List<String> parts = [];
     String blockModePrefix = _blockSelected ? 'Blocking' : 'Allowing';
-    
-    // Handle apps
     if (_selectedApps.isNotEmpty) {
       String appLabel = _selectedApps.length == 1 ? 'application' : 'applications';
       parts.add('${_selectedApps.length} $appLabel');
     }
-    
-    // Handle categories
     if (_selectedCategories != null && _selectedCategories!.isNotEmpty) {
       String categoryLabel = Platform.isIOS 
           ? (_selectedCategories!.length == 1 ? 'category' : 'categories')
@@ -279,19 +261,13 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
           
       parts.add('${_selectedCategories!.length} $categoryLabel');
     }
-    
-    // Handle sites
     if (_selectedSites.isNotEmpty) {
       String siteLabel = _selectedSites.length == 1 ? 'site' : 'sites';
       parts.add('${_selectedSites.length} $siteLabel');
     }
-    
-    // If nothing is selected
     if (parts.isEmpty) {
       return _blockSelected ? 'Blocking nothing' : 'Blocking everything';
     }
-    
-    // Join all parts with commas and add the block mode at the beginning
     if (parts.length == 1) {
       return '$blockModePrefix ${parts[0]}';
     } else if (parts.length == 2) {
@@ -333,7 +309,6 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  // Use colorScheme.primaryContainer for better dark mode support
                   color: enabled 
                     ? Theme.of(context).colorScheme.primaryContainer
                     : Theme.of(context).colorScheme.surfaceVariant,
@@ -342,7 +317,6 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
                 child: Icon(
                   icon,
                   size: 32,
-                  // Use colorScheme.onPrimaryContainer for better contrast in both modes
                   color: enabled 
                     ? Theme.of(context).colorScheme.onPrimaryContainer
                     : Theme.of(context).colorScheme.onSurfaceVariant,
@@ -404,7 +378,6 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
                     ],
                     selected: {_blockSelected},
                     style: ButtonStyle(
-                      // Use theme-aware colors for better dark mode support
                       backgroundColor: MaterialStateProperty.resolveWith<Color?>(
                         (states) => states.contains(MaterialState.selected) 
                           ? Theme.of(context).colorScheme.secondaryContainer 
@@ -456,7 +429,6 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
                   ],
                   selected: {_blockSelected},
                   style: ButtonStyle(
-                    // Use theme-aware colors for better dark mode support
                     backgroundColor: MaterialStateProperty.resolveWith<Color?>(
                       (states) => states.contains(MaterialState.selected) 
                         ? Theme.of(context).colorScheme.secondaryContainer 

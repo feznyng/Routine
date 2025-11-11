@@ -52,7 +52,6 @@ class _SettingsPageState extends State<SettingsPage> {
   }
   
   Future<void> _restartBrowserExtensionOnboarding() async {
-    // Force refresh the state
     if (mounted) {
       setState(() {});
     }

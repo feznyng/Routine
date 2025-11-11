@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-/// A callout widget that informs users when a feature requires a mobile device.
-/// Used for features like QR code scanning and NFC that are only available on mobile.
+
+
 class MobileRequiredCallout extends StatelessWidget {
-  /// The feature that requires a mobile device (e.g., "QR code scanning", "NFC scanning")
+
   final String feature;
   
-  /// Optional additional information to display
+
   final String? additionalInfo;
 
   const MobileRequiredCallout({

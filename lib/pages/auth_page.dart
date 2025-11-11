@@ -30,7 +30,6 @@ class _AuthPageState extends State<AuthPage> {
 
   Future<void> _handleSubmit() async {
     if (_isRegistering) {
-      // Open waitlist signup form instead of registering
       await _openWaitlistForm();
       return;
     }
@@ -42,7 +41,6 @@ class _AuthPageState extends State<AuthPage> {
     });
 
     try {
-      // Handle sign in
       final success = await _authService.signIn(_emailController.text, _passwordController.text);
       if (success && mounted) {
         Navigator.of(context).pop();

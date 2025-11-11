@@ -3,7 +3,7 @@ import 'dart:io' show Platform;
 import '../../models/routine.dart';
 import '../../pages/qr_scanner_page.dart';
 
-/// QR friction display widget
+
 class QrFrictionDisplay extends StatelessWidget {
   final Routine routine;
   final bool canConfirm;

@@ -44,20 +44,19 @@ class _QrConditionEditorState extends State<QrConditionEditor> {
   }
   bool _isLoading = false;
 
-  /// Checks if the current platform is desktop (macOS, Windows, Linux)
+
   Future<bool> _isDesktopPlatform() async {
     try {
       if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
         return true;
       }
     } catch (e) {
-      // If Platform is not available, we're probably on web
       return false;
     }
     return false;
   }
   
-  /// Gets the downloads directory path for desktop platforms
+
   Future<String?> _getDownloadsPath() async {
     try {
       if (Platform.isMacOS) {
@@ -71,18 +70,15 @@ class _QrConditionEditorState extends State<QrConditionEditor> {
         return '${homeDir.path}/Downloads';
       }
     } catch (e) {
-      // If we can't get the downloads directory, return null
       return null;
     }
     return null;
   }
   
-  /// Saves the QR code as a PNG file
+
   Future<void> _saveQrCode() async {
     try {
       setState(() => _isLoading = true);
-
-      // Create QR painter
       final painter = QrPainter(
         data: widget.condition.data,
         version: QrVersions.auto,
@@ -91,8 +87,6 @@ class _QrConditionEditorState extends State<QrConditionEditor> {
       );
       
       widget.onStatusMessage('Generating QR code...', isLoading: true);
-      
-      // Generate image data
       final imageData = await painter.toImageData(600.0);
       if (imageData == null) {
         if (mounted) {
@@ -100,20 +94,14 @@ class _QrConditionEditorState extends State<QrConditionEditor> {
         }
         return;
       }
-      
-      // Convert to Uint8List
       final imageBytes = imageData.buffer.asUint8List();
       String fileName = '${widget.condition.name}_qr_code.png';
-      
-      // Check if we're on desktop and should use Downloads directory
       final isDesktop = await _isDesktopPlatform();
       String? initialDirectory;
       
       if (isDesktop) {
         initialDirectory = await _getDownloadsPath();
       }
-      
-      // Set up file type and suggested name
       final saveLocation = await getSaveLocation(
         suggestedName: fileName,
         initialDirectory: initialDirectory,
@@ -126,7 +114,6 @@ class _QrConditionEditorState extends State<QrConditionEditor> {
       );
       
       if (saveLocation != null) {
-        // Create file and write bytes
         final file = XFile.fromData(
           imageBytes,
           mimeType: 'image/png',
@@ -161,7 +148,6 @@ class _QrConditionEditorState extends State<QrConditionEditor> {
             'The name will be encoded in the QR code. You can reuse this QR code in a different condition by entering the same name.',
           ),
         ),
-        // Show callout for desktop users
         FutureBuilder<bool>(
           future: _isDesktopPlatform(),
           builder: (context, snapshot) {

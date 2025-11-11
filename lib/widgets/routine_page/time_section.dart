@@ -62,14 +62,9 @@ class TimeSection extends StatelessWidget {
                   if (time != null) {
                     final newStartTime = time.hour * 60 + time.minute;
                     final currentEndTime = routine.endTime;
-                    
-                    // Check if new start time is after end time
                     if (newStartTime >= currentEndTime) {
-                      // This is allowed now - it means the routine spans midnight into the next day
                       routine.startTime = newStartTime;
                       onChanged();
-                      
-                      // Show informative message about spanning to next day
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Routine will span from today into tomorrow'),
@@ -77,14 +72,12 @@ class TimeSection extends StatelessWidget {
                         ),
                       );
                     } else if (currentEndTime - newStartTime < 15) {
-                      // Check if duration would be less than 15 minutes
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Routines must be at least 15 minutes long'),
                         ),
                       );
                     } else {
-                      // Normal case: start time is before end time with at least 15 minutes gap
                       routine.startTime = newStartTime;
                       onChanged();
                     }
@@ -116,14 +109,9 @@ class TimeSection extends StatelessWidget {
                   if (time != null) {
                     final newEndTime = time.hour * 60 + time.minute;
                     final currentStartTime = routine.startTime;
-                    
-                    // Check if new end time is before start time - this is now allowed (spans to next day)
                     if (newEndTime <= currentStartTime) {
-                      // Allow end time to be before start time (spans to next day)
                       routine.endTime = newEndTime;
                       onChanged();
-                      
-                      // Show informative message about spanning to next day
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Routine will span from today into tomorrow'),
@@ -131,14 +119,12 @@ class TimeSection extends StatelessWidget {
                         ),
                       );
                     } else if (newEndTime - currentStartTime < 15) {
-                      // Check if duration would be less than 15 minutes
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Routines must be at least 15 minutes long'),
                         ),
                       );
                     } else {
-                      // Normal case: end time is after start time with at least 15 minutes gap
                       routine.endTime = newEndTime;
                       onChanged();
                     }

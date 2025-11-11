@@ -37,21 +37,14 @@ class _AppSiteSelectorPageState extends State<AppSiteSelectorPage> {
     final addedApps = newApps.where((app) => !widget.selectedApps.contains(app)).toList();
     final removedSites = widget.selectedSites.where((site) => !newSites.contains(site)).toList();
     final addedSites = newSites.where((site) => !widget.selectedSites.contains(site)).toList();
-
-    // For block lists (blockSelected = true):
     // - Users can add new items but cannot remove existing items
-    // For allow lists (blockSelected = false):
     // - Users can remove items but cannot add new items
     final hasRemovedBlockedItems = removedApps.isNotEmpty || removedSites.isNotEmpty;
     final hasAddedAllowedItems = addedApps.isNotEmpty || addedSites.isNotEmpty;
-
-    // For block lists (blockSelected = true):
     // - Users can add new items but cannot remove existing items
     if (widget.blockSelected && hasRemovedBlockedItems) {
       return false;
     }
-
-    // For allow lists (blockSelected = false):
     // - Users can remove items but cannot add new items
     if (!widget.blockSelected && hasAddedAllowedItems) {
       return false;
@@ -162,7 +155,6 @@ class _AppSiteSelectorState extends State<AppSiteSelector> {
   @override
   void dispose() {
     if (_viewId != null) {
-      // Don't wait for the result since the channel might be gone
       _channel?.invokeMethod('dispose').catchError((_) {});
       _channel?.setMethodCallHandler(null);
       _channel = null;

@@ -3,7 +3,7 @@ import 'dart:io' show Platform;
 import 'package:nfc_manager/nfc_manager.dart';
 import '../../models/routine.dart';
 
-/// NFC friction display widget
+
 class NfcFrictionDisplay extends StatelessWidget {
   final Routine routine;
   final bool canConfirm;
@@ -89,8 +89,6 @@ class NfcFrictionDisplay extends StatelessWidget {
                       }
                       return;
                     }
-
-                    // Start NFC session
                     NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
                       try {
                         if (tag.data.containsKey('ndef')) {

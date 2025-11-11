@@ -57,20 +57,13 @@ class _BlockSitesPageState extends State<BlockSitesPage> {
 
   void _addSite(String site) {
     if (site.isEmpty) return;
-    
-    // Check lockdown restrictions
     if (widget.inLockdown && !widget.blockSelected) {
-      // Cannot add sites in allow list lockdown
       return;
     }
-    
-    // Check the limit before adding
     if (_selectedSites.length >= kMaxBlockedItems) {
       _showLimitDialog();
       return;
     }
-    
-    // Basic URL cleanup
     site = site.toLowerCase().trim();
     if (site.startsWith('http://')) site = site.substring(7);
     if (site.startsWith('https://')) site = site.substring(8);

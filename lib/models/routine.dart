@@ -16,13 +16,9 @@ class Routine implements Syncable {
   
   @override
   String get id => _id;
-  
-  // scheduling
   final List<bool> _days;
   int _startTime;
   int _endTime;
-
-  // break tracking
   int? _numBreaksTaken;
   DateTime? _lastBreakAt;
   DateTime? _pausedUntil;
@@ -393,29 +389,19 @@ class Routine implements Syncable {
     if (_startTime == -1 && _endTime == -1) {
       return _days[dayOfWeek];
     }
-    
-    // Handle overnight routines (ending on the next day)
     if (overnight) {
       if (currMins >= _startTime) {
-        // Current time is after start time but before midnight
-        // Only need to check if current day is enabled
         return _days[dayOfWeek];
       } else if (currMins < _endTime) {
-        // Current time is after midnight but before end time
-        // Check if yesterday was enabled (routine started yesterday)
         final int yesterdayOfWeek = (dayOfWeek + 6) % 7; // Previous day, wrapping from 0 back to 6
         return _days[yesterdayOfWeek];
       }
       return false;
     }
-    
-    // Regular same-day routine
     return _days[dayOfWeek] && (currMins >= _startTime && currMins < _endTime);
   }
   
   bool get overnight => _endTime < _startTime;
-
-  // Determines if conditions can be completed based on the current time and completableBefore setting
   bool get canCompleteConditions {
     if (isSnoozed) {
       return false;
@@ -428,35 +414,22 @@ class Routine implements Syncable {
     if (_startTime == -1 && _endTime == -1) {
       return _days[dayOfWeek];
     }
-    
-    // Calculate the effective start time with completableBefore minutes subtracted
     final int effectiveStartTime = _startTime - _completableBefore;
-    
-    // Handle overnight routines (ending on the next day)
     if (_endTime < _startTime) {
       if (currMins >= effectiveStartTime || (effectiveStartTime < 0 && currMins >= (effectiveStartTime + 24 * 60))) {
-        // Current time is after effective start time but before midnight
-        // Only need to check if current day is enabled
         return _days[dayOfWeek];
       } else if (currMins < _endTime) {
-        // Current time is after midnight but before end time
-        // Check if yesterday was enabled (routine started yesterday)
         final int yesterdayOfWeek = (dayOfWeek + 6) % 7; // Previous day, wrapping from 0 back to 6
         return _days[yesterdayOfWeek];
       }
       return false;
     }
-    
-    // Handle the case where effectiveStartTime might be negative (before midnight of previous day)
     if (effectiveStartTime < 0) {
-      // Check if we're in the window between midnight and the actual start time
       if (currMins < _startTime) {
         final int yesterdayOfWeek = (dayOfWeek + 6) % 7; // Previous day
         return _days[yesterdayOfWeek] && (currMins >= (effectiveStartTime + 24 * 60));
       }
     }
-    
-    // Regular same-day routine
     return _days[dayOfWeek] && (currMins >= effectiveStartTime && currMins < _endTime);
   }
 
@@ -464,28 +437,18 @@ class Routine implements Syncable {
     final now = DateTime.now();
     final currentDayOfWeek = now.weekday - 1; // 0-based day of week (0 = Monday)
     final currentTimeMinutes = now.hour * 60 + now.minute;
-    
-    // If routine is all day, we only care about the day
     if (allDay) {
-      // Check if routine is active today
       if (days[currentDayOfWeek]) {
-        // If it's today, return current time
         return now;
       }
-      
-      // Find the next day when the routine will be active
       for (int i = 1; i <= 7; i++) {
         final nextDayIndex = (currentDayOfWeek + i) % 7;
         if (days[nextDayIndex]) {
-          // Return the start of that day
           return now.add(Duration(days: i)).copyWith(hour: 0, minute: 0, second: 0, millisecond: 0);
         }
       }
     } else {
-    
-      // Check if routine is active today
       if (days[currentDayOfWeek]) {
-        // If current time is before start time, routine will be active later today
         if (currentTimeMinutes < startTime) {
           return now.copyWith(
             hour: startHour,
@@ -494,23 +457,16 @@ class Routine implements Syncable {
             millisecond: 0
           );
         }
-        
-        // If routine spans midnight and we're after start time, it's active now
         if (endTime < startTime && currentTimeMinutes >= startTime) {
           return now;
         }
-        
-        // If we're between start and end time, routine is active now
         if (currentTimeMinutes >= startTime && currentTimeMinutes < endTime) {
           return now;
         }
       }
-      
-      // Find the next day when the routine will be active
       for (int i = 1; i <= 7; i++) {
         final nextDayIndex = (currentDayOfWeek + i) % 7;
         if (days[nextDayIndex]) {
-          // Return the start time on that day
           return now.add(Duration(days: i)).copyWith(
             hour: startHour,
             minute: startMinute,
@@ -520,8 +476,6 @@ class Routine implements Syncable {
         }
       }
     }
-    
-    // If no active days found (shouldn't happen if routine is valid)
     return DateTime(9999); // Far future date
   }
 
@@ -547,8 +501,6 @@ class Routine implements Syncable {
   
   bool get canTakeBreakNowWithPomodoro {
     if (friction != 'pomodoro' || frictionLen == null) return true;
-    
-    // We can take a break when there's no remaining pomodoro time
     return getRemainingPomodoroTime <= 0;
   }
 
@@ -622,8 +574,6 @@ class Routine implements Syncable {
     if (friction != 'pomodoro' || frictionLen == null) return 0;
     
     final now = DateTime.now();
-    
-    // Determine the effective start time, accounting for snooze
     DateTime effectiveStartTime = startedAt;
     if (snoozedUntil != null && snoozedUntil!.isAfter(effectiveStartTime)) {
       effectiveStartTime = snoozedUntil!;
@@ -676,11 +626,7 @@ class Routine implements Syncable {
     if (condition.lastCompletedAt == null) {
       return false;
     }
-  
-    // Calculate the effective start time by subtracting completableBefore minutes
     final DateTime effectiveStartTime = startedAt.subtract(Duration(minutes: _completableBefore));
-  
-    // Check if the condition was completed after the effective start time
     return condition.lastCompletedAt!.isAfter(effectiveStartTime);
   }
 

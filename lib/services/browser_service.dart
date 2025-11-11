@@ -55,7 +55,6 @@ class BrowserService with ChangeNotifier {
     await initializeControllableBrowsers();
 
     if (Platform.isMacOS) {
-      // Cancel existing listener if it exists
       await controllableListener?.cancel();
       
       controllableListener = DesktopChannel.instance.browserControllabilityStream.listen((event) {
@@ -446,7 +445,6 @@ class BrowserService with ChangeNotifier {
           },
           onDone: () {
             logger.i('NMH socket closed');
-            // Find and disconnect browser if it was moved to active connections
             final browser = _connections.entries.firstWhereOrNull((entry) => entry.value.socket == socket)?.key;
             if (browser != null) {
               _handleDisconnect(browser);
@@ -588,8 +586,6 @@ class BrowserService with ChangeNotifier {
     _connectionStreamController.close();
     controllableListener?.cancel();
   }
-  
-  // Helper method to map bundle IDs to Browser enum values
   Browser? _getBrowserFromBundleId(String bundleId) {
     switch (bundleId) {
       case 'com.google.Chrome':

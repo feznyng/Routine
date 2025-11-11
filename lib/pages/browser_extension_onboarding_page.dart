@@ -45,14 +45,10 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
 
 
   String? _errorMessage;
-  
-  // Grace period related variables
   bool _inGracePeriod = false;
   int _remainingSeconds = 0;
   Timer? _countdownTimer;
   StreamSubscription? _gracePeriodExpirationListener;
-  
-  // Connection attempt timer
   Timer? _connectionAttemptTimer;
   StreamSubscription? _connectionStatusSubscription;
 
@@ -61,8 +57,6 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
     super.initState();
     _inGracePeriod = widget.inGracePeriod;
     _loadInstalledBrowsers();
-    
-    // Listen for connection status changes
     _connectionStatusSubscription = _browserExtensionService.connectionStream.listen((connected) {
       _updateConnectionStatus();
     });
@@ -89,12 +83,8 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
     });
     
     await _browserExtensionService.initializeControllableBrowsers();
- 
-    // Get installed browsers
     final browsers = (await _browserExtensionService.getInstalledSupportedBrowsers(connected: null))
       .map((b) => b.browser).toList();
-    
-    // Initialize NMH installation status map for each browser
     Map<Browser, bool> nmhMap = {};
     Map<Browser, bool> automationMap = {};
     for (final browser in browsers) {
@@ -104,7 +94,6 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
     
     setState(() {
       _installedBrowsers = browsers;
-      // Only select unconnected browsers by default
       _selectedBrowsers = browsers.where(
         (b) => !_browserExtensionService.isBrowserConnected(b)
       ).toList();
@@ -115,11 +104,8 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
   }
 
   void _updateConnectionStatus() {
-    // Trigger a rebuild to update the _canProceed() evaluation
-    // This ensures the Next button is enabled/disabled based on current connection status
     if (mounted) {
       setState(() {
-        // No state changes needed, just trigger rebuild
       });
     }
   }
@@ -130,15 +116,10 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
   }
 
   void _startConnectionAttemptTimer() {
-    // Cancel any existing timer
     _connectionAttemptTimer?.cancel();
-    
-    // Start a new timer that attempts to connect every 2 seconds
     _connectionAttemptTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       if (_currentBrowserIndex < _selectedBrowsers.length) {
-        // No need to connect since we're in server mode
       } else {
-        // Stop the timer if we've gone through all browsers
         timer.cancel();
       }
     });
@@ -172,13 +153,11 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
   }
 
   void _nextStep() {
-    // Clear any existing error message when moving to next step
     setState(() {
       _errorMessage = null;
     });
     
     if (_currentStep == 0 && _selectedBrowsers.isEmpty) {
-      // Can't proceed if no browsers are selected
       setState(() {
         _errorMessage = 'Please select at least one browser';
       });
@@ -195,38 +174,26 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
     
     final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
     final browserConfig = browserData[currentBrowser]!;
-    
-    // Check if this is a macOS controllable browser
     if (Platform.isMacOS && browserConfig.macosControllable) {
-      // For macOS controllable browsers, we only need automation permission
       if (_currentStep == 1) {
-        // Check if automation permission is granted
         if (!(_automationPermissionMap[currentBrowser] ?? false)) {
           setState(() {
             _errorMessage = 'Please grant automation permission first';
           });
           return;
         }
-        
-        // Move to the next browser or to the completion step
         _currentBrowserIndex++;
-        
-        // If we've gone through all browsers, move to the completion step
         if (_currentBrowserIndex >= _selectedBrowsers.length) {
           setState(() {
             _currentStep = 3; // Completion step
           });
           return;
         }
-        
-        // Otherwise, stay on step 1 for the next browser
         setState(() {
-          // Stay on step 1 for next browser
         });
         return;
       }
     } else {
-      // For extension-based browsers, follow the original flow
       if (_currentStep == 1) {
         if (!(_nmhInstalledMap[currentBrowser] ?? false)) {
           setState(() {
@@ -253,27 +220,19 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
           });
           return;
         }
-        
-        // Move to the next browser or to the completion step
         _currentBrowserIndex++;
-        
-        // If we've gone through all browsers, move to the completion step
         if (_currentBrowserIndex >= _selectedBrowsers.length) {
           setState(() {
             _currentStep = 3; // Completion step
           });
           return;
         }
-        
-        // Otherwise, go back to the NMH installation step for the next browser
         setState(() {
           _currentStep = 1; // Back to NMH installation for next browser
         });
         return;
       }
     }
-    
-    // For any other steps, just increment
     setState(() {
       _currentStep++;
     });
@@ -322,9 +281,6 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
     if (_currentStep > 0) {
       setState(() {
         _currentStep--;
-        
-        // If going back from extension installation to NMH installation,
-        // reset the current browser index
         if (_currentStep == 1) {
           _currentBrowserIndex = 0;
         }
@@ -389,29 +345,21 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
               child: Column(
                 children: [
                   const SizedBox(height: 16),
-                  
-                  // Error/Warning messages
                   if (_errorMessage != null)
                     _buildMessage(
                       type: MessageType.error,
                       message: _errorMessage!,
                       onDismiss: () => setState(() => _errorMessage = null),
                     ),
-                  
-                  // Grace period warning (hide if extension is connected or on completion page)
                   if (_inGracePeriod && _remainingSeconds > 0 && _shouldShowGracePeriodWarning())
                     _buildMessage(
                       type: MessageType.warning,
                       message: 'Grace period active: ${_remainingSeconds}s remaining. '
                              'Complete setup before time expires to avoid browser blocking.',
                     ),
-                  
-                  // Main step content
                   Expanded(
                     child: _buildCurrentStep(),
                   ),
-                  
-                  // Navigation actions
                   _buildActions(),
                   const SizedBox(height: 24),
                 ],
@@ -441,8 +389,6 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
         if (_currentBrowserIndex < _selectedBrowsers.length) {
           final currentBrowser = _selectedBrowsers[_currentBrowserIndex];
           final browserConfig = browserData[currentBrowser]!;
-          
-          // Check if this is a macOS controllable browser
           if (Platform.isMacOS && browserConfig.macosControllable) {
             return AutomationPermissionStep(
               browser: currentBrowser,
@@ -460,7 +406,6 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
               currentBrowserIndex: _currentBrowserIndex,
             );
           } else {
-            // For extension-based browsers, show NMH step
             return NativeMessagingHostStep(
               browser: currentBrowser,
               onInstallationChanged: (browser, installed) {
@@ -510,12 +455,9 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
   }
 
   bool _shouldShowGracePeriodWarning() {
-    // Hide grace period warning on completion page
     if (_currentStep == 3) {
       return false;
     }
-    
-    // Hide grace period warning on extension installation step (it shows its own timer)
     if (_currentStep == 2) {
       return false;
     }
@@ -623,7 +565,6 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Back button
           if (_currentStep > 0 && _currentStep < 3)
             TextButton.icon(
               onPressed: _previousStep,
@@ -632,8 +573,6 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
             )
           else
             const SizedBox.shrink(),
-          
-          // Next/Finish button
           if (_currentStep < 3)
             FilledButton.icon(
               onPressed: _canProceed() ? _nextStep : null,

@@ -218,14 +218,12 @@ class BreakConfigSection extends StatelessWidget {
                     ],
                     if (routine.maxBreaks != 0 && routine.friction == 'nfc') ...[                
                       const SizedBox(height: 16),
-                      // Show callout for desktop users
                       if (!kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux)) ...[                
                         const MobileRequiredCallout(feature: 'NFC scanning'),
                         const SizedBox(height: 16),
                       ],
                       TextButton.icon(
                         onPressed: enabled ? () async {
-                          // Check if we're on desktop
                           if (!kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux)) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -255,8 +253,6 @@ class BreakConfigSection extends StatelessWidget {
                               }
                               return;
                             }
-
-                            // Start NFC session
                             NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
                               try {
                                 bool writeSuccess = false;
@@ -316,7 +312,6 @@ class BreakConfigSection extends StatelessWidget {
                     ],
                     if (routine.maxBreaks != 0 && routine.friction == 'qr') ...[                
                       const SizedBox(height: 16),
-                      // Show callout for desktop users
                       if (!kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux)) ...[                
                         const MobileRequiredCallout(feature: 'QR code scanning'),
                         const SizedBox(height: 16),
@@ -330,20 +325,14 @@ class BreakConfigSection extends StatelessWidget {
                             ],
                           );
                           if (path == null) return;
-
-                          // Create QR painter
                           final painter = QrPainter(
                             data: routine.id,
                             version: QrVersions.auto,
                             gapless: true,
                             errorCorrectionLevel: QrErrorCorrectLevel.L,
                           );
-                          
-                          // Generate image data
                           final imageData = await painter.toImageData(600.0);
                           if (imageData == null) return;
-                          
-                          // Save the file
                           final file = XFile.fromData(
                             imageData.buffer.asUint8List(),
                             mimeType: 'image/png',
@@ -441,10 +430,8 @@ class BreakConfigSection extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      // Always set a default value for pomodoro
                       Builder(builder: (context) {
                         if (routine.frictionLen == null) {
-                          // Set default value of 25 minutes
                           Future.microtask(() {
                             routine.frictionLen = 25;
                             onChanged();

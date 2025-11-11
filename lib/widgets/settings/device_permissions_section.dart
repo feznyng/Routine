@@ -84,12 +84,9 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
         AppSettings.openAppSettings(type: AppSettingsType.settings);  // iOS will redirect to Screen Time settings
       }
     } else if (Platform.isAndroid) {
-      // Check if permissions are already granted
       final mobileService = MobileService.instance;
       final hasOverlay = await mobileService.checkOverlayPermission();
       final hasAccessibility = await mobileService.checkAccessibilityPermission();
-      
-      // If any permission is missing, show the onboarding dialog
       if (!hasOverlay || !hasAccessibility) {
         if (!mounted) return;
         
@@ -111,8 +108,6 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
         );
         
         await completer.future;
-        
-        // Check permissions again after dialog is closed
         if (mounted) {
           await _checkPermissions();
         }

@@ -74,7 +74,6 @@ class RoutineCard extends StatelessWidget {
   }
 
   String _buildTimeText(BuildContext context) {
-    // Add time information
     if (routine.startTime == -1 && routine.endTime == -1) {
       return 'All day';
     } else {
@@ -83,8 +82,6 @@ class RoutineCard extends StatelessWidget {
       return '${startTimeOfDay.format(context)} - ${endTimeOfDay.format(context)}';
     }
   }
-
-  // Helper method to create consistently styled chips
   Widget _buildStyledChip(String text) {
     return Chip(
       label: Text(
@@ -100,50 +97,33 @@ class RoutineCard extends StatelessWidget {
   Widget _buildBlockedChips() {
     final group = routine.getGroup();
     List<String> chipTexts = [];
-    
-    // Collect all chip texts first
     if (group == null) {
-      // If there's no block group configured for the current device, show a 'None' chip
       chipTexts.add('None');
     } else if (group.name != null) {
-      // If the group has a name, just show that
       chipTexts.add(group.name!);
     } else {
-      // Otherwise show details about what's being blocked/allowed
       final apps = group.apps;
       final sites = group.sites;
       final categories = group.categories;
       final isAllowlist = group.allow;
-      
-      // Add block/allow chip
       chipTexts.add(isAllowlist ? 'Allow' : 'Block');
-      
-      // Add app chip if there are apps or if it's an allowlist with no apps
       if (apps.isNotEmpty || (isAllowlist && apps.isEmpty)) {
         chipTexts.add(apps.isEmpty && isAllowlist
             ? 'No apps'
             : '${apps.length} ${apps.length == 1 ? 'app' : 'apps'}');
       }
-      
-      // Add site chip if there are sites or if it's an allowlist with no sites
       if (sites.isNotEmpty || (isAllowlist && sites.isEmpty)) {
         chipTexts.add(sites.isEmpty && isAllowlist
             ? 'No sites'
             : '${sites.length} ${sites.length == 1 ? 'site' : 'sites'}');
       }
-      
-      // Add category chip if there are categories
       if (categories.isNotEmpty) {
         chipTexts.add('${categories.length} ${categories.length == 1 ? 'category' : 'categories'}');
       }
     }
-    
-    // Add strict mode chip if enabled
     if (routine.strictMode) {
       chipTexts.add('Strict');
     }
-        
-    // Always add breaks chip
     final breaksLeftText = routine.breaksLeftText;
     final numBreaksLeft = routine.numBreaksLeft;
     final isUnlimited = breaksLeftText == "Unlimited";
@@ -151,10 +131,7 @@ class RoutineCard extends StatelessWidget {
     final suffix = routine.isActive && !isUnlimited && routine.maxBreaks != 0 ? ' left' : '';
     
     chipTexts.add('$breaksLeftText ${isUnlimited ? "breaks" : "$breakWord$suffix"}');
-
-    // Transform all texts to styled chips
     final chips = chipTexts.map((text) {
-      // Special styling for strict mode chip
       if (text == 'Strict') {
         return Chip(
           label: const Text(
@@ -167,7 +144,6 @@ class RoutineCard extends StatelessWidget {
           padding: const EdgeInsets.only(right: 4),
         );
       }
-      // No special styling for snoozed status anymore
       return _buildStyledChip(text);
     }).toList();
     
@@ -229,12 +205,9 @@ class RoutineCard extends StatelessWidget {
   }
   
   String _formatSnoozeDate(DateTime dateTime) {
-    // Convert to local time if in UTC
     if (dateTime.isUtc) {
       dateTime = dateTime.toLocal();
     }
-
-    // Convert to local time if in UTC
     if (dateTime.isUtc) {
       dateTime = dateTime.toLocal();
     }

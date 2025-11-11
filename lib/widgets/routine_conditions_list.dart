@@ -19,8 +19,6 @@ class RoutineConditionsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Show conditions if they can be completed (based on completableBefore setting)
-    // or if the routine is currently active
     if ((!routine.canCompleteConditions && !routine.isActive) || routine.conditions.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -93,14 +91,10 @@ class RoutineConditionsList extends StatelessWidget {
 
   Future<void> _handleConditionTap(BuildContext context, Condition condition) async {
     final isMet = routine.isConditionMet(condition);
-    
-    // If the condition is already completed, show a confirmation dialog
     if (isMet) {
       _showUncompleteConfirmationDialog(context, condition);
       return;
     }
-    
-    // Handle different condition types
     switch (condition.type) {
       case ConditionType.todo:
         // Todo conditions can be completed directly
@@ -111,22 +105,18 @@ class RoutineConditionsList extends StatelessWidget {
         break;
         
       case ConditionType.location:
-        // Check current location against condition location
         await _handleLocationCondition(context, condition);
         break;
         
       case ConditionType.qr:
-        // Open QR code scanner for QR conditions
         await _handleQrCondition(context, condition);
         break;
         
       case ConditionType.nfc:
-        // Handle NFC condition
         await _handleNfcCondition(context, condition);
         break;
         
       default:
-        // Show a placeholder dialog for other condition types
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
@@ -144,18 +134,14 @@ class RoutineConditionsList extends StatelessWidget {
   }
 
   Future<void> _handleQrCondition(BuildContext context, Condition condition) async {
-    // Check if running on a mobile device
     bool isMobileDevice = !Util.isDesktop();
     
     if (isMobileDevice) {
-      // Navigate to the QR scanner page on mobile devices
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (context) => QrScannerPage(
             onCodeScanned: (scannedData) async {
-              // Compare scanned data with condition data
               if (scannedData == condition.data) {
-                // QR code matches, complete the condition
                 await routine.completeCondition(condition);
                 if (onRoutineUpdated != null) {
                   onRoutineUpdated!();
@@ -164,7 +150,6 @@ class RoutineConditionsList extends StatelessWidget {
                   const SnackBar(content: Text('QR code verified! Condition completed.')),
                 );
               } else {
-                // QR code doesn't match
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Invalid QR code. Please try again with the correct code.')),
                 );
@@ -174,7 +159,6 @@ class RoutineConditionsList extends StatelessWidget {
         ),
       );
     } else {
-      // Show a dialog on desktop platforms
       await showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -206,11 +190,9 @@ class RoutineConditionsList extends StatelessWidget {
   }
 
   Future<void> _handleNfcCondition(BuildContext context, Condition condition) async {
-    // Check if running on a mobile device
     bool isMobileDevice = !Util.isDesktop();
     
     if (!isMobileDevice) {
-      // Show a dialog on desktop platforms
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -242,7 +224,6 @@ class RoutineConditionsList extends StatelessWidget {
     }
 
     try {
-      // Check if NFC is available
       bool isAvailable = await NfcManager.instance.isAvailable();
       if (!isAvailable) {
         if (context.mounted) {
@@ -252,19 +233,14 @@ class RoutineConditionsList extends StatelessWidget {
         }
         return;
       }
-
-      // Start NFC session
       await NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
         try {
-          // Read NDEF message from the tag
           String? tagData;
           if (tag.data.containsKey('ndef')) {
             final ndef = Ndef.from(tag);
             if (ndef != null) {
-              // Try to read the NDEF message
               final cachedMessage = ndef.cachedMessage;
               if (cachedMessage != null) {
-                // Look for text records
                 for (final record in cachedMessage.records) {
                   if (record.typeNameFormat == NdefTypeNameFormat.nfcWellknown && 
                       record.type.length == 1 && 
@@ -272,7 +248,6 @@ class RoutineConditionsList extends StatelessWidget {
                     final payload = record.payload;
                     if (payload.length > 1) {
                       final languageCodeLength = payload[0] & 0x3F;
-                      // Skip language code and get the text
                       final textBytes = payload.sublist(1 + languageCodeLength);
                       tagData = String.fromCharCodes(textBytes);
                       break;
@@ -282,12 +257,8 @@ class RoutineConditionsList extends StatelessWidget {
               }
             }
           }
-
-          // Check if we got data from the tag
           if (tagData != null) {
-            // Compare tag data with condition data
             if (tagData == condition.data) {
-              // NFC tag matches, complete the condition
               await routine.completeCondition(condition);
               if (onRoutineUpdated != null) {
                 onRoutineUpdated!();
@@ -298,7 +269,6 @@ class RoutineConditionsList extends StatelessWidget {
                 );
               }
             } else {
-              // NFC tag doesn't match
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Invalid NFC tag. Please try scanning again.')),
@@ -306,7 +276,6 @@ class RoutineConditionsList extends StatelessWidget {
               }
             }
           } else {
-            // No NDEF data found on the tag
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('No data found on this NFC tag. Please try scanning again.')),
@@ -320,7 +289,6 @@ class RoutineConditionsList extends StatelessWidget {
             );
           }
         } finally {
-          // Stop the NFC session
           NfcManager.instance.stopSession();
         }
       });
@@ -342,26 +310,17 @@ class RoutineConditionsList extends StatelessWidget {
     }
     
     try {
-      // First, check permission status
       LocationPermission permission = await Geolocator.checkPermission();
-      
-      // If permission is denied, request it
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        
-        // If still denied after request, show error
         if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Location permission denied. Cannot check location condition.')),
           );
           return;
         }
-        
-        // Add a small delay after permission is granted to allow the system to update
         await Future.delayed(const Duration(milliseconds: 500));
       }
-      
-      // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -369,8 +328,6 @@ class RoutineConditionsList extends StatelessWidget {
         );
         return;
       }
-      
-      // Get current position with high accuracy
       final position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
       
       final distance = Geolocator.distanceBetween(
@@ -383,7 +340,6 @@ class RoutineConditionsList extends StatelessWidget {
       final proximity = condition.proximity ?? 100; // Default to 100 meters if not set
       
       if (distance <= proximity) {
-        // User is within the proximity radius
         await routine.completeCondition(condition);
         if (onRoutineUpdated != null) {
           onRoutineUpdated!();
@@ -392,7 +348,6 @@ class RoutineConditionsList extends StatelessWidget {
           const SnackBar(content: Text('Location condition completed!')),
         );
       } else {
-        // User is not within the proximity radius
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${distance.toInt()} meters away from the target location. Please move within ${proximity.toInt()} meter${proximity == 1.0 ? '' : 's'}.')),
         );
