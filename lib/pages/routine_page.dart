@@ -404,17 +404,23 @@ class _RoutinePageState extends State<RoutinePage> with WidgetsBindingObserver {
                         }
                       } else {
                         // Show date picker to snooze the routine
+                        final DateTime now = DateTime.now();
+                        final nextActiveTime = _routine.nextActiveTime;
+                        
+                        DateTime initialDate = (nextActiveTime.day != now.day || _routine.overnight) ? 
+                          now.add(const Duration(days: 1)) : now;
+
                         final DateTime? selectedDate = await showDatePicker(
                           context: context,
-                          initialDate: DateTime.now().add(const Duration(days: 1)),
-                          firstDate: DateTime.now(),
+                          initialDate: initialDate,
+                          firstDate: now,
                           lastDate: DateTime.now().add(const Duration(days: 365)),
                         );
                         
                         if (selectedDate != null) {
                           final TimeOfDay? selectedTime = await showTimePicker(
                             context: context,
-                            initialTime: TimeOfDay(hour: widget.routine.startHour, minute: widget.routine.startMinute),
+                            initialTime: TimeOfDay(hour: _routine.endHour, minute: _routine.endMinute),
                           );
                           
                           if (selectedTime != null) {

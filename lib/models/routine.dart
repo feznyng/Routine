@@ -329,7 +329,6 @@ class Routine implements Syncable {
     return changes;
   }
 
-
   bool get valid {
     return _name.isNotEmpty && 
            _days.contains(true);
@@ -396,7 +395,7 @@ class Routine implements Syncable {
     }
     
     // Handle overnight routines (ending on the next day)
-    if (_endTime < _startTime) {
+    if (overnight) {
       if (currMins >= _startTime) {
         // Current time is after start time but before midnight
         // Only need to check if current day is enabled
@@ -414,6 +413,8 @@ class Routine implements Syncable {
     return _days[dayOfWeek] && (currMins >= _startTime && currMins < _endTime);
   }
   
+  bool get overnight => _endTime < _startTime;
+
   // Determines if conditions can be completed based on the current time and completableBefore setting
   bool get canCompleteConditions {
     if (isSnoozed) {
@@ -457,6 +458,71 @@ class Routine implements Syncable {
     
     // Regular same-day routine
     return _days[dayOfWeek] && (currMins >= effectiveStartTime && currMins < _endTime);
+  }
+
+  DateTime get nextActiveTime {
+    final now = DateTime.now();
+    final currentDayOfWeek = now.weekday - 1; // 0-based day of week (0 = Monday)
+    final currentTimeMinutes = now.hour * 60 + now.minute;
+    
+    // If routine is all day, we only care about the day
+    if (allDay) {
+      // Check if routine is active today
+      if (days[currentDayOfWeek]) {
+        // If it's today, return current time
+        return now;
+      }
+      
+      // Find the next day when the routine will be active
+      for (int i = 1; i <= 7; i++) {
+        final nextDayIndex = (currentDayOfWeek + i) % 7;
+        if (days[nextDayIndex]) {
+          // Return the start of that day
+          return now.add(Duration(days: i)).copyWith(hour: 0, minute: 0, second: 0, millisecond: 0);
+        }
+      }
+    } else {
+    
+      // Check if routine is active today
+      if (days[currentDayOfWeek]) {
+        // If current time is before start time, routine will be active later today
+        if (currentTimeMinutes < startTime) {
+          return now.copyWith(
+            hour: startHour,
+            minute: startMinute,
+            second: 0,
+            millisecond: 0
+          );
+        }
+        
+        // If routine spans midnight and we're after start time, it's active now
+        if (endTime < startTime && currentTimeMinutes >= startTime) {
+          return now;
+        }
+        
+        // If we're between start and end time, routine is active now
+        if (currentTimeMinutes >= startTime && currentTimeMinutes < endTime) {
+          return now;
+        }
+      }
+      
+      // Find the next day when the routine will be active
+      for (int i = 1; i <= 7; i++) {
+        final nextDayIndex = (currentDayOfWeek + i) % 7;
+        if (days[nextDayIndex]) {
+          // Return the start time on that day
+          return now.add(Duration(days: i)).copyWith(
+            hour: startHour,
+            minute: startMinute,
+            second: 0,
+            millisecond: 0
+          );
+        }
+      }
+    }
+    
+    // If no active days found (shouldn't happen if routine is valid)
+    return DateTime(9999); // Far future date
   }
 
   int get completableBefore => _completableBefore;
