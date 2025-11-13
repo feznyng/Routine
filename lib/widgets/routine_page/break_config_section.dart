@@ -1,4 +1,9 @@
+import 'dart:collection';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:nfc_manager/ndef_record.dart';
+import 'package:nfc_manager_ndef/nfc_manager_ndef.dart';
 import '../../models/routine.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:file_selector/file_selector.dart';
@@ -253,18 +258,16 @@ class BreakConfigSection extends StatelessWidget {
                               }
                               return;
                             }
-                            NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
+                            NfcManager.instance.startSession(pollingOptions: HashSet.of(NfcPollingOption.values), onDiscovered: (NfcTag tag) async {
                               try {
                                 bool writeSuccess = false;
-                                if (tag.data.containsKey('ndef')) {
-                                  final ndef = Ndef.from(tag);
-                                  if (ndef != null && ndef.isWritable) {
-                                    final message = NdefMessage([
-                                      NdefRecord.createText(routine.id),
-                                    ]);
-                                    await ndef.write(message);
-                                    writeSuccess = true;
-                                  }
+                                final ndef = Ndef.from(tag);
+                                if (ndef != null && ndef.isWritable) {
+                                  final message = NdefMessage(records: [
+                                    NdefRecord(typeNameFormat: TypeNameFormat.wellKnown, type: Uint8List.fromList([0x54]), identifier: Uint8List.fromList(routine.id.codeUnits), payload: Uint8List.fromList(routine.id.codeUnits)),
+                                  ]);
+                                  await ndef.write(message: message);
+                                  writeSuccess = true;
                                 }
 
                                 if (writeSuccess) {

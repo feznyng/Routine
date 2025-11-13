@@ -1,7 +1,12 @@
+import 'dart:collection';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:nfc_manager/ndef_record.dart';
 import 'dart:io' show Platform;
 import 'package:nfc_manager/nfc_manager.dart';
+import 'package:nfc_manager_ndef/nfc_manager_ndef.dart';
 import '../../../models/condition.dart';
 import '../../common/mobile_required_callout.dart';
 
@@ -94,19 +99,17 @@ class _NfcConditionWidgetState extends State<NfcConditionWidget> {
                       }
                       return;
                     }
-                    NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
+                    NfcManager.instance.startSession(pollingOptions: HashSet.of(NfcPollingOption.values), onDiscovered: (NfcTag tag) async {
                       try {
                         bool writeSuccess = false;
-                        if (tag.data.containsKey('ndef')) {
-                          final ndef = Ndef.from(tag);
-                          if (ndef != null && ndef.isWritable) {
-                            final message = NdefMessage([
-                              NdefRecord.createText(widget.condition.data),
-                            ]);
-                            
-                            await ndef.write(message);
-                            writeSuccess = true;
-                          }
+                        final ndef = Ndef.from(tag);
+                        if (ndef != null && ndef.isWritable) {
+                          final message = NdefMessage(records: [
+                            NdefRecord(typeNameFormat: TypeNameFormat.wellKnown, type: Uint8List.fromList([0x54]), identifier: Uint8List.fromList(widget.condition.data.codeUnits), payload: Uint8List.fromList(widget.condition.data.codeUnits)),
+                          ]);
+                          
+                          await ndef.write(message: message);
+                          writeSuccess = true;
                         }
 
                         if (context.mounted) {

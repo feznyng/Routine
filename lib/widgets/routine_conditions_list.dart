@@ -1,11 +1,15 @@
+import 'dart:collection';
+
 import 'package:Routine/util.dart';
 import 'package:Routine/widgets/routine_page/condition_type_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:nfc_manager/ndef_record.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import '../models/routine.dart';
 import '../models/condition.dart';
 import '../pages/qr_scanner_page.dart';
+import 'package:nfc_manager_ndef/nfc_manager_ndef.dart';
 
 class RoutineConditionsList extends StatelessWidget {
   final Routine routine;
@@ -233,25 +237,25 @@ class RoutineConditionsList extends StatelessWidget {
         }
         return;
       }
-      await NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
+      await NfcManager.instance.startSession(pollingOptions: HashSet.of(NfcPollingOption.values), onDiscovered: (NfcTag tag) async {
         try {
           String? tagData;
-          if (tag.data.containsKey('ndef')) {
-            final ndef = Ndef.from(tag);
-            if (ndef != null) {
-              final cachedMessage = ndef.cachedMessage;
-              if (cachedMessage != null) {
-                for (final record in cachedMessage.records) {
-                  if (record.typeNameFormat == NdefTypeNameFormat.nfcWellknown && 
-                      record.type.length == 1 && 
-                      record.type[0] == 0x54) { // 'T' for text record
-                    final payload = record.payload;
-                    if (payload.length > 1) {
-                      final languageCodeLength = payload[0] & 0x3F;
-                      final textBytes = payload.sublist(1 + languageCodeLength);
-                      tagData = String.fromCharCodes(textBytes);
-                      break;
-                    }
+          
+
+          final Ndef? ndef = Ndef.from(tag);
+          if (ndef != null) {
+            final cachedMessage = ndef.cachedMessage;
+            if (cachedMessage != null) {
+              for (final record in cachedMessage.records) {
+                if (record.typeNameFormat == TypeNameFormat.wellKnown && 
+                    record.type.length == 1 && 
+                    record.type[0] == 0x54) { // 'T' for text record
+                  final payload = record.payload;
+                  if (payload.length > 1) {
+                    final languageCodeLength = payload[0] & 0x3F;
+                    final textBytes = payload.sublist(1 + languageCodeLength);
+                    tagData = String.fromCharCodes(textBytes);
+                    break;
                   }
                 }
               }

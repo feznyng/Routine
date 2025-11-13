@@ -1,6 +1,9 @@
+import 'dart:collection';
+
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
 import 'package:nfc_manager/nfc_manager.dart';
+import 'package:nfc_manager_ndef/nfc_manager_ndef.dart';
 import '../../models/routine.dart';
 
 
@@ -89,12 +92,12 @@ class NfcFrictionDisplay extends StatelessWidget {
                       }
                       return;
                     }
-                    NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
+                    NfcManager.instance.startSession(pollingOptions: HashSet.of(NfcPollingOption.values), onDiscovered: (NfcTag tag) async {
                       try {
-                        if (tag.data.containsKey('ndef')) {
-                          final ndef = Ndef.from(tag);
-                          if (ndef != null) {
-                            final message = await ndef.read();
+                        final ndef = Ndef.from(tag);
+                        if (ndef != null) {
+                          final message = await ndef.read();
+                          if (message != null) {
                             final record = message.records.first;
                             final payload = String.fromCharCodes(record.payload).substring(3); // Skip language code
                             
@@ -106,6 +109,7 @@ class NfcFrictionDisplay extends StatelessWidget {
                             }
                           }
                         }
+
                       } catch (e) {
                         onScanFeedbackChanged('Error reading NFC tag: $e');
                       } finally {
