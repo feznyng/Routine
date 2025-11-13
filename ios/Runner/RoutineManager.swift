@@ -127,8 +127,6 @@ class RoutineManager {
         let updateElapsedTime = Date().timeIntervalSince(updateStartTime)
         
         print("finished updating routines")
-        SentrySDK.capture(message: "updateRoutines: internal done - \(evalTimesSummary) - Total Duration: \(String(format: "%.3f", updateElapsedTime)) seconds")
-        SentrySDK.flush(timeout: 1000)
     }
     
     private func scheduleOneTimeActivity(for routine: Routine, startDate: Date, activityType: String) -> (scheduled: Bool, startTime: Date, endTime: Date) {
