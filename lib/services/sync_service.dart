@@ -721,6 +721,7 @@ class SyncService {
       }
 
       if (madeRemoteChange) {
+        print("made remote change");
         _notifyPeers();
       }
       await db.clearChangesSince(pulledAt);

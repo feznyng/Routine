@@ -23,7 +23,6 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
   late List<Routine> _routines;
   late StreamSubscription<List<Routine>> _routineSubscription;
   late StreamSubscription<bool> _syncingSubscription;
-  bool _isLoading = false;
   bool _isSyncing = false;
   bool _activeRoutinesExpanded = true;
   bool _inactiveRoutinesExpanded = true;
@@ -41,7 +40,6 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     _routines = [];
-    _isLoading = true;
     WidgetsBinding.instance.addObserver(this);
     _checkAuthStatus();
     authServiceSubscription = _authService.authStateChange.listen((data) {
@@ -54,7 +52,6 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
       if (mounted) {
         setState(() {
           _routines = routines;
-          _isLoading = false;
         });
     
         Util.scheduleEvaluationTimes(routines, _scheduledTasks, () async {
@@ -134,28 +131,19 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                   ? _buildEmptyState(context)
                   : RefreshIndicator(
                 onRefresh: () async {
-                  if (mounted) {
-                    setState(() {
-                      _isLoading = true;
-                    });
-                  }
-                  await _syncService.sync(full: true, manual: true);
-                  if (mounted) {
-                    setState(() {
-                      _isLoading = false;
-                    });
-                  }
+                  _syncService.queueSync(full: true, manual: true);
                 },
                 child: ListView(
                   padding: EdgeInsets.zero,
                   children: [
                     if (_strictModeService.emergencyMode)
                       const EmergencyModeBanner(),
-                    if (_isSyncing)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Row(
-                          children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (_isSyncing) ...[
                             SizedBox(
                               width: 16,
                               height: 16,
@@ -166,9 +154,11 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                               'Syncing…',
                               style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                             ),
-                          ],
-                        ),
+                          ] else
+                            const SizedBox(height: 16),
+                        ],
                       ),
+                    ),
                     if (_showSignedOutBanner)
                       SignedOutBanner(
                         onDismiss: () {
