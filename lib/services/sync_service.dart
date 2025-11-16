@@ -549,7 +549,7 @@ class SyncService {
     await _sendRealtimeMessage('sync');
 
     try {
-      await _client.functions.invoke('push', body: {'content': 'sample message', 'source_id': currDevice.id});
+      await _client.functions.invoke('push', body: {'source_id': currDevice.id});
     } catch (e, st) {
       Util.report('error fcm notifying other devices', e, st);
     }
@@ -612,7 +612,10 @@ class SyncService {
     SyncResult? result;
     await _syncLock.synchronized(() async {
       _setSyncing(true);
+      final stopwatch = Stopwatch();
+      stopwatch.start();
       result = await _sync(full: full);
+      print('sync took ${stopwatch.elapsedMilliseconds}ms');
     });
   
     final success = result != null;
@@ -685,38 +688,40 @@ class SyncService {
 
       bool madeRemoteChange = false;
       bool accidentalDeletion = false;
-      {
-        madeRemoteChange = await _syncEmergencyEvents(prefs) || madeRemoteChange;
-      }
       final remote = await _fetchRemoteLists(currDevice.id, lastPulledAt);
 
-      final result = await db.transaction(() async {
+      await db.transaction(() async {
         final devicePull = await _pullDevices(db, currDevice.id, remote.devices, pulledAt);
         full = full || devicePull.requireFullSync; // if the current device doesn't exist remotely, we need to do a full sync
         accidentalDeletion = devicePull.accidentalDeletion;
 
-        await _pullGroups(db, currDevice.id, remote.groups, pulledAt, accidentalDeletion);
-        await _pullRoutines(db, remote.routines, pulledAt);
+        final [madeChange, ...] = await Future.wait([
+          _syncEmergencyEvents(prefs),
+          _pullGroups(db, currDevice.id, remote.groups, pulledAt, accidentalDeletion),
+          _pullRoutines(db, remote.routines, pulledAt),
+          db.updateDevice(DevicesCompanion(
+            id: Value(currDevice.id),
+            lastPulledAt: Value(pulledAt),
+            updatedAt: Value(pulledAt),
+          ))
+        ]);
 
-        await db.updateDevice(DevicesCompanion(
-          id: Value(currDevice.id),
-          lastPulledAt: Value(pulledAt),
-          updatedAt: Value(pulledAt),
-        ));
+        madeRemoteChange = madeChange as bool || madeRemoteChange;
       });
 
-      print("sync result: $result");
-      final devicesResult = await _pushDevices(db, full ? null : lastPulledAt, pulledAt, currDevice.id);
-      if (devicesResult.conflict) return null;
-      if (devicesResult.changed) madeRemoteChange = true;
-      final groupsResult = await _pushGroups(db, full ? null : lastPulledAt, pulledAt);
-      if (groupsResult.conflict) return null;
-      if (groupsResult.changed) madeRemoteChange = true;
-      final routinesResult = await _pushRoutines(db, full ? null : lastPulledAt, pulledAt);
-      if (routinesResult.conflict) return null;
-      if (routinesResult.changed) madeRemoteChange = true;
+      final results = await Future.wait([
+        _pushDevices(db, full ? null : lastPulledAt, pulledAt, currDevice.id),
+        _pushGroups(db, full ? null : lastPulledAt, pulledAt),
+        _pushRoutines(db, full ? null : lastPulledAt, pulledAt),
+      ]);
+
+      for (final result in results) {
+        if (result.conflict) return null;
+        if (result.changed) madeRemoteChange = true;
+      }
+
       if (madeRemoteChange) {
-        await _notifyPeers();
+        _notifyPeers();
       }
       await db.clearChangesSince(pulledAt);
       {
@@ -734,9 +739,11 @@ class SyncService {
         if (deviceList.isNotEmpty) {
           final pulledAt = deviceList[0];
 
-          await _client.from('routines').delete().lt('updated_at', pulledAt).eq('deleted', true);
-          await _client.from('groups').delete().lt('updated_at', pulledAt).eq('deleted', true);
-          await _client.from('devices').delete().lt('updated_at', pulledAt).eq('deleted', true);
+          await Future.wait([
+            _client.from('routines').delete().lt('updated_at', pulledAt).eq('deleted', true),
+            _client.from('groups').delete().lt('updated_at', pulledAt).eq('deleted', true),
+            _client.from('devices').delete().lt('updated_at', pulledAt).eq('deleted', true),
+          ]);
         }
       }
 
