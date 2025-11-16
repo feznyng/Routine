@@ -130,25 +130,7 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
-          child: _isLoading
-              ? Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const CircularProgressIndicator(),
-                      const SizedBox(width: 16),
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _isLoading = false;
-                          });
-                        },
-                        child: const Text('Cancel'),
-                      ),
-                    ],
-                  ),
-                )
-              : _routines.isEmpty
+          child: _routines.isEmpty
                   ? _buildEmptyState(context)
                   : RefreshIndicator(
                 onRefresh: () async {
