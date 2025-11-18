@@ -78,7 +78,6 @@ class StrictModeService with ChangeNotifier {
   Future<void> reloadEmergencyEvents() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     _emergencyEvents = loadEmergencyEvents(prefs);
-    print("loading events $_emergencyEvents");
     _notifyEffectiveSettingsChanged();
   }
   
@@ -119,13 +118,11 @@ class StrictModeService with ChangeNotifier {
 
   Future<void> updateEmergencyEvents(List<EmergencyEvent> events) async {
     _emergencyEvents = events;
-    print("updating events $_emergencyEvents to $events");
     await _storeEmergencyEvents();
     _notifyEffectiveSettingsChanged();
   }
 
   Future<void> _storeEmergencyEvents() async {
-    print("storing events $_emergencyEvents");
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_emergencyEventsKey, 
       jsonEncode(_emergencyEvents.map((e) => e.toJson()).toList()));
@@ -247,11 +244,10 @@ class StrictModeService with ChangeNotifier {
       activeEvent.endedAt = DateTime.now();
     }
 
-    print("setting emergency mode $_emergencyEvents");
-
     await _storeEmergencyEvents();
 
     _notifyEffectiveSettingsChanged();
+    print("emergency mode sync");
     await SyncService().queueSync();
   }
 

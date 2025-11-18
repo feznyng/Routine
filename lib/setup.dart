@@ -32,6 +32,8 @@ void callbackDispatcher() {
     final isolateId = Isolate.current.hashCode.toString();
     print('[$isolateId] bg - task: $task with input $inputData');
     
+    bool success = false;
+  
     try {
       print('[$isolateId] bg - attempting sync');
       await dotenv.load(fileName: '.env');
@@ -46,18 +48,17 @@ void callbackDispatcher() {
       const lockTimeoutMs = 30000;
       const pollIntervalMs = 500;
       const maxWaitTimeMs = 60000;
-      const debounceTimeMs = 2000;
 
       final prefs = SharedPreferencesAsync();
       final startTime = DateTime.now().millisecondsSinceEpoch;
       prefs.setInt(syncTimestampKey, startTime);
 
-      await Future.delayed(Duration(milliseconds: debounceTimeMs));
-
       if ((await prefs.getInt(syncTimestampKey) ?? 0) > startTime) {
         return Future.value(false);
       }
+      
       final startWaitTime = DateTime.now().millisecondsSinceEpoch;
+      
       while (true) {
         final currentTime = DateTime.now().millisecondsSinceEpoch;
         final lockTimestamp = await prefs.getInt(syncLockTimestampKey) ?? 0;
@@ -73,25 +74,21 @@ void callbackDispatcher() {
           break;
         }
         
-        print('[$isolateId] bg - waiting for sync lock to be released...');
         await Future.delayed(Duration(milliseconds: pollIntervalMs));
       }
       
-      print('[$isolateId] bg - acquired sync lock, starting sync');
       final currentTime = DateTime.now().millisecondsSinceEpoch;
       await prefs.setBool(syncLockKey, true);
       await prefs.setInt(syncLockTimestampKey, currentTime);
       
       try {
         final syncService = SyncService();
-        final result = await syncService.sync(full: inputData['full'], id: inputData['id']);
+        success = await syncService.sync(full: inputData['full'], id: inputData['id']);
         syncService.dispose();
-        print('[$isolateId] bg - sync completed with result: $result');
-        return result;
+        print('[$isolateId] bg - sync completed with result: $success');
       } finally {
         await prefs.setBool(syncLockKey, false);
         await prefs.remove(syncLockTimestampKey);
-        print('[$isolateId] bg - sync lock released');
       }
     } catch (e) {
       print('[$isolateId] bg - failed to complete sync due to $e');
@@ -102,8 +99,9 @@ void callbackDispatcher() {
       } catch (lockError) {
         print('[$isolateId] bg - failed to release sync lock: $lockError');
       }
-      return Future.value(false);
     }
+
+    return Future.value(success);
   });
 }
 

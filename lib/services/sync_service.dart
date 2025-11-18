@@ -174,6 +174,8 @@ class SyncService {
         || event.endedAt != remoteEventMap[event.id]?.endedAt;
     }
 
+    print("emergency events: $madeRemoteChange");
+    
     await StrictModeService().updateEmergencyEvents(mergedEvents);
     await _client.from('users').update({
       'emergencies': mergedEvents.map((e) => e.toJson()).toList(),
@@ -406,7 +408,7 @@ class SyncService {
           .eq('id', currDeviceId);
     }
 
-    return (changed: localDevices.isNotEmpty, conflict: false);
+    return (changed: localDevices.where((d) => d.id != currDeviceId).isNotEmpty, conflict: false);
   }
 
   Future<({bool changed, bool conflict})> _pushGroups(
@@ -574,29 +576,32 @@ class SyncService {
       return false;
     }
 
-    if (Util.isDesktop()) {
-      _setSyncing(true);
-      sync(full: full).whenComplete(() => _setSyncing(false));
-      return true;
-    } else  {
-      final prefs = await SharedPreferences.getInstance();
-      final allKeys = prefs.getKeys();
-      final syncStatusKeys = allKeys.where((key) => key.startsWith('sync_job_status_'));
-      
-      for (final key in syncStatusKeys) {
-        await prefs.remove(key);
-      }
-      final id = Uuid().v4();
-      _latestSyncJobId = id;
-      _lastKnownSyncStatus = false;
-      await prefs.setBool('sync_job_status_$id', false);
-      _startSyncStatusPolling();
-      _setSyncing(true);
-      
-      await Workmanager().registerOneOffTask("sync", "sync-task", inputData: {'full': full, 'id': id});
+    return await _syncLock.synchronized(() async {
+      if (Util.isDesktop()) {
+        _setSyncing(true);
+        sync(full: full).whenComplete(() => _setSyncing(false));
+        return true;
+      } else  {
+        final prefs = await SharedPreferences.getInstance();
+        final allKeys = prefs.getKeys();
+        final syncStatusKeys = allKeys.where((key) => key.startsWith('sync_job_status_'));
+        
+        for (final key in syncStatusKeys) {
+          await prefs.remove(key);
+        }
+        final id = Uuid().v4();
+        _latestSyncJobId = id;
+        _lastKnownSyncStatus = false;
+        await prefs.setBool('sync_job_status_$id', false);
+        _startSyncStatusPolling();
+        _setSyncing(true);
+        
+        print("queuing up sync: $id");
+        await Workmanager().registerOneOffTask("sync", "sync-task", inputData: {'full': full, 'id': id});
 
-      return true;
-    }
+        return true;
+      }
+    });
   }
   Future<bool> sync({bool full = false, String? id, bool manual = false}) async {
     print("syncing...");
@@ -609,21 +614,17 @@ class SyncService {
       return false;
     }
 
-    SyncResult? result;
-    await _syncLock.synchronized(() async {
-      _setSyncing(true);
-      final stopwatch = Stopwatch();
-      stopwatch.start();
-      result = await _sync(full: full);
-      print('sync took ${stopwatch.elapsedMilliseconds}ms');
-    });
+    _setSyncing(true);
+    final stopwatch = Stopwatch();
+    stopwatch.start();
+    final result = await _sync(full: full);
+    print('sync took ${stopwatch.elapsedMilliseconds}ms');
   
     final success = result != null;
     print("finished syncing - success = $success");
 
     if (id != null) {
       final key = 'sync_job_status_$id';
-      print("setting sync key $key to true");
       await SharedPreferencesAsync().setBool(key, true);
     }
 
@@ -707,6 +708,8 @@ class SyncService {
 
         madeRemoteChange = madeChange as bool || madeRemoteChange;
       });
+      
+      print("pull: $madeRemoteChange");
 
       final results = await Future.wait([
         _pushDevices(db, full ? null : lastPulledAt, pulledAt, currDevice.id),
@@ -719,10 +722,6 @@ class SyncService {
         if (result.changed) madeRemoteChange = true;
       }
 
-      if (madeRemoteChange) {
-        print("made remote change");
-        _notifyPeers();
-      }
       await db.clearChangesSince(pulledAt);
       {
         final remoteDevices = (await _client
@@ -746,10 +745,17 @@ class SyncService {
           ]);
         }
       }
+      
+      print("push: $madeRemoteChange");
+
+      if (madeRemoteChange) {
+        print("made remote change");
+        _notifyPeers();
+      }
 
       return SyncResult();
     } catch (e, st) {
-      print("error syncing: $e");
+      print("error syncing: $e $st");
       Util.report('error syncing', e, st);
       return null;
     }
