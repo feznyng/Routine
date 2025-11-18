@@ -408,7 +408,7 @@ class SyncService {
           .eq('id', currDeviceId);
     }
 
-    return (changed: localDevices.where((d) => d.id != currDeviceId).isNotEmpty, conflict: false);
+    return (changed: localDevices.isNotEmpty, conflict: false);
   }
 
   Future<({bool changed, bool conflict})> _pushGroups(
@@ -746,8 +746,6 @@ class SyncService {
         }
       }
       
-      print("push: $madeRemoteChange");
-
       if (madeRemoteChange) {
         print("made remote change");
         _notifyPeers();
