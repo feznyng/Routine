@@ -20,6 +20,8 @@ class MobileService extends PlatformService {
   StreamSubscription? _routineSubscription;
   StreamSubscription? _strictModeSubscription;
   
+  bool _suppressNextResumeRefresh = false;
+  
   @override
   Future<void> init() async {
     await MobileService.instance.getBlockPermissions();
@@ -66,6 +68,18 @@ class MobileService extends PlatformService {
   }
   
   static MobileService get instance => _instance;
+  
+  void suppressNextResumeRefreshOnce() {
+    _suppressNextResumeRefresh = true;
+  }
+
+  bool consumeSuppressNextResumeRefreshOnce() {
+    if (_suppressNextResumeRefresh) {
+      _suppressNextResumeRefresh = false;
+      return true;
+    }
+    return false;
+  }
   
   Future<bool> getBlockPermissions({bool request = false}) async {
     if (Platform.isIOS) {

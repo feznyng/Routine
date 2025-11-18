@@ -1,6 +1,7 @@
 import 'dart:collection';
 
 import 'package:Routine/util.dart';
+import 'package:Routine/services/mobile_service.dart';
 import 'package:Routine/widgets/routine_page/condition_type_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -226,6 +227,9 @@ class RoutineConditionsList extends StatelessWidget {
       );
       return;
     }
+
+    final mobileService = MobileService.instance;
+    mobileService.suppressNextResumeRefreshOnce();
 
     try {
       NfcAvailability isAvailable = await NfcManager.instance.checkAvailability();

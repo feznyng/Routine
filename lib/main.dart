@@ -180,6 +180,11 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      if (_platService is MobileService &&
+          _platService.consumeSuppressNextResumeRefreshOnce()) {
+        return;
+      }
+
       print("app resumed");
       AuthService().refreshSessionIfNeeded().then((_) {
         _platService.resume();
