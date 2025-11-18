@@ -155,6 +155,8 @@ class Routine implements Syncable {
       changes.add('new');
     }
 
+    print('saving routine');
+
     await getIt<AppDatabase>().upsertRoutine(RoutinesCompanion(
         id: Value(_id), 
         name: Value(_name),

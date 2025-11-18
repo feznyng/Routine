@@ -180,8 +180,9 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      print("app resumed");
       AuthService().refreshSessionIfNeeded().then((_) {
-        _platService.refresh();
+        _platService.resume();
       });
     }
   }

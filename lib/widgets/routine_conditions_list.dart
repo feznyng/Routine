@@ -228,8 +228,8 @@ class RoutineConditionsList extends StatelessWidget {
     }
 
     try {
-      bool isAvailable = await NfcManager.instance.isAvailable();
-      if (!isAvailable) {
+      NfcAvailability isAvailable = await NfcManager.instance.checkAvailability();
+      if (isAvailable != NfcAvailability.enabled) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('NFC is not available on this device')),
@@ -241,7 +241,6 @@ class RoutineConditionsList extends StatelessWidget {
         try {
           String? tagData;
           
-
           final Ndef? ndef = Ndef.from(tag);
           if (ndef != null) {
             final cachedMessage = ndef.cachedMessage;
@@ -286,22 +285,24 @@ class RoutineConditionsList extends StatelessWidget {
               );
             }
           }
-        } catch (e) {
+        } catch (e, st) {
           if (context.mounted) {
+            Util.report("conditions nfc", e, st);
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error reading NFC tag: $e')),
+              SnackBar(content: Text('Error reading NFC tag')),
             );
           }
-        } finally {
-          NfcManager.instance.stopSession();
         }
       });
-    } catch (e) {
+    } catch (e, st) {
       if (context.mounted) {
+        Util.report("conditions nfc", e, st);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error accessing NFC: $e')),
+          SnackBar(content: Text('Error accessing NFC')),
         );
       }
+    } finally {
+      NfcManager.instance.stopSession();
     }
   }
 
