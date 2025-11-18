@@ -143,19 +143,24 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          if (_isSyncing) ...[
-                            SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: const CircularProgressIndicator(strokeWidth: 2),
+                          Opacity(
+                            opacity: _isSyncing ? 1 : 0,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: const CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Syncing…',
+                                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Syncing…',
-                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                            ),
-                          ] else
-                            const SizedBox(height: 16),
+                          ),
                         ],
                       ),
                     ),

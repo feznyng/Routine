@@ -635,7 +635,7 @@ class SyncService {
   void _startSyncStatusPolling() {
     _stopSyncStatusPolling();
     _lastKnownSyncStatus = false;
-    _syncStatusPollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
+    _syncStatusPollingTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) async {
       await _checkSyncStatusChanges();
     });
   }
@@ -667,7 +667,6 @@ class SyncService {
       _lastKnownSyncStatus = currentStatus;
       
     } catch (e, st) {
-      logger.e("Error checking sync status changes: $e");
       Util.report('error checking sync status changes', e, st);
     }
   }
