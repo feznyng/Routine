@@ -186,7 +186,7 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                           onRoutineUpdated: () => setState(() {}),
                         )),
                     ],
-                    if (_activeRoutinesExpanded || _completedRoutinesExpanded)
+                    if (activeRoutines.isNotEmpty && completedRoutines.isNotEmpty && (_activeRoutinesExpanded || _completedRoutinesExpanded))
                       const SizedBox(height: 24),
                     if (completedRoutines.isNotEmpty) ...[  
                       _buildSectionHeader(
@@ -201,7 +201,7 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                           onRoutineUpdated: () => setState(() {}),
                         )),
                     ],
-                    if (_completedRoutinesExpanded || _inactiveRoutinesExpanded)
+                    if (completedRoutines.isNotEmpty && inactiveRoutines.isNotEmpty && (_completedRoutinesExpanded || _inactiveRoutinesExpanded))
                       const SizedBox(height: 24),
                     if (inactiveRoutines.isNotEmpty) ...[
                       _buildSectionHeader(
