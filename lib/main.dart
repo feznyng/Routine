@@ -185,7 +185,7 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
         return;
       }
 
-      print("app resumed");
+      logger.i("app resumed");
       AuthService().refreshSessionIfNeeded().then((_) {
         _platService.resume();
       });

@@ -174,7 +174,7 @@ class SyncService {
         || event.endedAt != remoteEventMap[event.id]?.endedAt;
     }
 
-    print("emergency events: $madeRemoteChange");
+    logger.i("emergency events: $madeRemoteChange");
     
     await StrictModeService().updateEmergencyEvents(mergedEvents);
     await _client.from('users').update({
@@ -377,7 +377,7 @@ class SyncService {
   ) async {
     final localDevices = await db.getDeviceChanges(since);
     if (await _checkRemoteConflicts('devices', localDevices.map((d) => d.id), pulledAt)) {
-      print("device conflict detected - cancelling sync");
+      logger.i("device conflict detected - cancelling sync");
       return (changed: false, conflict: true);
     }
 
@@ -418,7 +418,7 @@ class SyncService {
   ) async {
     final localGroups = await db.getGroupChanges(since);
     if (await _checkRemoteConflicts('groups', localGroups.map((g) => g.id), pulledAt)) {
-      print("group conflict detected - cancelling sync");
+      logger.i("group conflict detected - cancelling sync");
       return (changed: false, conflict: true);
     }
 
@@ -451,11 +451,11 @@ class SyncService {
   ) async {
     final localRoutines = await db.getRoutineChanges(since);
     if (await _checkRemoteConflicts('routines', localRoutines.map((r) => r.id), pulledAt)) {
-      print("routine conflict detected - cancelling sync");
+      logger.i("routine conflict detected - cancelling sync");
       return (changed: false, conflict: true);
     }
 
-    print("pushing routines $localRoutines");
+    logger.i("pushing routines $localRoutines");
     final futures = <Future<void>>[];
     for (final routine in localRoutines) {
       futures.add(_client
@@ -510,14 +510,14 @@ class SyncService {
         .onBroadcast( 
           event: 'sync', 
           callback: (payload, [_]) async {
-            print('received remote sync request from ${payload['source']}');
+            logger.i('received remote sync request from ${payload['source']}');
             await queueSync();
           }
         )
         .onBroadcast(
           event: 'sign-out', 
           callback: (payload, [_]) {
-            print('received remote sign out event');
+            logger.i('received remote sign out event');
             AuthService().signOut(forced: true);
           }
         )
@@ -547,7 +547,7 @@ class SyncService {
   Future<void> _notifyPeers() async {
     final currDevice = await Device.getCurrent();
 
-    print("notifying peers");
+    logger.i("notifying peers");
 
     await _sendRealtimeMessage('sync');
 
@@ -570,7 +570,7 @@ class SyncService {
   }
   Future<bool> queueSync({bool full = false, bool manual = false}) async {
     if (userId.isEmpty) {
-      print("can't sync - user is not signed in");
+      logger.i("can't sync - user is not signed in");
       if (manual) {
         _syncStatusController.add(SyncStatus.notSignedIn);
       }
@@ -597,7 +597,7 @@ class SyncService {
         _startSyncStatusPolling();
         _setSyncing(true);
         
-        print("queuing up sync: $id");
+        logger.i("queuing up sync: $id");
         await Workmanager().registerOneOffTask("sync", "sync-task", inputData: {'full': full, 'id': id});
 
         return true;
@@ -605,10 +605,10 @@ class SyncService {
     });
   }
   Future<bool> sync({bool full = false, String? id, bool manual = false}) async {
-    print("syncing...");
+    logger.i("syncing...");
 
     if (userId.isEmpty) {
-      print("can't sync - user is not signed in");
+      logger.i("can't sync - user is not signed in");
       if (manual) {
         _syncStatusController.add(SyncStatus.notSignedIn);
       }
@@ -619,10 +619,10 @@ class SyncService {
     final stopwatch = Stopwatch();
     stopwatch.start();
     final result = await _sync(full: full);
-    print('sync took ${stopwatch.elapsedMilliseconds}ms');
+    logger.i('sync took ${stopwatch.elapsedMilliseconds}ms');
   
     final success = result != null;
-    print("finished syncing - success = $success");
+    logger.i("finished syncing - success = $success");
 
     if (id != null) {
       final key = 'sync_job_status_$id';
@@ -675,7 +675,7 @@ class SyncService {
   Future<SyncResult?> _sync({bool full = false}) async {
     try {
       if (userId.isEmpty) {
-        print("can't sync - user is not signed in");
+        logger.i("can't sync - user is not signed in");
         return null;
       }
       
@@ -710,7 +710,7 @@ class SyncService {
         madeRemoteChange = madeChange as bool || madeRemoteChange;
       });
       
-      print("pull: $madeRemoteChange");
+      logger.i("pull: $madeRemoteChange");
 
       final results = await Future.wait([
         _pushDevices(db, full ? null : lastPulledAt, pulledAt, currDevice.id),
@@ -718,11 +718,11 @@ class SyncService {
         _pushRoutines(db, full ? null : lastPulledAt, pulledAt),
       ]);
 
-      print('push: $results');
+      logger.i('push: $results');
 
       for (final result in results) {
         if (result.conflict) {
-          print("conflict");
+          logger.i("conflict");
           return null;
         }
         if (result.changed) madeRemoteChange = true;
@@ -754,13 +754,13 @@ class SyncService {
       }
       
       if (madeRemoteChange) {
-        print("made remote change");
+        logger.i("made remote change");
         await _notifyPeers();
       }
 
       return SyncResult();
     } catch (e, st) {
-      print("error syncing: $e $st");
+      logger.i("error syncing: $e $st");
       Util.report('error syncing', e, st);
       return null;
     }

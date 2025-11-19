@@ -164,7 +164,6 @@ class DesktopService extends PlatformService {
     );
   }
   Future<void> updateBlockedSites() async {
-    logger.i("updateBlockedSites");
     await BrowserService.instance.sendToBrowser('updateBlockedSites', {
       'sites': _cachedSites,
       'allowList': _isAllowList,

@@ -1,6 +1,7 @@
 import 'package:Routine/models/device.dart';
 import 'package:Routine/services/mobile_service.dart';
 import 'package:Routine/services/sync_service.dart';
+import 'package:Routine/setup.dart';
 import 'package:Routine/util.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -10,8 +11,8 @@ import 'package:firebase_core/firebase_core.dart';
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await MobileService().stopWatching();
-  print("background message handler sync");
-  await SyncService().queueSync();
+  logger.i("background message handler sync");
+  await SyncService().sync();
   await MobileService().updateRoutines(immediate: true);
 }
 

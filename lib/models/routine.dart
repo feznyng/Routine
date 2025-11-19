@@ -155,7 +155,7 @@ class Routine implements Syncable {
       changes.add('new');
     }
 
-    print('saving routine');
+    logger.i('saving routine');
 
     _entry = await getIt<AppDatabase>().upsertRoutine(RoutinesCompanion(
         id: Value(_id), 
@@ -304,7 +304,7 @@ class Routine implements Syncable {
       changes.add('snoozedUntil');
     }
 
-    print("snoozedUntil: $_snoozedUntil | ${_entry!.snoozedUntil}");
+    logger.i("snoozedUntil: $_snoozedUntil | ${_entry!.snoozedUntil}");
 
     if (_entry!.maxBreaks != maxBreaks) {
       changes.add('maxBreaks');

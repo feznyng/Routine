@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:Routine/constants.dart';
+import 'package:Routine/setup.dart';
 import 'package:Routine/util.dart';
 import 'package:cron/cron.dart';
 import 'package:flutter/material.dart';
@@ -131,7 +132,7 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                   ? _buildEmptyState(context)
                   : RefreshIndicator(
                 onRefresh: () async {
-                  print("routine list sync");
+                  logger.i("routine list sync");
                   _syncService.queueSync(full: true, manual: true);
                 },
                 child: ListView(

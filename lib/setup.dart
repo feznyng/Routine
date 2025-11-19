@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:Routine/desktop_logger.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:Routine/services/auth_service.dart';
@@ -21,21 +22,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 final getIt = GetIt.instance; 
 
 final logger = Logger(
-  printer: SimplePrinter(
-      colors: false,
-  ),
+  printer: Util.isDesktop() ? DesktopLogger() : SimplePrinter(colors: false),
 );
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     final isolateId = Isolate.current.hashCode.toString();
-    print('[$isolateId] bg - task: $task with input $inputData');
+    logger.i('[$isolateId] bg - task: $task with input $inputData');
     
     bool success = false;
   
     try {
-      print('[$isolateId] bg - attempting sync');
+      logger.i('[$isolateId] bg - attempting sync');
       await dotenv.load(fileName: '.env');
       await AuthService().init(simple: true);
       final db = AppDatabase();
@@ -70,7 +69,7 @@ void callbackDispatcher() {
         }
         
         if ((currentTime - startWaitTime) > maxWaitTimeMs) {
-          print('[$isolateId] bg - waited too long for sync lock, proceeding anyway');
+          logger.i('[$isolateId] bg - waited too long for sync lock, proceeding anyway');
           break;
         }
         
@@ -85,19 +84,19 @@ void callbackDispatcher() {
         final syncService = SyncService();
         success = await syncService.sync(full: inputData['full'], id: inputData['id']);
         syncService.dispose();
-        print('[$isolateId] bg - sync completed with result: $success');
+        logger.i('[$isolateId] bg - sync completed with result: $success');
       } finally {
         await prefs.setBool(syncLockKey, false);
         await prefs.remove(syncLockTimestampKey);
       }
     } catch (e) {
-      print('[$isolateId] bg - failed to complete sync due to $e');
+      logger.i('[$isolateId] bg - failed to complete sync due to $e');
       try {
         final prefs = SharedPreferencesAsync();
         await prefs.setBool('sync_in_progress', false);
         await prefs.remove('sync_lock_timestamp');
       } catch (lockError) {
-        print('[$isolateId] bg - failed to release sync lock: $lockError');
+        logger.i('[$isolateId] bg - failed to release sync lock: $lockError');
       }
     }
 
@@ -158,5 +157,5 @@ Future<void> setup() async {
     }
   }
 
-  print("startup in ${stopwatch.elapsed}ms");
+  logger.i("startup in ${stopwatch.elapsed}ms");
 }
