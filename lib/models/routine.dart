@@ -157,7 +157,7 @@ class Routine implements Syncable {
 
     print('saving routine');
 
-    await getIt<AppDatabase>().upsertRoutine(RoutinesCompanion(
+    _entry = await getIt<AppDatabase>().upsertRoutine(RoutinesCompanion(
         id: Value(_id), 
         name: Value(_name),
         monday: Value(_days[0]), 
@@ -300,9 +300,11 @@ class Routine implements Syncable {
       changes.add('pausedUntil');
     }
 
-      if (_entry!.snoozedUntil != _snoozedUntil) {
+    if (_entry!.snoozedUntil != _snoozedUntil) {
       changes.add('snoozedUntil');
     }
+
+    print("snoozedUntil: $_snoozedUntil | ${_entry!.snoozedUntil}");
 
     if (_entry!.maxBreaks != maxBreaks) {
       changes.add('maxBreaks');

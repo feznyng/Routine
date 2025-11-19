@@ -455,6 +455,7 @@ class SyncService {
       return (changed: false, conflict: true);
     }
 
+    print("pushing routines $localRoutines");
     final futures = <Future<void>>[];
     for (final routine in localRoutines) {
       futures.add(_client
@@ -717,10 +718,16 @@ class SyncService {
         _pushRoutines(db, full ? null : lastPulledAt, pulledAt),
       ]);
 
+      print('push: $results');
+
       for (final result in results) {
-        if (result.conflict) return null;
+        if (result.conflict) {
+          print("conflict");
+          return null;
+        }
         if (result.changed) madeRemoteChange = true;
       }
+
 
       await db.clearChangesSince(pulledAt);
       {
@@ -748,7 +755,7 @@ class SyncService {
       
       if (madeRemoteChange) {
         print("made remote change");
-        _notifyPeers();
+        await _notifyPeers();
       }
 
       return SyncResult();

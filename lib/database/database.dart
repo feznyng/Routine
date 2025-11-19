@@ -129,6 +129,10 @@ class AppDatabase extends _$AppDatabase {
     return (select(routines)..where((t) => t.id.isIn(ids))).get();
   }
 
+  Future<RoutineEntry?> getRoutineById(String id) {
+    return (select(routines)..where((t) => t.id.equals(id))).getSingleOrNull();
+  }
+
   Future<DateTime?> getLastPulledAt() async {
     final entry = await (select(devices)..where((t) => t.curr.equals(true))).getSingleOrNull();
     return entry?.lastPulledAt;
@@ -207,7 +211,7 @@ class AppDatabase extends _$AppDatabase {
     return (select(groups)..where((t) => t.device.equals(deviceId) & t.name.isNotNull() & t.deleted.equals(false))).watch();
   }
 
-  Future<void> upsertRoutine(RoutinesCompanion routine) {
+  Future<RoutineEntry?> upsertRoutine(RoutinesCompanion routine) {
     return transaction(() async {
       final existingEntry = await (select(routines)..where((t) => t.id.equals(routine.id.value))).getSingleOrNull();
       if (existingEntry == null) {
@@ -221,6 +225,8 @@ class AppDatabase extends _$AppDatabase {
         await (update(groups)..where((t) => t.id.isIn(deleteIds))).write(GroupsCompanion(deleted: Value(true), updatedAt: Value(DateTime.now())));
 
         await (update(routines)..where((t) => t.id.equals(routine.id.value))).write(routine);
+
+        return await getRoutineById(routine.id.value);
       }
     });
   }
