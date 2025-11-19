@@ -241,6 +241,8 @@ class RoutineConditionsList extends StatelessWidget {
         }
         return;
       }
+
+      await NfcManager.instance.stopSession();
       await NfcManager.instance.startSession(pollingOptions: HashSet.of(NfcPollingOption.values), onDiscovered: (NfcTag tag) async {
         try {
           String? tagData;
@@ -296,7 +298,11 @@ class RoutineConditionsList extends StatelessWidget {
               SnackBar(content: Text('Error reading NFC tag')),
             );
           }
+        } finally {
+          NfcManager.instance.stopSession();
         }
+      }, invalidateAfterFirstReadIos: true, onSessionErrorIos: (err) {
+        NfcManager.instance.stopSession();
       });
     } catch (e, st) {
       if (context.mounted) {
@@ -305,8 +311,6 @@ class RoutineConditionsList extends StatelessWidget {
           SnackBar(content: Text('Error accessing NFC')),
         );
       }
-    } finally {
-      NfcManager.instance.stopSession();
     }
   }
 
