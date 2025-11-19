@@ -1,16 +1,12 @@
-import 'dart:collection';
-
 import 'package:Routine/util.dart';
 import 'package:Routine/services/mobile_service.dart';
 import 'package:Routine/widgets/routine_page/condition_type_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:nfc_manager/ndef_record.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import '../models/routine.dart';
 import '../models/condition.dart';
 import '../pages/qr_scanner_page.dart';
-import 'package:nfc_manager_ndef/nfc_manager_ndef.dart';
 
 class RoutineConditionsList extends StatelessWidget {
   final Routine routine;
@@ -242,30 +238,8 @@ class RoutineConditionsList extends StatelessWidget {
         return;
       }
 
-      await NfcManager.instance.stopSession();
-      await NfcManager.instance.startSession(pollingOptions: HashSet.of(NfcPollingOption.values), onDiscovered: (NfcTag tag) async {
-        try {
-          String? tagData;
-          
-          final Ndef? ndef = Ndef.from(tag);
-          if (ndef != null) {
-            final cachedMessage = ndef.cachedMessage;
-            if (cachedMessage != null) {
-              for (final record in cachedMessage.records) {
-                if (record.typeNameFormat == TypeNameFormat.wellKnown && 
-                    record.type.length == 1 && 
-                    record.type[0] == 0x54) { // 'T' for text record
-                  final payload = record.payload;
-                  if (payload.length > 1) {
-                    final languageCodeLength = payload[0] & 0x3F;
-                    final textBytes = payload.sublist(1 + languageCodeLength);
-                    tagData = String.fromCharCodes(textBytes);
-                    break;
-                  }
-                }
-              }
-            }
-          }
+      Util.readNfcTag((String? tagData) async {
+        try {          
           if (tagData != null) {
             if (tagData == condition.data) {
               await routine.completeCondition(condition);
@@ -277,19 +251,15 @@ class RoutineConditionsList extends StatelessWidget {
                   const SnackBar(content: Text('NFC tag verified! Condition completed.')),
                 );
               }
-            } else {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Invalid NFC tag. Please try scanning again.')),
-                );
-              }
-            }
-          } else {
-            if (context.mounted) {
+            } else  if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('No data found on this NFC tag. Please try scanning again.')),
+                const SnackBar(content: Text('Invalid NFC tag. Please try scanning again.')),
               );
             }
+          } else if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('No data found on this NFC tag. Please try scanning again.')),
+            );
           }
         } catch (e, st) {
           if (context.mounted) {
@@ -298,11 +268,7 @@ class RoutineConditionsList extends StatelessWidget {
               SnackBar(content: Text('Error reading NFC tag')),
             );
           }
-        } finally {
-          NfcManager.instance.stopSession();
         }
-      }, invalidateAfterFirstReadIos: true, onSessionErrorIos: (err) {
-        NfcManager.instance.stopSession();
       });
     } catch (e, st) {
       if (context.mounted) {

@@ -1,9 +1,14 @@
+import 'dart:collection';
 import 'dart:io';
 
 import 'package:Routine/models/routine.dart';
 import 'package:Routine/setup.dart';
 import 'package:cron/cron.dart';
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:nfc_manager/ndef_record.dart';
+import 'package:nfc_manager/nfc_manager.dart';
+import 'package:nfc_manager_ndef/nfc_manager_ndef.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 class Util {
@@ -139,6 +144,65 @@ class Util {
       e,
       stackTrace: st,
       hint: hint
+    );
+  }
+
+  static Future<void> writeNfcTag(String data, void Function(bool success) onWrite) async {
+    await NfcManager.instance.stopSession();
+    await NfcManager.instance.startSession(
+      pollingOptions: HashSet.of(NfcPollingOption.values), 
+      onDiscovered: (NfcTag tag) async {
+        try {
+          final ndef = Ndef.from(tag);
+          if (ndef != null && ndef.isWritable) {
+            final message = NdefMessage(records: [
+              NdefRecord(typeNameFormat: TypeNameFormat.wellKnown, type: Uint8List.fromList([0x54]), identifier: Uint8List.fromList(data.codeUnits), payload: Uint8List.fromList(data.codeUnits)),
+            ]);
+            await ndef.write(message: message);
+            onWrite(true);
+          }
+        } catch (e) {
+          onWrite(false);
+        } finally {
+          NfcManager.instance.stopSession();
+        }
+      },
+      invalidateAfterFirstReadIos: true, 
+      onSessionErrorIos: (err) => NfcManager.instance.stopSession()
+    );
+  }
+
+  static Future<void> readNfcTag(void Function(String tag) onDiscovered) async {
+    await NfcManager.instance.stopSession();
+    await NfcManager.instance.startSession(
+      pollingOptions: HashSet.of(NfcPollingOption.values), 
+      onDiscovered: (NfcTag tag) async {
+        try {
+          final Ndef? ndef = Ndef.from(tag);
+          if (ndef != null) {
+            final cachedMessage = ndef.cachedMessage;
+            if (cachedMessage != null) {
+              for (final record in cachedMessage.records) {
+                if (record.typeNameFormat == TypeNameFormat.wellKnown && 
+                    record.type.length == 1 && 
+                    record.type[0] == 0x54) { // 'T' for text record
+                  final payload = record.payload;
+                  if (payload.length > 1) {
+                    final languageCodeLength = payload[0] & 0x3F;
+                    final textBytes = payload.sublist(1 + languageCodeLength);
+                    onDiscovered(String.fromCharCodes(textBytes));
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        } finally {
+          NfcManager.instance.stopSession();
+        }
+      },
+      invalidateAfterFirstReadIos: true, 
+      onSessionErrorIos: (err) => NfcManager.instance.stopSession()
     );
   }
 }

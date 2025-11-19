@@ -1,9 +1,5 @@
-import 'dart:collection';
-import 'dart:typed_data';
-
+import 'package:Routine/util.dart';
 import 'package:flutter/material.dart';
-import 'package:nfc_manager/ndef_record.dart';
-import 'package:nfc_manager_ndef/nfc_manager_ndef.dart';
 import '../../models/routine.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:file_selector/file_selector.dart';
@@ -258,45 +254,24 @@ class BreakConfigSection extends StatelessWidget {
                               }
                               return;
                             }
-                            NfcManager.instance.startSession(pollingOptions: HashSet.of(NfcPollingOption.values), onDiscovered: (NfcTag tag) async {
-                              try {
-                                bool writeSuccess = false;
-                                final ndef = Ndef.from(tag);
-                                if (ndef != null && ndef.isWritable) {
-                                  final message = NdefMessage(records: [
-                                    NdefRecord(typeNameFormat: TypeNameFormat.wellKnown, type: Uint8List.fromList([0x54]), identifier: Uint8List.fromList(routine.id.codeUnits), payload: Uint8List.fromList(routine.id.codeUnits)),
-                                  ]);
-                                  await ndef.write(message: message);
-                                  writeSuccess = true;
-                                }
 
-                                if (writeSuccess) {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Successfully scanned NFC tag ✓'),
-                                      ),
-                                    );
-                                  }
-                                } else {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Failed to scan NFC Tag ✗'),
-                                      ),
-                                    );
-                                  }
-                                }
-                              } catch (e) {
+                            Util.writeNfcTag(routine.id, (bool success) {
+                              if (success) {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Error scanning NFC tag: $e'),
+                                    const SnackBar(
+                                      content: Text('Successfully scanned NFC tag ✓'),
                                     ),
                                   );
                                 }
-                              } finally {
-                                NfcManager.instance.stopSession();
+                              } else {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Failed to scan NFC Tag ✗'),
+                                    ),
+                                  );
+                                }
                               }
                             });
                           } catch (e) {

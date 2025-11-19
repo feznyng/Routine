@@ -1,12 +1,8 @@
-import 'dart:collection';
-import 'dart:typed_data';
-
+import 'package:Routine/util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:nfc_manager/ndef_record.dart';
 import 'dart:io' show Platform;
 import 'package:nfc_manager/nfc_manager.dart';
-import 'package:nfc_manager_ndef/nfc_manager_ndef.dart';
 import '../../../models/condition.dart';
 import '../../common/mobile_required_callout.dart';
 
@@ -99,34 +95,24 @@ class _NfcConditionWidgetState extends State<NfcConditionWidget> {
                       }
                       return;
                     }
-                    NfcManager.instance.startSession(pollingOptions: HashSet.of(NfcPollingOption.values), onDiscovered: (NfcTag tag) async {
-                      try {
-                        bool writeSuccess = false;
-                        final ndef = Ndef.from(tag);
-                        if (ndef != null && ndef.isWritable) {
-                          final message = NdefMessage(records: [
-                            NdefRecord(typeNameFormat: TypeNameFormat.wellKnown, type: Uint8List.fromList([0x54]), identifier: Uint8List.fromList(widget.condition.data.codeUnits), payload: Uint8List.fromList(widget.condition.data.codeUnits)),
-                          ]);
-                          
-                          await ndef.write(message: message);
-                          writeSuccess = true;
-                        }
 
+                    Util.writeNfcTag(widget.condition.data, (bool success) {
+                      if (success) {
                         if (context.mounted) {
-                          widget.onStatusMessage(
-                            writeSuccess 
-                              ? 'NFC tag successfully scanned' 
-                              : 'NFC tag scanned but could not write data. Please try another tag.',
-                            isSuccess: writeSuccess,
-                            isError: !writeSuccess
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Successfully scanned NFC tag ✓'),
+                            ),
                           );
                         }
-                      } catch (e) {
+                      } else {
                         if (context.mounted) {
-                          widget.onStatusMessage('Error processing NFC tag: $e', isError: true);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Failed to scan NFC Tag ✗'),
+                            ),
+                          );
                         }
-                      } finally {
-                        NfcManager.instance.stopSession();
                       }
                     });
                   } catch (e) {

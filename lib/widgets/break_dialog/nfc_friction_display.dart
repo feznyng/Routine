@@ -1,9 +1,7 @@
-import 'dart:collection';
-
+import 'package:Routine/util.dart';
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
 import 'package:nfc_manager/nfc_manager.dart';
-import 'package:nfc_manager_ndef/nfc_manager_ndef.dart';
 import '../../models/routine.dart';
 
 
@@ -92,28 +90,17 @@ class NfcFrictionDisplay extends StatelessWidget {
                       }
                       return;
                     }
-                    NfcManager.instance.startSession(pollingOptions: HashSet.of(NfcPollingOption.values), onDiscovered: (NfcTag tag) async {
-                      try {
-                        final ndef = Ndef.from(tag);
-                        if (ndef != null) {
-                          final message = await ndef.read();
-                          if (message != null) {
-                            final record = message.records.first;
-                            final payload = String.fromCharCodes(record.payload).substring(3); // Skip language code
-                            
-                            if (payload == routine.id) {
-                              onCanConfirmChanged(true);
-                              onScanFeedbackChanged('NFC tag verified ✓');
-                            } else {
-                              onScanFeedbackChanged('Invalid NFC tag ✗');
-                            }
-                          }
-                        }
 
-                      } catch (e) {
-                        onScanFeedbackChanged('Error reading NFC tag: $e');
-                      } finally {
-                        NfcManager.instance.stopSession();
+                    Util.readNfcTag((String? tagData) async {
+                      if (tagData != null) {
+                        if (tagData == routine.id) {
+                          onCanConfirmChanged(true);
+                          onScanFeedbackChanged('NFC tag verified ✓');
+                        } else {
+                          onScanFeedbackChanged('Invalid NFC tag ✗');
+                        }
+                      } else {
+                        onScanFeedbackChanged('No data found on this NFC tag. Please try scanning again.');
                       }
                     });
                   } catch (e) {
