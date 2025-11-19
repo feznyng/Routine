@@ -398,8 +398,10 @@ class _RoutinePageState extends State<RoutinePage> with WidgetsBindingObserver {
                       } else {
                         final DateTime now = DateTime.now();
                         final nextActiveTime = _routine.nextActiveTime;
+                        final endHour = _routine.allDay ? 0 : _routine.endHour;
+                        final endMinute = _routine.allDay ? 0 : _routine.endMinute;
                         
-                        DateTime initialDate = (nextActiveTime.day != now.day || _routine.overnight) ? 
+                        DateTime initialDate = (nextActiveTime.day != now.day || _routine.overnight || _routine.allDay) ? 
                           now.add(const Duration(days: 1)) : now;
 
                         final DateTime? selectedDate = await showDatePicker(
@@ -410,9 +412,11 @@ class _RoutinePageState extends State<RoutinePage> with WidgetsBindingObserver {
                         );
                         
                         if (selectedDate != null) {
+                          logger.i('selected date: $endHour $endMinute ${_routine.endTime}');
+
                           final TimeOfDay? selectedTime = await showTimePicker(
                             context: context,
-                            initialTime: TimeOfDay(hour: _routine.endHour, minute: _routine.endMinute),
+                            initialTime: TimeOfDay(hour: endHour, minute: endMinute),
                           );
                           
                           if (selectedTime != null) {
