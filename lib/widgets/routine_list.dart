@@ -150,14 +150,17 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: const CircularProgressIndicator(strokeWidth: 2),
+                                  width: 12,
+                                  height: 12,
+                                  child: const CircularProgressIndicator(strokeWidth: 1.5),
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 6),
                                 Text(
                                   'Syncing…',
-                                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.onSurface,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ],
                             ),
