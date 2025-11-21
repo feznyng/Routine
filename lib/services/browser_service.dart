@@ -12,7 +12,6 @@ import 'dart:io' show Directory, File, Platform, Process, ServerSocket, Internet
 import 'dart:typed_data' show ByteData, Uint8List;
 import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
-import 'package:path/path.dart' as p;
 import 'package:win32/win32.dart';
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
@@ -393,7 +392,7 @@ class BrowserService with ChangeNotifier {
           .replaceAll('/MacOS/Routine', '/Frameworks/App.framework/Resources/flutter_assets/assets/extension');
     } else {
       final exePath = Platform.resolvedExecutable;
-      final exeDir = exePath.substring(0, exePath.lastIndexOf('/'));
+      final exeDir = exePath.substring(0, exePath.lastIndexOf('\\'));
       return '$exeDir/data/flutter_assets/assets/extension';
     }
   }
@@ -410,6 +409,7 @@ class BrowserService with ChangeNotifier {
       for (int port = 54320; port <= 54330; port++) {
         try {
           server = await ServerSocket.bind(InternetAddress.loopbackIPv4, port);
+          logger.i("set up a server listening at $port");
           boundPort = port;
           break;
         } catch (e) {
@@ -422,11 +422,6 @@ class BrowserService with ChangeNotifier {
       }
       
       _server = server;
-      final supportDir = await getApplicationSupportDirectory();
-      await supportDir.create(recursive: true);
-      
-      final portFile = File(p.join(supportDir.path, 'routine_server_port'));
-      await portFile.writeAsString(boundPort.toString());
       
       _server!.listen((socket) {
         logger.i('NMH connected from ${socket.remoteAddress.address}');

@@ -1,51 +1,27 @@
 import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:path/path.dart' as p;
 
 const int maxMessageSize = 1024 * 1024;
 
-Future<String> getAppDataDir() async {
-  if (Platform.isWindows) {
-    return p.join('C:', 'Program Files', 'Routine');
-  } else {
-    final home = Platform.environment['HOME'];
-    if (home == null) {
-      stderr.writeln('HOME environment variable not set');
-      exit(1);
+Future<Socket?> getRoutineSocket() async {
+  for (int port = 54320; port <= 54330; port++) {
+    try {
+      stderr.writeln('Attempting to connect via $port');
+      return await Socket.connect(InternetAddress.loopbackIPv4, port);
+    } catch (e) {
+      stderr.writeln('Failed to connect to Routine app via port $port: $e');
     }
-    return p.join(
-      home,
-      'Library/Containers/com.solidsoft.routine/Data/Library/Application Support/com.solidsoft.routine'
-    );
   }
+
+  return null;
 }
 
-Future<int> getRoutineAppPort(List<String> args) async {
-  try {
-    final appDataDir = await getAppDataDir();
-    final portFile = File(p.join(appDataDir, 'routine_server_port'));
-    
-    if (!await portFile.exists()) {
-      return 54320;
-    }
+void main(List<String> args) async {  
+  Socket? routineSocket = await getRoutineSocket();
 
-    final port = int.parse((await portFile.readAsString()).trim());
-    return port;
-  } catch (e) {
-    stderr.writeln('Failed to get Routine app port: $e');
-    exit(1);
-  }
-}
-
-void main(List<String> args) async {
-  final routineAppPort = await getRoutineAppPort(args);
-  
-  Socket? routineSocket;
-  try {
-    routineSocket = await Socket.connect(InternetAddress.loopbackIPv4, routineAppPort);
-  } catch (e) {
-    stderr.writeln('Failed to connect to Routine app: $e');
+  if (routineSocket == null) {
+    stderr.writeln("Couldn't connect to app");
     exit(1);
   }
 

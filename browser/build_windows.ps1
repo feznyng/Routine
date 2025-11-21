@@ -1,1 +1,1 @@
-dart compile exe native/src/main.dart --output ../../assets/extension/native_windows.exe
+dart compile exe native/src/main.dart --output ../assets/extension/native_windows.exe
