@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:routine_blocker/desktop_logger.dart';
-import 'package:routine_blocker/services/notification_service.dart'; // WINDOWS:REMOVE
+// import 'package:routine_blocker/services/notification_service.dart'; // WINDOWS:REMOVE
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:routine_blocker/services/auth_service.dart';
@@ -130,7 +130,7 @@ Future<void> setup() async {
 
   if (!Util.isDesktop()) {
     await Workmanager().initialize(callbackDispatcher);
-    await NotificationService().init(); // WINDOWS:REMOVE
+    // await NotificationService().init(); // WINDOWS:REMOVE
   }
 
   await Future.wait([

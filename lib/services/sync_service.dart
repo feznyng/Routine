@@ -560,9 +560,11 @@ class SyncService {
     return await _syncLock.synchronized(() async {
       if (Util.isDesktop()) {
         _setSyncing(true);
-        final success = await sync(full: full);
-        _setSyncing(false);
-        _syncStatusController.add(success ? SyncStatus.success : SyncStatus.failure);
+        sync(full: full).then((success) {
+          _syncStatusController.add(success ? SyncStatus.success : SyncStatus.failure);
+          _setSyncing(false);
+        });
+
         return true;
       } else  {
         final prefs = await SharedPreferences.getInstance();
