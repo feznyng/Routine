@@ -60,3 +60,4 @@ sentry.properties
 
 
 firebase.json
+.sentry-native
