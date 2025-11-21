@@ -49,7 +49,7 @@ To get started with Routine development, follow [Flutter Get Started](https://do
 iOS and MacOS development will require an [Apple Developer account](https://developer.apple.com/programs/enroll/) due to required entitlements (Family Controls, etc.). 
 
 ### Windows
-Unfortunately, builds fail on Windows when firebase_core is included, you can use the feat/no-firebase branch to bypass this issue.
+Unfortunately, builds fail on Windows when firebase_core is included. You can temporarily comment out any firebase-related code by running `clean_windows.ps1`. When you're ready to commit, run `clean_windows.ps1 -Uncomment` to uncomment.
 
 ### Supabase
 Cross-device sync is performed via Supabase. Credentials for this are provided via a .env file in the root directory, refer to .env.example. If you don't have a Supabase project setup, you can simply duplicate and rename .env.example to .env. Empty values are fine.
@@ -60,4 +60,4 @@ Sync backend can be found in `./supabase` including an sql setup script and edge
 Mobile notifications and background sync requests are sent through Firebase Cloud Messaging (FCM). If you don't have a Firebase project, you can duplicate and rename the firebase_options.example.dart file to firebase_options.dart for local development.
 
 ### Browser Extension
-Routine performs site blocking on desktop through a browser extension (`./browser/extension`). Communication with the extension is performed via TCP socket using a [native messaging host (NMH)](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging) (`./browser/native`). This requires a working Dart toolchain which you likely already have thanks to the Flutter setup. 
+Routine performs site blocking on desktop through a browser extension (`./browser/extension`). Communication with the extension is performed via TCP socket using a [native messaging host (NMH)](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging) (`./browser/native`). This requires a working Dart toolchain which you should have from the Flutter setup. 
