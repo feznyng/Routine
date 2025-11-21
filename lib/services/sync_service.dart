@@ -114,17 +114,10 @@ class SyncService {
     return false;
   }
 
-  Future<bool> _syncEmergencyEvents(SharedPreferences prefs) async {
-    bool madeRemoteChange = false;
-    final userData = await _client.from('users')
-            .select('emergencies')
-            .eq('id', userId)
-            .maybeSingle() ?? 
-          await _client.from('users').insert({
-            'id': userId,
-            'emergencies': [],
-          }).maybeSingle() as Map<String, dynamic>;
+  Future<bool> _syncEmergencyEvents(dynamic userData) async {
+    final prefs = await SharedPreferences.getInstance();
 
+    bool madeRemoteChange = false;
     final remoteEvents = <EmergencyEvent>[];
     if (userData['emergencies'] != null) {
       final List<dynamic> eventsList = userData['emergencies'] as List<dynamic>;
@@ -184,40 +177,19 @@ class SyncService {
     return madeRemoteChange;
   }
 
-  Future<({List<dynamic> devices, List<dynamic> groups, List<dynamic> routines})> _fetchRemoteLists(
+  Future<({bool accidentalDeletion, bool requireFullSync})> _pullDevices(
+    AppDatabase db,
     String currDeviceId,
     DateTime lastPulledAt,
+    DateTime pulledAt,
   ) async {
-    final devicesFuture = _client
+
+    final remoteDevices = await _client
         .from('devices')
         .select()
         .eq('user_id', userId)
         .or('updated_at.gt.${lastPulledAt.toUtc().toIso8601String()},id.eq.$currDeviceId');
-    final groupsFuture = _client
-        .from('groups')
-        .select()
-        .eq('user_id', userId)
-        .gt('updated_at', lastPulledAt.toUtc().toIso8601String());
-    final routinesFuture = _client
-        .from('routines')
-        .select()
-        .eq('user_id', userId)
-        .gt('updated_at', lastPulledAt.toUtc().toIso8601String());
 
-    final results = await Future.wait([devicesFuture, groupsFuture, routinesFuture]);
-    return (
-      devices: results[0] as List<dynamic>,
-      groups: results[1] as List<dynamic>,
-      routines: results[2] as List<dynamic>,
-    );
-  }
-
-  Future<({bool accidentalDeletion, bool requireFullSync})> _pullDevices(
-    AppDatabase db,
-    String currDeviceId,
-    List<dynamic> remoteDevices,
-    DateTime pulledAt,
-  ) async {
     final localDevices = await db.getDevicesById(remoteDevices.map((d) => d['id'] as String).toList());
     final localDeviceMap = {for (final device in localDevices) device.id: device};
 
@@ -268,10 +240,17 @@ class SyncService {
   Future<void> _pullGroups(
     AppDatabase db,
     String currDeviceId,
-    List<dynamic> remoteGroups,
+    DateTime lastPulledAt,
     DateTime pulledAt,
     bool accidentalDeletion,
   ) async {
+
+    final remoteGroups = await _client
+        .from('groups')
+        .select()
+        .eq('user_id', userId)
+        .or('updated_at.gt.${lastPulledAt.toUtc().toIso8601String()},id.eq.$currDeviceId');
+
     final localGroups = await db.getGroupsById(remoteGroups.map((group) => group['id'] as String).toList());
     final localGroupMap = {for (final group in localGroups) group.id: group};
 
@@ -281,37 +260,36 @@ class SyncService {
 
       if (group['deleted'] as bool) {
         if (group['device'] == currDeviceId && accidentalDeletion) {
-          await db.upsertGroup(GroupsCompanion(
-            id: Value(group['id']),
-            name: Value(overwriteMap['name'] ?? group['name'] as String?),
-            device: Value(overwriteMap['device'] ?? group['device'] as String?),
-            allow: Value(overwriteMap['allow'] ?? group['allow'] as bool?),
-            updatedAt: Value(DateTime.now()),
-            deleted: Value(false),
-            changes: Value(['deleted', ...overwriteMap['changes'] ?? const []])
-          ));
+          overwriteMap['deleted'] = false;
+          overwriteMap['changes'] = ['deleted', ...overwriteMap['changes'] ?? const []];
         } else {
-          await db.deleteGroup(group['id']);
+          return await db.deleteGroup(group['id']);
         }
-      } else {
-        await db.upsertGroup(GroupsCompanion(
-          id: Value(group['id']),
-          name: Value(overwriteMap['name'] ?? group['name'] as String?),
-          device: Value(overwriteMap['device'] ?? group['device'] as String?),
-          allow: Value(overwriteMap['allow'] ?? group['allow'] as bool?),
-          updatedAt: Value(updatedAt),
-          deleted: Value(overwriteMap['deleted'] ?? group['deleted']),
-          changes: Value(overwriteMap['changes'] ?? const [])
-        ));
       }
+
+      await db.upsertGroup(GroupsCompanion(
+        id: Value(group['id']),
+        name: Value(overwriteMap['name'] ?? group['name'] as String?),
+        device: Value(overwriteMap['device'] ?? group['device'] as String?),
+        allow: Value(overwriteMap['allow'] ?? group['allow'] as bool?),
+        updatedAt: Value(updatedAt),
+        deleted: Value(overwriteMap['deleted'] ?? group['deleted']),
+        changes: Value(overwriteMap['changes'] ?? const [])
+      ));
     }
   }
 
   Future<void> _pullRoutines(
     AppDatabase db,
-    List<dynamic> remoteRoutines,
+    DateTime lastPulledAt,
     DateTime pulledAt,
   ) async {
+    final remoteRoutines = await _client
+        .from('routines')
+        .select()
+        .eq('user_id', userId)
+        .gt('updated_at', lastPulledAt.toUtc().toIso8601String());
+
     final localRoutines = await db.getRoutinesById(remoteRoutines.map((routine) => routine['id'] as String).toList());
     final localRoutineMap = {for (final routine in localRoutines) routine.id: routine};
 
@@ -455,7 +433,6 @@ class SyncService {
       return (changed: false, conflict: true);
     }
 
-    logger.i("pushing routines $localRoutines");
     final futures = <Future<void>>[];
     for (final routine in localRoutines) {
       futures.add(_client
@@ -604,6 +581,7 @@ class SyncService {
       }
     });
   }
+  
   Future<bool> sync({bool full = false, String? id, bool manual = false}) async {
     logger.i("syncing...");
 
@@ -672,64 +650,131 @@ class SyncService {
       Util.report('error checking sync status changes', e, st);
     }
   }
+
+  bool _wasChanged(DateTime now, String? value) {
+    if (value == null || value.isEmpty) return true;
+    return DateTime.parse(value).isAfter(now);
+  }
+
+  void _logElapsedTime(Stopwatch stopwatch, String message) {
+    logger.i("$message took ${stopwatch.elapsedMilliseconds}ms");
+    stopwatch.reset();
+  }
+
   Future<SyncResult?> _sync({bool full = false}) async {
     try {
       if (userId.isEmpty) {
         logger.i("can't sync - user is not signed in");
         return null;
       }
+
+      logger.i("syncing... $full");
+
+      final stopwatch = Stopwatch();
+      stopwatch.start();
       
-      final prefs = await SharedPreferences.getInstance();
+      final userData = await _client.from('users')
+            .select()
+            .eq('id', userId)
+            .maybeSingle() ?? 
+          await _client.from('users').insert({
+            'id': userId,
+            'emergencies': []
+          }).maybeSingle() as Map<String, dynamic>;
+
+      final pulledAt = DateTime.now();
+    
+      final routinesChanged = _wasChanged(pulledAt, userData['routines_updated_at']);
+      final groupsChanged = _wasChanged(pulledAt, userData['groups_updated_at']);
+      final devicesChanged = _wasChanged(pulledAt, userData['devices_updated_at']);
+      final usersChanged = _wasChanged(pulledAt, userData['updated_at']);
+
+      _logElapsedTime(stopwatch, 'user fetch');
+
+      if (usersChanged) {
+        await _syncEmergencyEvents(userData);
+      }
+
+      _logElapsedTime(stopwatch, 'emergency events');
 
       final db = getIt<AppDatabase>();
       final currDevice = (await db.getThisDevice())!;
 
       final lastPulledAt = full ? DateTime.fromMicrosecondsSinceEpoch(0) : (currDevice.lastPulledAt ?? DateTime.fromMicrosecondsSinceEpoch(0));
-      final pulledAt = DateTime.now();
 
       bool madeRemoteChange = false;
       bool accidentalDeletion = false;
-      final remote = await _fetchRemoteLists(currDevice.id, lastPulledAt);
 
+      // pull
       await db.transaction(() async {
-        final devicePull = await _pullDevices(db, currDevice.id, remote.devices, pulledAt);
-        full = full || devicePull.requireFullSync; // if the current device doesn't exist remotely, we need to do a full sync
-        accidentalDeletion = devicePull.accidentalDeletion;
+        if (devicesChanged) {
+          final devicePull = await _pullDevices(db, currDevice.id, lastPulledAt, pulledAt);
+          full = full || devicePull.requireFullSync; // if the current device doesn't exist remotely, we need to do a full sync
+          accidentalDeletion = devicePull.accidentalDeletion;
+          madeRemoteChange = madeRemoteChange || devicePull.requireFullSync;
+        }
 
-        final [madeChange, ...] = await Future.wait([
-          _syncEmergencyEvents(prefs),
-          _pullGroups(db, currDevice.id, remote.groups, pulledAt, accidentalDeletion),
-          _pullRoutines(db, remote.routines, pulledAt),
-          db.updateDevice(DevicesCompanion(
-            id: Value(currDevice.id),
-            lastPulledAt: Value(pulledAt),
-            updatedAt: Value(pulledAt),
-          ))
-        ]);
+        final List<Future<dynamic>> pulls = [];
+        
+        if (groupsChanged) {
+          pulls.add(_pullGroups(db, currDevice.id, lastPulledAt, pulledAt, accidentalDeletion));
+        }
 
-        madeRemoteChange = madeChange as bool || madeRemoteChange;
+        if (routinesChanged) {
+          pulls.add(_pullRoutines(db, lastPulledAt, pulledAt));
+        }
+
+        pulls.add(db.updateDevice(DevicesCompanion(
+          id: Value(currDevice.id),
+          lastPulledAt: Value(pulledAt),
+          updatedAt: Value(pulledAt),
+        )));
+
+        await Future.wait(pulls);
       });
-      
-      logger.i("pull: $madeRemoteChange");
 
+      _logElapsedTime(stopwatch, 'pull');
+      
+      // push
       final results = await Future.wait([
         _pushDevices(db, full ? null : lastPulledAt, pulledAt, currDevice.id),
         _pushGroups(db, full ? null : lastPulledAt, pulledAt),
         _pushRoutines(db, full ? null : lastPulledAt, pulledAt),
       ]);
 
-      logger.i('push: $results');
+      _logElapsedTime(stopwatch, 'push');
 
-      for (final result in results) {
+      final List<String> updatedAtTimes = [
+        userData['devices_updated_at'] ?? pulledAt.toUtc().toIso8601String(),
+        userData['groups_updated_at'] ?? pulledAt.toUtc().toIso8601String(),
+        userData['routines_updated_at'] ?? pulledAt.toUtc().toIso8601String(),
+      ];
+
+      for (int i = 0; i < results.length; i++) {
+        final result = results[i];
         if (result.conflict) {
           logger.i("conflict");
+          // we'll need to try again later so skip clearing changes and notifying external
           return null;
         }
-        if (result.changed) madeRemoteChange = true;
+        if (result.changed) {
+          madeRemoteChange = true;
+          updatedAtTimes[i] = pulledAt.toUtc().toIso8601String();
+        }
       }
 
+      await _client.from('users').update({
+        'devices_updated_at': updatedAtTimes[0],
+        'groups_updated_at': updatedAtTimes[1],
+        'routines_updated_at': updatedAtTimes[2],
+      }).eq('id', userId);
+
+      _logElapsedTime(stopwatch, 'user update');
 
       await db.clearChangesSince(pulledAt);
+     
+      _logElapsedTime(stopwatch, 'local cleanup');
+     
       {
         final remoteDevices = (await _client
           .from('devices')
@@ -753,14 +798,17 @@ class SyncService {
         }
       }
       
+      _logElapsedTime(stopwatch, 'remote cleanup');
+      
       if (madeRemoteChange) {
         logger.i("made remote change");
         await _notifyPeers();
       }
 
+      _logElapsedTime(stopwatch, 'remote notify');
+      
       return SyncResult();
     } catch (e, st) {
-      logger.i("error syncing: $e $st");
       Util.report('error syncing', e, st);
       return null;
     }

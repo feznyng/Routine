@@ -135,7 +135,7 @@ class Util {
   }
 
   static void report(String context, dynamic e, StackTrace? st) {
-    logger.e("$context: ${e.toString()}");
+    logger.e("$context: ${e.toString()}\n$st");
 
     final Hint hint = Hint();
     hint.set('error-context', context);

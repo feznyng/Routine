@@ -133,7 +133,7 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                   : RefreshIndicator(
                 onRefresh: () async {
                   logger.i("routine list sync");
-                  _syncService.queueSync(full: true, manual: true);
+                  _syncService.queueSync(manual: true);
                 },
                 child: ListView(
                   padding: EdgeInsets.zero,

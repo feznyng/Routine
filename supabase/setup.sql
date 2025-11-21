@@ -54,7 +54,11 @@ CREATE TABLE groups (
 
 CREATE TABLE users (
     id uuid not null primary key references auth.users on delete cascade,
-    emergencies JSONB
+    emergencies JSONB,
+    routines_updated_at timestamptz,
+    groups_updated_at timestamptz,
+    devices_updated_at timestamptz,
+    updated_at timestamptz
 );
 
 -- Enable Row Level Security for all tables
