@@ -274,6 +274,7 @@ class BrowserService with ChangeNotifier {
       'description': 'Routine Native Messaging Host',
       'path': binaryPath,
       'type': 'stdio',
+      'allowed_extensions': ['blocker@routineblocker.com'],
       (browser == Browser.firefox ? 'allowed_extensions' : 'allowed_origins'): (browser == Browser.firefox ? ['blocker@routineblocker.com'] : ['chrome-extension://jdemcmodknkdcnkglkilkobkcboeaeib/'])
     };
   }
@@ -328,7 +329,7 @@ class BrowserService with ChangeNotifier {
           }
           
           final tempDir = await getTemporaryDirectory();
-          final manifestFile = File('${tempDir.path}\\routine_manifest.json');
+          final manifestFile = File('${tempDir.path}\\routine_manifest_${browser.name}.json');
           
           await manifestFile.writeAsString(manifestJson);
           

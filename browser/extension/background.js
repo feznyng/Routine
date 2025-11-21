@@ -16,6 +16,8 @@ let pendingRuleUpdate = false;
 function getBrowserType() {
   if (typeof browser !== 'undefined') return 'firefox';
   const userAgent = navigator.userAgent.toLowerCase();
+
+  console.log(userAgent)
   if (userAgent.includes('edg/')) return 'edge';
   if (userAgent.includes('opr/')) return 'opera';
   if (userAgent.includes('brave')) return 'brave';
