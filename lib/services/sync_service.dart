@@ -49,7 +49,6 @@ class SyncService {
   RealtimeChannel? _syncChannel;
   Timer? _syncStatusPollingTimer;
   String? _latestSyncJobId;
-  bool _lastKnownSyncStatus = false;
   final Lock _syncLock = Lock();
   
   final StreamController<SyncStatus> _syncStatusController = StreamController<SyncStatus>.broadcast();
@@ -545,6 +544,7 @@ class SyncService {
     await _syncStatusController.close();
     await _syncingController.close();
   }
+
   Future<bool> queueSync({bool full = false, bool manual = false}) async {
     if (userId.isEmpty) {
       logger.i("can't sync - user is not signed in");
@@ -557,7 +557,9 @@ class SyncService {
     return await _syncLock.synchronized(() async {
       if (Util.isDesktop()) {
         _setSyncing(true);
-        sync(full: full).whenComplete(() => _setSyncing(false));
+        final success = await sync(full: full);
+        _setSyncing(false);
+        _syncStatusController.add(success ? SyncStatus.success : SyncStatus.failure);
         return true;
       } else  {
         final prefs = await SharedPreferences.getInstance();
@@ -569,8 +571,7 @@ class SyncService {
         }
         final id = Uuid().v4();
         _latestSyncJobId = id;
-        _lastKnownSyncStatus = false;
-        await prefs.setBool('sync_job_status_$id', false);
+        await prefs.remove('sync_job_status_$id');
         _startSyncStatusPolling();
         _setSyncing(true);
         
@@ -583,8 +584,6 @@ class SyncService {
   }
   
   Future<bool> sync({bool full = false, String? id, bool manual = false}) async {
-    logger.i("syncing...");
-
     if (userId.isEmpty) {
       logger.i("can't sync - user is not signed in");
       if (manual) {
@@ -592,8 +591,7 @@ class SyncService {
       }
       return false;
     }
-
-    _setSyncing(true);
+    
     final stopwatch = Stopwatch();
     stopwatch.start();
     final result = await _sync(full: full);
@@ -604,27 +602,25 @@ class SyncService {
 
     if (id != null) {
       final key = 'sync_job_status_$id';
-      await SharedPreferencesAsync().setBool(key, true);
+      await SharedPreferencesAsync().setBool(key, success);
     }
-
-    _syncStatusController.add(success ? SyncStatus.success : SyncStatus.failure);
-    _setSyncing(false);
 
     return success;
   }
   void _startSyncStatusPolling() {
     _stopSyncStatusPolling();
-    _lastKnownSyncStatus = false;
     _syncStatusPollingTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) async {
       await _checkSyncStatusChanges();
     });
   }
+
   void _stopSyncStatusPolling() {
     if (_syncStatusPollingTimer != null) {
       _syncStatusPollingTimer!.cancel();
       _syncStatusPollingTimer = null;
     }
   }
+
   Future<void> _checkSyncStatusChanges() async {
     try {
       if (_latestSyncJobId == null) {
@@ -635,16 +631,19 @@ class SyncService {
       final prefs = SharedPreferencesAsync();
       final key = 'sync_job_status_$_latestSyncJobId';
       
-      final currentStatus = await prefs.getBool(key) ?? false;
-      if (!_lastKnownSyncStatus && currentStatus) {
-        final db = getIt<AppDatabase>();
-        await db.forceNotifyChanges();
-        await StrictModeService().reloadEmergencyEvents();
-        
-        _stopSyncStatusPolling();
-        _setSyncing(false);
+      final currentStatus = await prefs.getBool(key);
+
+      if (currentStatus == null) {
+        return;
       }
-      _lastKnownSyncStatus = currentStatus;
+
+      final db = getIt<AppDatabase>();
+      await db.forceNotifyChanges();
+      await StrictModeService().reloadEmergencyEvents();
+      
+      _stopSyncStatusPolling();
+      _syncStatusController.add(currentStatus ? SyncStatus.success : SyncStatus.failure);
+      _setSyncing(false);
       
     } catch (e, st) {
       Util.report('error checking sync status changes', e, st);
@@ -667,8 +666,6 @@ class SyncService {
         logger.i("can't sync - user is not signed in");
         return null;
       }
-
-      logger.i("syncing... $full");
 
       final stopwatch = Stopwatch();
       stopwatch.start();
