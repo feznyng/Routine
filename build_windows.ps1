@@ -19,13 +19,13 @@ try {
     foreach ($file in $dartFiles) {
         $path = $file.FullName
 
-        if (Select-String -Path $path -Pattern 'MARK:REMOVE' -SimpleMatch -Quiet) {
+        if (Select-String -Path $path -Pattern 'WINDOWS:REMOVE' -SimpleMatch -Quiet) {
             $content = Get-Content -LiteralPath $path
 
             $newContent = @()
 
             foreach ($line in $content) {
-                if ($line -like '*MARK:REMOVE*') { continue }
+                if ($line -like '*WINDOWS:REMOVE*') { continue }
                 $newContent += $line
             }
 
@@ -33,7 +33,7 @@ try {
         }
     }
     
-    # Also process pubspec.yaml: remove any line containing MARK:REMOVE
+    # Also process pubspec.yaml: remove any line containing WINDOWS:REMOVE
     $pubspecPath = Join-Path -Path $PSScriptRoot -ChildPath 'pubspec.yaml'
     if (Test-Path -LiteralPath $pubspecPath) {
         $content = Get-Content -LiteralPath $pubspecPath
@@ -41,7 +41,7 @@ try {
         $newContent = @()
 
         foreach ($line in $content) {
-            if ($line -like '*MARK:REMOVE*') { continue }
+            if ($line -like '*WINDOWS:REMOVE*') { continue }
             $newContent += $line
         }
 

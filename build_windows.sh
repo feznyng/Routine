@@ -21,23 +21,23 @@ trap cleanup EXIT
 git stash >/dev/null 2>&1 || true
 git stash -u >/dev/null 2>&1 || true
 
-# For every Dart file, remove any line containing MARK:REMOVE
+# For every Dart file, remove any line containing WINDOWS:REMOVE
 find . -type f -name "*.dart" -print0 | while IFS= read -r -d '' file; do
-  if grep -q 'MARK:REMOVE' "$file"; then
+  if grep -q 'WINDOWS:REMOVE' "$file"; then
     tmp_file="${file}.tmp.$$"
     awk '
-      /MARK:REMOVE/ { next }
+      /WINDOWS:REMOVE/ { next }
       { print }
     ' "$file" > "$tmp_file"
     mv "$tmp_file" "$file"
   fi
 done
 
-# Also process pubspec.yaml: remove any line containing MARK:REMOVE
+# Also process pubspec.yaml: remove any line containing WINDOWS:REMOVE
 if [ -f pubspec.yaml ]; then
   tmp_file="pubspec.yaml.tmp.$$"
   awk '
-    /MARK:REMOVE/ { next }
+    /WINDOWS:REMOVE/ { next }
     { print }
   ' pubspec.yaml > "$tmp_file"
   mv "$tmp_file" pubspec.yaml

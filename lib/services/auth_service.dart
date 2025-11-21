@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'sync_service.dart';
 import 'package:sentry/sentry.dart';
-import 'package:routine_blocker/services/notification_service.dart'; // MARK:REMOVE
+import 'package:routine_blocker/services/notification_service.dart'; // WINDOWS:REMOVE
 class CustomAuthState {
   final AuthChangeEvent event;
   final Session? session;
@@ -263,7 +263,7 @@ class AuthService {
   }
 
   void initNotifications() {
-    NotificationService().init(); // MARK:REMOVE
+    NotificationService().init(); // WINDOWS:REMOVE
   }
   
   Future<void> refreshSessionIfNeeded() async {
