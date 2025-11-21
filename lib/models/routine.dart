@@ -194,33 +194,6 @@ class Routine implements Syncable {
   
   @override
   bool get modified => _entry == null || changes.isNotEmpty;
-  
-  DateTime? get snoozedUntil => _snoozedUntil;
-
-  bool get isSnoozed {
-    if (_snoozedUntil == null) return false;
-    return DateTime.now().isBefore(_snoozedUntil!);
-  }
-
-  Future<void> snooze(DateTime until) async {
-    if (until.isBefore(DateTime.now())) {
-      return;
-    }
-
-    _snoozedUntil = until;
-    await save(groups: false);
-  }
-
-  Future<void> unsnooze() async {
-    final now = DateTime.now().subtract(const Duration(seconds: 1));
-
-    if (_snoozedUntil == null || now.isAfter(_snoozedUntil!)) {
-      return;
-    }
-
-    _snoozedUntil = now;
-    await save(groups: false);
-  }
 
   @override
   Future<void> delete() async {
@@ -334,6 +307,45 @@ class Routine implements Syncable {
            _days.contains(true);
   }
 
+  // misc
+
+  String get name => _name;
+  
+  set name(String value) {
+    _name = value.trim();
+  }
+
+  // snoozing
+  
+  DateTime? get snoozedUntil => _snoozedUntil;
+
+  bool get isSnoozed {
+    if (_snoozedUntil == null) return false;
+    return DateTime.now().isBefore(_snoozedUntil!);
+  }
+
+  Future<void> snooze(DateTime until) async {
+    if (until.isBefore(DateTime.now())) {
+      return;
+    }
+
+    _snoozedUntil = until;
+    await save(groups: false);
+  }
+
+  Future<void> unsnooze() async {
+    final now = DateTime.now().subtract(const Duration(seconds: 1));
+
+    if (_snoozedUntil == null || now.isAfter(_snoozedUntil!)) {
+      return;
+    }
+
+    _snoozedUntil = now;
+    await save(groups: false);
+  }
+
+  // scheduling
+
   List<bool> get days => List.unmodifiable(_days);
   
   void updateDay(int index, bool value) {
@@ -368,18 +380,12 @@ class Routine implements Syncable {
       _endTime = 1020;
     }
   }
-  Map<String, String> get groupIds => {};
 
   int get startHour => _startTime ~/ 60;
   int get startMinute => _startTime % 60;
   int get endHour => _endTime ~/ 60;
   int get endMinute => _endTime % 60;
 
-  String get name => _name;
-  
-  set name(String value) {
-    _name = value.trim();
-  }
 
   bool get isActive { 
     if (isSnoozed) {
@@ -406,42 +412,11 @@ class Routine implements Syncable {
   }
   
   bool get overnight => _endTime < _startTime;
-  bool get canCompleteConditions {
-    if (isSnoozed) {
-      return false;
-    }
-
-    final DateTime now = DateTime.now();
-    final int dayOfWeek = now.weekday - 1;
-    final int currMins = now.hour * 60 + now.minute;
-    
-    if (_startTime == -1 && _endTime == -1) {
-      return _days[dayOfWeek];
-    }
-    final int effectiveStartTime = _startTime - _completableBefore;
-    if (_endTime < _startTime) {
-      if (currMins >= effectiveStartTime || (effectiveStartTime < 0 && currMins >= (effectiveStartTime + 24 * 60))) {
-        return _days[dayOfWeek];
-      } else if (currMins < _endTime) {
-        final int yesterdayOfWeek = (dayOfWeek + 6) % 7; // Previous day, wrapping from 0 back to 6
-        return _days[yesterdayOfWeek];
-      }
-      return false;
-    }
-    if (effectiveStartTime < 0) {
-      if (currMins < _startTime) {
-        final int yesterdayOfWeek = (dayOfWeek + 6) % 7; // Previous day
-        return _days[yesterdayOfWeek] && (currMins >= (effectiveStartTime + 24 * 60));
-      }
-    }
-    return _days[dayOfWeek] && (currMins >= effectiveStartTime && currMins < _endTime);
-  }
 
   DateTime get nextActiveTime {
     final now = DateTime.now();
     if (snoozedUntil != null && now.isBefore(snoozedUntil!)) {
-      // If snoozed beyond today's end time for a standard (non-overnight) timed routine,
-      // treat the next active time as the next valid day's start time.
+      // if snoozed until today's end time, return next valid day's start time
       if (!allDay && !overnight && startTime >= 0 && endTime >= 0) {
         final currentDayOfWeek = now.weekday - 1;
         final todayEnd = DateTime(now.year, now.month, now.day, endHour, endMinute);
@@ -508,6 +483,30 @@ class Routine implements Syncable {
     return DateTime(9999); // Far future date
   }
 
+  DateTime get startedAt {
+    final now = DateTime.now();
+    final int currMins = now.hour * 60 + now.minute;
+    
+    if (_endTime < _startTime && currMins < _endTime) {
+      final yesterday = now.subtract(const Duration(days: 1));
+      return DateTime(
+        yesterday.year,
+        yesterday.month,
+        yesterday.day,
+        startHour,
+        startMinute,
+      );
+    }
+    
+    return DateTime(
+      now.year,
+      now.month,
+      now.day,
+      startHour,
+      startMinute, 
+    );
+  }
+
   int get completableBefore => _completableBefore;
   
   set completableBefore(int value) {
@@ -516,6 +515,8 @@ class Routine implements Syncable {
     }
     _completableBefore = value;
   }
+
+  // breaks
 
   bool get isPaused {
     if (_pausedUntil == null) return false;
@@ -548,23 +549,6 @@ class Routine implements Syncable {
     _pausedUntil = DateTime.now().subtract(const Duration(seconds: 1));
     await save(groups: false);
   }
-
-  Map<String, Group> get groups => _groups;
-
-  Group? getGroup([String? deviceId]) {
-    deviceId = deviceId ?? getIt<Device>().id;
-    return _groups[deviceId];
-  }
-
-  void setGroup(Group group, [String? deviceId]) {
-    deviceId = deviceId ?? getIt<Device>().id;
-    _groups[deviceId] = group;
-  }
-
-  List<String> get apps => getGroup()?.apps ?? const [];
-  List<String> get sites => getGroup()?.sites ?? const [];
-  List<String> get categories => getGroup()?.categories ?? const [];
-  bool get allow => getGroup()?.allow ?? false;
 
   int get maxBreakDuration => _maxBreakDuration;
   set maxBreakDuration(int value) {
@@ -618,29 +602,26 @@ class Routine implements Syncable {
     return (_numBreaksTaken ?? 0) * 4 + 6; // Base 4 chars + 2 per break taken
   }
 
-  DateTime get startedAt {
-    final now = DateTime.now();
-    final int currMins = now.hour * 60 + now.minute;
-    
-    if (_endTime < _startTime && currMins < _endTime) {
-      final yesterday = now.subtract(const Duration(days: 1));
-      return DateTime(
-        yesterday.year,
-        yesterday.month,
-        yesterday.day,
-        startHour,
-        startMinute,
-      );
-    }
-    
-    return DateTime(
-      now.year,
-      now.month,
-      now.day,
-      startHour,
-      startMinute, 
-    );
+  // groups
+
+  Map<String, Group> get groups => _groups;
+
+  Group? getGroup([String? deviceId]) {
+    deviceId = deviceId ?? getIt<Device>().id;
+    return _groups[deviceId];
   }
+
+  void setGroup(Group group, [String? deviceId]) {
+    deviceId = deviceId ?? getIt<Device>().id;
+    _groups[deviceId] = group;
+  }
+
+  List<String> get apps => getGroup()?.apps ?? const [];
+  List<String> get sites => getGroup()?.sites ?? const [];
+  List<String> get categories => getGroup()?.categories ?? const [];
+  bool get allow => getGroup()?.allow ?? false;
+
+  // conditions
 
   DateTime get completableAt {
     final startedAt = this.startedAt;
@@ -657,6 +638,37 @@ class Routine implements Syncable {
 
   bool get areConditionsMet {
     return conditions.isNotEmpty && conditions.every((c) => isConditionMet(c));
+  }
+
+  bool get canCompleteConditions {
+    if (isSnoozed) {
+      return false;
+    }
+
+    final DateTime now = DateTime.now();
+    final int dayOfWeek = now.weekday - 1;
+    final int currMins = now.hour * 60 + now.minute;
+    
+    if (_startTime == -1 && _endTime == -1) {
+      return _days[dayOfWeek];
+    }
+    final int effectiveStartTime = _startTime - _completableBefore;
+    if (_endTime < _startTime) {
+      if (currMins >= effectiveStartTime || (effectiveStartTime < 0 && currMins >= (effectiveStartTime + 24 * 60))) {
+        return _days[dayOfWeek];
+      } else if (currMins < _endTime) {
+        final int yesterdayOfWeek = (dayOfWeek + 6) % 7; // Previous day, wrapping from 0 back to 6
+        return _days[yesterdayOfWeek];
+      }
+      return false;
+    }
+    if (effectiveStartTime < 0) {
+      if (currMins < _startTime) {
+        final int yesterdayOfWeek = (dayOfWeek + 6) % 7; // Previous day
+        return _days[yesterdayOfWeek] && (currMins >= (effectiveStartTime + 24 * 60));
+      }
+    }
+    return _days[dayOfWeek] && (currMins >= effectiveStartTime && currMins < _endTime);
   }
 
   Future<void> completeCondition(Condition condition, {bool complete = true}) async {
