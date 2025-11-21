@@ -289,6 +289,8 @@ class SyncService {
         .eq('user_id', userId)
         .gt('updated_at', lastPulledAt.toUtc().toIso8601String());
 
+    logger.i("pulling routines: ${remoteRoutines.length}");
+
     final localRoutines = await db.getRoutinesById(remoteRoutines.map((routine) => routine['id'] as String).toList());
     final localRoutineMap = {for (final routine in localRoutines) routine.id: routine};
 
@@ -576,7 +578,6 @@ class SyncService {
         _startSyncStatusPolling();
         _setSyncing(true);
         
-        logger.i("queuing up sync: $id");
         await Workmanager().registerOneOffTask("sync", "sync-task", inputData: {'full': full, 'id': id});
 
         return true;
@@ -651,9 +652,9 @@ class SyncService {
     }
   }
 
-  bool _wasChanged(DateTime now, String? value) {
+  bool _wasChanged(DateTime lastPulledAt, String? value) {
     if (value == null || value.isEmpty) return true;
-    return DateTime.parse(value).isAfter(now);
+    return DateTime.parse(value).isAfter(lastPulledAt);
   }
 
   void _logElapsedTime(Stopwatch stopwatch, String message) {
@@ -671,8 +672,9 @@ class SyncService {
       final stopwatch = Stopwatch();
       stopwatch.start();
       
+      final pulledAt = DateTime.now();
       final userData = await _client.from('users')
-            .select()
+            .select('*')
             .eq('id', userId)
             .maybeSingle() ?? 
           await _client.from('users').insert({
@@ -680,12 +682,19 @@ class SyncService {
             'emergencies': []
           }).maybeSingle() as Map<String, dynamic>;
 
-      final pulledAt = DateTime.now();
+      logger.i("user data: $userData");
+
+      final db = getIt<AppDatabase>();
+      final currDevice = (await db.getThisDevice())!;
+
+      final lastPulledAt = full ? DateTime.fromMicrosecondsSinceEpoch(0) : (currDevice.lastPulledAt ?? DateTime.fromMicrosecondsSinceEpoch(0));
     
-      final routinesChanged = _wasChanged(pulledAt, userData['routines_updated_at']);
-      final groupsChanged = _wasChanged(pulledAt, userData['groups_updated_at']);
-      final devicesChanged = _wasChanged(pulledAt, userData['devices_updated_at']);
-      final usersChanged = _wasChanged(pulledAt, userData['updated_at']);
+      final routinesChanged = full || _wasChanged(lastPulledAt, userData['routines_updated_at']);
+      final groupsChanged = full || _wasChanged(lastPulledAt, userData['groups_updated_at']);
+      final devicesChanged = full || _wasChanged(lastPulledAt, userData['devices_updated_at']);
+      final usersChanged = full || _wasChanged(lastPulledAt, userData['updated_at']);
+
+      logger.i("routinesChanged: $routinesChanged, groupsChanged: $groupsChanged, devicesChanged: $devicesChanged, usersChanged: $usersChanged");
 
       _logElapsedTime(stopwatch, 'user fetch');
 
@@ -694,11 +703,6 @@ class SyncService {
       }
 
       _logElapsedTime(stopwatch, 'emergency events');
-
-      final db = getIt<AppDatabase>();
-      final currDevice = (await db.getThisDevice())!;
-
-      final lastPulledAt = full ? DateTime.fromMicrosecondsSinceEpoch(0) : (currDevice.lastPulledAt ?? DateTime.fromMicrosecondsSinceEpoch(0));
 
       bool madeRemoteChange = false;
       bool accidentalDeletion = false;
