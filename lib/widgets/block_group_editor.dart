@@ -1,4 +1,4 @@
-import 'package:Routine/services/strict_mode_service.dart';
+import 'package:routine_blocker/services/strict_mode_service.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:io';
@@ -7,7 +7,7 @@ import 'android_permissions_onboarding_dialog.dart';
 import '../pages/block_apps_page.dart';
 import '../pages/block_sites_page.dart';
 import 'app_site_selector.dart';
-import 'package:Routine/pages/browser_extension_onboarding_page.dart';
+import 'package:routine_blocker/pages/browser_extension_onboarding_page.dart';
 import '../services/browser_service.dart';
 import '../services/mobile_service.dart';
 

@@ -1,5 +1,5 @@
-import 'package:Routine/services/platform_service.dart';
-import 'package:Routine/util.dart';
+import 'package:routine_blocker/services/platform_service.dart';
+import 'package:routine_blocker/util.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'widgets/routine_list.dart';

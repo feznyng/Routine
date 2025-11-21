@@ -1,15 +1,15 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:Routine/services/browser_config.dart';
-import 'package:Routine/setup.dart';
+import 'package:routine_blocker/services/browser_config.dart';
+import 'package:routine_blocker/setup.dart';
 import 'package:flutter/material.dart';
-import 'package:Routine/services/browser_service.dart';
-import 'package:Routine/services/strict_mode_service.dart';
-import 'package:Routine/widgets/browser_extension_page/browser_selection_step.dart';
-import 'package:Routine/widgets/browser_extension_page/native_messaging_host_step.dart';
-import 'package:Routine/widgets/browser_extension_page/extension_installation_step.dart';
-import 'package:Routine/widgets/browser_extension_page/automation_permission_step.dart';
-import 'package:Routine/widgets/browser_extension_page/completion_step.dart';
+import 'package:routine_blocker/services/browser_service.dart';
+import 'package:routine_blocker/services/strict_mode_service.dart';
+import 'package:routine_blocker/widgets/browser_extension_page/browser_selection_step.dart';
+import 'package:routine_blocker/widgets/browser_extension_page/native_messaging_host_step.dart';
+import 'package:routine_blocker/widgets/browser_extension_page/extension_installation_step.dart';
+import 'package:routine_blocker/widgets/browser_extension_page/automation_permission_step.dart';
+import 'package:routine_blocker/widgets/browser_extension_page/completion_step.dart';
 
 enum OnboardingStep {
   browserSelection,

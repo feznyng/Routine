@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'package:Routine/constants.dart';
-import 'package:Routine/util.dart';
+import 'package:routine_blocker/constants.dart';
+import 'package:routine_blocker/util.dart';
 import 'package:cron/cron.dart';
 import 'package:flutter/material.dart';
 import '../models/routine.dart';

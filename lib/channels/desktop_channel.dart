@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'package:Routine/setup.dart';
+import 'package:routine_blocker/setup.dart';
 import 'package:flutter/services.dart';
-import 'package:Routine/constants.dart';
-import 'package:Routine/models/installed_app.dart';
-import 'package:Routine/util.dart';
+import 'package:routine_blocker/constants.dart';
+import 'package:routine_blocker/models/installed_app.dart';
+import 'package:routine_blocker/util.dart';
 
 
 class BrowserControlMessage {

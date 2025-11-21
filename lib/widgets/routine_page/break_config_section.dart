@@ -1,4 +1,4 @@
-import 'package:Routine/util.dart';
+import 'package:routine_blocker/util.dart';
 import 'package:flutter/material.dart';
 import '../../models/routine.dart';
 import 'package:qr_flutter/qr_flutter.dart';

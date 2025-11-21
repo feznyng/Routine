@@ -1,4 +1,4 @@
-name: Routine
+name: routine_blocker
 description: "Cross-platform app/site blocker"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.

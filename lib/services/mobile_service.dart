@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
-import 'package:Routine/channels/mobile_channel.dart';
-import 'package:Routine/models/installed_app.dart';
-import 'package:Routine/services/platform_service.dart';
-import 'package:Routine/services/sync_service.dart';
+import 'package:routine_blocker/channels/mobile_channel.dart';
+import 'package:routine_blocker/models/installed_app.dart';
+import 'package:routine_blocker/services/platform_service.dart';
+import 'package:routine_blocker/services/sync_service.dart';
 import '../models/routine.dart';
 import 'strict_mode_service.dart';
 

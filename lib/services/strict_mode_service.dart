@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:Routine/util.dart';
+import 'package:routine_blocker/util.dart';
 import 'package:cron/cron.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';

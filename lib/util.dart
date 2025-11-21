@@ -1,8 +1,8 @@
 import 'dart:collection';
 import 'dart:io';
 
-import 'package:Routine/models/routine.dart';
-import 'package:Routine/setup.dart';
+import 'package:routine_blocker/models/routine.dart';
+import 'package:routine_blocker/setup.dart';
 import 'package:cron/cron.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';

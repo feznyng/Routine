@@ -1,10 +1,10 @@
 import 'dart:typed_data';
-import 'package:Routine/constants.dart';
-import 'package:Routine/models/browser_connection.dart';
+import 'package:routine_blocker/constants.dart';
+import 'package:routine_blocker/models/browser_connection.dart';
 import 'package:flutter/foundation.dart';
-import 'package:Routine/models/installed_app.dart';
-import 'package:Routine/services/browser_config.dart';
-import 'package:Routine/util.dart';
+import 'package:routine_blocker/models/installed_app.dart';
+import 'package:routine_blocker/services/browser_config.dart';
+import 'package:routine_blocker/util.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,10 +17,10 @@ import 'package:win32/win32.dart';
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 import 'dart:async';
-import 'package:Routine/setup.dart';
+import 'package:routine_blocker/setup.dart';
 import 'package:collection/src/iterable_extensions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:Routine/channels/desktop_channel.dart';
+import 'package:routine_blocker/channels/desktop_channel.dart';
 
 typedef InstalledBrowser = ({Browser browser, InstalledApp app});
 

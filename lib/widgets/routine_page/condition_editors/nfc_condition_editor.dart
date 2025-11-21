@@ -1,4 +1,4 @@
-import 'package:Routine/util.dart';
+import 'package:routine_blocker/util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' show Platform;

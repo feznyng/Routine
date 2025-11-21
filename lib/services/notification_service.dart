@@ -1,8 +1,8 @@
-import 'package:Routine/models/device.dart';
-import 'package:Routine/services/mobile_service.dart';
-import 'package:Routine/services/sync_service.dart';
-import 'package:Routine/setup.dart';
-import 'package:Routine/util.dart';
+import 'package:routine_blocker/models/device.dart';
+import 'package:routine_blocker/services/mobile_service.dart';
+import 'package:routine_blocker/services/sync_service.dart';
+import 'package:routine_blocker/setup.dart';
+import 'package:routine_blocker/util.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../firebase_options.dart';

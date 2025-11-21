@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'package:Routine/models/emergency_event.dart';
-import 'package:Routine/models/condition.dart';
-import 'package:Routine/models/device.dart';
-import 'package:Routine/services/auth_service.dart';
-import 'package:Routine/util.dart';
+import 'package:routine_blocker/models/emergency_event.dart';
+import 'package:routine_blocker/models/condition.dart';
+import 'package:routine_blocker/models/device.dart';
+import 'package:routine_blocker/services/auth_service.dart';
+import 'package:routine_blocker/util.dart';
 import 'package:uuid/uuid.dart';
 import '../setup.dart';
 import '../database/database.dart';

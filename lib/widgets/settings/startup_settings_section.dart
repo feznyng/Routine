@@ -1,4 +1,4 @@
-import 'package:Routine/util.dart';
+import 'package:routine_blocker/util.dart';
 import 'package:flutter/material.dart';
 import '../../services/desktop_service.dart';
 import '../../services/strict_mode_service.dart';

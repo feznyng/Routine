@@ -1,17 +1,17 @@
 import 'dart:io';
 import 'dart:async';
 
-import 'package:Routine/setup.dart';
+import 'package:routine_blocker/setup.dart';
 import 'package:cron/cron.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
-import 'package:Routine/channels/desktop_channel.dart';
-import 'package:Routine/models/installed_app.dart';
+import 'package:routine_blocker/channels/desktop_channel.dart';
+import 'package:routine_blocker/models/installed_app.dart';
 import '../models/routine.dart';
-import 'package:Routine/services/auth_service.dart';
-import 'package:Routine/services/platform_service.dart';
-import 'package:Routine/util.dart';
+import 'package:routine_blocker/services/auth_service.dart';
+import 'package:routine_blocker/services/platform_service.dart';
+import 'package:routine_blocker/util.dart';
 import 'strict_mode_service.dart';
 import 'browser_service.dart';
 import 'sync_service.dart';

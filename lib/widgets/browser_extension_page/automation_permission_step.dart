@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:Routine/services/browser_config.dart';
-import 'package:Routine/services/browser_service.dart';
-import 'package:Routine/setup.dart';
+import 'package:routine_blocker/services/browser_config.dart';
+import 'package:routine_blocker/services/browser_service.dart';
+import 'package:routine_blocker/setup.dart';
 import 'package:flutter/material.dart';
 
 

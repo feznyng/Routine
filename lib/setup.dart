@@ -1,13 +1,13 @@
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:Routine/desktop_logger.dart';
-import 'package:Routine/services/notification_service.dart'; // MARK:REMOVE
+import 'package:routine_blocker/desktop_logger.dart';
+import 'package:routine_blocker/services/notification_service.dart'; // MARK:REMOVE
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:Routine/services/auth_service.dart';
-import 'package:Routine/services/strict_mode_service.dart';
-import 'package:Routine/util.dart';
+import 'package:routine_blocker/services/auth_service.dart';
+import 'package:routine_blocker/services/strict_mode_service.dart';
+import 'package:routine_blocker/util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:logger/logger.dart';

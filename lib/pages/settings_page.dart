@@ -1,4 +1,4 @@
-import 'package:Routine/util.dart';
+import 'package:routine_blocker/util.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import '../services/auth_service.dart';

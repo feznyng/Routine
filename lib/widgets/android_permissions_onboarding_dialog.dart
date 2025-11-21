@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:Routine/setup.dart';
+import 'package:routine_blocker/setup.dart';
 import 'package:flutter/material.dart';
 import '../services/mobile_service.dart';
 

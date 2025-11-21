@@ -1,5 +1,5 @@
-import 'package:Routine/services/browser_config.dart';
-import 'package:Routine/services/browser_service.dart';
+import 'package:routine_blocker/services/browser_config.dart';
+import 'package:routine_blocker/services/browser_service.dart';
 import 'package:flutter/material.dart';
 
 

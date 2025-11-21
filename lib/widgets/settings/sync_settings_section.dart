@@ -1,4 +1,4 @@
-import 'package:Routine/services/sync_service.dart';
+import 'package:routine_blocker/services/sync_service.dart';
 import 'package:flutter/material.dart';
 
 class SyncSettingsSection extends StatefulWidget {

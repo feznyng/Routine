@@ -1,14 +1,14 @@
 import 'dart:async';
-import 'package:Routine/models/device.dart';
-import 'package:Routine/setup.dart';
-import 'package:Routine/util.dart';
+import 'package:routine_blocker/models/device.dart';
+import 'package:routine_blocker/setup.dart';
+import 'package:routine_blocker/util.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'sync_service.dart';
 import 'package:sentry/sentry.dart';
-import 'package:Routine/services/notification_service.dart'; // MARK:REMOVE
+import 'package:routine_blocker/services/notification_service.dart'; // MARK:REMOVE
 class CustomAuthState {
   final AuthChangeEvent event;
   final Session? session;

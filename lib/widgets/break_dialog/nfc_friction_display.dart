@@ -1,4 +1,4 @@
-import 'package:Routine/util.dart';
+import 'package:routine_blocker/util.dart';
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
 import 'package:nfc_manager/nfc_manager.dart';

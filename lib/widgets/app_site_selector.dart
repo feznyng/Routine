@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:Routine/setup.dart';
+import 'package:routine_blocker/setup.dart';
 
 class AppSiteSelectorPage extends StatefulWidget {
   final List<String> selectedApps;
