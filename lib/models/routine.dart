@@ -439,6 +439,31 @@ class Routine implements Syncable {
 
   DateTime get nextActiveTime {
     final now = DateTime.now();
+    if (snoozedUntil != null && now.isBefore(snoozedUntil!)) {
+      // If snoozed beyond today's end time for a standard (non-overnight) timed routine,
+      // treat the next active time as the next valid day's start time.
+      if (!allDay && !overnight && startTime >= 0 && endTime >= 0) {
+        final currentDayOfWeek = now.weekday - 1;
+        final todayEnd = DateTime(now.year, now.month, now.day, endHour, endMinute);
+        if (snoozedUntil! == todayEnd || snoozedUntil!.isAfter(todayEnd)) {
+          for (int i = 1; i <= 7; i++) {
+            final nextDayIndex = (currentDayOfWeek + i) % 7;
+            if (days[nextDayIndex]) {
+              return now.add(Duration(days: i)).copyWith(
+                hour: startHour,
+                minute: startMinute,
+                second: 0,
+                millisecond: 0,
+              );
+            }
+          }
+          return DateTime(9999);
+        }
+      }
+
+      return snoozedUntil!;
+    }
+
     final currentDayOfWeek = now.weekday - 1; // 0-based day of week (0 = Monday)
     final currentTimeMinutes = now.hour * 60 + now.minute;
     if (allDay) {

@@ -27,7 +27,6 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
   bool _isSyncing = false;
   bool _activeRoutinesExpanded = true;
   bool _inactiveRoutinesExpanded = true;
-  bool _snoozedRoutinesExpanded = true;
   bool _completedRoutinesExpanded = true;
   bool _showSignedOutBanner = false;
   final cron = Cron();
@@ -104,25 +103,10 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final sortedRoutines = List<Routine>.from(_routines);
-    sortedRoutines.sort((a, b) {
-      if (a.isSnoozed && b.isSnoozed) {
-        return a.snoozedUntil!.compareTo(b.snoozedUntil!);
-      }
-      if (a.isSnoozed) return 1; // Snoozed routines come after active ones
-      if (b.isSnoozed) return -1;
-      if (a.isActive && b.isActive && !a.areConditionsMet && !b.areConditionsMet) {
-        final aStartTime = a.startTime;
-        final bStartTime = b.startTime;
-        return bStartTime.compareTo(aStartTime);
-      }
-      final aNextActive = a.nextActiveTime;
-      final bNextActive = b.nextActiveTime;
-      return aNextActive.compareTo(bNextActive);
-    });
-    final snoozedRoutines = sortedRoutines.where((routine) => routine.isSnoozed).toList();
-    final completedRoutines = sortedRoutines.where((routine) => !routine.isSnoozed && routine.canCompleteConditions && routine.areConditionsMet).toList();
-    final activeRoutines = sortedRoutines.where((routine) => routine.isActive && !routine.isSnoozed && !completedRoutines.contains(routine)).toList();
-    final inactiveRoutines = sortedRoutines.where((routine) => !routine.isActive && !routine.isSnoozed && !completedRoutines.contains(routine)).toList();
+    sortedRoutines.sort((a, b) => a.nextActiveTime.compareTo(b.nextActiveTime));
+    final completedRoutines = sortedRoutines.where((routine) => routine.canCompleteConditions && routine.areConditionsMet).toList();
+    final activeRoutines = sortedRoutines.where((routine) => routine.isActive && !completedRoutines.contains(routine)).toList();
+    final inactiveRoutines = sortedRoutines.where((routine) => !routine.isActive && !completedRoutines.contains(routine)).toList();
        
     return Scaffold(
       body: Center(
@@ -220,21 +204,7 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                           routine: routine,
                           onRoutineUpdated: () => setState(() {}),
                         )),
-                    ],
-                    if (snoozedRoutines.isNotEmpty) ...[  
-                      _buildSectionHeader(
-                        context, 
-                        'Snoozed', 
-                        _snoozedRoutinesExpanded, 
-                        () => setState(() => _snoozedRoutinesExpanded = !_snoozedRoutinesExpanded)
-                      ),
-                      if (_snoozedRoutinesExpanded)
-                        ...snoozedRoutines.map((routine) => RoutineCard(
-                          routine: routine,
-                          onRoutineUpdated: () => setState(() {}),
-                        )),
-                    ],
-                    const SizedBox(height: 24),
+                    ]
                   ],
                 ),
               ),
