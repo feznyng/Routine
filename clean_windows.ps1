@@ -15,66 +15,60 @@ foreach ($file in $dartFiles) {
     if (Select-String -Path $path -Pattern 'WINDOWS:REMOVE' -SimpleMatch -Quiet) {
         $content = Get-Content -LiteralPath $path
 
-        if (-not $Uncomment) {
-            $newContent = @()
+        $newContent = @()
 
-            foreach ($line in $content) {
-                if ($line -like '*WINDOWS:REMOVE*') { 
-                    $newContent += '//'
+        foreach ($line in $content) {
+            if ($line -like '*WINDOWS:REMOVE*') {
+                if ($Uncomment) {
+                    # Uncomment: remove leading // from the line containing WINDOWS:REMOVE
+                    $newContent += ($line -replace '^(\s*)//\s?', '$1')
                 }
+                else {
+                    # Comment: add // at the start of the line if not already commented
+                    if ($line -match '^(\s*)//') {
+                        $newContent += $line
+                    }
+                    else {
+                        $newContent += ($line -replace '^(\s*)', '$1// ')
+                    }
+                }
+            }
+            else {
                 $newContent += $line
             }
-
-            Set-Content -LiteralPath $path -Value $newContent -NoNewline:$false
         }
-        else {
-            $newContent = @()
 
-            for ($i = 0; $i -lt $content.Length; $i++) {
-                $line = $content[$i]
-
-                if ($line -eq '//' -and $i + 1 -lt $content.Length -and $content[$i + 1] -like '*WINDOWS:REMOVE*') {
-                    continue
-                }
-
-                $newContent += $line
-            }
-
-            Set-Content -LiteralPath $path -Value $newContent -NoNewline:$false
-        }
+        Set-Content -LiteralPath $path -Value $newContent -NoNewline:$false
     }
 }
 
-# Also process pubspec.yaml: remove any line containing WINDOWS:REMOVE
+# Also process pubspec.yaml: toggle comment on any line containing WINDOWS:REMOVE
 $pubspecPath = Join-Path -Path $PSScriptRoot -ChildPath 'pubspec.yaml'
 if (Test-Path -LiteralPath $pubspecPath) {
     $content = Get-Content -LiteralPath $pubspecPath
 
-    if (-not $Uncomment) {
-        $newContent = @()
+    $newContent = @()
 
-        foreach ($line in $content) {
-            if ($line -like '*WINDOWS:REMOVE*') { 
-                $newContent += '#'
+    foreach ($line in $content) {
+        if ($line -like '*WINDOWS:REMOVE*') {
+            if ($Uncomment) {
+                # Uncomment: remove leading # from the line containing WINDOWS:REMOVE
+                $newContent += ($line -replace '^(\s*)#\s?', '$1')
             }
+            else {
+                # Comment: add # at the start of the line if not already commented
+                if ($line -match '^(\s*)#') {
+                    $newContent += $line
+                }
+                else {
+                    $newContent += ($line -replace '^(\s*)', '$1# ')
+                }
+            }
+        }
+        else {
             $newContent += $line
         }
-
-        Set-Content -LiteralPath $pubspecPath -Value $newContent -NoNewline:$false
     }
-    else {
-        $newContent = @()
 
-        for ($i = 0; $i -lt $content.Length; $i++) {
-            $line = $content[$i]
-
-            if ($line -eq '#' -and $i + 1 -lt $content.Length -and $content[$i + 1] -like '*WINDOWS:REMOVE*') {
-                continue
-            }
-
-            $newContent += $line
-        }
-
-        Set-Content -LiteralPath $pubspecPath -Value $newContent -NoNewline:$false
-    }
+    Set-Content -LiteralPath $pubspecPath -Value $newContent -NoNewline:$false
 }
