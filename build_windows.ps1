@@ -41,6 +41,30 @@ try {
             Set-Content -LiteralPath $path -Value $newContent -NoNewline:$false
         }
     }
+    
+    # Also process pubspec.yaml: delete only the line immediately following any MARK:REMOVE line
+    $pubspecPath = Join-Path -Path $PSScriptRoot -ChildPath 'pubspec.yaml'
+    if (Test-Path -LiteralPath $pubspecPath) {
+        $content = Get-Content -LiteralPath $pubspecPath
+
+        $newContent = @()
+        $skipNext = $false
+
+        foreach ($line in $content) {
+            if ($skipNext) {
+                $skipNext = $false
+                continue
+            }
+
+            $newContent += $line
+
+            if ($line -like '*MARK:REMOVE*') {
+                $skipNext = $true
+            }
+        }
+
+        Set-Content -LiteralPath $pubspecPath -Value $newContent -NoNewline:$false
+    }
 
     flutter build windows --release
 }
