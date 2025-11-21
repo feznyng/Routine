@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:Routine/desktop_logger.dart';
+import 'package:Routine/services/notification_service.dart'; // MARK:REMOVE
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:Routine/services/auth_service.dart';
@@ -116,10 +117,6 @@ Future<void> setup() async {
 
   await dotenv.load(fileName: '.env');
 
-  if (!Util.isDesktop()) {
-    await Workmanager().initialize(callbackDispatcher);
-  }
-
   await Future.wait([
     () async {
       final db = AppDatabase();
@@ -130,6 +127,11 @@ Future<void> setup() async {
     }(),
     AuthService().init()
   ]);
+
+  if (!Util.isDesktop()) {
+    await Workmanager().initialize(callbackDispatcher);
+    await NotificationService().init(); // MARK:REMOVE
+  }
 
   await Future.wait([
     StrictModeService().init(), 

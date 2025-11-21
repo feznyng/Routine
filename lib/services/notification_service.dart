@@ -26,22 +26,27 @@ class NotificationService {
     return _instance;
   }
 
-  Future<void> fetchAndUpdateToken() async {
+  Future<void> _fetchAndUpdateToken() async {
     final apnsToken = await FirebaseMessaging.instance.getAPNSToken();
     if (apnsToken != null) {
       final fcmToken = await FirebaseMessaging.instance.getToken();
       if (fcmToken != null) {
-        updateToken(fcmToken);
+        _updateToken(fcmToken);
       }
     }
   }
 
-  Future<void> updateToken(String fcmToken) async {
-    final device = await Device.getCurrent();
-    await _client
-      .from('devices')
+  Future<void> _updateToken(String fcmToken) async {
+    try {
+      logger.i("updating token $fcmToken");
+      final device = await Device.getCurrent();
+      await _client
+        .from('devices')
       .update({'fcm_token': fcmToken})
       .eq('id', device.id);
+    } catch (e) {
+      Util.report('error updating token', e, null);
+    }
   }
 
   Future<void> init() async {
@@ -65,11 +70,11 @@ class NotificationService {
       sound: true,
     );
 
-    await fetchAndUpdateToken();
+    await _fetchAndUpdateToken();
 
     messaging.onTokenRefresh
       .listen((fcmToken) async {
-        await updateToken(fcmToken);
+        await _updateToken(fcmToken);
       })
       .onError((err) {
         Util.report('error refreshing fcm token', err, null);

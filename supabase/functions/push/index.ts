@@ -77,6 +77,15 @@ Deno.serve(async (req) => {
           
           const resData = await res.json()
           console.log('message status for device', device.id, ':', res.status, resData);
+
+          if (res.status == 404) {
+            console.log('clearing out fcm token for device due to not found');
+            await supabase
+              .from('devices')
+              .update({ fcm_token: null })
+              .eq('id', device.id)
+          }
+
           return { deviceId: device.id, status: res.status, data: resData };
         } catch (error) {
           console.error('Error sending notification to device', device.id, ':', error);
