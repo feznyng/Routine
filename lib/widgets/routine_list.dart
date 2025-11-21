@@ -103,6 +103,7 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final sortedRoutines = List<Routine>.from(_routines);
     sortedRoutines.sort((a, b) => a.nextActiveTime.compareTo(b.nextActiveTime));
+    
     final completedRoutines = sortedRoutines.where((routine) => routine.canCompleteConditions && routine.areConditionsMet).toList();
     final activeRoutines = sortedRoutines.where((routine) => routine.isActive && !completedRoutines.contains(routine)).toList();
     final inactiveRoutines = sortedRoutines.where((routine) => !routine.isActive && !completedRoutines.contains(routine)).toList();

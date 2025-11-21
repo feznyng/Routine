@@ -420,7 +420,7 @@ class Routine implements Syncable {
       if (!allDay && !overnight && startTime >= 0 && endTime >= 0) {
         final currentDayOfWeek = now.weekday - 1;
         final todayEnd = DateTime(now.year, now.month, now.day, endHour, endMinute);
-        if (snoozedUntil! == todayEnd || snoozedUntil!.isAfter(todayEnd)) {
+        if (snoozedUntil!.isAtSameMomentAs(todayEnd) || snoozedUntil!.isAfter(todayEnd)) {
           for (int i = 1; i <= 7; i++) {
             final nextDayIndex = (currentDayOfWeek + i) % 7;
             if (days[nextDayIndex]) {
