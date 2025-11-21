@@ -525,12 +525,8 @@ class Routine implements Syncable {
   }
 
   bool get canBreak {
+    if (friction == 'pomodoro' && frictionLen != null) return getRemainingPomodoroTime <= 0;
     return (numBreaksLeft ?? 1) > 0;
-  }
-  
-  bool get canTakeBreakNowWithPomodoro {
-    if (friction != 'pomodoro' || frictionLen == null) return true;
-    return getRemainingPomodoroTime <= 0;
   }
 
   DateTime? get pausedUntil => _pausedUntil;
