@@ -167,7 +167,7 @@ void main(List<String> args) async {
       exit(1);
     },
     onDone: () {
-      logger.i('Connection to Routine app closed');
+      stderr.writeln('Connection to Routine app closed');
       exit(0);
     },
   );
