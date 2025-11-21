@@ -133,7 +133,7 @@ Future<void> setup() async {
 
   await Future.wait([
     StrictModeService().init(), 
-    SyncService().queueSync()
+    SyncService().queueSync('startup')
   ]);
   
   if (Util.isDesktop()) {

@@ -186,7 +186,7 @@ class Routine implements Syncable {
         completableBefore: Value(_completableBefore)
     ));
 
-    await SyncService().queueSync();
+    await SyncService().queueSync('routine_save');
   }
 
   @override
@@ -198,7 +198,7 @@ class Routine implements Syncable {
   @override
   Future<void> delete() async {
     await getIt<AppDatabase>().tempDeleteRoutine(_id);
-    await SyncService().queueSync();
+    await SyncService().queueSync('routine_delete');
   }
 
   @override

@@ -486,8 +486,7 @@ class SyncService {
         .onBroadcast( 
           event: 'sync', 
           callback: (payload, [_]) async {
-            logger.i('received remote sync request from ${payload['source']}');
-            await queueSync();
+            await queueSync('remote_sync');
           }
         )
         .onBroadcast(
@@ -545,7 +544,7 @@ class SyncService {
     await _syncingController.close();
   }
 
-  Future<bool> queueSync({bool full = false, bool manual = false}) async {
+  Future<bool> queueSync(String source, {bool full = false, bool manual = false}) async {
     if (userId.isEmpty) {
       logger.i("can't sync - user is not signed in");
       if (manual) {
@@ -553,6 +552,8 @@ class SyncService {
       }
       return false;
     }
+
+    logger.i("queuing up sync for $source");
 
     return await _syncLock.synchronized(() async {
       if (Util.isDesktop()) {

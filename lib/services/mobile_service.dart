@@ -5,7 +5,6 @@ import 'package:Routine/channels/mobile_channel.dart';
 import 'package:Routine/models/installed_app.dart';
 import 'package:Routine/services/platform_service.dart';
 import 'package:Routine/services/sync_service.dart';
-import 'package:Routine/setup.dart';
 import '../models/routine.dart';
 import 'strict_mode_service.dart';
 
@@ -37,10 +36,9 @@ class MobileService extends PlatformService {
 
   @override
   Future<void> resume() async {
-    logger.i("refreshing mobile service");
     SyncService().setupRealtimeSync();
     await stopWatching();
-    await SyncService().queueSync();
+    await SyncService().queueSync('resume');
     await init();
   }
   

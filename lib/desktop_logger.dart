@@ -32,7 +32,7 @@ class DesktopLogger extends LogPrinter {
   Future<void> _initInternal() async {
     try {
       final file = await _resolveLogFile();
-      print("DesktopLogger: file = $file");
+      print("writing logs to file at $file");
       await file.parent.create(recursive: true);
       _sink = file.openWrite(mode: FileMode.append);
     } catch (_) {

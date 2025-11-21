@@ -1,6 +1,5 @@
 import 'dart:math';
 
-import 'package:Routine/setup.dart';
 import 'package:Routine/util.dart';
 import 'package:cron/cron.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -248,8 +247,7 @@ class StrictModeService with ChangeNotifier {
     await _storeEmergencyEvents();
 
     _notifyEffectiveSettingsChanged();
-    logger.i("emergency mode sync");
-    await SyncService().queueSync();
+    await SyncService().queueSync('emergency_mode');
   }
 
   Future<bool> _setSettingWithConfirmation(

@@ -131,10 +131,9 @@ class AuthService {
 
       if (response.user != null) {
         SyncService().setupRealtimeSync();
-        logger.i("syncing due to sign in");
-        SyncService().queueSync();
+        SyncService().queueSync('sign-in');
         initNotifications();
-      }
+      } 
 
       return response.user != null;
     } on AuthException catch (e) {
