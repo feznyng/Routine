@@ -57,20 +57,17 @@ void main(List<String> args) async {
         final message = utf8.decode(messageBytes);
         stderr.writeln('Decoded message from extension: $message');
 
-        // Forward message to Routine app
-        if (routineSocket != null) {
-          final bytes = utf8.encode(message);
-          if (bytes.length > maxMessageSize) {
-            stderr.writeln('Cannot forward message: ${bytes.length} bytes exceeds size limit');
-            return;
-          }
-
-          // Send message length in big-endian format as expected by the Routine app
-          final lengthBytes = ByteData(4)..setUint32(0, bytes.length, Endian.little);
-          routineSocket.add(Uint8List.fromList([...lengthBytes.buffer.asUint8List(), ...bytes]));
-          await routineSocket.flush();
-          stderr.writeln('Sent message: $message');
+        final bytes = utf8.encode(message);
+        if (bytes.length > maxMessageSize) {
+          stderr.writeln('Cannot forward message: ${bytes.length} bytes exceeds size limit');
+          return;
         }
+
+        // Send message length in big-endian format as expected by the Routine app
+        final lengthBytes = ByteData(4)..setUint32(0, bytes.length, Endian.little);
+        routineSocket.add(Uint8List.fromList([...lengthBytes.buffer.asUint8List(), ...bytes]));
+        await routineSocket.flush();
+        stderr.writeln('Sent message: $message');
       } catch (e, st) {
         stderr.writeln('Error processing message from extension: $e\n$st');
       }
