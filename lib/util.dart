@@ -148,7 +148,8 @@ class Util {
   }
 
   static Future<void> writeNfcTag(String data, void Function(bool success) onWrite) async {
-    await NfcManager.instance.stopSession();
+    logger.i('Writing NFC tag: $data');
+    //await NfcManager.instance.stopSession();
     await NfcManager.instance.startSession(
       pollingOptions: HashSet.of(NfcPollingOption.values), 
       onDiscovered: (NfcTag tag) async {
@@ -173,7 +174,8 @@ class Util {
   }
 
   static Future<void> readNfcTag(void Function(String tag) onDiscovered) async {
-    await NfcManager.instance.stopSession();
+    logger.i('Reading NFC tag');
+    //await NfcManager.instance.stopSession();
     await NfcManager.instance.startSession(
       pollingOptions: HashSet.of(NfcPollingOption.values), 
       onDiscovered: (NfcTag tag) async {
@@ -202,7 +204,10 @@ class Util {
         }
       },
       invalidateAfterFirstReadIos: true, 
-      onSessionErrorIos: (err) => NfcManager.instance.stopSession()
+      onSessionErrorIos: (err) {
+        logger.e(err);
+        NfcManager.instance.stopSession();
+      }
     );
   }
 }
