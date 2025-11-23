@@ -257,7 +257,7 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
-  Future<void> tempDeleteRoutine(id) async {
+  Future<void> tempDeleteRoutine(String id) async {
     await transaction(() async {
       final routine = await (select(routines)..where((t) => t.id.equals(id))).getSingle();
       await (update(groups)..where((t) => t.id.isIn(routine.groups) & t.name.isNull())).write(GroupsCompanion(deleted: Value(true), changes: Value(['deleted']), updatedAt: Value(DateTime.now())));
@@ -265,7 +265,7 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
-  Future<void> deleteRoutine(id) async {
+  Future<void> deleteRoutine(String id) async {
     await (delete(routines)..where((t) => t.id.equals(id))).go();
   }
 
