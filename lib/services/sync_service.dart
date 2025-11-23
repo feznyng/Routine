@@ -696,18 +696,18 @@ class SyncService {
       final devicesChanged = full || _wasChanged(lastPulledAt, userData['devices_updated_at']);
       final usersChanged = full || _wasChanged(lastPulledAt, userData['updated_at']);
 
+      bool madeRemoteChange = false;
+      bool accidentalDeletion = false;
+
       logger.i("routinesChanged: $routinesChanged, groupsChanged: $groupsChanged, devicesChanged: $devicesChanged, usersChanged: $usersChanged");
 
       _logElapsedTime(stopwatch, 'user fetch');
 
       if (usersChanged) {
-        await _syncEmergencyEvents(userData);
+        madeRemoteChange = await _syncEmergencyEvents(userData);
       }
 
       _logElapsedTime(stopwatch, 'emergency events');
-
-      bool madeRemoteChange = false;
-      bool accidentalDeletion = false;
 
       // pull
       await db.transaction(() async {
