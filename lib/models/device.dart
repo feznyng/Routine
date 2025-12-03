@@ -94,7 +94,9 @@ class Device implements Syncable {
 
     if (_entry == null) {
       changes.add('new');
-    }
+    } else {
+      changes.addAll(_entry!.changes);
+    } 
     
     await getIt<AppDatabase>().upsertDevice(DevicesCompanion(
       id: Value(_id),
@@ -103,7 +105,7 @@ class Device implements Syncable {
       curr: Value(_curr),
       updatedAt: Value(DateTime.now()),
       deleted: Value(false),
-      changes: Value(changes),
+      changes: Value(Set<String>.from(changes).toList()),
     ));
 
     await SyncService().queueSync('device_save');

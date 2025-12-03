@@ -57,6 +57,8 @@ class Group implements Syncable {
     
     if (_entry == null) {
       changes.add('new');
+    } else {
+      changes.addAll(_entry.changes);
     }
 
     await getIt<AppDatabase>().upsertGroup(GroupsCompanion(
@@ -67,7 +69,7 @@ class Group implements Syncable {
       apps: Value(apps),
       sites: Value(sites),
       categories: Value(categories),
-      changes: Value(changes),
+      changes: Value(Set<String>.from(changes).toList()),
       updatedAt: Value(DateTime.now()),
     ));
     SyncService().queueSync('group_save');

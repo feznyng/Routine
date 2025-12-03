@@ -153,6 +153,8 @@ class Routine implements Syncable {
 
     if (_entry == null) {
       changes.add('new');
+    } else {
+      changes.addAll(_entry!.changes);
     }
 
     logger.i('saving routine');
@@ -170,7 +172,7 @@ class Routine implements Syncable {
         startTime: Value(_startTime), 
         endTime: Value(_endTime),
         groups: Value(_groups.values.map<String>((g) => g.id).toList()),
-        changes: Value(changes),
+        changes: Value(Set<String>.from(changes).toList()),
         numBreaksTaken: Value(_numBreaksTaken),
         lastBreakAt: Value(_lastBreakAt),
         pausedUntil: Value(_pausedUntil),
