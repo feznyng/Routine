@@ -330,7 +330,15 @@ class Routine implements Syncable {
     }
 
     _snoozedUntil = until;
-    await save(groups: false);
+
+    _entry = await getIt<AppDatabase>().upsertRoutine(RoutinesCompanion(
+      id: Value(_id),
+      snoozedUntil: Value(until),
+      updatedAt: Value(DateTime.now()),
+      changes: Value([...(_entry == null ? [] : _entry!.changes), 'snoozedUntil']),
+    ));
+
+    await SyncService().queueSync('routine_snooze');
   }
 
   Future<void> unsnooze() async {
@@ -341,7 +349,15 @@ class Routine implements Syncable {
     }
 
     _snoozedUntil = now;
-    await save(groups: false);
+    
+    _entry = await getIt<AppDatabase>().upsertRoutine(RoutinesCompanion(
+      id: Value(_id),
+      snoozedUntil: Value(now),
+      updatedAt: Value(DateTime.now()),
+      changes: Value([...(_entry == null ? [] : _entry!.changes), 'snoozedUntil']),
+    ));
+
+    await SyncService().queueSync('routine_unsnooze');
   }
 
   // scheduling
