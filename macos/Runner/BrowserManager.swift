@@ -49,6 +49,7 @@ class BrowserManager {
         }
         
         let hasPermission = browser.canControl()
+        NSLog("[Routine] requestAutomationPermission - browser %@ is controllable = %d ", bundleId, hasPermission)
 
         if !hasPermission && openPrefsOnReject {
             NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")!)

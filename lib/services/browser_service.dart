@@ -140,11 +140,11 @@ class BrowserService with ChangeNotifier {
 
     if (result) {
       _controllable.add(browser);
-      notifyListeners();
     } else {
       _controllable.remove(browser);
-      notifyListeners();
     }
+    
+    notifyListeners();
 
     return result;
   }
@@ -389,6 +389,7 @@ class BrowserService with ChangeNotifier {
 
   String get nmhPath {
     if (Platform.isMacOS) {
+      logger.i("Platform.resolvedExecutable: ${Platform.resolvedExecutable.replaceAll('/MacOS/Routine', '/Frameworks/App.framework/Resources/flutter_assets/assets/extension')}");
       return Platform.resolvedExecutable
           .replaceAll('/MacOS/Routine', '/Frameworks/App.framework/Resources/flutter_assets/assets/extension');
     } else {

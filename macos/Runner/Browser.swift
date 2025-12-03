@@ -29,7 +29,11 @@ class Browser {
                 return nil
             }
             
+            NSLog("[Routine] retrieved url \(output.stringValue)")
+            
             return output.stringValue
+        } else {
+            NSLog("[Routine] failed to create apple script")
         }
         
         return nil
