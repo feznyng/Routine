@@ -54,33 +54,40 @@ class NotificationService {
       return;
     }
 
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    try {
+      logger.i("setting up push notifications");
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
 
-    FirebaseMessaging messaging = FirebaseMessaging.instance;
+      FirebaseMessaging messaging = FirebaseMessaging.instance;
 
-    final _ = await messaging.requestPermission(
-      alert: true,
-      announcement: false,
-      badge: false,
-      carPlay: false,
-      criticalAlert: false,
-      provisional: false,
-      sound: true,
-    );
+      final _ = await messaging.requestPermission(
+        alert: true,
+        announcement: false,
+        badge: false,
+        carPlay: false,
+        criticalAlert: false,
+        provisional: false,
+        sound: true,
+      );
 
-    await _fetchAndUpdateToken();
+      await _fetchAndUpdateToken();
 
-    messaging.onTokenRefresh
-      .listen((fcmToken) async {
-        await _updateToken(fcmToken);
-      })
-      .onError((err) {
-        Util.report('error refreshing fcm token', err, null);
-      });
+      messaging.onTokenRefresh
+        .listen((fcmToken) async {
+          await _updateToken(fcmToken);
+        })
+        .onError((err) {
+          Util.report('error refreshing fcm token', err, null);
+        });
 
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      logger.i("push notifications set up");
+    } catch (e) {
+      logger.e("error initializing push notifications: $e");
+    }
+
   }
 
   Future<bool> get granted async {
