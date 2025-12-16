@@ -217,13 +217,14 @@ class AppDatabase extends _$AppDatabase {
       if (existingEntry == null) {
         await into(routines).insert(routine);
       } else {
-        final existingGroups = await (select(groups)..where((t) => t.id.isIn(existingEntry.groups))).get();
-
-        final deleteIds = existingGroups
-          .where((g) => g.name == null && !routine.groups.value.any((id) => id == g.id))
-          .map((g) => g.id).toList();
-        await (update(groups)..where((t) => t.id.isIn(deleteIds))).write(GroupsCompanion(deleted: Value(true), updatedAt: Value(DateTime.now())));
-
+        if (routine.groups.present) {
+          final existingGroups = await (select(groups)..where((t) => t.id.isIn(existingEntry.groups))).get();
+          final deleteIds = existingGroups
+            .where((g) => g.name == null && !routine.groups.value.any((id) => id == g.id))
+            .map((g) => g.id).toList();
+          await (update(groups)..where((t) => t.id.isIn(deleteIds))).write(GroupsCompanion(deleted: Value(true), updatedAt: Value(DateTime.now())));
+        }
+        
         await (update(routines)..where((t) => t.id.equals(routine.id.value))).write(routine);
 
         return await getRoutineById(routine.id.value);
