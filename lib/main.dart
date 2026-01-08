@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:routine_blocker/services/platform_service.dart';
 import 'package:routine_blocker/util.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +20,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'widgets/global_snackbar.dart';
 import 'services/sync_service.dart';
 import 'dart:async';
+import 'package:path_provider/path_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -154,6 +158,9 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
+    if (!kDebugMode) {
+      _cleanUpTemporaryDirectory();
+    }
     _platService.init();
    
     if (_isDesktop) {
@@ -162,6 +169,21 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
       trayManager.addListener(this);
       StrictModeService.instance.addListener(_updateTrayMenu);
     }
+  }
+
+  void _cleanUpTemporaryDirectory() async {
+    final documentsDirectory = await getApplicationDocumentsDirectory();
+    documentsDirectory.parent.list().forEach((child) async {
+      if (child is Directory && child.path.endsWith('/tmp')) {
+        print('Deleting temp folder at ${child.path}');
+        try {
+          await child.delete(recursive: true);
+          print('Temp folder was deleted with success');
+        } catch (error) {
+          print('Temp folder could not be deleted: $error');
+        }
+      }
+    });
   }
 
   @override
