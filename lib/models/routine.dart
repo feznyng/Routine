@@ -101,9 +101,11 @@ class Routine implements Syncable {
 
         final now = DateTime.now();
         final yesterday = now.subtract(const Duration(days: 1));
-        final nowTime = now.minute * 60 + 1;
+        final nowTime = now.hour * 60 + now.minute;
 
-        final routineStartTime = (startTime < endTime || nowTime > startTime) ? DateTime(now.year, now.month, now.day, startTimeHours, startTimeMinutes) 
+        // if the routine does not span midnight, or we're past the start time, use today's start time
+        final useToday = (startTime < endTime || nowTime > startTime);
+        final routineStartTime = useToday ? DateTime(now.year, now.month, now.day, startTimeHours, startTimeMinutes) 
           : DateTime(yesterday.year, yesterday.month, yesterday.day, startTimeHours, startTimeMinutes);
         
         if (_lastBreakAt!.isBefore(routineStartTime)) {
@@ -278,8 +280,6 @@ class Routine implements Syncable {
     if (_entry!.snoozedUntil != _snoozedUntil) {
       changes.add('snoozedUntil');
     }
-
-    logger.i("snoozedUntil: $_snoozedUntil | ${_entry!.snoozedUntil}");
 
     if (_entry!.maxBreaks != maxBreaks) {
       changes.add('maxBreaks');
