@@ -33,7 +33,7 @@ class _BreakDialogState extends State<BreakDialog> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     canConfirm = widget.routine.friction == 'none' || 
-                (widget.routine.friction == 'pomodoro' && widget.routine.canBreak);
+                (widget.routine.friction == 'pomodoro' && widget.routine.canBreakNow);
 
     breakDuration = widget.routine.maxBreakDuration;
 
@@ -48,7 +48,7 @@ class _BreakDialogState extends State<BreakDialog> with WidgetsBindingObserver {
       _delayEndAt = DateTime.now().add(Duration(seconds: remainingDelay!));
       _startDelayTimer();
     } else if (widget.routine.friction == 'pomodoro') {
-      if (!widget.routine.canBreak) {
+      if (!widget.routine.canBreakNow) {
         final remainingSeconds = widget.routine.getRemainingPomodoroTime;
         if (remainingSeconds > 0) {
           remainingPomodoroSeconds = remainingSeconds;
@@ -87,7 +87,7 @@ class _BreakDialogState extends State<BreakDialog> with WidgetsBindingObserver {
       if (widget.routine.friction == 'pomodoro') {
         final remaining = widget.routine.getRemainingPomodoroTime;
         remainingPomodoroSeconds = remaining > 0 ? remaining : 0;
-        canConfirm = widget.routine.canBreak;
+        canConfirm = widget.routine.canBreakNow;
 
         if (remainingPomodoroSeconds! > 0) {
           if (_pomodoroTimer == null) _startPomodoroTimer();

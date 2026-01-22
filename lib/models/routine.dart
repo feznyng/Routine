@@ -108,7 +108,7 @@ class Routine implements Syncable {
         final routineStartTime = useToday ? DateTime(now.year, now.month, now.day, startTimeHours, startTimeMinutes) 
           : DateTime(yesterday.year, yesterday.month, yesterday.day, startTimeHours, startTimeMinutes);
         
-        if (_lastBreakAt!.isBefore(routineStartTime)) {
+        if (_lastBreakAt!.toLocal().isBefore(routineStartTime)) {
           _numBreaksTaken = 0;
         }
       }
@@ -544,8 +544,12 @@ class Routine implements Syncable {
   }
 
   bool get canBreak {
-    if (friction == 'pomodoro' && frictionLen != null) return getRemainingPomodoroTime <= 0;
     return (numBreaksLeft ?? 1) > 0;
+  }
+
+   bool get canBreakNow {
+    if (friction == 'pomodoro' && frictionLen != null) return getRemainingPomodoroTime <= 0;
+    return canBreak;
   }
 
   DateTime? get pausedUntil => _pausedUntil;
