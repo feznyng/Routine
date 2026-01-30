@@ -94,15 +94,18 @@ class Util {
       _addIfUnseen(evaluationTimes, seen, routine.startHour, routine.startMinute, 1);
       _addIfUnseen(evaluationTimes, seen, routine.endHour, routine.endMinute, 1);
 
-      if (routine.pausedUntil != null) {
-        _addIfUnseen(evaluationTimes, seen, routine.pausedUntil!.hour, routine.pausedUntil!.minute, routine.pausedUntil!.second + 1);
-      }
-      if (routine.snoozedUntil != null) {
-        _addIfUnseen(evaluationTimes, seen, routine.snoozedUntil!.hour, routine.snoozedUntil!.minute, routine.snoozedUntil!.second + 1);
-      }
+      _addNullableIfAfter(evaluationTimes, seen, routine.pausedUntil);
+      _addNullableIfAfter(evaluationTimes, seen, routine.snoozedUntil);
     }
     
     return evaluationTimes;
+  }
+
+  static void _addNullableIfAfter(List<Schedule> schedules, Set<int> seen, DateTime? date) {
+    if (date != null && date.isAfter(DateTime.now().toUtc())) {
+      date = date.toLocal();
+      _addIfUnseen(schedules, seen, date.hour, date.minute, date.second + 1);
+    }
   }
 
   static void scheduleEvaluationTimes(
@@ -118,6 +121,7 @@ class Util {
     scheduledTasks.clear();
 
     for (final Schedule time in evaluationTimes) {
+      logger.i("scheduling evaluation at ${time.hours}:${time.minutes}:${time.seconds}");
       ScheduledTask task = Cron().schedule(time, () async {
         await eval();
       });

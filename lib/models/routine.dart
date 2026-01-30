@@ -22,11 +22,11 @@ class Routine implements Syncable {
   int? _numBreaksTaken;
   DateTime? _lastBreakAt;
   DateTime? _pausedUntil;
+  DateTime? _snoozedUntil;
   int? maxBreaks;
   int _maxBreakDuration;
   String friction;
   int? frictionLen;
-  DateTime? _snoozedUntil;
   bool strictMode = false;
   List<Condition> conditions = [];
   int _completableBefore = 0; // Minutes before routine start when conditions can be completed
@@ -77,14 +77,14 @@ class Routine implements Syncable {
     _startTime = entry.startTime,
     _endTime = entry.endTime,
     _numBreaksTaken = entry.numBreaksTaken,
-    _lastBreakAt = entry.lastBreakAt,
-    _pausedUntil = entry.pausedUntil,
+    _lastBreakAt = entry.lastBreakAt?.toUtc(),
+    _pausedUntil = entry.pausedUntil?.toUtc(),
     maxBreaks = entry.maxBreaks,
     _maxBreakDuration = entry.maxBreakDuration,
     friction = entry.friction,
     conditions = List.from(entry.conditions),
     frictionLen = entry.frictionLen,
-    _snoozedUntil = entry.snoozedUntil,
+    _snoozedUntil = entry.snoozedUntil?.toUtc(),
     strictMode = entry.strictMode,
     _completableBefore = entry.completableBefore ?? 0 {
       _entry = entry;
@@ -121,13 +121,13 @@ class Routine implements Syncable {
     _startTime = other._startTime,
     _endTime = other._endTime,
     _numBreaksTaken = other._numBreaksTaken,
-    _lastBreakAt = other._lastBreakAt,
-    _pausedUntil = other._pausedUntil,
+    _lastBreakAt = other._lastBreakAt?.toUtc(),
+    _pausedUntil = other._pausedUntil?.toUtc(),
     maxBreaks = other.maxBreaks,
     _maxBreakDuration = other._maxBreakDuration,
     friction = other.friction,
     frictionLen = other.frictionLen,
-    _snoozedUntil = other._snoozedUntil,
+    _snoozedUntil = other._snoozedUntil?.toUtc(),
     conditions = other.conditions,
     strictMode = other.strictMode,
     _completableBefore = other._completableBefore,
@@ -331,11 +331,11 @@ class Routine implements Syncable {
       return;
     }
 
-    _snoozedUntil = until;
+    _snoozedUntil = until.toUtc();
 
     _entry = await getIt<AppDatabase>().upsertRoutine(RoutinesCompanion(
       id: Value(_id),
-      snoozedUntil: Value(until),
+      snoozedUntil: Value(until.toUtc()),
       updatedAt: Value(DateTime.now()),
       changes: Value([...(_entry == null ? [] : _entry!.changes), 'snoozedUntil']),
     ));
@@ -350,7 +350,7 @@ class Routine implements Syncable {
       return;
     }
 
-    _snoozedUntil = now;
+    _snoozedUntil = now.toUtc();
     
     _entry = await getIt<AppDatabase>().upsertRoutine(RoutinesCompanion(
       id: Value(_id),
@@ -558,7 +558,7 @@ class Routine implements Syncable {
     if (!canBreak) return;
 
     final duration = minutes ?? _maxBreakDuration;
-    final now = DateTime.now();
+    final now = DateTime.now().toUtc();
 
     _lastBreakAt = now;
     _pausedUntil = now.add(Duration(minutes: duration));

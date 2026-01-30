@@ -114,6 +114,8 @@ class DesktopService extends PlatformService {
   }
 
   void evaluate(List<Routine> routines) {
+    logger.i("evaluating routines: ${routines.length}");
+    
     routines = routines.where((r) => r.isActive && !r.isPaused && !r.areConditionsMet).toList();
 
     Set<String> apps = {}; 
