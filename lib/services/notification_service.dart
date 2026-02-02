@@ -62,15 +62,15 @@ class NotificationService {
 
       FirebaseMessaging messaging = FirebaseMessaging.instance;
 
-      final _ = await messaging.requestPermission(
-        alert: true,
-        announcement: false,
-        badge: false,
-        carPlay: false,
-        criticalAlert: false,
-        provisional: false,
-        sound: true,
-      );
+      // final _ = await messaging.requestPermission(
+      //   alert: true,
+      //   announcement: false,
+      //   badge: false,
+      //   carPlay: false,
+      //   criticalAlert: false,
+      //   provisional: false,
+      //   sound: true,
+      // );
 
       await _fetchAndUpdateToken();
 

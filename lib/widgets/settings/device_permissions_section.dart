@@ -131,13 +131,13 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildPermissionTile(
-                title: 'Notifications',
-                subtitle: 'Required to keep routines updated in the background',
-                isGranted: _notificationPermission,
-                onRequestPermission: () => _requestPermission(Permission.notification),
-              ),
-              const Divider(),
+              // _buildPermissionTile(
+              //   title: 'Notifications',
+              //   subtitle: 'Required to keep routines updated in the background',
+              //   isGranted: _notificationPermission,
+              //   onRequestPermission: () => _requestPermission(Permission.notification),
+              // ),
+              // const Divider(),
               _buildPermissionTile(
                 title: 'Camera',
                 subtitle: 'Required for scanning QR codes',
