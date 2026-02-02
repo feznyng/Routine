@@ -17,7 +17,9 @@ object Util {
 
     private val PACKAGE_INSTALLER_PACKAGES = setOf(
         "com.google.android.packageinstaller",
-        "com.android.packageinstaller"
+        "com.android.packageinstaller",
+        "com.android.launcher",
+        "com.android.systemui"
     )
 
     fun isBlockable(appInfo: ApplicationInfo): Boolean {

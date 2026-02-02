@@ -49,11 +49,7 @@ class RoutineManager : AccessibilityService() {
 
     // Flag to track if an editable text field is focused
     private var isEditableFieldFocused = false
-    
-    // Track the last processed URL timestamp to avoid rapid redirects
-    private var lastProcessedTime = 0L
-    private val MIN_PROCESS_INTERVAL = 1000L
-    
+
     // Handler for scheduling evaluations
     private val handler = Handler(Looper.getMainLooper())
     private var evaluationRunnable: Runnable? = null
@@ -163,7 +159,6 @@ class RoutineManager : AccessibilityService() {
     }
     
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        Log.d(TAG, "onAccessibilityEvent: ${event.eventType} ${event.packageName} $strictModeEnabled")
         try {
             val eventType = event.eventType
             val currentTime = System.currentTimeMillis()
@@ -178,7 +173,6 @@ class RoutineManager : AccessibilityService() {
 
             // Check strict mode restrictions
             if (strictModeEnabled) {
-                Log.d(TAG, "Strict mode enabled uninstall = $blockUninstallingApps, install = $blockInstallingApps, time = $blockChangingTimeSettings")
                 // Block uninstalling apps
                 if (blockUninstallingApps &&
                     (isUninstallDialog(event) || isAccessibilitySettingsForRoutine(event) || isAppInfoPageForRoutine(event))) {
@@ -322,7 +316,6 @@ class RoutineManager : AccessibilityService() {
         val currentTime = System.currentTimeMillis()
         
         // Update tracking variables
-        lastProcessedTime = currentTime
         currentBrowserUrl = capturedUrl
         
         // Update last seen site
@@ -768,7 +761,6 @@ class RoutineManager : AccessibilityService() {
         val packageName = event.packageName?.toString() ?: return false
 
         if (packageName != "com.android.settings") {
-            Log.d(TAG, "isAccessibilitySettingsForRoutine: packageName != 'com.android.settings'")
             return false
         }
 
@@ -866,42 +858,37 @@ class RoutineManager : AccessibilityService() {
             
             // Traverse the node hierarchy to look for specific patterns
             traverseNodes(rootNode) { node ->
-                val className = node.className?.toString() ?: ""
                 val text = node.text?.toString() ?: ""
                 val contentDesc = node.contentDescription?.toString() ?: ""
+                val clickable = node.isClickable
                 
-                // Check for uninstall text
-                if (text.contains("Uninstall", ignoreCase = true) || 
+                if (text.contains("Uninstall", ignoreCase = true) ||
                     contentDesc.contains("Uninstall", ignoreCase = true)) {
                     hasUninstallText = true
                 }
                 
-                // Check for Routine reference
-                if (text.contains("Routine") || contentDesc.contains("Routine") || 
+                if (text.contains("Routine") || contentDesc.contains("Routine") ||
                     text.contains(this.packageName) || contentDesc.contains(this.packageName)) {
                     hasRoutineReference = true
                 }
                 
-                // Check for OK button
-                if ((text.equals("OK", ignoreCase = true) || 
+                if ((text.equals("OK", ignoreCase = true) ||
                      text.equals("Yes", ignoreCase = true) ||
-                     contentDesc.equals("OK", ignoreCase = true) ||
-                     contentDesc.equals("Yes", ignoreCase = true)) &&
-                    className.contains("Button")) {
+                        text.equals("Uninstall", ignoreCase = true) ||
+                        contentDesc.equals("OK", ignoreCase = true) ||
+                     contentDesc.equals("Yes", ignoreCase = true) ||
+                            contentDesc.equals("Uninstall", ignoreCase = true)) && clickable) {
                     hasOkButton = true
                 }
                 
-                // Check for Cancel button
-                if ((text.equals("Cancel", ignoreCase = true) || 
+                if ((text.equals("Cancel", ignoreCase = true) ||
                      text.equals("No", ignoreCase = true) ||
                      contentDesc.equals("Cancel", ignoreCase = true) ||
-                     contentDesc.equals("No", ignoreCase = true)) &&
-                    className.contains("Button")) {
+                     contentDesc.equals("No", ignoreCase = true)) && clickable) {
                     hasCancelButton = true
                 }
-                
-                // Continue traversal
-                true
+
+                !(hasUninstallText && hasRoutineReference && hasOkButton && hasCancelButton)
             }
 
             // If we found uninstall text, Routine reference, and at least one button, it's likely an uninstall dialog

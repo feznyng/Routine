@@ -37,6 +37,10 @@ App/site blocker for iOS, Android, macOS, and Windows.
 | UC Browser | ➖ | ➖ | ✅ | ➖ |
 | Vivaldi | ➖ | ➖ | ✅ | ➖ |
 
+### Known Issues
+- Android strict mode settings are brittle due to reliance on identifying specific text fields which may be different across devices.
+- English-only. Routine is not localized.
+
 ## Development
 
 Docs are WIP - please open an issue if you think something needs further explanation. 
