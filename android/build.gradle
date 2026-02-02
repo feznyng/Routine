@@ -37,9 +37,25 @@ tasks.register("clean", Delete) {
 subprojects {
     tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
         compilerOptions {
-            languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
-            apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+
+        kotlinOptions {
+            jvmTarget = "17"
+        }
+    }
+}
+
+gradle.projectsEvaluated {
+    def wm = rootProject.findProject(":workmanager_android")
+    if (wm != null) {
+        wm.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+            compilerOptions {
+                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+            }
+            kotlinOptions {
+                jvmTarget = "17"
+            }
         }
     }
 }
