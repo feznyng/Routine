@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 
 object Util {
     private val BLOCKABLE_CATEGORIES = setOf(
+        ApplicationInfo.CATEGORY_UNDEFINED,
         ApplicationInfo.CATEGORY_PRODUCTIVITY,
         ApplicationInfo.CATEGORY_AUDIO,
         ApplicationInfo.CATEGORY_IMAGE,
@@ -24,7 +25,7 @@ object Util {
             return false
         }
 
-        return appInfo.category in BLOCKABLE_CATEGORIES
+        return BLOCKABLE_CATEGORIES.contains(appInfo.category);
     }
 
     fun isPackageInstaller(packageName: String): Boolean {

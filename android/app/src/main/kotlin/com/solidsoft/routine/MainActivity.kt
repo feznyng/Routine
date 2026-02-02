@@ -258,6 +258,7 @@ class MainActivity: FlutterActivity() {
             for (appInfo in installedApps) {
                 try {
                     if (!Util.isBlockable(appInfo)) {
+                        Log.d(TAG, "Skipping non-blockable app ${appInfo.packageName} ${appInfo.category}")
                         continue
                     }
 
