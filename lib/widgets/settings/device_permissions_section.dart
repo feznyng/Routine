@@ -1,12 +1,11 @@
-import 'dart:async';
-import 'dart:io';
+import 'dart:io' show Platform;
 
 import 'package:routine_blocker/services/mobile_service.dart';
 import 'package:routine_blocker/setup.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:app_settings/app_settings.dart';
-import '../android_permissions_onboarding_dialog.dart';
+import '../block_permissions_flow.dart';
 
 class DevicePermissionsSection extends StatefulWidget {
   const DevicePermissionsSection({super.key});
@@ -75,43 +74,9 @@ class _DevicePermissionsSectionState extends State<DevicePermissionsSection> wit
   }
 
   Future<void> _requestBlockPermissions() async {
-    if (Platform.isIOS) {
-      final granted = await MobileService.instance.getBlockPermissions(request: true);
-      if (mounted) {
-        await _checkPermissions();
-      }
-      if (!granted && mounted) {
-        AppSettings.openAppSettings(type: AppSettingsType.settings);  // iOS will redirect to Screen Time settings
-      }
-    } else if (Platform.isAndroid) {
-      final mobileService = MobileService.instance;
-      final hasOverlay = await mobileService.checkOverlayPermission();
-      final hasAccessibility = await mobileService.checkAccessibilityPermission();
-      if (!hasOverlay || !hasAccessibility) {
-        if (!mounted) return;
-        
-        final completer = Completer<bool>();
-        
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (dialogContext) => AndroidPermissionsOnboardingDialog(
-            onComplete: () {
-              Navigator.of(dialogContext).pop();
-              completer.complete(true);
-            },
-            onSkip: () {
-              Navigator.of(dialogContext).pop();
-              completer.complete(false);
-            },
-          ),
-        );
-        
-        await completer.future;
-        if (mounted) {
-          await _checkPermissions();
-        }
-      }
+    await runBlockPermissionsSetupFlow(context);
+    if (mounted) {
+      await _checkPermissions();
     }
   }
 

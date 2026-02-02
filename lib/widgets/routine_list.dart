@@ -1,12 +1,10 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:routine_blocker/constants.dart';
 import 'package:routine_blocker/setup.dart';
 import 'package:routine_blocker/util.dart';
 import 'package:cron/cron.dart';
 import 'package:flutter/material.dart';
-import 'package:app_settings/app_settings.dart';
 import '../models/routine.dart';
 import '../services/mobile_service.dart';
 import '../services/sync_service.dart';
@@ -14,7 +12,7 @@ import '../services/strict_mode_service.dart';
 import '../services/auth_service.dart';
 import '../pages/routine_page.dart';
 import 'routine_card.dart';
-import 'android_permissions_onboarding_dialog.dart';
+import 'block_permissions_flow.dart';
 import 'common/emergency_mode_banner.dart';
 import 'common/signed_out_banner.dart';
 
@@ -123,39 +121,7 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
     });
 
     try {
-      if (Platform.isIOS) {
-        final granted = await MobileService.instance.getBlockPermissions(request: true);
-        if (!granted && mounted) {
-          AppSettings.openAppSettings(type: AppSettingsType.settings);
-        }
-      } else if (Platform.isAndroid) {
-        final mobileService = MobileService.instance;
-        final hasOverlay = await mobileService.checkOverlayPermission();
-        final hasAccessibility = await mobileService.checkAccessibilityPermission();
-
-        if (!hasOverlay || !hasAccessibility) {
-          if (!mounted) return;
-
-          final completer = Completer<bool>();
-
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (dialogContext) => AndroidPermissionsOnboardingDialog(
-              onComplete: () {
-                Navigator.of(dialogContext).pop();
-                completer.complete(true);
-              },
-              onSkip: () {
-                Navigator.of(dialogContext).pop();
-                completer.complete(false);
-              },
-            ),
-          );
-
-          await completer.future;
-        }
-      }
+      await runBlockPermissionsSetupFlow(context);
       await _checkBlockPermissions();
     } finally {
       if (!mounted) return;
