@@ -210,7 +210,7 @@ class RoutineManager : AccessibilityService() {
                 showBlockOverlay(packageName)
                 return
             } else if (blockOverlayView?.isShowing() == true) {
-                if (packageName != this.packageName) {
+                if (packageName != "com.android.systemui" && packageName != this.packageName) {
                     hideBlockOverlay()
                 }
             }
