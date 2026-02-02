@@ -1,14 +1,20 @@
 import 'dart:async';
+import 'dart:io';
+
 import 'package:routine_blocker/constants.dart';
+import 'package:routine_blocker/setup.dart';
 import 'package:routine_blocker/util.dart';
 import 'package:cron/cron.dart';
 import 'package:flutter/material.dart';
+import 'package:app_settings/app_settings.dart';
 import '../models/routine.dart';
+import '../services/mobile_service.dart';
 import '../services/sync_service.dart';
 import '../services/strict_mode_service.dart';
 import '../services/auth_service.dart';
 import '../pages/routine_page.dart';
 import 'routine_card.dart';
+import 'android_permissions_onboarding_dialog.dart';
 import 'common/emergency_mode_banner.dart';
 import 'common/signed_out_banner.dart';
 
@@ -28,6 +34,8 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
   bool _inactiveRoutinesExpanded = true;
   bool _completedRoutinesExpanded = true;
   bool _showSignedOutBanner = false;
+  bool? _hasBlockPermissions;
+  bool _isRequestingBlockPermissions = false;
   final cron = Cron();
   final List<ScheduledTask> _scheduledTasks = [];
   final _syncService = SyncService();
@@ -41,6 +49,7 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
     _routines = [];
     WidgetsBinding.instance.addObserver(this);
     _checkAuthStatus();
+    _checkBlockPermissions();
     authServiceSubscription = _authService.authStateChange.listen((data) {
       if (mounted) {
         _checkAuthStatus();
@@ -85,10 +94,128 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _checkAuthStatus();
+      _checkBlockPermissions();
       setState(() {
         _routines = _routines;
       });
     }
+  }
+
+  Future<void> _checkBlockPermissions() async {
+    if (Util.isDesktop()) return;
+
+    final hasPermissions = await MobileService.instance.getBlockPermissions();
+    if (!mounted) return;
+
+    logger.i('Block permissions: $hasPermissions');
+
+    setState(() {
+      _hasBlockPermissions = hasPermissions;
+    });
+  }
+
+  Future<void> _requestBlockPermissions() async {
+    if (Util.isDesktop()) return;
+    if (_isRequestingBlockPermissions) return;
+
+    setState(() {
+      _isRequestingBlockPermissions = true;
+    });
+
+    try {
+      if (Platform.isIOS) {
+        final granted = await MobileService.instance.getBlockPermissions(request: true);
+        if (!granted && mounted) {
+          AppSettings.openAppSettings(type: AppSettingsType.settings);
+        }
+      } else if (Platform.isAndroid) {
+        final mobileService = MobileService.instance;
+        final hasOverlay = await mobileService.checkOverlayPermission();
+        final hasAccessibility = await mobileService.checkAccessibilityPermission();
+
+        if (!hasOverlay || !hasAccessibility) {
+          if (!mounted) return;
+
+          final completer = Completer<bool>();
+
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (dialogContext) => AndroidPermissionsOnboardingDialog(
+              onComplete: () {
+                Navigator.of(dialogContext).pop();
+                completer.complete(true);
+              },
+              onSkip: () {
+                Navigator.of(dialogContext).pop();
+                completer.complete(false);
+              },
+            ),
+          );
+
+          await completer.future;
+        }
+      }
+      await _checkBlockPermissions();
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isRequestingBlockPermissions = false;
+      });
+    }
+  }
+
+  Widget _buildBlockPermissionsBanner(BuildContext context) {
+    logger.i('Building block permissions banner');
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.amber.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.amber),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.warning_amber, color: Colors.amber),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Block permissions required',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.amber,
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'To block apps reliably, Routine needs device permissions. Set them up again to ensure routines can enforce blocks.',
+                  style: TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton(
+                    onPressed: _isRequestingBlockPermissions ? null : _requestBlockPermissions,
+                    child: _isRequestingBlockPermissions
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Set up permissions'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
   
   Future<void> _checkAuthStatus() async {
@@ -108,6 +235,9 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
     final activeRoutines = sortedRoutines.where((routine) => routine.isActive && !completedRoutines.contains(routine)).toList();
     final inactiveRoutines = sortedRoutines.where((routine) => !routine.isActive && !completedRoutines.contains(routine)).toList();
        
+
+    logger.i("desktop = ${!Util.isDesktop()} | permissions = ${_hasBlockPermissions == false}");
+
     return Scaffold(
       body: Center(
         child: ConstrainedBox(
@@ -123,6 +253,8 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                   children: [
                     if (_strictModeService.emergencyMode)
                       const EmergencyModeBanner(),
+                    if (!Util.isDesktop() && _hasBlockPermissions == false)
+                      _buildBlockPermissionsBanner(context),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: Row(
@@ -244,25 +376,35 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
   
   Widget _buildEmptyState(BuildContext context) {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(
-          Icons.schedule_outlined,
-          size: 80,
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'No routines yet',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Tap the + button to create your first routine',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+        if (!Util.isDesktop() && _hasBlockPermissions == false)
+          _buildBlockPermissionsBanner(context),
+        Expanded(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.schedule_outlined,
+                  size: 80,
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No routines yet',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Tap the + button to create your first routine',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
-          textAlign: TextAlign.center,
         ),
       ],
     );
