@@ -21,7 +21,9 @@
             android:paddingEnd="16dp"
             android:paddingBottom="12dp"
             android:text=""
-            android:textAppearance="@android:style/TextAppearance.Material.Medium" />
+            android:textAppearance="@android:style/TextAppearance.DeviceDefault.Medium"
+            android:textColor="@color/overlay_text_primary"
+            android:background="@color/reason_bg" />
 
     </androidx.cardview.widget.CardView>
 

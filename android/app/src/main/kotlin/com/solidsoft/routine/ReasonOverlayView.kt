@@ -46,7 +46,7 @@ class ReasonOverlayView(private val context: Context) {
             )
 
             params.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            params.y = 140
+            params.y = getTopYOffsetPx()
 
             windowManager.addView(overlayView, params)
             isShowing = true
@@ -99,5 +99,17 @@ class ReasonOverlayView(private val context: Context) {
         } else {
             WindowManager.LayoutParams.TYPE_SYSTEM_ALERT
         }
+    }
+
+    private fun getTopYOffsetPx(): Int {
+        val statusBarHeightPx = try {
+            val resId = context.resources.getIdentifier("status_bar_height", "dimen", "android")
+            if (resId > 0) context.resources.getDimensionPixelSize(resId) else 0
+        } catch (_: Exception) {
+            0
+        }
+
+        val extraMarginPx = (context.resources.displayMetrics.density * 16f).toInt()
+        return statusBarHeightPx + extraMarginPx
     }
 }

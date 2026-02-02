@@ -1,31 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#CC000000">
+    android:background="@color/overlay_scrim">
 
-    <androidx.cardview.widget.CardView
+    <LinearLayout
+        android:id="@+id/blockOverlayContentHost"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
-        android:layout_marginStart="32dp"
-        android:layout_marginEnd="32dp"
-        android:maxWidth="400dp"
-        android:elevation="8dp"
-        android:radius="16dp">
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        android:background="@color/overlay_card_bg"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="24dp">
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center"
             android:orientation="vertical"
-            android:padding="24dp">
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp">
 
             <ImageView
                 android:layout_width="64dp"
                 android:layout_height="64dp"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginBottom="16dp"
-                android:src="@android:drawable/ic_dialog_alert" />
+                android:src="@android:drawable/ic_dialog_alert"
+                android:tint="@color/overlay_text_secondary" />
 
             <TextView
                 android:layout_width="match_parent"
@@ -33,7 +37,8 @@
                 android:layout_marginBottom="16dp"
                 android:gravity="center"
                 android:text="App Blocked"
-                android:textAppearance="@android:style/TextAppearance.Material.Large"
+                android:textAppearance="@android:style/TextAppearance.DeviceDefault.Large"
+                android:textColor="@color/overlay_text_primary"
                 android:textStyle="bold" />
 
             <TextView
@@ -43,19 +48,20 @@
                 android:layout_marginBottom="16dp"
                 android:gravity="center"
                 android:text="This app is currently blocked by Routine"
-                android:textAppearance="@android:style/TextAppearance.Material.Medium" />
-
-            <Button
-                android:id="@+id/closeButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:backgroundTint="#3F51B5"
-                android:padding="12dp"
-                android:text="Return to Home Screen"
-                android:textColor="#FFFFFF" />
+                android:textAppearance="@android:style/TextAppearance.DeviceDefault.Medium"
+                android:textColor="@color/overlay_text_secondary" />
 
         </LinearLayout>
-    </androidx.cardview.widget.CardView>
 
-</RelativeLayout>
+        <Button
+            android:id="@+id/closeButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@color/overlay_button_bg"
+            android:padding="12dp"
+            android:text="Close"
+            android:textColor="@color/overlay_button_text" />
+
+    </LinearLayout>
+
+</FrameLayout>

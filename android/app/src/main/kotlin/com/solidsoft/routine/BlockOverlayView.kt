@@ -8,6 +8,7 @@ import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
+import android.view.WindowInsets
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.TextView
@@ -36,6 +37,38 @@ class BlockOverlayView(private val context: Context) {
             // Inflate the overlay layout
             val inflater = LayoutInflater.from(context)
             overlayView = inflater.inflate(R.layout.view_block_overlay, null)
+
+            try {
+                val contentHost = overlayView?.findViewById<View>(R.id.blockOverlayContentHost)
+                overlayView?.setOnApplyWindowInsetsListener { _, insets ->
+                    if (contentHost != null) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            val bars = insets.getInsets(WindowInsets.Type.systemBars())
+                            contentHost.setPadding(
+                                contentHost.paddingLeft,
+                                contentHost.paddingTop + bars.top,
+                                contentHost.paddingRight,
+                                contentHost.paddingBottom + bars.bottom
+                            )
+                        } else {
+                            @Suppress("DEPRECATION")
+                            val top = insets.systemWindowInsetTop
+                            @Suppress("DEPRECATION")
+                            val bottom = insets.systemWindowInsetBottom
+                            contentHost.setPadding(
+                                contentHost.paddingLeft,
+                                contentHost.paddingTop + top,
+                                contentHost.paddingRight,
+                                contentHost.paddingBottom + bottom
+                            )
+                        }
+                    }
+                    insets
+                }
+                overlayView?.requestApplyInsets()
+            } catch (e: Exception) {
+                Log.w(TAG, "Unable to apply insets to block overlay: ${e.message}")
+            }
             
             // Set the app name in the message
             updateBlockedAppInfo(packageName)
@@ -52,14 +85,18 @@ class BlockOverlayView(private val context: Context) {
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
                 getOverlayType(),
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                        WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                        WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 PixelFormat.TRANSLUCENT
             )
-            
+
             params.gravity = Gravity.CENTER
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                params.layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
             
             // Add the view to the window
             windowManager.addView(overlayView, params)
@@ -78,7 +115,7 @@ class BlockOverlayView(private val context: Context) {
         try {
             val appName = getAppNameFromPackage(packageName)
             val messageTextView = overlayView?.findViewById<TextView>(R.id.blockMessageTextView)
-            messageTextView?.text = "This app ($appName) is currently blocked by Routine"
+            messageTextView?.text = "$appName is currently blocked by Routine"
         } catch (e: Exception) {
             Log.e(TAG, "Error updating blocked app info: ${e.message}", e)
         }

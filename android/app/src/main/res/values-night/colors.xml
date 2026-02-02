@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="overlay_scrim">#CC000000</color>
+
+    <color name="overlay_card_bg">#FF1C1B1F</color>
+    <color name="overlay_text_primary">#E6FFFFFF</color>
+    <color name="overlay_text_secondary">#B3FFFFFF</color>
+
+    <color name="overlay_button_bg">#3F51B5</color>
+    <color name="overlay_button_text">#FFFFFFFF</color>
+
+    <color name="reason_bg">#FF2A2A2A</color>
+</resources>

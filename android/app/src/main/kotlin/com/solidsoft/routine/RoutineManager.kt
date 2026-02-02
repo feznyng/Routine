@@ -179,27 +179,27 @@ class RoutineManager : AccessibilityService() {
                 if (blockUninstallingApps &&
                     (isUninstallDialog(event) || isAppInfoPageForRoutine(event))) {
                     Log.d(TAG, "Blocking access to app info or accessibility settings for Routine")
-                    goBack("Strict mode blocking uninstalling apps")
+                    goBack("You can't uninstall Routine while strict mode is enabled")
                     return
                 }
 
-                if (blockInstallingApps && isAccessibilitySettingsForRoutine(event)) {
+                if (blockUninstallingApps && isAccessibilitySettingsForRoutine(event)) {
                     Log.d(TAG, "Blocking access to accessibility settings for Routine")
-                    goBack("Strict mode blocking changing accessibility settings")
+                    goBack("You can't disable Routine accessibility permissions while strict mode is enabled")
                     return
                 }
                 
                 // Block installing apps
                 if (blockInstallingApps && isAppStore(packageName)) {
                     Log.d(TAG, "Blocking access to app store: $packageName")
-                    goBack("Strict mode blocking installing new apps")
+                    goBack("You can't install apps while strict mode is enabled")
                     return
                 }
                 
                 // Block changing time settings
                 if (blockChangingTimeSettings && isTimeSettingsPage(event)) {
                     Log.d(TAG, "Blocking access to time settings")
-                    goBack("Strict mode blocking changing time settings")
+                    goBack("You can't change time settings while strict mode is enabled")
                     return
                 }
             }
