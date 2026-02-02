@@ -268,90 +268,92 @@ class _AndroidPermissionsOnboardingDialogState extends State<AndroidPermissionsO
     final stepTitles = _getStepTitles();
     
     return Dialog(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 600, maxHeight: 600),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Flexible(
-                    child: Text(
-                      'Android Permissions Setup',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                      overflow: TextOverflow.ellipsis,
+      insetPadding: EdgeInsets.zero,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+      child: SizedBox.expand(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Flexible(
+                      child: Text(
+                        'Permissions Setup',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: widget.onSkip,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              if (!_needsOnlyOnePermission) ...[  
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      stepTitles.length,
-                      (index) => _buildStepIndicator(index, stepTitles[index]),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: widget.onSkip,
                     ),
-                  ),
+                  ],
                 ),
                 const SizedBox(height: 8),
-              ],
-              Text(
-                stepTitles[_currentStep],
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: PageView(
-                  controller: _pageController,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: _needsOnlyOnePermission
-                    ? [
-                        _hasOverlayPermission
-                          ? _buildAccessibilityPermissionStep()
-                          : _buildOverlayPermissionStep(),
-                      ]
-                    : [
-                        _buildOverlayPermissionStep(),
-                        _buildAccessibilityPermissionStep(),
-                      ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  TextButton(
-                    onPressed: widget.onSkip,
-                    child: const Text('Cancel'),
-                  ),
-                  Row(
-                    children: [
-                      if (_currentStep > 0)
-                        TextButton(
-                          onPressed: _previousStep,
-                          child: const Text('Back'),
-                        ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: _getNextButtonEnabled() ? _nextStep : null,
-                        child: Text(_currentStep == stepTitles.length - 1 ? 'Finish' : 'Next'),
+                if (!_needsOnlyOnePermission) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        stepTitles.length,
+                        (index) => _buildStepIndicator(index, stepTitles[index]),
                       ),
-                    ],
+                    ),
                   ),
+                  const SizedBox(height: 8),
                 ],
-              ),
-            ],
+                Text(
+                  stepTitles[_currentStep],
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: _needsOnlyOnePermission
+                        ? [
+                            _hasOverlayPermission
+                                ? _buildAccessibilityPermissionStep()
+                                : _buildOverlayPermissionStep(),
+                          ]
+                        : [
+                            _buildOverlayPermissionStep(),
+                            _buildAccessibilityPermissionStep(),
+                          ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: widget.onSkip,
+                      child: const Text('Cancel'),
+                    ),
+                    Row(
+                      children: [
+                        if (_currentStep > 0)
+                          TextButton(
+                            onPressed: _previousStep,
+                            child: const Text('Back'),
+                          ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: _getNextButtonEnabled() ? _nextStep : null,
+                          child: Text(_currentStep == stepTitles.length - 1 ? 'Finish' : 'Next'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
