@@ -23,6 +23,7 @@ class RoutineManager : AccessibilityService() {
     private val TAG = "RoutineManager"
 
     private var blockOverlayView: BlockOverlayView? = null
+    private var reasonOverlayView: ReasonOverlayView? = null
 
     private var routines = ArrayList<Routine>();
 
@@ -63,6 +64,7 @@ class RoutineManager : AccessibilityService() {
         super.onCreate()
         try {
             blockOverlayView = BlockOverlayView(this)
+            reasonOverlayView = ReasonOverlayView(this)
             
             // Restore state from shared preferences when service is created
             updateRoutines()
@@ -175,23 +177,29 @@ class RoutineManager : AccessibilityService() {
             if (strictModeEnabled) {
                 // Block uninstalling apps
                 if (blockUninstallingApps &&
-                    (isUninstallDialog(event) || isAccessibilitySettingsForRoutine(event) || isAppInfoPageForRoutine(event))) {
+                    (isUninstallDialog(event) || isAppInfoPageForRoutine(event))) {
                     Log.d(TAG, "Blocking access to app info or accessibility settings for Routine")
-                    goBack()
+                    goBack("Strict mode blocking uninstalling apps")
+                    return
+                }
+
+                if (blockInstallingApps && isAccessibilitySettingsForRoutine(event)) {
+                    Log.d(TAG, "Blocking access to accessibility settings for Routine")
+                    goBack("Strict mode blocking changing accessibility settings")
                     return
                 }
                 
                 // Block installing apps
                 if (blockInstallingApps && isAppStore(packageName)) {
                     Log.d(TAG, "Blocking access to app store: $packageName")
-                    goBack()
+                    goBack("Strict mode blocking installing new apps")
                     return
                 }
                 
                 // Block changing time settings
                 if (blockChangingTimeSettings && isTimeSettingsPage(event)) {
                     Log.d(TAG, "Blocking access to time settings")
-                    goBack()
+                    goBack("Strict mode blocking changing time settings")
                     return
                 }
             }
@@ -444,8 +452,16 @@ class RoutineManager : AccessibilityService() {
     /**
      * Navigates back using the global back action
      */
-    private fun goBack() {
+    private fun goBack(reason: String) {
         performGlobalAction(GLOBAL_ACTION_BACK)
+        try {
+            handler.post {
+                reasonOverlayView?.show(reason)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error showing goBack reason overlay: ${e.message}", e)
+            Sentry.captureException(e)
+        }
     }
 
     private fun showBlockOverlay(packageName: String) {
@@ -748,7 +764,9 @@ class RoutineManager : AccessibilityService() {
         Log.d(TAG, "RoutineManager service destroyed")
         instance = null
         blockOverlayView?.hide()
+        reasonOverlayView?.hide()
         blockOverlayView = null
+        reasonOverlayView = null
         
         // Cancel any scheduled evaluations
         cancelScheduledEvaluations()
