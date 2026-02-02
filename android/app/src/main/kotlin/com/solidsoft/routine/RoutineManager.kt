@@ -15,6 +15,7 @@ import java.util.Calendar
 import java.util.HashSet
 import java.util.Date
 import io.sentry.Sentry;
+import kotlinx.coroutines.sync.Mutex
 
 private const val SYSTEM_UI_PACKAGE = "com.android.systemui"
 
@@ -60,10 +61,6 @@ class RoutineManager : AccessibilityService() {
     // List of evaluation times sorted by timestamp
     private var evaluationTimes = ArrayList<EvaluationTime>()
     private var currentEvaluationIndex = 0
-
-    // Add these properties at the class level
-    private var lastBackPressTime = 0L
-    private val BACK_PRESS_DEBOUNCE_MS = 1000L // 1 second debounce
 
     override fun onCreate() {
         Log.d(TAG, "RoutineManager service onCreate")
@@ -166,10 +163,11 @@ class RoutineManager : AccessibilityService() {
     }
     
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
+        Log.d(TAG, "onAccessibilityEvent: ${event.eventType} ${event.packageName} $strictModeEnabled")
         try {
             val eventType = event.eventType
             val currentTime = System.currentTimeMillis()
-            val packageName = event.packageName?.toString() ?: return
+            val packageName = event.packageName?.toString() ?: ""
             val changeType = event.contentChangeTypes;
 
             if (changeType != AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED &&
@@ -180,6 +178,7 @@ class RoutineManager : AccessibilityService() {
 
             // Check strict mode restrictions
             if (strictModeEnabled) {
+                Log.d(TAG, "Strict mode enabled uninstall = $blockUninstallingApps, install = $blockInstallingApps, time = $blockChangingTimeSettings")
                 // Block uninstalling apps
                 if (blockUninstallingApps &&
                     (isUninstallDialog(event) || isAccessibilitySettingsForRoutine(event) || isAppInfoPageForRoutine(event))) {
@@ -453,14 +452,7 @@ class RoutineManager : AccessibilityService() {
      * Navigates back using the global back action
      */
     private fun goBack() {
-        val currentTime = System.currentTimeMillis()
-        if (currentTime - lastBackPressTime > BACK_PRESS_DEBOUNCE_MS) {
-            Log.d(TAG, "Navigating back")
-            performGlobalAction(GLOBAL_ACTION_BACK)
-            lastBackPressTime = currentTime
-        } else {
-            Log.d(TAG, "Ignoring back press due to debounce (last press was ${currentTime - lastBackPressTime}ms ago)")
-        }
+        performGlobalAction(GLOBAL_ACTION_BACK)
     }
 
     private fun showBlockOverlay(packageName: String) {
@@ -776,6 +768,7 @@ class RoutineManager : AccessibilityService() {
         val packageName = event.packageName?.toString() ?: return false
 
         if (packageName != "com.android.settings") {
+            Log.d(TAG, "isAccessibilitySettingsForRoutine: packageName != 'com.android.settings'")
             return false
         }
 
@@ -783,11 +776,15 @@ class RoutineManager : AccessibilityService() {
 
         try {
             val accessibilityTexts = rootNode.findAccessibilityNodeInfosByText("Routine")
-            val routineServiceTexts = rootNode.findAccessibilityNodeInfosByText("Use Routine")
-            
-            if (accessibilityTexts.isNotEmpty() && routineServiceTexts.isNotEmpty()) {
+            // we can be reasonably assured every distribution will include our accessibility description
+            val blockRoutineServiceTexts = rootNode.findAccessibilityNodeInfosByText("Performs blocking based on your routines.")
+
+            if (accessibilityTexts.isNotEmpty() && blockRoutineServiceTexts.isNotEmpty()) {
                 return true
             }
+
+            Log.d(TAG, "accessibilityTexts: $accessibilityTexts")
+            Log.d(TAG, "routineServiceTexts: $blockRoutineServiceTexts")
 
             return false
         } catch (e: Exception) {
