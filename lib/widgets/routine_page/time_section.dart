@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import '../../models/routine.dart';
 
@@ -71,7 +73,7 @@ class TimeSection extends StatelessWidget {
                           duration: Duration(seconds: 2),
                         ),
                       );
-                    } else if (currentEndTime - newStartTime < 15) {
+                    } else if (Platform.isIOS && (currentEndTime - newStartTime < 15)) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Routines must be at least 15 minutes long'),
