@@ -30,8 +30,12 @@
 	<string>Allow Routine to read and write NFC tags for conditions.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Allow Routine to scan QR codes for conditions.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app needs access to location for location-based conditions and automations.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app needs access to location when open.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Allow Routine to access your photo library to select images for your routines and conditions.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIBackgroundModes</key>
@@ -50,7 +54,6 @@
 	</array>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
-		<string>nfc</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
