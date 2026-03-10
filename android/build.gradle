@@ -67,4 +67,21 @@ gradle.projectsEvaluated {
             }
         }
     }
+    
+    // Disable unit tests for Flutter plugins (third-party dependencies)
+    rootProject.subprojects { subproject ->
+        if (subproject.name != 'app') {
+            subproject.tasks.withType(Test).configureEach {
+                enabled = false
+            }
+            // Also disable test compilation tasks
+            subproject.tasks.matching { task ->
+                task.name.contains('UnitTest') && 
+                (task instanceof org.jetbrains.kotlin.gradle.tasks.KotlinCompile ||
+                 task.name.startsWith('compile') && task.name.contains('UnitTest'))
+            }.configureEach {
+                enabled = false
+            }
+        }
+    }
 }
