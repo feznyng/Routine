@@ -1,0 +1,8 @@
+app_identifier("com.solidsoft.routine") # The bundle identifier of your app
+apple_id("ajanprabakar@gmail.com") # Your Apple Developer Portal username
+
+itc_team_id("127553099") # App Store Connect Team ID
+team_id("5P7GGUGK9M") # Developer Portal Team ID
+
+# For more information about the Appfile, see:
+#     https://docs.fastlane.tools/advanced/#appfile

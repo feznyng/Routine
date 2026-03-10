@@ -18,6 +18,15 @@ allprojects {
                     }
                 }
             }
+            
+            // Configure Java toolchain to use Java 17
+            if (project.plugins.hasPlugin('java')) {
+                project.java {
+                    toolchain {
+                        languageVersion = JavaLanguageVersion.of(17)
+                    }
+                }
+            }
         }
     }
 }
