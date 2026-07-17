@@ -112,8 +112,15 @@ flutter:
   assets:
     - .env
     - assets/
-    - assets/extension/
-    
+  # NOTE: The native messaging host binaries (assets/extension/native_*) are
+  # intentionally NOT declared here. Bundling them via flutter_assets would embed
+  # executables into every platform build, including iOS/Android, which fails App
+  # Store validation. They are instead injected into the desktop bundles only, by
+  # each desktop platform's native build:
+  #   - Windows/Linux: install() step in windows|linux/CMakeLists.txt
+  #   - macOS: "Copy Native Messaging Host" Run Script phase in Runner.xcodeproj
+  # Build them first with browser/build_windows.ps1 or browser/build_native_macos.sh.
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

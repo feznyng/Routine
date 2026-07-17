@@ -389,12 +389,16 @@ class BrowserService with ChangeNotifier {
 
   String get nmhPath {
     if (Platform.isMacOS) {
-      logger.i("Platform.resolvedExecutable: ${Platform.resolvedExecutable.replaceAll('/MacOS/Routine', '/Frameworks/App.framework/Resources/flutter_assets/assets/extension')}");
+      // The NMH is injected into Contents/Resources/extension by the "Copy Native
+      // Messaging Host" Xcode build phase (see macos/Runner.xcodeproj). It is no
+      // longer a pubspec asset, so it is not embedded into the iOS/Android app.
       return Platform.resolvedExecutable
-          .replaceAll('/MacOS/Routine', '/Frameworks/App.framework/Resources/flutter_assets/assets/extension');
+          .replaceAll('/MacOS/Routine', '/Resources/extension');
     } else {
+      // Windows/Linux: injected into the bundle's flutter_assets by the install()
+      // step in windows|linux/CMakeLists.txt.
       final exePath = Platform.resolvedExecutable;
-      final exeDir = exePath.substring(0, exePath.lastIndexOf('\\'));
+      final exeDir = exePath.substring(0, exePath.lastIndexOf(Platform.pathSeparator));
       return '$exeDir/data/flutter_assets/assets/extension';
     }
   }

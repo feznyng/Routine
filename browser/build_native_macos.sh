@@ -10,11 +10,11 @@ NOTARIZATION_PASSWORD="$APPLE_APP_PASSWORD" # Set this via environment variable 
 OUTPUT_DIR="../assets/extension"
 ENTITLEMENTS_FILE="$(pwd)/native/entitlements.plist"
 
-# Check if required environment variables are set
+# APPLE_ID / APPLE_APP_PASSWORD are only needed if a notarization step is added
+# later; the codesigning below does not use them. Warn but don't fail, so this
+# script can run unattended from the Xcode "Copy Native Messaging Host" phase.
 if [ -z "$APPLE_ID" ] || [ -z "$APPLE_APP_PASSWORD" ]; then
-    echo "Error: APPLE_ID and APPLE_APP_PASSWORD environment variables must be set"
-    echo "Example usage: APPLE_ID=your.email@example.com APPLE_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx ./build_macos.sh"
-    exit 1
+    echo "Warning: APPLE_ID / APPLE_APP_PASSWORD not set (only needed for notarization)."
 fi
 
 # Check if developer identity is available

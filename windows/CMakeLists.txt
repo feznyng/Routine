@@ -106,3 +106,20 @@ install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
 install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   CONFIGURATIONS Profile;Release
   COMPONENT Runtime)
+
+# === Routine native messaging host (desktop only) ===
+# The NMH executable is injected into the bundle here rather than via pubspec
+# `assets:`, so it is never shipped inside the iOS/Android app (which App Store
+# validation rejects for containing executables). It lands in the same
+# flutter_assets/assets/extension path that BrowserService.nmhPath reads at
+# runtime. Build it first with browser/build_windows.ps1. This install runs
+# AFTER the flutter_assets copy above, so it survives that directory's re-copy.
+set(ROUTINE_NMH_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../assets/extension/native_windows.exe")
+set(ROUTINE_NMH_DEST "${INSTALL_BUNDLE_DATA_DIR}/${FLUTTER_ASSET_DIR_NAME}/assets/extension")
+install(CODE "
+  if(EXISTS \"${ROUTINE_NMH_SRC}\")
+    file(INSTALL \"${ROUTINE_NMH_SRC}\" DESTINATION \"${ROUTINE_NMH_DEST}\")
+  else()
+    message(WARNING \"Routine NMH not found at ${ROUTINE_NMH_SRC}; browser blocking will not work. Build a release with 'just release windows'.\")
+  endif()
+  " COMPONENT Runtime)

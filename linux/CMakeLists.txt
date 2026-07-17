@@ -126,3 +126,21 @@ if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
     COMPONENT Runtime)
 endif()
+
+# === Routine native messaging host (desktop only) ===
+# The NMH executable is injected into the bundle here rather than via pubspec
+# `assets:`, so it is never shipped inside the iOS/Android app (which App Store
+# validation rejects for containing executables). It lands in the same
+# data/flutter_assets/assets/extension path that BrowserService.nmhPath reads at
+# runtime. Build it first with browser/build_native_linux.sh. This install runs
+# AFTER the flutter_assets copy above, so it survives that directory's re-copy.
+set(ROUTINE_NMH_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../assets/extension/native_linux")
+set(ROUTINE_NMH_DEST "${INSTALL_BUNDLE_DATA_DIR}/${FLUTTER_ASSET_DIR_NAME}/assets/extension")
+install(CODE "
+  if(EXISTS \"${ROUTINE_NMH_SRC}\")
+    file(INSTALL \"${ROUTINE_NMH_SRC}\" DESTINATION \"${ROUTINE_NMH_DEST}\"
+      FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+  else()
+    message(WARNING \"Routine NMH not found at ${ROUTINE_NMH_SRC}; browser blocking will not work. Build a release with 'just release linux'.\")
+  endif()
+  " COMPONENT Runtime)
