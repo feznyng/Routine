@@ -216,7 +216,12 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener, WindowListen
 
   Future<void> _initializeTray() async {
     await trayManager.setIcon(
-      'assets/logotransparent1024.png',
+      Platform.isWindows
+          ? 'assets/tray_icon.ico'
+          : 'assets/logotransparent1024.png',
+      // On macOS, mark the icon as a template so the menu bar auto-adapts it:
+      // black in light mode, white in dark mode. Only the glyph's alpha is used.
+      isTemplate: Platform.isMacOS,
     );
         
     Menu menu = Menu(
