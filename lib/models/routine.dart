@@ -92,26 +92,6 @@ class Routine implements Syncable {
       for (final group in groups) {
         _groups[group.device] = Group.fromEntry(group);
       }
-
-      if (!isActive || _lastBreakAt == null) {
-        _numBreaksTaken = 0;
-      } else {
-        final startTimeHours = startTime ~/ 60;
-        final startTimeMinutes = startTime % 60;
-
-        final now = DateTime.now();
-        final yesterday = now.subtract(const Duration(days: 1));
-        final nowTime = now.hour * 60 + now.minute;
-
-        // if the routine does not span midnight, or we're past the start time, use today's start time
-        final useToday = (startTime < endTime || nowTime > startTime);
-        final routineStartTime = useToday ? DateTime(now.year, now.month, now.day, startTimeHours, startTimeMinutes) 
-          : DateTime(yesterday.year, yesterday.month, yesterday.day, startTimeHours, startTimeMinutes);
-        
-        if (_lastBreakAt!.toLocal().isBefore(routineStartTime)) {
-          _numBreaksTaken = 0;
-        }
-      }
   }
 
   Routine.from(Routine other) :
@@ -560,9 +540,9 @@ class Routine implements Syncable {
     final duration = minutes ?? _maxBreakDuration;
     final now = DateTime.now().toUtc();
 
+    _numBreaksTaken = (numBreaksTaken ?? 0) + 1;
     _lastBreakAt = now;
     _pausedUntil = now.add(Duration(minutes: duration));
-    _numBreaksTaken = (_numBreaksTaken ?? 0) + 1;
     
     await save(groups: false);
   }
@@ -578,7 +558,16 @@ class Routine implements Syncable {
     _maxBreakDuration = value;
   }
   
-  int? get numBreaksTaken => _numBreaksTaken;
+  /// Breaks only count against the session they were taken in, so this is
+  /// derived live rather than cached: a break taken before the current
+  /// session started (or while the routine isn't running) doesn't count.
+  /// Routine instances outlive a single session, so a stored value is stale
+  /// as soon as the next session begins.
+  int? get numBreaksTaken {
+    if (!isActive || _lastBreakAt == null) return 0;
+    if (_lastBreakAt!.toLocal().isBefore(startedAt)) return 0;
+    return _numBreaksTaken;
+  }
 
   int? get numBreaksLeft => maxBreaks != null ? max(0, maxBreaks! - (numBreaksTaken ?? 0)) : null;
 
@@ -598,7 +587,7 @@ class Routine implements Syncable {
 
   int calculateDelay() {
     if (frictionLen != null) return frictionLen!;
-    return (_numBreaksTaken ?? 0) * 30; // 30 seconds per break taken
+    return (numBreaksTaken ?? 0) * 30; // 30 seconds per break taken
   }
   
   int get getRemainingPomodoroTime {
@@ -621,7 +610,7 @@ class Routine implements Syncable {
 
   int calculateCodeLength() {
     if (frictionLen != null) return frictionLen!;
-    return (_numBreaksTaken ?? 0) * 4 + 6; // Base 4 chars + 2 per break taken
+    return (numBreaksTaken ?? 0) * 4 + 6; // Base 4 chars + 2 per break taken
   }
 
   // groups
