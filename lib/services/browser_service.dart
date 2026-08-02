@@ -591,27 +591,7 @@ class BrowserService with ChangeNotifier {
   
   Future<void> _sendToBrowser(Browser browser, String action, Map<String, dynamic> data) async {
     try {
-      final message = {
-        'action': action,
-        'data': data,
-      };
-      
-      final String jsonMessage = json.encode(message);
-      final List<int> messageBytes = utf8.encode(jsonMessage);
-
-      final socket = _connections[browser]?.socket;
-      
-      if (socket != null) {
-        final lengthBytes = Uint8List(4);
-        final view = ByteData.view(lengthBytes.buffer);
-        view.setUint32(0, messageBytes.length, Endian.little);
-        
-        socket.add(Uint8List.fromList([
-          ...lengthBytes,
-          ...messageBytes,
-        ]));
-        await socket.flush();
-      }
+      await _connections[browser]?.sendMessage(action, data);
     } catch (e, st) {
       Util.report('Failed to send message to NMH for $browser', e, st);
     }
