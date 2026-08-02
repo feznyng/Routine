@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:routine_blocker/services/browser_config.dart';
 import 'package:routine_blocker/setup.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:routine_blocker/services/browser_service.dart';
 import 'package:routine_blocker/services/strict_mode_service.dart';
@@ -50,6 +51,7 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
   Timer? _countdownTimer;
   StreamSubscription? _gracePeriodExpirationListener;
   Timer? _connectionAttemptTimer;
+  Timer? _installedBrowsersTimer;
   StreamSubscription? _connectionStatusSubscription;
 
   @override
@@ -57,6 +59,7 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
     super.initState();
     _inGracePeriod = widget.inGracePeriod;
     _loadInstalledBrowsers();
+    _startInstalledBrowsersTimer();
     _connectionStatusSubscription = _browserExtensionService.connectionStream.listen((connected) {
       _updateConnectionStatus();
     });
@@ -72,6 +75,7 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
   void dispose() {
     _countdownTimer?.cancel();
     _connectionAttemptTimer?.cancel();
+    _installedBrowsersTimer?.cancel();
     _connectionStatusSubscription?.cancel();
     _gracePeriodExpirationListener?.cancel();
     super.dispose();
@@ -100,6 +104,46 @@ class _BrowserExtensionOnboardingPageState extends State<BrowserExtensionOnboard
       _nmhInstalledMap = nmhMap;
       _automationPermissionMap = automationMap;
       _isLoading = false;
+    });
+  }
+
+  void _startInstalledBrowsersTimer() {
+    _installedBrowsersTimer?.cancel();
+    _installedBrowsersTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      _refreshInstalledBrowsers();
+    });
+  }
+
+  /// Picks up browsers installed while this page is open. Unlike
+  /// _loadInstalledBrowsers this never shows the spinner and never rewrites
+  /// _selectedBrowsers past the selection step - _currentBrowserIndex indexes
+  /// into it, so reordering it mid-flow would walk the user through the wrong
+  /// browser.
+  Future<void> _refreshInstalledBrowsers() async {
+    final browsers = (await _browserExtensionService.getInstalledSupportedBrowsers(connected: null))
+      .map((b) => b.browser).toList();
+
+    if (!mounted || listEquals(browsers, _installedBrowsers)) return;
+
+    final added = browsers.where((b) => !_installedBrowsers.contains(b)).toList();
+    if (added.isNotEmpty) {
+      await _browserExtensionService.initializeControllableBrowsers();
+      if (!mounted) return;
+    }
+
+    logger.i("installed browsers changed: $browsers");
+
+    setState(() {
+      _installedBrowsers = browsers;
+      for (final browser in added) {
+        _nmhInstalledMap.putIfAbsent(browser, () => false);
+        _automationPermissionMap.putIfAbsent(browser, () => false);
+      }
+      if (_currentStep == 0) {
+        _selectedBrowsers = browsers.where(
+          (b) => !_browserExtensionService.isBrowserConnected(b)
+        ).toList();
+      }
     });
   }
 

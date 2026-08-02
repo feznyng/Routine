@@ -13,6 +13,10 @@ class BrowserData {
   final String macosNmhDir;
   final bool macosControllable;
   final String macosPackage;
+  /// Install directories to probe on Windows. May contain %VAR% tokens, which
+  /// BrowserService expands against the process environment - installers fall
+  /// back to a per-user %LOCALAPPDATA% install when they can't elevate, and the
+  /// system drive is not always C:.
   final List<String> windowsPaths;
   final String windowsCommand;
   final String windowsRegistryPath;
@@ -22,7 +26,7 @@ class BrowserData {
 
 final Map<Browser, BrowserData> browserData = {
     Browser.firefox: BrowserData(
-      windowsPaths: ['C:\\Program Files\\Mozilla Firefox', 'C:\\Program Files (x86)\\Mozilla Firefox'],
+      windowsPaths: ['%ProgramFiles%\\Mozilla Firefox', '%ProgramFiles(x86)%\\Mozilla Firefox', '%LOCALAPPDATA%\\Mozilla Firefox'],
       windowsCommand: 'firefox',
       appName: 'Firefox',
       extensionUrl: 'https://addons.mozilla.org/en-US/firefox/addon/d4f881d834fe4b9cad8e/',
@@ -32,7 +36,7 @@ final Map<Browser, BrowserData> browserData = {
       macosPackage: 'org.mozilla.firefox'
     ),
     Browser.chrome: BrowserData(
-      windowsPaths: ['C:\\Program Files\\Google\\Chrome\\Application', 'C:\\Program Files (x86)\\Google\\Chrome\\Application'],
+      windowsPaths: ['%ProgramFiles%\\Google\\Chrome\\Application', '%ProgramFiles(x86)%\\Google\\Chrome\\Application', '%LOCALAPPDATA%\\Google\\Chrome\\Application'],
       windowsCommand: 'chrome',
       appName: 'Google Chrome',
       extensionUrl: 'https://chromewebstore.google.com/detail/jdemcmodknkdcnkglkilkobkcboeaeib',
@@ -45,7 +49,7 @@ final Map<Browser, BrowserData> browserData = {
     // Chrome Web Store. Edge and Opera can install the Chrome build, Safari
     // needs a separate native app bundle. Re-enable on user request.
     // Browser.edge: BrowserData(
-    //   windowsPaths: ['C:\\Program Files (x86)\\Microsoft\\Edge\\Application', 'C:\\Program Files\\Microsoft\\Edge\\Application'],
+    //   windowsPaths: ['%ProgramFiles(x86)%\\Microsoft\\Edge\\Application', '%ProgramFiles%\\Microsoft\\Edge\\Application', '%LOCALAPPDATA%\\Microsoft\\Edge\\Application'],
     //   windowsCommand: 'msedge',
     //   appName: 'Microsoft Edge',
     //   extensionUrl: 'https://microsoftedge.microsoft.com/addons/detail/routineblocker/id',
@@ -65,7 +69,7 @@ final Map<Browser, BrowserData> browserData = {
     //   macosPackage: 'com.apple.Safari'
     // ),
     // Browser.opera: BrowserData(
-    //   windowsPaths: ['C:\\Program Files\\Opera', 'C:\\Program Files (x86)\\Opera'],
+    //   windowsPaths: ['%ProgramFiles%\\Opera', '%ProgramFiles(x86)%\\Opera', '%LOCALAPPDATA%\\Programs\\Opera'],
     //   windowsCommand: 'opera',
     //   appName: 'Opera',
     //   extensionUrl: 'https://addons.opera.com/extensions/details/routineblocker/',
@@ -75,7 +79,7 @@ final Map<Browser, BrowserData> browserData = {
     //   macosPackage: 'com.operasoftware.Opera'
     // ),
     Browser.brave: BrowserData(
-      windowsPaths: ['C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application', 'C:\\Program Files (x86)\\BraveSoftware\\Brave-Browser\\Application'],
+      windowsPaths: ['%ProgramFiles%\\BraveSoftware\\Brave-Browser\\Application', '%ProgramFiles(x86)%\\BraveSoftware\\Brave-Browser\\Application', '%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\Application'],
       windowsCommand: 'brave',
       appName: 'Brave',
       extensionUrl: 'https://chromewebstore.google.com/detail/jdemcmodknkdcnkglkilkobkcboeaeib',  // Uses Chrome Web Store

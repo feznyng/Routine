@@ -242,7 +242,10 @@ class BrowserService with ChangeNotifier {
         }
       } else if (Platform.isWindows) {
         for (final entry in browserData.entries) {
-          for (final path in entry.value.windowsPaths) {
+          for (final rawPath in entry.value.windowsPaths) {
+            final path = _expandWindowsEnvVars(rawPath);
+            if (path == null) continue;
+
             final dir = Directory(path);
             if (await dir.exists()) {
               supportedBrowsers.add((browser: entry.key, app: InstalledApp(filePath: path, name: entry.key.name)));
@@ -257,6 +260,30 @@ class BrowserService with ChangeNotifier {
     }
     
     return supportedBrowsers;
+  }
+
+  /// Expands %VAR% tokens in a configured Windows path. Returns null when a
+  /// referenced variable is unset, so we never probe a literal "%LOCALAPPDATA%".
+  /// Dart's environment map is case-insensitive on Windows, so "%ProgramFiles%"
+  /// and "%PROGRAMFILES%" both resolve.
+  String? _expandWindowsEnvVars(String path) {
+    String? missing;
+
+    final expanded = path.replaceAllMapped(RegExp(r'%([^%]+)%'), (match) {
+      final value = Platform.environment[match.group(1)!];
+      if (value == null || value.isEmpty) {
+        missing ??= match.group(1);
+        return '';
+      }
+      return value;
+    });
+
+    if (missing != null) {
+      logger.i('Skipping browser path $path - %$missing% is not set');
+      return null;
+    }
+
+    return expanded;
   }
 
   Future<String> _getBinaryAssetPath() async {

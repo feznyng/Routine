@@ -1,4 +1,5 @@
 import 'package:routine_blocker/setup.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
 import 'dart:async';
@@ -25,6 +26,7 @@ class _BrowserSectionState extends State<BrowserSection> {
   StreamSubscription<bool>? _connectionSubscription;
   Timer? _gracePeriodTimer;
   Timer? _cooldownTimer;
+  Timer? _installedBrowsersTimer;
 
   List<Browser> _installedBrowsers = [];
 
@@ -34,9 +36,13 @@ class _BrowserSectionState extends State<BrowserSection> {
     _connectionSubscription = _browserExtensionService.connectionStream.listen((isConnected) {
       if (mounted) {
         setState(() {});
+        // A browser that just connected may have been installed after the last
+        // scan, so it wouldn't be in _installedBrowsers yet.
+        _loadInstalledBrowsers();
       }
     });
     _startCooldownTimer();
+    _startInstalledBrowsersTimer();
     if (_browserExtensionService.isInitialConnectionPeriod) {
       Future.delayed(const Duration(seconds: 5), () {
         if (mounted) setState(() {});
@@ -48,13 +54,15 @@ class _BrowserSectionState extends State<BrowserSection> {
   Future<void> _loadInstalledBrowsers() async {
     final browsers = await _browserExtensionService.getInstalledSupportedBrowsers(connected: null);
 
+    final installed = browsers.map((b) => b.browser).toList();
+
+    if (!mounted || listEquals(installed, _installedBrowsers)) return;
+
     logger.i("installed browsers: $browsers");
 
-    if (mounted) {
-      setState(() {
-        _installedBrowsers = browsers.map((b) => b.browser).toList();
-      });
-    }
+    setState(() {
+      _installedBrowsers = installed;
+    });
   }
 
   @override
@@ -62,9 +70,19 @@ class _BrowserSectionState extends State<BrowserSection> {
     _connectionSubscription?.cancel();
     _gracePeriodTimer?.cancel();
     _cooldownTimer?.cancel();
+    _installedBrowsersTimer?.cancel();
     super.dispose();
   }
-  
+
+  /// Browsers can be installed while this page stays mounted, so rescan
+  /// periodically instead of relying on the one-shot initState scan.
+  void _startInstalledBrowsersTimer() {
+    _installedBrowsersTimer?.cancel();
+    _installedBrowsersTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      _loadInstalledBrowsers();
+    });
+  }
+
   void _startCooldownTimer() {
     _cooldownTimer?.cancel();
     _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
