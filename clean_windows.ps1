@@ -4,6 +4,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Set-Content defaults to ANSI on Windows PowerShell 5.1, which would silently
+# mangle any non-ASCII character in a file we touch. Always write UTF-8, no BOM.
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+function Write-Lines([string]$Path, [string[]]$Lines) {
+    [System.IO.File]::WriteAllLines($Path, $Lines, $utf8NoBom)
+}
+
 # Change to the directory where this script is located
 Set-Location -Path $PSScriptRoot
 
@@ -38,7 +45,7 @@ foreach ($file in $dartFiles) {
             }
         }
 
-        Set-Content -LiteralPath $path -Value $newContent -NoNewline:$false
+        Write-Lines $path $newContent
     }
 }
 
@@ -70,5 +77,5 @@ if (Test-Path -LiteralPath $pubspecPath) {
         }
     }
 
-    Set-Content -LiteralPath $pubspecPath -Value $newContent -NoNewline:$false
+    Write-Lines $pubspecPath $newContent
 }
