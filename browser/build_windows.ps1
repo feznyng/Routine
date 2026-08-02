@@ -5,8 +5,14 @@ $ErrorActionPreference = 'Stop'
 
 Set-Location -Path $PSScriptRoot
 
+$outputDir = '../assets/extension'
+
 Push-Location native
 dart pub get
 Pop-Location
 
-dart compile exe native/src/main.dart --target-os windows --output ../assets/extension/native_windows.exe
+# assets/extension is gitignored, so it is absent on a fresh checkout and
+# `dart compile exe` will not create the parent directory for its --output.
+New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
+
+dart compile exe native/src/main.dart --target-os windows --output "$outputDir/native_windows.exe"
