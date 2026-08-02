@@ -13,6 +13,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     CreateAndAttachConsole();
   }
 
+  // Ask Windows to relaunch us after a session end (shutdown, restart, or a
+  // reboot for updates), so a strict routine survives the reboot even if the
+  // Run key entry is missing or fires late. RESTART_NO_CRASH/RESTART_NO_HANG
+  // opt out of restarting after a crash or hang, which would risk a restart
+  // loop. nullptr reuses the current process command line.
+  ::RegisterApplicationRestart(nullptr, RESTART_NO_CRASH | RESTART_NO_HANG);
+
   // Initialize COM, so that it is available for use in the library and/or
   // plugins.
   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);

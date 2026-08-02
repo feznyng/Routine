@@ -378,6 +378,29 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  // Handle the session-end messages before handing anything to Flutter. The
+  // engine and plugins can take longer than the shutdown timeout to reply, and
+  // an app that replies late is listed on the "these apps are preventing
+  // shutdown" screen and force-terminated from it -- even when the user then
+  // cancels the shutdown.
+  switch (message) {
+    case WM_QUERYENDSESSION:
+      // Consent immediately so we never appear on the blocking screen. Nothing
+      // is torn down here: the session may still be cancelled.
+      LogToFile(L"[Routine] WM_QUERYENDSESSION - consenting to session end");
+      return TRUE;
+
+    case WM_ENDSESSION:
+      if (wparam == FALSE) {
+        // The shutdown was cancelled. Keep running.
+        LogToFile(L"[Routine] WM_ENDSESSION(FALSE) - shutdown cancelled, staying alive");
+        return 0;
+      }
+      // A real session end; fall through to the default teardown below.
+      LogToFile(L"[Routine] WM_ENDSESSION(TRUE) - session ending");
+      break;
+  }
+
   // Give Flutter, including plugins, an opportunity to handle window messages.
   if (flutter_controller_) {
     std::optional<LRESULT> result =
