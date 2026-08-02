@@ -53,7 +53,7 @@ To get started with Routine development, follow [Flutter Get Started](https://do
 iOS and MacOS development will require an [Apple Developer account](https://developer.apple.com/programs/enroll/) due to required entitlements (Family Controls, etc.). 
 
 ### Windows
-Unfortunately, builds fail on Windows when firebase_core is included. You can temporarily comment out any firebase-related code by running `clean_windows.ps1`. When you're ready to commit, run `clean_windows.ps1 -Uncomment` to uncomment.
+Unfortunately, builds fail on Windows when firebase_core is included. You can temporarily comment out any firebase-related code by running `.\clean_windows.ps1`. When you're ready to commit, run `.\clean_windows.ps1 -Uncomment` to uncomment.
 
 ### Supabase
 Cross-device sync is performed via Supabase. Credentials for this are provided via a .env file in the root directory, refer to .env.example. If you don't have a Supabase project setup, you can simply duplicate and rename .env.example to .env. Empty values are fine.
