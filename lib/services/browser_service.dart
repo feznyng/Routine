@@ -470,10 +470,13 @@ class BrowserService with ChangeNotifier {
       _server = server;
       
       _server!.listen((socket) {
-        logger.i('NMH connected from ${socket.remoteAddress.address}');
+        // Every NMH connects over loopback, so the address alone is always
+        // 127.0.0.1 and would collide across browsers (and across a reconnect
+        // that overlaps the previous socket's close). The port makes it unique.
+        final socketId = '${socket.remoteAddress.address}:${socket.remotePort}';
+        logger.i('NMH connected from $socketId');
 
         final connection = BrowserConnection(socket: socket);
-        final socketId = socket.remoteAddress.address;
         _pendingConnections[socketId] = connection;
 
         socket.listen(
