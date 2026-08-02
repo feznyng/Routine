@@ -230,7 +230,9 @@ class BrowserService with ChangeNotifier {
             if (entity is Directory && entity.path.endsWith('.app')) {
               final lowerPath = entity.path.toLowerCase();
 
-              final browser = Browser.values.firstWhereOrNull((b) => lowerPath.contains(b.name));
+              // Only match browsers we actually support - browserData is the
+              // source of truth, so disabled entries are skipped here too.
+              final browser = browserData.keys.firstWhereOrNull((b) => lowerPath.contains(b.name));
 
               if (browser != null) {
                 supportedBrowsers.add((browser: browser, app: InstalledApp(filePath: entity.path, name: browser.name)));
@@ -269,14 +271,25 @@ class BrowserService with ChangeNotifier {
   }
 
   Map<String, dynamic> _createManifestContent(Browser browser, String binaryPath) {
-    return {
+    final manifest = <String, dynamic>{
       'name': kAppName,
       'description': 'Routine Native Messaging Host',
       'path': binaryPath,
       'type': 'stdio',
-      'allowed_extensions': ['blocker@routineblocker.com'],
-      (browser == Browser.firefox ? 'allowed_extensions' : 'allowed_origins'): (browser == Browser.firefox ? ['blocker@routineblocker.com'] : ['chrome-extension://jdemcmodknkdcnkglkilkobkcboeaeib/'])
     };
+
+    // Firefox identifies the extension by its gecko id, Chrome by origin.
+    // These must match extension/manifest.json or connectNative is refused.
+    if (browser == Browser.firefox) {
+      manifest['allowed_extensions'] = ['routine-blocker@routineblocker.com'];
+    } else {
+      manifest['allowed_origins'] = [
+        // Unpacked dev build (derived from the "key" in extension/manifest.json)
+        'chrome-extension://jdemcmodknkdcnkglkilkobkcboeaeib/',
+      ];
+    }
+
+    return manifest;
   }
 
   Future<bool> installNativeMessagingHost(Browser browser) async {
@@ -506,7 +519,7 @@ class BrowserService with ChangeNotifier {
     if (action == 'browser_info' && data != null) {
       final browserName = data['browser'] as String?;
       if (browserName != null) {
-        final browser = Browser.values.firstWhere(
+        final browser = browserData.keys.firstWhere(
           (b) => b.name.toLowerCase() == browserName.toLowerCase(),
           orElse: () => Browser.firefox
         );
@@ -591,12 +604,13 @@ class BrowserService with ChangeNotifier {
     switch (bundleId) {
       case 'com.google.Chrome':
         return Browser.chrome;
-      case 'com.microsoft.edgemac':
-        return Browser.edge;
-      case 'com.apple.Safari':
-        return Browser.safari;
-      case 'com.operasoftware.Opera':
-        return Browser.opera;
+      // Unsupported for now - see browserData in browser_config.dart
+      // case 'com.microsoft.edgemac':
+      //   return Browser.edge;
+      // case 'com.apple.Safari':
+      //   return Browser.safari;
+      // case 'com.operasoftware.Opera':
+      //   return Browser.opera;
       case 'com.brave.Browser':
         return Browser.brave;
       case 'org.mozilla.firefox':
