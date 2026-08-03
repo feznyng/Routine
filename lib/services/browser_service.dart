@@ -549,11 +549,19 @@ class BrowserService with ChangeNotifier {
     if (action == 'browser_info' && data != null) {
       final browserName = data['browser'] as String?;
       if (browserName != null) {
-        final browser = browserData.keys.firstWhere(
+        // No silent fallback: mapping an unrecognised name onto a real browser
+        // makes two browsers share one connection slot, and the loser stops
+        // receiving updates with nothing logged.
+        final browser = browserData.keys.firstWhereOrNull(
           (b) => b.name.toLowerCase() == browserName.toLowerCase(),
-          orElse: () => Browser.firefox
         );
-        
+
+        if (browser == null) {
+          logger.e("[CONN] unknown browser '$browserName' from $socketId - refusing to register");
+          _pendingConnections.remove(socketId);
+          return;
+        }
+
         final connection = _pendingConnections.remove(socketId);
         if (connection != null) {
           _connections[browser] = connection;

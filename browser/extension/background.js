@@ -22,16 +22,30 @@ let allowList = false;
 let isUpdatingRules = false;
 let pendingRuleUpdate = false;
 
-function getBrowserType() {
-  if (typeof browser !== 'undefined') return 'firefox';
-  const userAgent = navigator.userAgent.toLowerCase();
+// Identify the host browser. This name is what the app keys its connection map
+// on, so getting it wrong makes two browsers collide on one slot and silently
+// starves whichever connected first.
+//
+// Do NOT sniff `typeof browser` - Chrome defines that global too, so it
+// reported every Chrome install as Firefox.
+async function getBrowserType() {
+  const ua = navigator.userAgent.toLowerCase();
+  log(`DETECT userAgent=${navigator.userAgent}`);
 
-  console.log(userAgent)
-  if (userAgent.includes('edg/')) return 'edge';
-  if (userAgent.includes('opr/')) return 'opera';
-  if (userAgent.includes('brave')) return 'brave';
-  if (userAgent.includes('safari') && !userAgent.includes('chrome')) return 'safari';
-  if (userAgent.includes('chrome')) return 'chrome';
+  if (ua.includes('firefox')) return 'firefox';
+  if (ua.includes('edg/')) return 'edge';
+  if (ua.includes('opr/')) return 'opera';
+
+  // Brave's user agent is deliberately identical to Chrome's - the only
+  // reliable signal is the navigator.brave probe it injects.
+  try {
+    if (navigator.brave && await navigator.brave.isBrave()) return 'brave';
+  } catch (e) {
+    log('DETECT brave probe failed:', e && e.message ? e.message : e);
+  }
+
+  if (ua.includes('safari') && !ua.includes('chrome')) return 'safari';
+  if (ua.includes('chrome')) return 'chrome';
   return 'unknown';
 }
 
@@ -39,8 +53,8 @@ function getBrowserType() {
 async function connectToNative() {
   try {
     // Get browser type for logging
-    const browserType = getBrowserType();
-    console.log(`Detected browser type: ${browserType}`);
+    const browserType = await getBrowserType();
+    log(`DETECT browser type: ${browserType}`);
     
     // Send browser type as first message after connecting
     port = chrome.runtime.connectNative(hostName);
