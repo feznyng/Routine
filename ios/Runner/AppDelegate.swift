@@ -1,6 +1,7 @@
 import Flutter
 import UIKit
 import Foundation
+import Combine
 import FamilyControls
 import ManagedSettings
 import os.log
@@ -14,7 +15,47 @@ import workmanager_apple
     let manager = RoutineManager()
     
     var backgroundTaskID: UIBackgroundTaskIdentifier = UIBackgroundTaskIdentifier.invalid
-    
+
+    // How long to wait for FamilyControls to restore its authorization status before
+    // treating a `.notDetermined` reading as final.
+    private let familyControlsSettleTimeout: TimeInterval = 2.0
+
+    /// FamilyControls reports `.notDetermined` for a short window after launch/resume while it
+    /// restores state from its daemon, so reading `authorizationStatus` right away can look like
+    /// a denial even when the user has approved. Wait for the status to settle before answering,
+    /// falling back to whatever it reads once the timeout elapses.
+    private func resolveFamilyControlsAuthorization(completion: @escaping (Bool) -> Void) {
+        let center = AuthorizationCenter.shared
+
+        guard center.authorizationStatus == .notDetermined else {
+            let isApproved = center.authorizationStatus == .approved
+            DispatchQueue.main.async { completion(isApproved) }
+            return
+        }
+
+        var cancellable: AnyCancellable? = nil
+        var hasCompleted = false
+        let finish: (Bool) -> Void = { isApproved in
+            guard !hasCompleted else { return }
+            hasCompleted = true
+            cancellable?.cancel()
+            cancellable = nil
+            completion(isApproved)
+        }
+
+        cancellable = center.$authorizationStatus
+            .receive(on: DispatchQueue.main)
+            .sink { status in
+                guard status != .notDetermined else { return }
+                os_log("FamilyControls authorization settled")
+                finish(status == .approved)
+            }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + familyControlsSettleTimeout) {
+            finish(center.authorizationStatus == .approved)
+        }
+    }
+
     override func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -105,18 +146,8 @@ import workmanager_apple
                 }
                 
             case "checkFamilyControlsAuthorization":
-                Task {
-                    let status = AuthorizationCenter.shared.authorizationStatus
-                    DispatchQueue.main.async {
-                        switch status {
-                        case .approved:
-                            result(true)
-                        case .denied, .notDetermined:
-                            result(false)
-                        @unknown default:
-                            result(false)
-                        }
-                    }
+                self?.resolveFamilyControlsAuthorization { isApproved in
+                    result(isApproved)
                 }
                 
             case "requestFamilyControlsAuthorization":

@@ -99,10 +99,19 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _checkBlockPermissions() async {
+  Future<void> _checkBlockPermissions({bool confirmDenial = true}) async {
     if (Util.isDesktop()) return;
 
-    final hasPermissions = await MobileService.instance.getBlockPermissions();
+    var hasPermissions = await MobileService.instance.getBlockPermissions();
+
+    // A denial read right after a resume can be stale while the OS is still restoring
+    // its permission state, so confirm it before flashing the banner at the user.
+    if (!hasPermissions && confirmDenial) {
+      await Future.delayed(const Duration(seconds: 1));
+      if (!mounted) return;
+      hasPermissions = await MobileService.instance.getBlockPermissions();
+    }
+
     if (!mounted) return;
 
     logger.i('Block permissions: $hasPermissions');
@@ -122,7 +131,8 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
 
     try {
       await runBlockPermissionsSetupFlow(context);
-      await _checkBlockPermissions();
+      // The status is settled coming out of the setup flow, so take it at face value.
+      await _checkBlockPermissions(confirmDenial: false);
     } finally {
       if (!mounted) return;
       setState(() {
