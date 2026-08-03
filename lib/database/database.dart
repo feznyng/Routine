@@ -337,41 +337,121 @@ class AppDatabase extends _$AppDatabase {
     return select(devices).get();
   }
 
-  Future<List<RoutineEntry>> getRoutineChanges(DateTime? since) {
-    var query = select(routines);
-    if (since != null) {
-      query.where((t) => t.updatedAt.isBiggerThanValue(since.toUtc()) & (t.changes.isNull() | t.changes.isNotValue('[]')));
-    }
-    return query.get();
-  }
+  // The complete local state, tombstones included -- this is what gets posted
+  // to sync_snapshot.
+  Future<List<GroupEntry>> getAllGroups() => select(groups).get();
+  Future<List<RoutineEntry>> getAllRoutines() => select(routines).get();
 
-  Future<List<GroupEntry>> getGroupChanges(DateTime? since) {
-    var query = select(groups);
-    if (since != null) {
-      query.where((t) => t.updatedAt.isBiggerThanValue(since.toUtc()) & (t.changes.isNull() | t.changes.isNotValue('[]')));
-    }
-    return query.get();
-  }
-
-  Future<List<DeviceEntry>> getDeviceChanges(DateTime? since) {
-    var query = select(devices);
-    if (since != null) {
-      query.where((t) => t.updatedAt.isBiggerThanValue(since.toUtc()) & (t.changes.isNull() | t.changes.isNotValue('[]')));
-    }
-    return query.get();
-  }
-
-  Future<void> clearChangesSince(DateTime time) async {
+  /// Replaces local state with the merged snapshot returned by sync_snapshot.
+  ///
+  /// Two things this deliberately does NOT do:
+  ///
+  /// It does not touch columns that exist only on the client -- `devices.curr`,
+  /// `groups.apps/sites/categories`, `routines.lastBreakEndedAt`. Those are
+  /// omitted from the update companions so an upsert leaves them alone, and are
+  /// only given values when inserting a row that does not exist yet.
+  ///
+  /// It does not touch rows edited while the sync was in flight. The `sent*`
+  /// maps carry each row's `updatedAt` as it was when the payload was built; if
+  /// the stored value no longer matches, the row was written during the round
+  /// trip and is left alone, dirty flags intact, for the next sync to carry.
+  /// This is an exact version check rather than a clock comparison -- rows come
+  /// back stamped with the server's clock, so comparing against local time
+  /// would misfire under skew. Under full sync a deferred row costs one cycle;
+  /// the old incremental path lost the write permanently.
+  ///
+  /// Deletes are confined to ids that were actually sent. A row created locally
+  /// after the payload was built is absent from the response simply because the
+  /// server never saw it, and must not be mistaken for a remote delete.
+  Future<void> applySyncSnapshot({
+    required Map<String, DateTime> sentDevices,
+    required Map<String, DateTime> sentGroups,
+    required Map<String, DateTime> sentRoutines,
+    required List<DevicesCompanion> mergedDevices,
+    required List<GroupsCompanion> mergedGroups,
+    required List<RoutinesCompanion> mergedRoutines,
+  }) async {
     _skipUpdates = true;
-    return await transaction(() async {
-      await (update(devices)..where((t) => t.updatedAt.isSmallerOrEqualValue(time) & t.deleted.equals(false))).write(DevicesCompanion(changes: Value([])));
-      await (delete(devices)..where((t) => t.deleted.equals(true))).go();
-      await (update(groups)..where((t) => t.updatedAt.isSmallerOrEqualValue(time) & t.deleted.equals(false))).write(GroupsCompanion(changes: Value([])));
-      await (delete(groups)..where((t) => t.deleted.equals(true))).go();
-      await (update(routines)..where((t) => t.updatedAt.isSmallerOrEqualValue(time) & t.deleted.equals(false))).write(RoutinesCompanion(changes: Value([])));
-      await (delete(routines)..where((t) => t.deleted.equals(true))).go();
+    try {
+      await transaction(() async {
+        final localDevices = {for (final d in await select(devices).get()) d.id: d};
+        final localGroups = {for (final g in await select(groups).get()) g.id: g};
+        final localRoutines = {for (final r in await select(routines).get()) r.id: r};
+
+        // A row is safe to overwrite only if it still holds the exact version
+        // we sent. Absent locally means it is new to us, which is also safe.
+        bool touchedDuringSync(DateTime? localUpdatedAt, DateTime? sentUpdatedAt) =>
+            localUpdatedAt != null && localUpdatedAt != sentUpdatedAt;
+
+        // Devices before groups: groups.device references devices.id.
+        for (final entry in mergedDevices) {
+          final id = entry.id.value;
+          final local = localDevices[id];
+          if (touchedDuringSync(local?.updatedAt, sentDevices[id])) continue;
+          if (local == null) {
+            await into(devices).insert(entry.copyWith(curr: const Value(false)));
+          } else {
+            await (update(devices)..where((t) => t.id.equals(id))).write(entry);
+          }
+        }
+
+        for (final entry in mergedGroups) {
+          final id = entry.id.value;
+          final local = localGroups[id];
+          if (touchedDuringSync(local?.updatedAt, sentGroups[id])) continue;
+          if (local == null) {
+            await into(groups).insert(entry);
+          } else {
+            await (update(groups)..where((t) => t.id.equals(id))).write(entry);
+          }
+        }
+
+        for (final entry in mergedRoutines) {
+          final id = entry.id.value;
+          final local = localRoutines[id];
+          if (touchedDuringSync(local?.updatedAt, sentRoutines[id])) continue;
+          if (local == null) {
+            await into(routines).insert(entry);
+          } else {
+            await (update(routines)..where((t) => t.id.equals(id))).write(entry);
+          }
+        }
+
+        // Anything we sent that did not come back was deleted remotely -- but
+        // only drop it if it still holds the version we sent.
+        Set<String> dropped(
+          Map<String, DateTime> sent,
+          Set<String> kept,
+          Map<String, dynamic> local,
+        ) {
+          return sent.keys
+              .where((id) => !kept.contains(id))
+              .where((id) => !touchedDuringSync(local[id]?.updatedAt, sent[id]))
+              .toSet();
+        }
+
+        final dropRoutines = dropped(
+            sentRoutines, mergedRoutines.map((r) => r.id.value).toSet(), localRoutines);
+        final dropGroups = dropped(
+            sentGroups, mergedGroups.map((g) => g.id.value).toSet(), localGroups);
+        final dropDevices = dropped(
+            sentDevices, mergedDevices.map((d) => d.id.value).toSet(), localDevices);
+
+        if (dropRoutines.isNotEmpty) {
+          await (delete(routines)..where((t) => t.id.isIn(dropRoutines))).go();
+        }
+        if (dropGroups.isNotEmpty) {
+          await (delete(groups)..where((t) => t.id.isIn(dropGroups))).go();
+        }
+        // Never drop this device's own row out from under the running app.
+        final selfRemoved = dropDevices.where((id) => localDevices[id]?.curr != true).toSet();
+        if (selfRemoved.isNotEmpty) {
+          await (delete(devices)..where((t) => t.id.isIn(selfRemoved))).go();
+        }
+      });
+    } finally {
       _skipUpdates = false;
-    });
+    }
   }
 
   Future<void> forceNotifyChanges() async {

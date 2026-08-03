@@ -40,7 +40,7 @@ void callbackDispatcher() {
       await AuthService().init(simple: true);
       final db = AppDatabase();
       getIt.registerSingleton<AppDatabase>(db);
-      inputData = inputData ?? {'full': false, 'id': null};
+      inputData = inputData ?? {'id': null};
 
       const syncLockKey = 'sync_in_progress';
       const syncLockTimestampKey = 'sync_lock_timestamp';
@@ -83,7 +83,7 @@ void callbackDispatcher() {
       
       try {
         final syncService = SyncService();
-        success = await syncService.sync(full: inputData['full'], id: inputData['id']);
+        success = await syncService.sync(id: inputData['id']);
         syncService.dispose();
         logger.i('[$isolateId] bg - sync completed with result: $success');
       } finally {
