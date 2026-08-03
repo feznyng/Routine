@@ -120,10 +120,18 @@ class Util {
     }
     scheduledTasks.clear();
 
+    logger.i("[EVAL] scheduling ${evaluationTimes.length} evaluation times (now ${DateTime.now()})");
     for (final Schedule time in evaluationTimes) {
-      logger.i("scheduling evaluation at ${time.hours}:${time.minutes}:${time.seconds}");
+      final label = "${time.hours}:${time.minutes}:${time.seconds}";
+      logger.i("[EVAL] scheduling evaluation at $label");
       ScheduledTask task = Cron().schedule(time, () async {
-        await eval();
+        logger.i("[EVAL] cron fired for $label at ${DateTime.now()}");
+        try {
+          await eval();
+          logger.i("[EVAL] cron eval done for $label");
+        } catch (e, st) {
+          logger.e("[EVAL] cron eval threw for $label: $e\n$st");
+        }
       });
 
       scheduledTasks.add(task);

@@ -474,7 +474,7 @@ class BrowserService with ChangeNotifier {
         // 127.0.0.1 and would collide across browsers (and across a reconnect
         // that overlaps the previous socket's close). The port makes it unique.
         final socketId = '${socket.remoteAddress.address}:${socket.remotePort}';
-        logger.i('NMH connected from $socketId');
+        logger.i('[CONN] NMH connected from $socketId at ${DateTime.now()}');
 
         final connection = BrowserConnection(socket: socket);
         _pendingConnections[socketId] = connection;
@@ -557,8 +557,12 @@ class BrowserService with ChangeNotifier {
         final connection = _pendingConnections.remove(socketId);
         if (connection != null) {
           _connections[browser] = connection;
+          logger.i("[CONN] registered '$browserName' as ${browser.name} ($socketId); "
+              "connected now: ${_connections.keys.map((b) => b.name).toList()}");
           _connectionStreamController.add(true);
           await _saveBrowserConnection(browser);
+        } else {
+          logger.w("[CONN] browser_info for '$browserName' ($socketId) had no pending connection - dropped");
         }
       }
     }
@@ -566,6 +570,8 @@ class BrowserService with ChangeNotifier {
 
   void _handleDisconnect(Browser browser) {
     if (_connections.remove(browser) != null) {
+      logger.i("[CONN] ${browser.name} disconnected; still connected: "
+          "${_connections.keys.map((b) => b.name).toList()}");
       _connectionStreamController.add(false);
     }
   }
@@ -583,6 +589,11 @@ class BrowserService with ChangeNotifier {
     if (browser != null) {
       await _sendToBrowser(browser, action, data);
     } else {
+      if (_connections.isEmpty) {
+        logger.w("[SEND] '$action' DROPPED - no browser connected");
+        return;
+      }
+      logger.i("[SEND] '$action' -> ${_connections.keys.map((b) => b.name).toList()}");
       for (final browser in _connections.keys) {
         await _sendToBrowser(browser, action, data);
       }

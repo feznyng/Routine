@@ -1,5 +1,14 @@
 // Native messaging host name
 const hostName = "com.solidsoft.routine";
+
+// Debug instrumentation. The worker is torn down and restarted constantly, so
+// every line carries a wall-clock time and the worker's own age - that is the
+// only way to tell one worker's lifetime from the next in the console.
+const WORKER_STARTED_AT = Date.now();
+function log(...args) {
+  const age = ((Date.now() - WORKER_STARTED_AT) / 1000).toFixed(1);
+  console.log(`[${new Date().toISOString()}] (+${age}s)`, ...args);
+}
 let port = null;
 let isAppConnected = false;  // Track Flutter app connection state
 let reconnectTimer = null;
@@ -36,11 +45,11 @@ async function connectToNative() {
     // Send browser type as first message after connecting
     port = chrome.runtime.connectNative(hostName);
     port.postMessage({ action: 'browser_info', data: { browser: browserType } });
-    console.log(`Connected to native messaging host for ${browserType}`);
+    log(`CONN connectNative(${hostName}) issued, reported browser=${browserType}`);
 
     port.onMessage.addListener((message) => {
-      console.log("Received message from native host:", message);
-      
+      log("MSG received from native host:", JSON.stringify(message));
+
       if (message.action === "updateBlockedSites" && Array.isArray(message.data.sites)) {
         isAppConnected = true;
         // Update blocked sites list
@@ -53,13 +62,13 @@ async function connectToNative() {
         // Check and redirect any currently open tabs that are now blocked
         checkAndRedirectBlockedTabs();
         
-        console.log("Updated blocked sites:", sites, allowList);
+        log("MSG applied updateBlockedSites:", JSON.stringify(sites), "allowList=", allowList);
       }
     });
-    
+
     port.onDisconnect.addListener(() => {
       const error = chrome.runtime.lastError;
-      console.log("Disconnected from native host", error ? error.message : "", hostName);
+      log("CONN disconnected from native host:", error ? error.message : "(no error)");
       port = null;
       isAppConnected = false;  // Reset app connection state
       registerBlockingRules();  // Re-register rules with new connection state
@@ -74,7 +83,7 @@ async function connectToNative() {
       reconnectTimer = null;
     }
   } catch (error) {
-    console.log("Failed to connect to native host:", error);
+    log("CONN connectNative threw:", error && error.message ? error.message : error);
     scheduleReconnect();
   }
 }
@@ -149,7 +158,7 @@ async function registerBlockingRules() {
 
     // If app is not connected, don't apply any blocking rules
     if (!isAppConnected) {
-      console.log('App not connected, clearing all blocking rules');
+      log('RULES cleared - app not connected (isAppConnected=false)');
       return;
     }
     
@@ -208,7 +217,7 @@ async function registerBlockingRules() {
       addRules: rules
     });
 
-    console.log(`Updated blocking rules: ${rules.length} rules added, mode: ${allowList ? 'allowlist' : 'blocklist'}`);
+    log(`RULES applied: ${rules.length} rules, mode=${allowList ? 'allowlist' : 'blocklist'}, sites=${JSON.stringify(sites)}`);
     
     // After updating rules, check all open tabs
     await checkOpenTabs();
@@ -228,12 +237,12 @@ async function registerBlockingRules() {
 }
 
 chrome.runtime.onInstalled.addListener(() => {
-  console.log("Extension installed");
+  log("LIFECYCLE onInstalled");
   connectToNative();
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  console.log("Extension starting up");
+  log("LIFECYCLE onStartup");
   connectToNative();
 });
 
@@ -241,8 +250,8 @@ chrome.alarms.create("keepAlive", { periodInMinutes: 1 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "keepAlive") {
+    log(`ALARM keepAlive fired, port=${port ? 'open' : 'null'}, isAppConnected=${isAppConnected}`);
     if (!port) {
-      console.log("Keep-alive alarm triggered reconnection");
       connectToNative();
     }
   }
@@ -315,6 +324,12 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       console.error(`Failed to block navigation in tab ${tabId}:`, error);
     });
   }
+});
+
+// Top-level: runs on every worker start, including every wake from idle.
+log("LIFECYCLE worker started");
+chrome.declarativeNetRequest.getDynamicRules().then((r) => {
+  log(`LIFECYCLE rules present at worker start: ${r.length}`);
 });
 
 connectToNative();
