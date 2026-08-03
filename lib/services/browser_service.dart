@@ -51,6 +51,7 @@ class BrowserService with ChangeNotifier {
     logger.i("Browser Extension - Init");
     _initialConnectionDeadline = DateTime.now().add(const Duration(seconds: 5));
     await startServer();
+    await revalidateNativeMessagingHosts();
     await initializeControllableBrowsers();
 
     if (Platform.isMacOS) {
@@ -368,9 +369,12 @@ class BrowserService with ChangeNotifier {
             return false;
           }
           
-          final tempDir = await getTemporaryDirectory();
-          final manifestFile = File('${tempDir.path}\\routine_manifest_${browser.name}.json');
-          
+          // Not the temp directory: Windows clears it on its own schedule, which
+          // would leave the registry pointing at a manifest that no longer
+          // exists and break the extension with no user-visible cause.
+          final supportDir = await getApplicationSupportDirectory();
+          final manifestFile = File('${supportDir.path}\\routine_manifest_${browser.name}.json');
+
           await manifestFile.writeAsString(manifestJson);
           
           if (await manifestFile.exists()) {
@@ -407,6 +411,51 @@ class BrowserService with ChangeNotifier {
     }
   }
   
+  /// The installed manifest hard-codes an absolute path to the NMH binary, so it
+  /// goes stale whenever the app moves - Debug to Release, into /Applications, or
+  /// a relocated checkout. The extension then fails to connect and nothing says
+  /// why, so re-point any manifest we have already installed at the current
+  /// binary on startup.
+  Future<void> revalidateNativeMessagingHosts() async {
+    try {
+      final expectedPath = '$nmhPath/${await _getBinaryAssetPath()}';
+
+      if (Platform.isMacOS) {
+        final home = Platform.environment['HOME'];
+        if (home == null) return;
+
+        for (final entry in browserData.entries) {
+          final file = File('$home/${entry.value.macosNmhDir}$kAppName.json');
+          if (!await file.exists()) continue;
+
+          try {
+            final current = json.decode(await file.readAsString()) as Map<String, dynamic>;
+            if (current['path'] == expectedPath) continue;
+
+            logger.i('Re-pointing ${entry.key.name} NMH manifest: ${current['path']} -> $expectedPath');
+            await file.writeAsString(json.encode(_createManifestContent(entry.key, expectedPath)));
+          } catch (e, st) {
+            Util.report('Error revalidating NMH manifest for ${entry.key.name}', e, st);
+          }
+        }
+      } else if (Platform.isWindows) {
+        // The Windows install is non-interactive, so rewriting registry and
+        // manifest outright is simpler than reading the registry back. This also
+        // migrates installs still pointing into %TEMP%.
+        final prefs = await SharedPreferences.getInstance();
+        for (final name in prefs.getStringList(_connectedBrowsersKey) ?? const <String>[]) {
+          final browser = browserData.keys.firstWhereOrNull((b) => b.name == name);
+          if (browser == null) continue;
+
+          logger.i('Refreshing $name NMH registration');
+          await installNativeMessagingHost(browser);
+        }
+      }
+    } catch (e, st) {
+      Util.report('Error revalidating NMH manifests', e, st);
+    }
+  }
+
   Future<bool> installBrowserExtension(Browser browser) async {
     try {
       final data = browserData[browser]!;
@@ -474,7 +523,7 @@ class BrowserService with ChangeNotifier {
         // 127.0.0.1 and would collide across browsers (and across a reconnect
         // that overlaps the previous socket's close). The port makes it unique.
         final socketId = '${socket.remoteAddress.address}:${socket.remotePort}';
-        logger.i('[CONN] NMH connected from $socketId at ${DateTime.now()}');
+        logger.i('NMH connected from $socketId');
 
         final connection = BrowserConnection(socket: socket);
         _pendingConnections[socketId] = connection;
@@ -557,7 +606,7 @@ class BrowserService with ChangeNotifier {
         );
 
         if (browser == null) {
-          logger.e("[CONN] unknown browser '$browserName' from $socketId - refusing to register");
+          logger.e("Unknown browser '$browserName' from $socketId - refusing to register");
           _pendingConnections.remove(socketId);
           return;
         }
@@ -565,12 +614,11 @@ class BrowserService with ChangeNotifier {
         final connection = _pendingConnections.remove(socketId);
         if (connection != null) {
           _connections[browser] = connection;
-          logger.i("[CONN] registered '$browserName' as ${browser.name} ($socketId); "
-              "connected now: ${_connections.keys.map((b) => b.name).toList()}");
+          logger.i("Registered ${browser.name} ($socketId)");
           _connectionStreamController.add(true);
           await _saveBrowserConnection(browser);
         } else {
-          logger.w("[CONN] browser_info for '$browserName' ($socketId) had no pending connection - dropped");
+          logger.w("browser_info for ${browser.name} ($socketId) had no pending connection - dropped");
         }
       }
     }
@@ -578,8 +626,7 @@ class BrowserService with ChangeNotifier {
 
   void _handleDisconnect(Browser browser) {
     if (_connections.remove(browser) != null) {
-      logger.i("[CONN] ${browser.name} disconnected; still connected: "
-          "${_connections.keys.map((b) => b.name).toList()}");
+      logger.i("${browser.name} disconnected");
       _connectionStreamController.add(false);
     }
   }
@@ -598,10 +645,9 @@ class BrowserService with ChangeNotifier {
       await _sendToBrowser(browser, action, data);
     } else {
       if (_connections.isEmpty) {
-        logger.w("[SEND] '$action' DROPPED - no browser connected");
+        logger.w("'$action' dropped - no browser connected");
         return;
       }
-      logger.i("[SEND] '$action' -> ${_connections.keys.map((b) => b.name).toList()}");
       for (final browser in _connections.keys) {
         await _sendToBrowser(browser, action, data);
       }

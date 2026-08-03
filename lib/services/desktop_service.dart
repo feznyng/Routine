@@ -114,7 +114,7 @@ class DesktopService extends PlatformService {
   }
 
   void evaluate(List<Routine> routines) {
-    logger.i("[EVAL] evaluating ${routines.length} routines at ${DateTime.now()}");
+    logger.i("evaluating routines: ${routines.length}");
     
     routines = routines.where((r) => r.isActive && !r.isPaused && !r.areConditionsMet).toList();
 
@@ -145,8 +145,6 @@ class DesktopService extends PlatformService {
     _cachedApps = apps.toList();
     _cachedCategories = categories.toList();
     _isAllowList = allowList;
-    logger.i("[EVAL] active routines: ${routines.map((r) => r.name).toList()} "
-        "-> sites=$_cachedSites allowList=$_isAllowList (at ${DateTime.now()})");
     updateAppList();
     updateBlockedSites();
   }
@@ -168,7 +166,6 @@ class DesktopService extends PlatformService {
     );
   }
   Future<void> updateBlockedSites() async {
-    logger.i("[SEND] updateBlockedSites sites=$_cachedSites allowList=$_isAllowList");
     await BrowserService.instance.sendToBrowser('updateBlockedSites', {
       'sites': _cachedSites,
       'allowList': _isAllowList,

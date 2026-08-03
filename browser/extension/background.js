@@ -1,14 +1,5 @@
 // Native messaging host name
 const hostName = "com.solidsoft.routine";
-
-// Debug instrumentation. The worker is torn down and restarted constantly, so
-// every line carries a wall-clock time and the worker's own age - that is the
-// only way to tell one worker's lifetime from the next in the console.
-const WORKER_STARTED_AT = Date.now();
-function log(...args) {
-  const age = ((Date.now() - WORKER_STARTED_AT) / 1000).toFixed(1);
-  console.log(`[${new Date().toISOString()}] (+${age}s)`, ...args);
-}
 let port = null;
 let isAppConnected = false;  // Track Flutter app connection state
 let reconnectTimer = null;
@@ -30,8 +21,6 @@ let pendingRuleUpdate = false;
 // reported every Chrome install as Firefox.
 async function getBrowserType() {
   const ua = navigator.userAgent.toLowerCase();
-  log(`DETECT userAgent=${navigator.userAgent}`);
-
   if (ua.includes('firefox')) return 'firefox';
   if (ua.includes('edg/')) return 'edge';
   if (ua.includes('opr/')) return 'opera';
@@ -41,7 +30,7 @@ async function getBrowserType() {
   try {
     if (navigator.brave && await navigator.brave.isBrave()) return 'brave';
   } catch (e) {
-    log('DETECT brave probe failed:', e && e.message ? e.message : e);
+    console.log('Brave probe failed:', e);
   }
 
   if (ua.includes('safari') && !ua.includes('chrome')) return 'safari';
@@ -54,15 +43,15 @@ async function connectToNative() {
   try {
     // Get browser type for logging
     const browserType = await getBrowserType();
-    log(`DETECT browser type: ${browserType}`);
+    console.log(`Detected browser type: ${browserType}`);
     
     // Send browser type as first message after connecting
     port = chrome.runtime.connectNative(hostName);
     port.postMessage({ action: 'browser_info', data: { browser: browserType } });
-    log(`CONN connectNative(${hostName}) issued, reported browser=${browserType}`);
+    console.log(`Connected to native messaging host as ${browserType}`);
 
     port.onMessage.addListener((message) => {
-      log("MSG received from native host:", JSON.stringify(message));
+      console.log("Received message from native host:", message);
 
       if (message.action === "updateBlockedSites" && Array.isArray(message.data.sites)) {
         isAppConnected = true;
@@ -76,13 +65,13 @@ async function connectToNative() {
         // Check and redirect any currently open tabs that are now blocked
         checkAndRedirectBlockedTabs();
         
-        log("MSG applied updateBlockedSites:", JSON.stringify(sites), "allowList=", allowList);
+        console.log("Updated blocked sites:", sites, allowList);
       }
     });
 
     port.onDisconnect.addListener(() => {
       const error = chrome.runtime.lastError;
-      log("CONN disconnected from native host:", error ? error.message : "(no error)");
+      console.log("Disconnected from native host", error ? error.message : "", hostName);
       port = null;
       isAppConnected = false;  // Reset app connection state
       registerBlockingRules();  // Re-register rules with new connection state
@@ -97,7 +86,7 @@ async function connectToNative() {
       reconnectTimer = null;
     }
   } catch (error) {
-    log("CONN connectNative threw:", error && error.message ? error.message : error);
+    console.log("Failed to connect to native host:", error);
     scheduleReconnect();
   }
 }
@@ -172,7 +161,7 @@ async function registerBlockingRules() {
 
     // If app is not connected, don't apply any blocking rules
     if (!isAppConnected) {
-      log('RULES cleared - app not connected (isAppConnected=false)');
+      console.log('App not connected, clearing all blocking rules');
       return;
     }
     
@@ -231,7 +220,7 @@ async function registerBlockingRules() {
       addRules: rules
     });
 
-    log(`RULES applied: ${rules.length} rules, mode=${allowList ? 'allowlist' : 'blocklist'}, sites=${JSON.stringify(sites)}`);
+    console.log(`Updated blocking rules: ${rules.length} rules added, mode: ${allowList ? 'allowlist' : 'blocklist'}`);
     
     // After updating rules, check all open tabs
     await checkOpenTabs();
@@ -251,12 +240,12 @@ async function registerBlockingRules() {
 }
 
 chrome.runtime.onInstalled.addListener(() => {
-  log("LIFECYCLE onInstalled");
+  console.log("Extension installed");
   connectToNative();
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  log("LIFECYCLE onStartup");
+  console.log("Extension starting up");
   connectToNative();
 });
 
@@ -264,8 +253,8 @@ chrome.alarms.create("keepAlive", { periodInMinutes: 1 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "keepAlive") {
-    log(`ALARM keepAlive fired, port=${port ? 'open' : 'null'}, isAppConnected=${isAppConnected}`);
     if (!port) {
+      console.log("Keep-alive alarm triggered reconnection");
       connectToNative();
     }
   }
@@ -338,12 +327,6 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       console.error(`Failed to block navigation in tab ${tabId}:`, error);
     });
   }
-});
-
-// Top-level: runs on every worker start, including every wake from idle.
-log("LIFECYCLE worker started");
-chrome.declarativeNetRequest.getDynamicRules().then((r) => {
-  log(`LIFECYCLE rules present at worker start: ${r.length}`);
 });
 
 connectToNative();
