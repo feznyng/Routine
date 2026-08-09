@@ -10,6 +10,22 @@ App/site blocker for iOS, Android, macOS, and Windows.
 - **Flexible**: Supports both block and allow lists and multiple active lists at the same time. 
 - **Strict**: Provides options to add friction to modifying routines and common bypass methods like the task manager or settings changes. 
 
+## Screenshots
+
+![Routines on macOS](screenshots/macos-routines.png)
+
+| Routines | Schedule & conditions | Breaks & strict mode |
+| --- | --- | --- |
+| ![Routine list](screenshots/ios-routines.png) | ![Schedule and conditions](screenshots/ios-conditions.png) | ![Breaks and strict mode](screenshots/ios-breaks-strict.png) |
+
+| Apps & categories | Blocked websites | Settings |
+| --- | --- | --- |
+| ![App and category picker](screenshots/ios-apps.png) | ![Blocked websites](screenshots/ios-websites.png) | ![Settings](screenshots/ios-settings.png) |
+
+| Light | Dark |
+| --- | --- |
+| ![Per-device blocking, light theme](screenshots/ios-routine-detail.png) | ![Per-device blocking, dark theme](screenshots/ios-routine-detail-dark.png) |
+
 ## Support
 
 ### Platforms
@@ -64,4 +80,4 @@ Sync backend can be found in `./supabase` including an sql setup script and edge
 Mobile notifications and background sync requests are sent through Firebase Cloud Messaging (FCM). If you don't have a Firebase project, you can duplicate and rename the firebase_options.example.dart file to firebase_options.dart for local development.
 
 ### Browser Extension
-Routine performs site blocking on desktop through a browser extension (`./browser/extension`). Communication with the extension is performed via TCP socket using a [native messaging host (NMH)](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging) (`./browser/native`). This requires a working Dart toolchain which you should have from the Flutter setup. 
+Routine performs site blocking on desktop through a browser extension (`./browser/extension`). Communication with the extension is performed via TCP socket using a [native messaging host (NMH)](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging) (`./browser/native`). This requires a working Dart toolchain which you should have from the Flutter setup.
