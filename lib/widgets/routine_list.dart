@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:routine_blocker/constants.dart';
+import 'package:routine_blocker/demo/demo_mode.dart';
 import 'package:routine_blocker/setup.dart';
 import 'package:routine_blocker/util.dart';
 import 'package:cron/cron.dart';
@@ -195,6 +196,8 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
   }
   
   Future<void> _checkAuthStatus() async {
+    if (DemoMode.enabled) return;
+
     if ((await _authService.wasSignedOut) == false) {
       setState(() {
         _showSignedOutBanner = true;
@@ -229,7 +232,7 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
                   children: [
                     if (_strictModeService.emergencyMode)
                       const EmergencyModeBanner(),
-                    if (!Util.isDesktop() && _hasBlockPermissions == false)
+                    if (!Util.isDesktop() && _hasBlockPermissions == false && !DemoMode.enabled)
                       _buildBlockPermissionsBanner(context),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -353,7 +356,7 @@ class _RoutineListState extends State<RoutineList> with WidgetsBindingObserver {
   Widget _buildEmptyState(BuildContext context) {
     return Column(
       children: [
-        if (!Util.isDesktop() && _hasBlockPermissions == false)
+        if (!Util.isDesktop() && _hasBlockPermissions == false && !DemoMode.enabled)
           _buildBlockPermissionsBanner(context),
         Expanded(
           child: Center(

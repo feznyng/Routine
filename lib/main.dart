@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:routine_blocker/demo/demo_mode.dart';
 import 'package:routine_blocker/services/platform_service.dart';
 import 'package:routine_blocker/util.dart';
 import 'package:flutter/material.dart';
@@ -112,11 +113,17 @@ class _SyncStatusListenerState extends State<SyncStatusListener> {
           break;
         case SyncStatus.failure:
           logger.i("received sync failure event");
-          GlobalSnackBar.show('Sync failed. Please try again later.');
+          if (!DemoMode.enabled) {
+            GlobalSnackBar.show('Sync failed. Please try again later.');
+          }
           break;
         case SyncStatus.notSignedIn:
           logger.i("received sync not signed in event");
-          GlobalSnackBar.show('Please sign in to sync your routines.');
+          // Demo builds are always signed out, so this would fire over every
+          // screenshot.
+          if (!DemoMode.enabled) {
+            GlobalSnackBar.show('Please sign in to sync your routines.');
+          }
           break;
       }
     });

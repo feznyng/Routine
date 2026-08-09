@@ -14,6 +14,8 @@ import 'package:logger/logger.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:windows_single_instance/windows_single_instance.dart';
 import 'database/database.dart';
+import 'demo/demo_mode.dart';
+import 'demo/demo_seed.dart';
 import 'package:get_it/get_it.dart';
 import 'models/device.dart';
 import 'services/sync_service.dart';
@@ -128,6 +130,10 @@ Future<void> setup() async {
     AuthService().init()
   ]);
 
+  // Needs the database, the current device and the auth state, and has to land
+  // before anything reads the routines. No-op outside DEMO_MODE builds.
+  await seedDemoData();
+
   if (!Util.isDesktop()) {
     await Workmanager().initialize(callbackDispatcher);
     await NotificationService().init(); // WINDOWS:REMOVE
@@ -141,8 +147,9 @@ Future<void> setup() async {
   if (Util.isDesktop()) {
     await windowManager.ensureInitialized();
 
-    const windowOptions = WindowOptions(
-      size: Size(800, 600),
+    final windowOptions = WindowOptions(
+      // 800x600 leaves a cramped, mostly-empty window in a marketing shot.
+      size: DemoMode.enabled ? const Size(1280, 800) : const Size(800, 600),
       center: true,
       backgroundColor: Colors.transparent,
       skipTaskbar: true,

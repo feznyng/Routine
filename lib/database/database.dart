@@ -4,6 +4,7 @@ import 'package:drift/extensions/json1.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'string_list_converter.dart';
+import '../demo/demo_mode.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/condition.dart';
 part 'database.g.dart';
@@ -117,7 +118,11 @@ class AppDatabase extends _$AppDatabase {
 
   static QueryExecutor _openConnection() {
     return driftDatabase(
-      name: 'routine_db',
+      // Screenshot builds get their own file. Seeding wipes routines and
+      // groups before inserting, and on desktop a debug run shares the
+      // installed app's support directory -- pointed at 'routine_db' it would
+      // delete the real routines on the machine taking the screenshots.
+      name: DemoMode.enabled ? 'routine_db_demo' : 'routine_db',
       native: DriftNativeOptions(
         shareAcrossIsolates: true,
         databaseDirectory: getApplicationSupportDirectory,

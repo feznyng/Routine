@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:routine_blocker/models/emergency_event.dart';
 import 'package:routine_blocker/models/condition.dart';
 import 'package:routine_blocker/models/device.dart';
+import 'package:routine_blocker/demo/demo_mode.dart';
 import 'package:routine_blocker/services/auth_service.dart';
 import 'package:routine_blocker/util.dart';
 import 'package:uuid/uuid.dart';
@@ -264,6 +265,7 @@ class SyncService {
   }
 
   void setupRealtimeSync() {
+    if (DemoMode.enabled) return;
     if (userId.isEmpty) return;
 
     _syncChannel?.unsubscribe();
@@ -334,6 +336,8 @@ class SyncService {
   }
 
   Future<bool> queueSync(String source, {bool manual = false}) async {
+    if (DemoMode.enabled) return false;
+
     if (userId.isEmpty) {
       logger.i("can't sync - user is not signed in");
       if (manual) {
@@ -375,6 +379,11 @@ class SyncService {
   }
 
   Future<bool> sync({String? id, bool manual = false}) async {
+    // Screenshot builds run against their own database seeded with fake
+    // routines. Pushing that to a signed-in account would overwrite the real
+    // one, so demo mode is offline: no push, no pull, no realtime channel.
+    if (DemoMode.enabled) return false;
+
     if (userId.isEmpty) {
       logger.i("can't sync - user is not signed in");
       if (manual) {

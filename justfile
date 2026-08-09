@@ -193,3 +193,171 @@ build-ext:
 
     # Clean up old builds
     find "$BUILD_DIR" -name "*.xpi" -mtime +30 -delete
+
+# Resolve a simulator name to its udid, or fail with the list of what is available
+[unix]
+_udid target:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if ! command -v jq &> /dev/null; then
+        echo "Error: jq is not installed. Please install it using 'brew install jq'" >&2
+        exit 1
+    fi
+
+    UDID=$(xcrun simctl list devices available -j \
+        | jq -r --arg name "{{target}}" \
+            '.devices | to_entries[] | .value[] | select(.name == $name) | .udid' \
+        | head -n1)
+
+    if [ -z "$UDID" ]; then
+        echo "Error: no available simulator named '{{target}}'" >&2
+        echo "Available:" >&2
+        xcrun simctl list devices available | grep -E '^ +(iPhone|iPad)' >&2
+        exit 1
+    fi
+
+    echo "$UDID"
+
+
+# Runs the app seeded with demo routines and takes over the keyboard, so a shot
+# is one keypress:
+#
+#     s   save the next numbered shot into ./screenshots
+#     r   hot reload          R   hot restart
+#     q   quit
+#
+# target is either a simulator name or a desktop platform:
+#
+#     just screenshots                            # iPhone, light
+#     just screenshots "iPhone 17 Pro Max" dark
+#     just screenshots macos
+#
+# flutter's own key commands are unavailable here because it is handed
+# /dev/null for stdin - otherwise it would fight this loop for the terminal.
+# Hot reload and restart go through the signals it documents for exactly that
+# case (--pid-file, SIGUSR1, SIGUSR2), so nothing is lost.
+#
+# On iOS the shot is the device screen, straight from simctl. On desktop it is
+# the app window captured by id, which keeps the window's rounded corners
+# transparent - a rectangular selection would square them off, so keep the
+# result as PNG. Desktop capture needs Screen Recording permission for this
+# terminal, and picks the largest window if several copies are running.
+#
+# App Store Connect only needs the 6.9" iPhone set (1320x2868); it scales that
+# down to every smaller iPhone. An iPad set would only be required if
+# TARGETED_DEVICE_FAMILY went back to "1,2".
+#
+# appearance pins light or dark so a set does not end up half and half; the
+# simulator otherwise keeps whatever it was last left on. Simulators only -
+# desktop follows the host's system setting, and opens at 1280x800 rather than
+# the usual 800x600.
+#
+# The iOS build is debug because Flutter only ever builds debug for the
+# simulator (release needs a physical device), which is fine here - the
+# checked-mode banner is already off and a still frame does not care about jank.
+#
+# Demo mode points drift at routine_db_demo and disables sync, so none of this
+# can touch the real routines on this machine or on the account.
+#
+# Run the app with seeded demo routines and capture on a keypress (target: simulator name|macos|linux)
+[unix]
+screenshots target="iPhone 17 Pro Max" appearance="light" dir="screenshots":
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    mkdir -p "{{dir}}"
+    PIDFILE=$(mktemp -t routine-flutter-pid)
+
+    case "{{target}}" in
+      macos|linux)
+        DEVICE="{{target}}"
+        SLUG="{{target}}"
+        ;;
+      windows)
+        echo "Error: build Windows from a Windows host - it needs the firebase-strip dance" >&2
+        exit 1
+        ;;
+      *)
+        DEVICE=$({{just_executable()}} _udid "{{target}}")
+        SLUG=$(echo "{{target}}" | tr '[:upper:] ' '[:lower:]-')
+
+        # -b boots the device if it is not already up and blocks until it is
+        # ready. Booting by hand and then opening Simulator.app races: if the
+        # app is already running with another device, it can shut this one back
+        # down, and xcodebuild then reports no matching destination.
+        xcrun simctl bootstatus "$DEVICE" -b
+        open -a Simulator
+
+        xcrun simctl ui "$DEVICE" appearance "{{appearance}}"
+
+        # Apple's own marketing clock, full bars, no carrier text. The override
+        # is dropped when the simulator reboots, so it is reapplied every run.
+        xcrun simctl status_bar "$DEVICE" override \
+            --time "9:41" \
+            --batteryState charged --batteryLevel 100 \
+            --cellularMode active --cellularBars 4 \
+            --wifiMode active --wifiBars 3
+        ;;
+    esac
+
+    flutter run -d "$DEVICE" --dart-define=DEMO_MODE=true --pid-file "$PIDFILE" < /dev/null &
+    FLUTTER=$!
+    trap 'kill "$FLUTTER" 2>/dev/null || true; rm -f "$PIDFILE"' EXIT
+
+    # Resolved on the first shot rather than up front, because the desktop
+    # window does not exist until the app has actually started.
+    WINDOW_ID=""
+    resolve() {
+      [ "$SLUG" = macos ] || return 0
+      [ -z "$WINDOW_ID" ] || return 0
+      WINDOW_ID=$(swift scripts/window_id.swift Routine)
+    }
+
+    # Both tools narrate to stderr on success (simctl announces every file it
+    # writes), so output is held back and replayed only if the capture failed.
+    shoot() {
+      local err
+      if [ "$SLUG" = macos ]; then
+        err=$(screencapture -o -l"$WINDOW_ID" "$1" 2>&1) || { echo "$err" >&2; return 1; }
+      elif [ "$SLUG" = linux ]; then
+        echo "no Linux capture here - screencapture is macOS only" >&2
+        return 1
+      else
+        err=$(xcrun simctl io "$DEVICE" screenshot "$1" 2>&1) || { echo "$err" >&2; return 1; }
+      fi
+    }
+
+    signal() {
+      [ -s "$PIDFILE" ] || { echo "not ready yet" >&2; return 1; }
+      kill "-$1" "$(cat "$PIDFILE")"
+    }
+
+    echo
+    echo "s save a shot into {{dir}}/   r hot reload   R hot restart   q quit"
+    echo
+
+    n=0
+    while IFS= read -rsn1 key; do
+      case "$key" in
+        s)
+          # Skip names already on disk so a later session does not overwrite an
+          # earlier one's set.
+          n=$((n + 1))
+          while [ -e "{{dir}}/$SLUG-$(printf '%02d' $n).png" ]; do n=$((n + 1)); done
+          OUT="{{dir}}/$SLUG-$(printf '%02d' $n).png"
+
+          # A failed capture leaves an empty file behind, and should not take
+          # the whole session down with it.
+          if resolve && shoot "$OUT"; then
+            echo "saved $OUT"
+          else
+            rm -f "$OUT"
+            echo "capture failed - is the app up yet?" >&2
+          fi
+          ;;
+        r) signal USR1 || true ;;
+        R) signal USR2 || true ;;
+        q) exit 0 ;;
+      esac
+    done

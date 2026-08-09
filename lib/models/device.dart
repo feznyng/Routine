@@ -45,15 +45,19 @@ class Device implements Syncable {
 
   Device._({required String id, required bool currDevice}) : _id = id, _curr = currDevice {
     _lastPulledAt = null;
-    _initDeviceType();
-  }
-  
-  static Future<Device> create({bool currDevice = false}) async {
-    final id = await _generateDeviceHash();
-    return Device._(id: id, currDevice: currDevice);
   }
 
-  void _initDeviceType() async {
+  static Future<Device> create({bool currDevice = false}) async {
+    final id = await _generateDeviceHash();
+    final device = Device._(id: id, currDevice: currDevice);
+    // Awaited rather than fired off in the constructor: the iOS branch below
+    // suspends on a platform channel, so an unawaited call leaves the late
+    // final _type unset and the save() that follows getCurrent() throws.
+    await device._initDeviceType();
+    return device;
+  }
+
+  Future<void> _initDeviceType() async {
     name = "";
     if (Platform.isMacOS) {
       name = "Macbook";

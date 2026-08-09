@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:app_settings/app_settings.dart';
 import 'android_permissions_onboarding_dialog.dart';
+import '../demo/demo_mode.dart';
 import '../pages/block_apps_page.dart';
 import '../pages/block_sites_page.dart';
 import 'app_site_selector.dart';
@@ -65,6 +66,15 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
   }
 
   Future<void> _handleAppSiteSelection() async {
+    // The Simulator can never grant Screen Time, so without this the selector
+    // is unreachable there and the block list cannot be screenshotted. The
+    // native app picker behind it is still empty on a simulator; the sites half
+    // of the page works normally.
+    if (DemoMode.enabled) {
+      await _pushAppSiteSelector();
+      return;
+    }
+
     if (Platform.isIOS) {
       final status = await MobileService.instance.getBlockPermissions(request: true);
       if (!status) {
@@ -121,8 +131,12 @@ class _BlockGroupEditorState extends State<BlockGroupEditor> {
         }
       }
     }
-    
-    
+
+
+    await _pushAppSiteSelector();
+  }
+
+  Future<void> _pushAppSiteSelector() async {
     if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute(
