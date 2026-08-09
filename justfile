@@ -1,6 +1,5 @@
-# just runs recipes under `sh` by default, which Windows doesn't ship. Recipes
-# below are either split per-OS with [unix]/[windows] or written to be valid in
-# both shells; nothing here relies on bash or git-bash being installed.
+# just defaults to `sh`, which Windows doesn't ship, so recipes are split with
+# [unix]/[windows] or kept valid in both shells. No bash/git-bash needed.
 set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
 # Start the Flutter app
@@ -23,16 +22,12 @@ release platform: (build-nmh platform)
 release platform: (build-nmh platform) firebase-strip
     try { flutter build {{platform}} --release } finally { & '{{just_executable()}}' firebase-restore }
 
-# Firebase can't build for Windows: firebase_core ships a Windows plugin whose
-# CMake step downloads the Firebase C++ SDK, and firebase_messaging pulls
-# firebase_core in transitively, so both have to go. pub has no way to make a
-# dependency platform-conditional, so the deps in pubspec.yaml and the imports
-# and call sites that would fail to resolve without them are commented out for
-# the duration of a Windows build (every such line is tagged WINDOWS:REMOVE).
+# Firebase can't build for Windows (firebase_core's CMake step downloads the
+# C++ SDK), and pub deps can't be platform-conditional, so the deps and their
+# call sites are commented out for the build - each tagged WINDOWS:REMOVE.
 #
-# The `try/finally` above restores the tree even if the build fails or is
-# interrupted. Both recipes are idempotent, so run `just firebase-restore` by
-# hand if a build is killed hard enough to skip the finally.
+# The try/finally above restores the tree on failure. Both recipes are
+# idempotent: run `just firebase-restore` by hand if a build is killed hard.
 #
 # Comment out the Firebase deps and their call sites
 [windows]
@@ -48,7 +43,7 @@ firebase-restore:
 
 # The desktop build injects this binary into the app bundle; it is not a pubspec
 # asset, so it never ships in the iOS/Android app.
-#
+
 # Build the native messaging host for the given platform (macos|linux)
 [unix]
 build-nmh platform:
@@ -94,16 +89,14 @@ build-ext:
         exit 1
     fi
 
-    # Chrome publishing is optional: without these the recipe still writes
-    # chrome.zip for a manual upload to the Developer Dashboard.
+    # Optional: without these the recipe still writes chrome.zip for manual upload.
     CWS_PUBLISH=1
     for var in CWS_CLIENT_ID CWS_CLIENT_SECRET CWS_REFRESH_TOKEN CWS_EXTENSION_ID; do
         if [ -z "${!var:-}" ]; then CWS_PUBLISH=0; fi
     done
 
-    # AMO rejects a version number that has already been signed, so catch it here
-    # rather than after a full build. Only sees versions still present locally -
-    # old builds get pruned below, so AMO remains the source of truth.
+    # AMO rejects an already-signed version, so catch it before a full build.
+    # Only sees versions still on disk (pruned below), so AMO stays the truth.
     VERSION=$(jq -r .version "$EXT_DIR/manifest.json")
     if [ -n "$(find "$BUILD_DIR" -maxdepth 1 -name "*-$VERSION.xpi" -print -quit)" ]; then
         echo "Error: version $VERSION has already been signed (found *-$VERSION.xpi)" >&2
@@ -125,14 +118,13 @@ build-ext:
     jq 'del(.background.scripts) | del(.browser_specific_settings)' \
         "$EXT_DIR/manifest.json" > "$BUILD_DIR/chrome/manifest.json"
 
-    # Zip from inside each directory so manifest.json sits at the archive root -
-    # stores require it there, and a nested folder is rejected on upload.
+    # Zip from inside each dir so manifest.json sits at the archive root -
+    # stores reject a nested folder.
     rm -f "$BUILD_DIR/firefox.zip" "$BUILD_DIR/chrome.zip"
     (cd "$BUILD_DIR/firefox" && zip -qr ../firefox.zip . -x '*.DS_Store')
     (cd "$BUILD_DIR/chrome" && zip -qr ../chrome.zip . -x '*.DS_Store')
 
-    # Chrome first: an upload failure here (bad credentials, wrong item id,
-    # duplicate version) leaves AMO untouched, so a retry after the fix does not
+    # Chrome first: a failure here leaves AMO untouched, so a retry does not
     # burn a version number on the Firefox side.
     if [ "$CWS_PUBLISH" = 1 ]; then
         echo "Publishing Chrome extension..."
@@ -144,8 +136,8 @@ build-ext:
             -d "refresh_token=$CWS_REFRESH_TOKEN" \
             -d "grant_type=refresh_token" | jq -er .access_token)
 
-        # The API reports upload failures in the body with HTTP 200, so check
-        # uploadState rather than relying on curl's exit status.
+        # Upload failures come back in the body with HTTP 200, so check
+        # uploadState rather than curl's exit status.
         UPLOAD=$(curl -sf -X PUT \
             -H "Authorization: Bearer $CWS_TOKEN" \
             -H "x-goog-api-version: 2" \
@@ -157,8 +149,7 @@ build-ext:
             exit 1
         fi
 
-        # Publishing only submits for review; the version goes live once Google
-        # approves it, which is typically slower than AMO.
+        # Only submits for review; goes live on Google's approval, slower than AMO.
         PUBLISH=$(curl -sf -X POST \
             -H "Authorization: Bearer $CWS_TOKEN" \
             -H "x-goog-api-version: 2" \
@@ -169,8 +160,7 @@ build-ext:
         echo "Skipping Chrome publish - set CWS_CLIENT_ID, CWS_CLIENT_SECRET, CWS_REFRESH_TOKEN and CWS_EXTENSION_ID to enable"
     fi
 
-    # Listed channel: AMO hosts the add-on and handles auto-updates, matching how
-    # the Chrome Web Store distributes the Chrome build.
+    # Listed channel: AMO hosts the add-on and handles auto-updates, like the CWS.
     echo "Signing Firefox extension..."
     web-ext sign \
         --source-dir="$BUILD_DIR/firefox" \
@@ -220,45 +210,35 @@ _udid target:
     echo "$UDID"
 
 
-# Runs the app seeded with demo routines and takes over the keyboard, so a shot
-# is one keypress:
+# Takes over the keyboard so a shot is one keypress:
 #
 #     s   save the next numbered shot into ./screenshots
 #     r   hot reload          R   hot restart
 #     q   quit
 #
-# target is either a simulator name or a desktop platform:
-#
 #     just screenshots                            # iPhone, light
 #     just screenshots "iPhone 17 Pro Max" dark
 #     just screenshots macos
 #
-# flutter's own key commands are unavailable here because it is handed
-# /dev/null for stdin - otherwise it would fight this loop for the terminal.
-# Hot reload and restart go through the signals it documents for exactly that
-# case (--pid-file, SIGUSR1, SIGUSR2), so nothing is lost.
+# flutter gets /dev/null for stdin so it doesn't fight this loop for the
+# terminal; reload/restart use the signals it documents for that case
+# (--pid-file, SIGUSR1, SIGUSR2), so nothing is lost.
 #
-# On iOS the shot is the device screen, straight from simctl. On desktop it is
-# the app window captured by id, which keeps the window's rounded corners
-# transparent - a rectangular selection would square them off, so keep the
-# result as PNG. Desktop capture needs Screen Recording permission for this
-# terminal, and picks the largest window if several copies are running.
+# iOS shots come from simctl. Desktop captures the window by id, which keeps
+# the rounded corners transparent (so keep PNG); it needs Screen Recording
+# permission and picks the largest window if several copies run.
 #
-# App Store Connect only needs the 6.9" iPhone set (1320x2868); it scales that
-# down to every smaller iPhone. An iPad set would only be required if
-# TARGETED_DEVICE_FAMILY went back to "1,2".
+# App Store Connect only needs the 6.9" iPhone set (1320x2868) - it scales that
+# down. An iPad set is only needed if TARGETED_DEVICE_FAMILY returns to "1,2".
 #
-# appearance pins light or dark so a set does not end up half and half; the
-# simulator otherwise keeps whatever it was last left on. Simulators only -
-# desktop follows the host's system setting, and opens at 1280x800 rather than
-# the usual 800x600.
+# appearance pins light or dark so a set isn't half and half. Simulators only -
+# desktop follows the host setting, and opens at 1280x800 not 800x600.
 #
-# The iOS build is debug because Flutter only ever builds debug for the
-# simulator (release needs a physical device), which is fine here - the
-# checked-mode banner is already off and a still frame does not care about jank.
+# The iOS build is debug because Flutter only builds debug for the simulator;
+# fine here, the banner is off and a still frame doesn't care about jank.
 #
-# Demo mode points drift at routine_db_demo and disables sync, so none of this
-# can touch the real routines on this machine or on the account.
+# Demo mode points drift at routine_db_demo and disables sync, so this can't
+# touch the real routines on this machine or the account.
 #
 # Run the app with seeded demo routines and capture on a keypress (target: simulator name|macos|linux)
 [unix]
@@ -282,17 +262,16 @@ screenshots target="iPhone 17 Pro Max" appearance="light" dir="screenshots":
         DEVICE=$({{just_executable()}} _udid "{{target}}")
         SLUG=$(echo "{{target}}" | tr '[:upper:] ' '[:lower:]-')
 
-        # -b boots the device if it is not already up and blocks until it is
-        # ready. Booting by hand and then opening Simulator.app races: if the
-        # app is already running with another device, it can shut this one back
-        # down, and xcodebuild then reports no matching destination.
+        # -b boots the device and blocks until ready. Booting by hand then
+        # opening Simulator.app races: an already-running app can shut this
+        # device back down, and xcodebuild then finds no matching destination.
         xcrun simctl bootstatus "$DEVICE" -b
         open -a Simulator
 
         xcrun simctl ui "$DEVICE" appearance "{{appearance}}"
 
-        # Apple's own marketing clock, full bars, no carrier text. The override
-        # is dropped when the simulator reboots, so it is reapplied every run.
+        # Apple's marketing clock, full bars, no carrier text. Dropped on
+        # reboot, so reapplied every run.
         xcrun simctl status_bar "$DEVICE" override \
             --time "9:41" \
             --batteryState charged --batteryLevel 100 \
@@ -305,8 +284,8 @@ screenshots target="iPhone 17 Pro Max" appearance="light" dir="screenshots":
     FLUTTER=$!
     trap 'kill "$FLUTTER" 2>/dev/null || true; rm -f "$PIDFILE"' EXIT
 
-    # Resolved on the first shot rather than up front, because the desktop
-    # window does not exist until the app has actually started.
+    # Resolved on the first shot: the desktop window doesn't exist until the
+    # app has started.
     WINDOW_ID=""
     resolve() {
       [ "$SLUG" = macos ] || return 0
@@ -314,8 +293,8 @@ screenshots target="iPhone 17 Pro Max" appearance="light" dir="screenshots":
       WINDOW_ID=$(swift scripts/window_id.swift Routine)
     }
 
-    # Both tools narrate to stderr on success (simctl announces every file it
-    # writes), so output is held back and replayed only if the capture failed.
+    # Both tools narrate to stderr on success, so output is held back and
+    # replayed only if the capture failed.
     shoot() {
       local err
       if [ "$SLUG" = macos ]; then
@@ -341,14 +320,14 @@ screenshots target="iPhone 17 Pro Max" appearance="light" dir="screenshots":
     while IFS= read -rsn1 key; do
       case "$key" in
         s)
-          # Skip names already on disk so a later session does not overwrite an
-          # earlier one's set.
+          # Skip names already on disk so a later session doesn't overwrite an
+          # earlier set.
           n=$((n + 1))
           while [ -e "{{dir}}/$SLUG-$(printf '%02d' $n).png" ]; do n=$((n + 1)); done
           OUT="{{dir}}/$SLUG-$(printf '%02d' $n).png"
 
-          # A failed capture leaves an empty file behind, and should not take
-          # the whole session down with it.
+          # A failed capture leaves an empty file behind, and shouldn't take
+          # the session down with it.
           if resolve && shoot "$OUT"; then
             echo "saved $OUT"
           else
