@@ -16,6 +16,29 @@ interface RegisterRequest {
 
 type RequestBody = VerifyRequest | RegisterRequest
 
+// listUsers() is paginated (50 per page by default), so a single call silently
+// stops finding matches once there are more users than fit on one page.
+async function userExistsByEmail(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  email: string,
+): Promise<boolean> {
+  const target = email.toLowerCase()
+  const perPage = 1000
+
+  for (let page = 1; ; page++) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage })
+    if (error) throw error
+
+    const users = data?.users ?? []
+    if (users.some((user: { email?: string }) => user.email?.toLowerCase() === target)) {
+      return true
+    }
+    // A short page means we've reached the end of the list.
+    if (users.length < perPage) return false
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     if (req.method !== 'POST') {
@@ -40,40 +63,43 @@ Deno.serve(async (req) => {
         return new Response('Missing token', { status: 400 })
       }
 
+      let payload: Record<string, unknown>
       try {
-        const { payload } = await jwtVerify(body.token, secret)
-        
-        // Check if an account already exists for this email
-        const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-        
-        const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false
-          }
-        })
-
-        // Check if user already exists by listing all users and filtering by email
-        const { data: users } = await supabase.auth.admin.listUsers()
-        const userExists = users.users.some(user => user.email === payload.email)
-
-        if (userExists) {
-          return new Response(JSON.stringify({ 
-            error: 'ACCOUNT_EXISTS',
-            message: 'An account with this email already exists' 
-          }), {
-            status: 409,
-            headers: { 'Content-Type': 'application/json' }
-          })
-        }
-
-        return new Response(JSON.stringify(payload), {
-          headers: { 'Content-Type': 'application/json' }
-        })
+        const result = await jwtVerify(body.token, secret)
+        payload = result.payload
       } catch (_error) {
         return new Response('Invalid token', { status: 401 })
       }
+
+      const invitedEmail = typeof payload.email === 'string' ? payload.email : ''
+      if (!invitedEmail) {
+        return new Response('Invalid token payload', { status: 401 })
+      }
+
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+      const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      })
+
+      // Check if an account already exists for the email in the token
+      if (await userExistsByEmail(supabase, invitedEmail)) {
+        return new Response(JSON.stringify({
+          error: 'ACCOUNT_EXISTS',
+          message: 'An account with this email already exists'
+        }), {
+          status: 409,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+
+      return new Response(JSON.stringify(payload), {
+        headers: { 'Content-Type': 'application/json' }
+      })
     }
 
     if (body.type === 'register') {
@@ -116,9 +142,20 @@ Deno.serve(async (req) => {
         })
       }
 
-      return new Response(JSON.stringify({ 
+      // Best effort: the account exists either way, so a ledger failure must not
+      // fail the registration the user just completed.
+      const { error: ledgerError } = await supabase
+        .from('invites')
+        .update({ accepted_at: new Date().toISOString() })
+        .eq('email', body.email)
+
+      if (ledgerError) {
+        console.error('Failed to mark invite accepted:', ledgerError.message)
+      }
+
+      return new Response(JSON.stringify({
         user: data.user,
-        message: 'User registered successfully' 
+        message: 'User registered successfully'
       }), {
         headers: { 'Content-Type': 'application/json' }
       })

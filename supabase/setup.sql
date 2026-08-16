@@ -61,11 +61,20 @@ CREATE TABLE users (
     updated_at timestamptz
 );
 
+CREATE TABLE invites (
+    email TEXT PRIMARY KEY,
+    token TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at TIMESTAMPTZ,
+    accepted_at TIMESTAMPTZ
+);
+
 -- Enable Row Level Security for all tables
 ALTER TABLE devices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE routines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE groups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE invites ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies for devices table
 -- Policy for selecting devices (read)
