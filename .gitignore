@@ -50,6 +50,16 @@ target
 .env
 .env.local
 
+# Signing material — never commit. Back up the Android keystore somewhere
+# durable: losing it means sideload users can never upgrade, only reinstall.
+android/key.properties
+*.jks
+*.keystore
+*.p12
+*.p8
+*.mobileprovision
+dist/
+
 # Firebase configuration
 lib/firebase_options.dart
 ios/Runner/GoogleService-Info.plist

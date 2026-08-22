@@ -63,13 +63,29 @@ Docs are WIP - please open an issue if you think something needs further explana
 
 Routine is a Flutter application. Business logic and UI is written in Dart with platform-specific blocking logic written in Swift (MacOS, iOS), Kotlin (Android), C++ (Windows). 
 
-To get started with Routine development, follow [Flutter Get Started](https://docs.flutter.dev/get-started/install) for the platform(s) you'd like to develop for. After you have that set up, you can use the standard commands to run/build/develop Routine. The following sections describe platform-specific considerations.
+To get started with Routine development, follow [Flutter Get Started](https://docs.flutter.dev/get-started/install) for the platform(s) you'd like to develop for. `flutter run` works as usual for iOS and Android.
+
+### Building the desktop apps
+
+Desktop builds need a step Flutter doesn't know about: the browser extension talks to the app through a **native messaging host**, a small Dart binary that has to be compiled and injected into the app bundle. It is deliberately not a pubspec asset, so `flutter build` alone produces an app where browser blocking silently does nothing.
+
+Use [`just`](https://github.com/casey/just) instead, which handles it:
+
+```sh
+just release macos      # or: linux, windows
+```
+
+`just --list` shows everything available.
 
 ### iOS and MacOS
-iOS and MacOS development will require an [Apple Developer account](https://developer.apple.com/programs/enroll/) due to required entitlements (Family Controls, etc.). 
+iOS and MacOS development will require an [Apple Developer account](https://developer.apple.com/programs/enroll/) due to required entitlements (Family Controls, etc.).
+
+Building the macOS app on its own does not — the native messaging host is signed ad-hoc when no Developer ID certificate is present, which is fine for a local build.
 
 ### Windows
-Unfortunately, builds fail on Windows when firebase_core is included. You can temporarily comment out any firebase-related code by running `.\clean_windows.ps1`. When you're ready to commit, run `.\clean_windows.ps1 -Uncomment` to uncomment.
+Builds fail on Windows when firebase_core is included, because its CMake step downloads the C++ SDK. `just release windows` works around this automatically, commenting the Firebase code out for the build and restoring it afterwards.
+
+To do it by hand, `.\clean_windows.ps1` comments the Firebase code out and `.\clean_windows.ps1 -Uncomment` restores it. Run the restore before committing.
 
 ### Supabase
 Cross-device sync is performed via Supabase. Credentials for this are provided via a .env file in the root directory, refer to .env.example. If you don't have a Supabase project setup, you can simply duplicate and rename .env.example to .env. Empty values are fine.

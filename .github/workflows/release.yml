@@ -1,0 +1,168 @@
+name: Release
+
+# Tag a release:  git tag v1.0.0 && git push origin v1.0.0
+# Or run manually from the Actions tab to build artifacts without publishing.
+#
+# All build logic lives in scripts/release/*.sh so it can be run and debugged
+# locally. This file only wires up toolchains, secrets and artifacts. Each script
+# degrades gracefully when its credentials are absent, so this workflow runs
+# green on a repo with zero secrets configured — see docs/RELEASING.md.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Upload to TestFlight / Play (otherwise build artifacts only)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+env:
+  PUBLISH: ${{ startsWith(github.ref, 'refs/tags/v') || inputs.publish }}
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      name: ${{ steps.v.outputs.name }}
+      build: ${{ steps.v.outputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: ./scripts/release/version.sh
+
+  # ---------------------------------------------------------------- Android --
+  android:
+    needs: version
+    runs-on: ubuntu-latest
+    env:
+      VERSION_NAME: ${{ needs.version.outputs.name }}
+      BUILD_NUMBER: ${{ needs.version.outputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable, cache: true }
+      - uses: extractions/setup-just@v3
+
+      - run: just dist android
+        env:
+          ANDROID_KEYSTORE_B64:   ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_ALIAS:      ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD:   ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Upload to Play (internal track)
+        if: ${{ env.PUBLISH == 'true' && secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.solidsoft.routine
+          releaseFiles: dist/routine-${{ needs.version.outputs.name }}.aab
+          track: internal
+          status: completed
+
+      - uses: actions/upload-artifact@v4
+        with: { name: android, path: dist/*.apk }
+
+  # -------------------------------------------------------------------- iOS --
+  ios:
+    needs: version
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable, cache: true }
+      - uses: ruby/setup-ruby@v1
+        with: { ruby-version: '3.2', bundler-cache: true, working-directory: ios }
+
+      - run: flutter pub get
+      - run: flutter build ios --release --no-codesign
+               --build-name=${{ needs.version.outputs.name }}
+               --build-number=${{ needs.version.outputs.build }}
+
+      # fastlane is already the extracted-logic layer here — run `bundle exec
+      # fastlane ci_beta` from ios/ locally with the same env to reproduce.
+      - name: Archive and upload to TestFlight
+        if: ${{ env.PUBLISH == 'true' && secrets.MATCH_PASSWORD != '' }}
+        working-directory: ios
+        run: bundle exec fastlane ci_beta
+        env:
+          APP_STORE_CONNECT_API_KEY_KEY_ID:    ${{ secrets.ASC_KEY_ID }}
+          APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_KEY:       ${{ secrets.ASC_PRIVATE_KEY }}
+          MATCH_GIT_URL:                       ${{ secrets.MATCH_GIT_URL }}
+          MATCH_PASSWORD:                      ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION:       ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          VERSION_NAME: ${{ needs.version.outputs.name }}
+          BUILD_NUMBER: ${{ needs.version.outputs.build }}
+
+  # ------------------------------------------------------------------ macOS --
+  macos:
+    needs: version
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable, cache: true }
+      - uses: extractions/setup-just@v3   # scripts delegate to `just release`
+
+      - run: just dist macos
+        env:
+          VERSION_NAME:           ${{ needs.version.outputs.name }}
+          BUILD_NUMBER:           ${{ needs.version.outputs.build }}
+          MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+          MACOS_CERT_P12_B64:     ${{ secrets.MACOS_CERT_P12_B64 }}
+          MACOS_CERT_PASSWORD:    ${{ secrets.MACOS_CERT_PASSWORD }}
+          ASC_KEY_ID:             ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID:          ${{ secrets.ASC_ISSUER_ID }}
+          ASC_PRIVATE_KEY:        ${{ secrets.ASC_PRIVATE_KEY }}
+
+      - uses: actions/upload-artifact@v4
+        with: { name: macos, path: dist/*.dmg }
+
+  # ---------------------------------------------------------------- Windows --
+  windows:
+    needs: version
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable, cache: true }
+      - uses: extractions/setup-just@v3   # scripts delegate to `just release`
+
+      - run: just dist windows
+        env:
+          VERSION_NAME: ${{ needs.version.outputs.name }}
+          BUILD_NUMBER: ${{ needs.version.outputs.build }}
+
+      - uses: actions/upload-artifact@v4
+        with: { name: windows, path: dist/*.exe }
+
+  # ---------------------------------------------------------------- Release --
+  release:
+    needs: [version, android, ios, macos, windows]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { path: artifacts }
+
+      - run: ./scripts/release/notes.sh > notes.md
+        env:
+          VERSION_NAME:     ${{ needs.version.outputs.name }}
+          TESTFLIGHT_URL:   ${{ vars.TESTFLIGHT_URL }}
+          PLAY_TESTING_URL: ${{ vars.PLAY_TESTING_URL }}
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Routine ${{ needs.version.outputs.name }}
+          body_path: notes.md
+          files: artifacts/**/*
+          draft: true

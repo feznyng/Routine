@@ -17,11 +17,14 @@ if [ -z "$APPLE_ID" ] || [ -z "$APPLE_APP_PASSWORD" ]; then
     echo "Warning: APPLE_ID / APPLE_APP_PASSWORD not set (only needed for notarization)."
 fi
 
-# Check if developer identity is available
+# A Developer ID is only needed for a build you intend to distribute. Without
+# one, fall back to an ad-hoc signature: a locally built binary carries no
+# quarantine attribute, so ad-hoc is enough for it to run, and it keeps
+# `just release macos` working for contributors with no Apple Developer account.
 if [ -z "$DEVELOPER_ID" ]; then
-    echo "Error: No Developer ID Application certificate found in keychain"
-    echo "Please ensure you have a valid Developer ID Application certificate installed"
-    exit 1
+    echo "Note: no Developer ID Application certificate found — signing ad-hoc."
+    echo "      Fine for local builds; a distributable build needs a real identity."
+    DEVELOPER_ID="-"
 fi
 
 # Check if dart is installed

@@ -12,15 +12,17 @@ app:
 app: firebase-strip
     try { flutter run } finally { & '{{just_executable()}}' firebase-restore }
 
+# Extra args pass through to flutter build, e.g. --build-name=1.2.3 --build-number=42
+
 # Build the native messaging host, then the release desktop app (platform: macos|linux)
 [unix]
-release platform: (build-nmh platform)
-    flutter build {{platform}} --release
+release platform *args: (build-nmh platform)
+    flutter build {{platform}} --release {{args}}
 
 # Build the native messaging host, then the release desktop app (platform: windows)
 [windows]
-release platform: (build-nmh platform) firebase-strip
-    try { flutter build {{platform}} --release } finally { & '{{just_executable()}}' firebase-restore }
+release platform *args: (build-nmh platform) firebase-strip
+    try { flutter build {{platform}} --release {{args}} } finally { & '{{just_executable()}}' firebase-restore }
 
 # Firebase can't build for Windows (firebase_core's CMake step downloads the
 # C++ SDK), and pub deps can't be platform-conditional, so the deps and their
@@ -40,6 +42,33 @@ firebase-strip:
 firebase-restore:
     powershell -ExecutionPolicy Bypass -File clean_windows.ps1 -Uncomment
     flutter pub get
+
+# Sits on top of `release`: builds, signs, and packages a distributable into
+# dist/. Version defaults to pubspec; override with VERSION_NAME / BUILD_NUMBER.
+# Credentials are read from the environment and every one of them is optional -
+# without them you get unsigned output rather than a failure. See
+# docs/RELEASING.md for the full list.
+
+# Build a distributable into dist/ (platform: macos|android)
+[unix]
+dist platform:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    case "{{platform}}" in
+      macos|android) ./scripts/release/{{platform}}.sh ;;
+      *) echo "error: cannot build '{{platform}}' here (expected macos|android)" >&2; exit 1 ;;
+    esac
+
+# Build a distributable into dist/ (platform: windows)
+[windows]
+dist platform:
+    if ("{{platform}}" -ne "windows") { Write-Error "cannot build '{{platform}}' here (expected windows)"; exit 1 }
+    powershell -ExecutionPolicy Bypass -File scripts/release/windows.ps1
+
+# Preview the GitHub release notes for whatever is in dist/
+[unix]
+release-notes:
+    ARTIFACT_DIR=dist ./scripts/release/notes.sh
 
 # The desktop build injects this binary into the app bundle; it is not a pubspec
 # asset, so it never ships in the iOS/Android app.
