@@ -72,7 +72,7 @@ Desktop builds need a step Flutter doesn't know about: the browser extension tal
 Use [`just`](https://github.com/casey/just) instead, which handles it:
 
 ```sh
-just release macos      # or: linux, windows
+just build macos      # or: linux, windows
 ```
 
 `just --list` shows everything available.
@@ -83,7 +83,7 @@ iOS and MacOS development will require an [Apple Developer account](https://deve
 Building the macOS app on its own does not — the native messaging host is signed ad-hoc when no Developer ID certificate is present, which is fine for a local build.
 
 ### Windows
-Builds fail on Windows when firebase_core is included, because its CMake step downloads the C++ SDK. `just release windows` works around this automatically, commenting the Firebase code out for the build and restoring it afterwards.
+Builds fail on Windows when firebase_core is included, because its CMake step downloads the C++ SDK. `just build windows` works around this automatically, commenting the Firebase code out for the build and restoring it afterwards.
 
 To do it by hand, `.\clean_windows.ps1` comments the Firebase code out and `.\clean_windows.ps1 -Uncomment` restores it. Run the restore before committing.
 

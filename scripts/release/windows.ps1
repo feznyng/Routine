@@ -3,7 +3,7 @@
 #   $env:VERSION_NAME / $env:BUILD_NUMBER   optional; default from pubspec.yaml
 #   $env:SKIP_BUILD = '1'                   package an existing build/ tree only
 #
-#   just dist windows
+#   just release windows
 #   powershell -ExecutionPolicy Bypass -File scripts/release/windows.ps1
 
 $ErrorActionPreference = 'Stop'
@@ -26,7 +26,7 @@ if (-not $env:SKIP_BUILD) {
     #   - firebase-strip/restore works around firebase_core being unbuildable on
     #     Windows (its CMake step downloads the C++ SDK).
     Write-Host '==> Building (via just: NMH + firebase-strip)'
-    just release windows --build-name=$version --build-number=$build
+    just build windows --build-name=$version --build-number=$build
 }
 
 if (-not (Test-Path 'build\windows\x64\runner\Release')) {

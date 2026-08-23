@@ -5,6 +5,9 @@ to TestFlight and Android to the Play internal track, and opens a **draft** GitH
 release with the APK, DMG and Windows installer attached.
 
 `workflow_dispatch` from the Actions tab builds artifacts without publishing.
+Pick a single **platform** there to run one job instead of all four — useful
+while bringing a platform up, so you aren't reading three unrelated failures.
+A tag push always runs everything.
 
 Every credential-dependent step is guarded on its secret, so the workflow runs
 green before any secrets exist. Provision them platform by platform.
@@ -16,17 +19,51 @@ secrets and artifacts. Every script reads plain env vars and degrades gracefully
 when credentials are missing, so you can debug without pushing a tag.
 
 ```sh
-just dist macos          # build + sign + DMG  → dist/
-just dist android        # build AAB + APK     → dist/
-just dist windows        # build + installer   → dist/   (on Windows)
-just release-notes       # preview the notes for whatever is in dist/
+just release ios            # build + archive + upload to TestFlight
+just release macos          # build + sign + DMG  → dist/
+just release android        # build AAB + APK     → dist/
+just release windows        # build + installer   → dist/   (on Windows)
+just release-notes          # preview the notes for whatever is in dist/
+```
+
+`just release ios` produces no file in `dist/` — the deliverable is a build on App
+Store Connect. It needs a Ruby newer than the macOS system 2.6, which `bundle`
+resolves to by default:
+
+```sh
+export PATH="/opt/homebrew/opt/ruby/bin:$PATH"   # or rbenv/mise
+cd ios && bundle install
 ```
 
 The version defaults to `pubspec.yaml`; override with `VERSION_NAME=1.4.0
-BUILD_NUMBER=42 just dist macos`. CI passes them explicitly from the tag.
+BUILD_NUMBER=42 just release macos`. CI passes them explicitly from the tag.
+
+iOS is the exception on build numbers. Apple requires them to be unique per
+version string, and pubspec's `+N` goes stale the moment you ship, so with
+credentials set `ios.sh` asks App Store Connect what it has already accepted and
+takes the next one — `just release ios` needs no build number at all. Setting
+`BUILD_NUMBER` still wins, which is both how CI stays deterministic and how you
+pin a specific number by hand.
 
 The scripts are also runnable directly (`./scripts/release/macos.sh`) — `just
 dist` is a thin wrapper so there is one entry point on every platform.
+
+### Credentials on your laptop
+
+CI passes `ASC_PRIVATE_KEY` because a GitHub secret is a string. Locally, point
+at the `.p8` instead and the key stays out of the environment of every process
+you launch:
+
+```zsh
+export ASC_KEY_ID=XXXXXXXXXX
+export ASC_ISSUER_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+export ASC_PRIVATE_KEY_PATH=~/Keys/app-store-connect-routine-key.p8
+```
+
+`load_asc_key` in `lib.sh` takes either form and fills in the other, so iOS gets
+the contents fastlane wants and macOS gets the path `notarytool` wants. Never
+put these in `.env` — `pubspec.yaml` declares it as a Flutter asset, so it ships
+inside the app.
 
 `macos.sh` uses whatever is in your login keychain when `MACOS_SIGNING_IDENTITY`
 is set; the p12 import path is CI-only. Windows tooling is PowerShell
@@ -36,32 +73,32 @@ Justfile deliberately assumes no bash on Windows.
 ### Layering
 
 ```
-just dist <platform>        scripts/release/*  — credentials, signing, packaging
-  └─ just release <plat>    Justfile           — NMH + firebase-strip + flutter build
+just release <platform>     scripts/release/*  — credentials, signing, packaging
+  └─ just build <plat>      Justfile           — NMH + firebase-strip + flutter build
        └─ just build-nmh    browser/build_*    — native messaging host
 ```
 
 ### Desktop builds go through `just`, never `flutter build`
 
-`macos.sh` and `windows.sh` call `just release <platform>`, which is the existing
+`macos.sh` and `windows.sh` call `just build <platform>`, which is the existing
 orchestrator. Calling Flutter directly breaks two things:
 
-- **The native messaging host is missing.** `just release` runs `build-nmh` first,
+- **The native messaging host is missing.** `just build` runs `build-nmh` first,
   producing `assets/extension/native_*`. The Xcode copy phase and the CMake
   `install()` steps only emit a *warning* when it's absent — so a direct build
   goes green and ships with browser blocking silently dead.
 - **Windows won't build at all.** `firebase_core`'s CMake step downloads the C++
-  SDK and fails on Windows; `just release windows` wraps the build in
+  SDK and fails on Windows; `just build windows` wraps the build in
   `firebase-strip` / `firebase-restore`.
 
 The `release` recipe is variadic, so version flags pass through:
-`just release macos --build-name=1.2.3 --build-number=42`.
+`just build macos --build-name=1.2.3 --build-number=42`.
 
 On macOS the Developer ID certificate must be in the keychain **before** the
 build, because `browser/build_native_macos.sh` signs the host with its own
 entitlements (`app-sandbox=false`). `macos.sh` imports the cert first for this
 reason. Without an identity that script falls back to an ad-hoc signature, which
-keeps `just release macos` working for contributors with no Apple Developer
+keeps `just build macos` working for contributors with no Apple Developer
 account — fine locally, not for anything you ship.
 
 ### Not wired up: the browser extension
@@ -74,10 +111,16 @@ exists, so tying it to app tags would fail every release that didn't also bump
 the manifest. Run it by hand, or give it its own workflow on an `ext-v*` tag.
 
 Linux is also unwired: `linux/CMakeLists.txt` and `build_native_linux.sh` exist
-and `just release linux` works, but there is no Linux job in the workflow yet.
+and `just build linux` works, but there is no Linux job in the workflow yet.
 
-For iOS, fastlane is already the extracted layer: `cd ios && bundle exec fastlane
-ci_beta` with the same env the workflow passes.
+For iOS, `scripts/release/ios.sh` runs the Flutter build and then hands off to
+fastlane, which is already the extracted layer: `cd ios && bundle exec fastlane
+ci_beta` with the same env the workflow passes. The script exists so the ASC_*
+spelling used everywhere else maps onto the `APP_STORE_CONNECT_API_KEY_*` names
+the Fastfile reads, and so the Flutter build never gets skipped — `build_app`
+archives whatever Xcode can see, and `CFBundleVersion` comes from
+`$(FLUTTER_BUILD_NUMBER)` in `Generated.xcconfig`, which only `flutter build`
+writes.
 
 ## Config bootstrap
 
@@ -119,8 +162,8 @@ on their own.
 | `ANDROID_KEY_PASSWORD` | Android | keystore creation |
 | `PLAY_SERVICE_ACCOUNT_JSON` | Android | GCP service account, granted access in Play Console |
 | `ASC_PRIVATE_KEY` | iOS, macOS | the downloaded `.p8`, contents verbatim |
-| `MATCH_PASSWORD` | iOS | passphrase you choose on `match init` |
-| `MATCH_GIT_BASIC_AUTHORIZATION` | iOS | `base64` of `user:personal_access_token` |
+| `IOS_CERT_P12_B64` | iOS | Apple Distribution cert exported from Keychain |
+| `IOS_CERT_PASSWORD` | iOS | the export passphrase |
 | `MACOS_CERT_P12_B64` | macOS | Developer ID Application cert exported from Keychain |
 | `MACOS_CERT_PASSWORD` | macOS | the export passphrase |
 | `DOTENV` | all | contents of your real `.env` |
@@ -138,7 +181,6 @@ users can never upgrade in place again. Back it up somewhere durable.
 | `ANDROID_KEY_ALIAS` | Android | just a name inside the keystore |
 | `ASC_KEY_ID` | iOS, macOS | useless without the `.p8` |
 | `ASC_ISSUER_ID` | iOS, macOS | per-team identifier |
-| `MATCH_GIT_URL` | iOS | a repo URL |
 | `MACOS_SIGNING_IDENTITY` | macOS | e.g. `Developer ID Application: SolidSoft LLC (5P7GGUGK9M)` |
 
 `MACOS_SIGNING_IDENTITY` is worth moving to a repository **variable**: the value
@@ -153,10 +195,15 @@ Repository **variables** (not secrets), used only in the release notes template:
 
 | Variable | Value |
 |---|---|
-| `TESTFLIGHT_URL` | Public TestFlight link |
+| `TESTFLIGHT_URL` | Public TestFlight link — **defaults** to `https://testflight.apple.com/join/MQS1bU25` in `notes.sh` |
 | `PLAY_TESTING_URL` | Play open-testing opt-in link |
 
 Both are stable — set them once and every release reuses them.
+
+`TESTFLIGHT_URL` is baked into `scripts/release/notes.sh` as a default so `just
+release-notes` renders the real link locally with no env setup. Setting the repo
+variable still overrides it; do that rather than editing the script if the beta
+link ever changes, or change both together.
 
 ## Before the first release
 
@@ -168,9 +215,11 @@ entitlement, but **App Store and TestFlight distribution require Apple to approv
 the capability for your team.** Request it at
 <https://developer.apple.com/contact/request/family-controls-distribution>.
 
-Until it is granted, `match appstore` cannot mint profiles carrying the
-entitlement and the iOS job will fail at signing. Request it early; turnaround is
-not instant.
+Until it is granted, App Store profiles carrying the entitlement cannot be
+minted at all and the iOS job will fail at signing. Request it early; turnaround
+is not instant. If Apple attaches a provisioning profile *template* to the
+approval rather than enabling the capability on the App IDs directly, pass its
+name to `get_provisioning_profile(template_name:)` in `ios/fastlane/Fastfile`.
 
 The app group `group.routineblocker` must also be registered in the Developer
 portal and included in both App IDs.
@@ -189,8 +238,17 @@ portal and included in both App IDs.
 
 ### iOS
 
-Run `bundle exec fastlane match appstore` from your laptop once to populate the
-match repo. CI is `readonly: true` and will never create certificates itself.
+Export the **Apple Distribution** certificate (not Developer ID) as a `.p12` with
+a passphrase — same shape as macOS below, and the same reason: an ephemeral
+runner has no keychain to reuse, so the certificate is shipped in rather than
+created per run. Apple caps a team at a handful of distribution certificates, and
+anything that mints them on demand exhausts that cap one release at a time.
+
+Provisioning profiles are not pre-created. `ci_beta` fetches them from App Store
+Connect with the same `ASC_*` key, reusing a valid profile and minting a new one
+only when it is missing or expired — profiles, unlike certificates, are free and
+disposable. Both App IDs need to exist in the Developer portal first, with the
+Family Controls capability and the `group.routineblocker` app group enabled.
 
 ### macOS
 
@@ -220,7 +278,9 @@ verifiable operating history — see the notes in the workflow.
 - **`android/fastlane/Appfile` hardcodes an absolute path** to a service account
   JSON on your laptop. Fine locally; CI uses the upload action instead.
 - **Build numbers come from `github.run_number`.** App Store Connect and Play
-  both require strictly increasing values, so never reset it.
+  both require strictly increasing values, so never reset it. It is passed
+  explicitly, which also suppresses the App Store Connect lookup `ios.sh` does
+  for local runs.
 
 ## Download links on the site
 

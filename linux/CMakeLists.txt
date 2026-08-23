@@ -141,6 +141,6 @@ install(CODE "
     file(INSTALL \"${ROUTINE_NMH_SRC}\" DESTINATION \"${ROUTINE_NMH_DEST}\"
       FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
   else()
-    message(WARNING \"Routine NMH not found at ${ROUTINE_NMH_SRC}; browser blocking will not work. Build a release with 'just release linux'.\")
+    message(WARNING \"Routine NMH not found at ${ROUTINE_NMH_SRC}; browser blocking will not work. Build a release with 'just build linux'.\")
   endif()
   " COMPONENT Runtime)

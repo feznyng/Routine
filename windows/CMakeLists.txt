@@ -120,6 +120,6 @@ install(CODE "
   if(EXISTS \"${ROUTINE_NMH_SRC}\")
     file(INSTALL \"${ROUTINE_NMH_SRC}\" DESTINATION \"${ROUTINE_NMH_DEST}\")
   else()
-    message(WARNING \"Routine NMH not found at ${ROUTINE_NMH_SRC}; browser blocking will not work. Build a release with 'just release windows'.\")
+    message(WARNING \"Routine NMH not found at ${ROUTINE_NMH_SRC}; browser blocking will not work. Build a release with 'just build windows'.\")
   endif()
   " COMPONENT Runtime)

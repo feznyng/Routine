@@ -13,6 +13,11 @@ on:
     tags: ['v*']
   workflow_dispatch:
     inputs:
+      platform:
+        description: 'Which platform to build'
+        type: choice
+        default: all
+        options: [all, ios, macos, android, windows]
       publish:
         description: 'Upload to TestFlight / Play (otherwise build artifacts only)'
         type: boolean
@@ -23,6 +28,11 @@ permissions:
 
 env:
   PUBLISH: ${{ startsWith(github.ref, 'refs/tags/v') || inputs.publish }}
+
+# Each platform job carries `if: inputs.platform is '' | all | <its own name>`.
+# `platform` only exists on workflow_dispatch, so on a tag push it is '' and
+# every job runs. Job-level `if:` cannot read the `env` context, which is why
+# this is spelled out per job rather than hoisted into a variable.
 
 jobs:
   version:
@@ -38,6 +48,7 @@ jobs:
   # ---------------------------------------------------------------- Android --
   android:
     needs: version
+    if: ${{ inputs.platform == '' || inputs.platform == 'all' || inputs.platform == 'android' }}
     runs-on: ubuntu-latest
     env:
       VERSION_NAME: ${{ needs.version.outputs.name }}
@@ -58,7 +69,7 @@ jobs:
           GOOGLE_SERVICES_JSON:      ${{ secrets.GOOGLE_SERVICES_JSON }}
           GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
 
-      - run: just dist android
+      - run: just release android
         env:
           ANDROID_KEYSTORE_B64:   ${{ secrets.ANDROID_KEYSTORE_B64 }}
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
@@ -81,6 +92,7 @@ jobs:
   # -------------------------------------------------------------------- iOS --
   ios:
     needs: version
+    if: ${{ inputs.platform == '' || inputs.platform == 'all' || inputs.platform == 'ios' }}
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -88,6 +100,7 @@ jobs:
         with: { channel: stable, cache: true }
       - uses: ruby/setup-ruby@v1
         with: { ruby-version: '3.2', bundler-cache: true, working-directory: ios }
+      - uses: extractions/setup-just@v3   # ios.sh is reached through `just release ios`
 
       - name: Materialise gitignored config
         run: ./scripts/release/bootstrap.sh
@@ -98,35 +111,35 @@ jobs:
           GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
 
       - run: flutter pub get
-      - run: flutter build ios --release --no-codesign
-               --build-name=${{ needs.version.outputs.name }}
-               --build-number=${{ needs.version.outputs.build }}
 
-      # fastlane is already the extracted-logic layer here — run `bundle exec
-      # fastlane ci_beta` from ios/ locally with the same env to reproduce.
-      - name: Archive and upload to TestFlight
-        if: ${{ env.PUBLISH == 'true' && secrets.MATCH_PASSWORD != '' }}
-        working-directory: ios
-        run: bundle exec fastlane ci_beta
+      # One entry point, same as every other platform: `just release ios` runs the
+      # Flutter build and then hands off to fastlane. Reproduce a failure here
+      # by running the identical command locally.
+      #
+      # ios.sh skips the archive and upload when ASC_KEY_ID is empty, which is
+      # exactly the publish gate — so the credentials are blanked on a
+      # non-publishing run and the job degrades to "does it compile".
+      - name: Build and upload to TestFlight
+        run: just release ios
         env:
-          APP_STORE_CONNECT_API_KEY_KEY_ID:    ${{ secrets.ASC_KEY_ID }}
-          APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          APP_STORE_CONNECT_API_KEY_KEY:       ${{ secrets.ASC_PRIVATE_KEY }}
-          MATCH_GIT_URL:                       ${{ secrets.MATCH_GIT_URL }}
-          MATCH_PASSWORD:                      ${{ secrets.MATCH_PASSWORD }}
-          MATCH_GIT_BASIC_AUTHORIZATION:       ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          ASC_KEY_ID:      ${{ env.PUBLISH == 'true' && secrets.ASC_KEY_ID || '' }}
+          ASC_ISSUER_ID:   ${{ env.PUBLISH == 'true' && secrets.ASC_ISSUER_ID || '' }}
+          ASC_PRIVATE_KEY: ${{ env.PUBLISH == 'true' && secrets.ASC_PRIVATE_KEY || '' }}
+          IOS_CERT_P12_B64:  ${{ secrets.IOS_CERT_P12_B64 }}
+          IOS_CERT_PASSWORD: ${{ secrets.IOS_CERT_PASSWORD }}
           VERSION_NAME: ${{ needs.version.outputs.name }}
           BUILD_NUMBER: ${{ needs.version.outputs.build }}
 
   # ------------------------------------------------------------------ macOS --
   macos:
     needs: version
+    if: ${{ inputs.platform == '' || inputs.platform == 'all' || inputs.platform == 'macos' }}
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with: { channel: stable, cache: true }
-      - uses: extractions/setup-just@v3   # scripts delegate to `just release`
+      - uses: extractions/setup-just@v3   # scripts delegate to `just build`
 
       - name: Materialise gitignored config
         run: ./scripts/release/bootstrap.sh
@@ -136,7 +149,7 @@ jobs:
           GOOGLE_SERVICES_JSON:      ${{ secrets.GOOGLE_SERVICES_JSON }}
           GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
 
-      - run: just dist macos
+      - run: just release macos
         env:
           VERSION_NAME:           ${{ needs.version.outputs.name }}
           BUILD_NUMBER:           ${{ needs.version.outputs.build }}
@@ -153,12 +166,13 @@ jobs:
   # ---------------------------------------------------------------- Windows --
   windows:
     needs: version
+    if: ${{ inputs.platform == '' || inputs.platform == 'all' || inputs.platform == 'windows' }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with: { channel: stable, cache: true }
-      - uses: extractions/setup-just@v3   # scripts delegate to `just release`
+      - uses: extractions/setup-just@v3   # scripts delegate to `just build`
 
       - name: Materialise gitignored config
         run: ./scripts/release/bootstrap.sh
@@ -168,7 +182,7 @@ jobs:
           GOOGLE_SERVICES_JSON:      ${{ secrets.GOOGLE_SERVICES_JSON }}
           GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
 
-      - run: just dist windows
+      - run: just release windows
         env:
           VERSION_NAME: ${{ needs.version.outputs.name }}
           BUILD_NUMBER: ${{ needs.version.outputs.build }}

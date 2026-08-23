@@ -35,7 +35,7 @@ fi
 # A Developer ID is only needed for a build you intend to distribute. Without
 # one, fall back to an ad-hoc signature: a locally built binary carries no
 # quarantine attribute, so ad-hoc is enough for it to run, and it keeps
-# `just release macos` working for contributors with no Apple Developer account.
+# `just build macos` working for contributors with no Apple Developer account.
 if [ -z "$DEVELOPER_ID" ]; then
     echo "Note: no Developer ID Application certificate found — signing ad-hoc."
     echo "      Fine for local builds; a distributable build needs a real identity."

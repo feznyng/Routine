@@ -5,10 +5,15 @@
 #   ARTIFACT_DIR                 default: artifacts
 #   TESTFLIGHT_URL PLAY_TESTING_URL   omitted rows are dropped, not left dangling
 #
+# TESTFLIGHT_URL defaults to the public beta link below, so `just release-notes`
+# is accurate locally without exporting anything. The repo variable still wins
+# when set — see docs/RELEASING.md.
+#
 #   VERSION_NAME=1.2.3 ./scripts/release/notes.sh > notes.md
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 resolve_version
 ARTIFACT_DIR="${ARTIFACT_DIR:-artifacts}"
+TESTFLIGHT_URL="${TESTFLIGHT_URL:-https://testflight.apple.com/join/MQS1bU25}"
 
 echo "## Install"
 echo
