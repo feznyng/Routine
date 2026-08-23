@@ -59,9 +59,10 @@ The `release` recipe is variadic, so version flags pass through:
 
 On macOS the Developer ID certificate must be in the keychain **before** the
 build, because `browser/build_native_macos.sh` signs the host with its own
-entitlements (`app-sandbox=false`) and exits 1 without an identity. `macos.sh`
-imports the cert first for this reason. With no identity at all it skips the NMH
-and warns rather than failing, so local unsigned builds still work.
+entitlements (`app-sandbox=false`). `macos.sh` imports the cert first for this
+reason. Without an identity that script falls back to an ad-hoc signature, which
+keeps `just release macos` working for contributors with no Apple Developer
+account — fine locally, not for anything you ship.
 
 ### Not wired up: the browser extension
 
@@ -78,24 +79,73 @@ and `just release linux` works, but there is no Linux job in the workflow yet.
 For iOS, fastlane is already the extracted layer: `cd ios && bundle exec fastlane
 ci_beta` with the same env the workflow passes.
 
+## Config bootstrap
+
+`scripts/release/bootstrap.sh` runs first in every platform job and writes the
+gitignored config a build needs. For each file it uses the secret when set,
+otherwise the checked-in `.example`:
+
+| File | Secret | Example fallback |
+|---|---|---|
+| `.env` | `DOTENV` | `.env.example` |
+| `lib/firebase_options.dart` | `FIREBASE_OPTIONS_DART` | `firebase_options.example.dart` |
+| `android/app/google-services.json` | `GOOGLE_SERVICES_JSON` | `google-services.example.json` |
+| `ios/Runner/GoogleService-Info.plist` | `GOOGLE_SERVICE_INFO_PLIST` | `GoogleService-Info.example.plist` |
+
+The examples exist so the workflow compiles without credentials — useful for
+smoke-testing CI and for forks. **A build made from examples is not
+distributable**: Firebase and Supabase are unreachable. The script prints a loud
+warning when any placeholder is used, and is idempotent, so it leaves real files
+alone when run locally.
+
+`.env` must never regain `RESEND_KEY` or anything else genuinely secret: it is a
+pubspec asset, so it ships inside `flutter_assets/` in every APK, DMG and
+installer, where anyone can read it. Only values safe to publish belong there —
+the Supabase anon key and Sentry DSN are designed to be public; a mail-provider
+API key is not.
+
 ## Secrets
+
+Not everything below is equally sensitive. Compromise of the first group lets
+someone ship software as you; the second group are identifiers that are useless
+on their own.
+
+**Real credentials — protect these:**
 
 | Secret | Used by | Where it comes from |
 |---|---|---|
 | `ANDROID_KEYSTORE_B64` | Android | `base64 -i upload-keystore.jks` |
 | `ANDROID_STORE_PASSWORD` | Android | keystore creation |
-| `ANDROID_KEY_ALIAS` | Android | keystore creation |
 | `ANDROID_KEY_PASSWORD` | Android | keystore creation |
 | `PLAY_SERVICE_ACCOUNT_JSON` | Android | GCP service account, granted access in Play Console |
-| `ASC_KEY_ID` | iOS, macOS | App Store Connect → Users and Access → Integrations |
-| `ASC_ISSUER_ID` | iOS, macOS | same page |
 | `ASC_PRIVATE_KEY` | iOS, macOS | the downloaded `.p8`, contents verbatim |
-| `MATCH_GIT_URL` | iOS | private repo holding encrypted certs/profiles |
 | `MATCH_PASSWORD` | iOS | passphrase you choose on `match init` |
 | `MATCH_GIT_BASIC_AUTHORIZATION` | iOS | `base64` of `user:personal_access_token` |
 | `MACOS_CERT_P12_B64` | macOS | Developer ID Application cert exported from Keychain |
 | `MACOS_CERT_PASSWORD` | macOS | the export passphrase |
+| `DOTENV` | all | contents of your real `.env` |
+| `FIREBASE_OPTIONS_DART` | all | contents of `lib/firebase_options.dart` |
+| `GOOGLE_SERVICES_JSON` | Android | contents of `android/app/google-services.json` |
+| `GOOGLE_SERVICE_INFO_PLIST` | iOS | contents of `ios/Runner/GoogleService-Info.plist` |
+
+The Android keystore is the one that cannot be rotated: lose or leak it and
+users can never upgrade in place again. Back it up somewhere durable.
+
+**Identifiers — secrets by convention, not by need:**
+
+| Secret | Used by | Note |
+|---|---|---|
+| `ANDROID_KEY_ALIAS` | Android | just a name inside the keystore |
+| `ASC_KEY_ID` | iOS, macOS | useless without the `.p8` |
+| `ASC_ISSUER_ID` | iOS, macOS | per-team identifier |
+| `MATCH_GIT_URL` | iOS | a repo URL |
 | `MACOS_SIGNING_IDENTITY` | macOS | e.g. `Developer ID Application: SolidSoft LLC (5P7GGUGK9M)` |
+
+`MACOS_SIGNING_IDENTITY` is worth moving to a repository **variable**: the value
+is embedded in every binary you sign, so it is not secret, and keeping it as a
+secret makes GitHub mask your company name as `***` throughout `codesign` output,
+which makes signing failures harder to read. The rest cost nothing to leave as
+secrets.
 
 ## Variables
 
@@ -171,3 +221,24 @@ verifiable operating history — see the notes in the workflow.
   JSON on your laptop. Fine locally; CI uses the upload action instead.
 - **Build numbers come from `github.run_number`.** App Store Connect and Play
   both require strictly increasing values, so never reset it.
+
+## Download links on the site
+
+Release assets are deliberately **version-less** (`Routine-setup.exe`,
+`Routine.dmg`, `Routine.apk`, `Routine.aab`) so that GitHub's permanent
+redirect works:
+
+```
+https://github.com/feznyng/Routine/releases/latest/download/Routine.dmg
+```
+
+That always resolves to the newest **published** release, so the site never
+needs updating per release. Don't reintroduce the version into asset filenames —
+it breaks these links, and renaming later breaks any link people have shared.
+
+`site/app/download/page.tsx` has a `DIRECT_DOWNLOADS` flag, currently `false`.
+The redirect 404s while every release is a draft, so the desktop buttons point
+at the releases page until then. **Flip it to `true` after publishing the first
+non-draft release.** `TESTFLIGHT_URL` and `PLAY_TESTING_URL` in the same file
+are empty strings until those channels exist; iOS shows a disabled "Coming soon"
+button until `TESTFLIGHT_URL` is set.

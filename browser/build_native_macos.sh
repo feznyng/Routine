@@ -3,7 +3,22 @@ set -e
 
 # Configuration
 APP_NAME="native_messaging_host"
-DEVELOPER_ID="$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | awk -F '"' '{print $2}')"
+# Prefer an explicit identity. Otherwise auto-detect, but refuse to guess when
+# several are installed — after an Individual→Organization conversion you keep
+# both the old personal cert and the new org one, and picking arbitrarily would
+# sign the host with a different identity than the app.
+if [ -n "$MACOS_SIGNING_IDENTITY" ]; then
+    DEVELOPER_ID="$MACOS_SIGNING_IDENTITY"
+else
+    _CERTS="$(security find-identity -v -p codesigning | grep "Developer ID Application" || true)"
+    if [ "$(printf '%s' "$_CERTS" | grep -c .)" -gt 1 ]; then
+        echo "Error: multiple Developer ID Application certificates found."
+        echo "Set MACOS_SIGNING_IDENTITY to choose one:"
+        printf '%s\n' "$_CERTS"
+        exit 1
+    fi
+    DEVELOPER_ID="$(printf '%s' "$_CERTS" | awk -F '"' '{print $2}')"
+fi
 TEAM_ID="$APPLE_TEAM_ID"
 NOTARIZATION_APPLE_ID="$APPLE_ID" # Set this via environment variable
 NOTARIZATION_PASSWORD="$APPLE_APP_PASSWORD" # Set this via environment variable or keychain

@@ -37,12 +37,12 @@ log "Building APK"
 flutter build apk "${args[@]}"
 
 mkdir -p dist
-cp build/app/outputs/bundle/release/app-release.aab "dist/routine-$VERSION_NAME.aab"
-cp build/app/outputs/flutter-apk/app-release.apk    "dist/routine-$VERSION_NAME.apk"
+cp build/app/outputs/bundle/release/app-release.aab "dist/Routine.aab"
+cp build/app/outputs/flutter-apk/app-release.apk    "dist/Routine.apk"
 
 if have ANDROID_KEYSTORE_B64 && command -v apksigner >/dev/null; then
   log "Verifying APK signature"
-  apksigner verify --print-certs "dist/routine-$VERSION_NAME.apk" | head -4
+  apksigner verify --print-certs "dist/Routine.apk" | head -4
 fi
 
-log "dist/routine-$VERSION_NAME.{aab,apk}"
+log "dist/Routine.{aab,apk}"

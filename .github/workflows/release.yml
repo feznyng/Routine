@@ -50,6 +50,14 @@ jobs:
         with: { channel: stable, cache: true }
       - uses: extractions/setup-just@v3
 
+      - name: Materialise gitignored config
+        run: ./scripts/release/bootstrap.sh
+        env:
+          DOTENV:                    ${{ secrets.DOTENV }}
+          FIREBASE_OPTIONS_DART:     ${{ secrets.FIREBASE_OPTIONS_DART }}
+          GOOGLE_SERVICES_JSON:      ${{ secrets.GOOGLE_SERVICES_JSON }}
+          GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
+
       - run: just dist android
         env:
           ANDROID_KEYSTORE_B64:   ${{ secrets.ANDROID_KEYSTORE_B64 }}
@@ -63,7 +71,7 @@ jobs:
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.solidsoft.routine
-          releaseFiles: dist/routine-${{ needs.version.outputs.name }}.aab
+          releaseFiles: dist/Routine.aab
           track: internal
           status: completed
 
@@ -80,6 +88,14 @@ jobs:
         with: { channel: stable, cache: true }
       - uses: ruby/setup-ruby@v1
         with: { ruby-version: '3.2', bundler-cache: true, working-directory: ios }
+
+      - name: Materialise gitignored config
+        run: ./scripts/release/bootstrap.sh
+        env:
+          DOTENV:                    ${{ secrets.DOTENV }}
+          FIREBASE_OPTIONS_DART:     ${{ secrets.FIREBASE_OPTIONS_DART }}
+          GOOGLE_SERVICES_JSON:      ${{ secrets.GOOGLE_SERVICES_JSON }}
+          GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
 
       - run: flutter pub get
       - run: flutter build ios --release --no-codesign
@@ -112,6 +128,14 @@ jobs:
         with: { channel: stable, cache: true }
       - uses: extractions/setup-just@v3   # scripts delegate to `just release`
 
+      - name: Materialise gitignored config
+        run: ./scripts/release/bootstrap.sh
+        env:
+          DOTENV:                    ${{ secrets.DOTENV }}
+          FIREBASE_OPTIONS_DART:     ${{ secrets.FIREBASE_OPTIONS_DART }}
+          GOOGLE_SERVICES_JSON:      ${{ secrets.GOOGLE_SERVICES_JSON }}
+          GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
+
       - run: just dist macos
         env:
           VERSION_NAME:           ${{ needs.version.outputs.name }}
@@ -135,6 +159,14 @@ jobs:
       - uses: subosito/flutter-action@v2
         with: { channel: stable, cache: true }
       - uses: extractions/setup-just@v3   # scripts delegate to `just release`
+
+      - name: Materialise gitignored config
+        run: ./scripts/release/bootstrap.sh
+        env:
+          DOTENV:                    ${{ secrets.DOTENV }}
+          FIREBASE_OPTIONS_DART:     ${{ secrets.FIREBASE_OPTIONS_DART }}
+          GOOGLE_SERVICES_JSON:      ${{ secrets.GOOGLE_SERVICES_JSON }}
+          GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
 
       - run: just dist windows
         env:

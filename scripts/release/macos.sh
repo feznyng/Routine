@@ -65,7 +65,7 @@ else
 fi
 
 log "Building DMG"
-DMG="dist/Routine-$VERSION_NAME.dmg"
+DMG="dist/Routine.dmg"
 rm -rf dist/stage "$DMG"; mkdir -p dist/stage
 cp -R "$APP" dist/stage/
 ln -s /Applications dist/stage/Applications

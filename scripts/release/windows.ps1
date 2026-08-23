@@ -56,4 +56,4 @@ New-Item -ItemType Directory -Force -Path dist | Out-Null
 Write-Host '==> Packaging installer'
 & $iscc "/DAppVersion=$version" 'windows\packaging\routine.iss'
 
-Write-Host "==> dist\Routine-$version-setup.exe"
+Write-Host "==> dist\Routine-setup.exe"
