@@ -1,15 +1,4 @@
 #!/usr/bin/env bash
-# Compose GitHub release notes to stdout.
-#
-#   VERSION_NAME                 required
-#   ARTIFACT_DIR                 default: artifacts
-#   TESTFLIGHT_URL PLAY_TESTING_URL   omitted rows are dropped, not left dangling
-#
-# TESTFLIGHT_URL defaults to the public beta link below, so `just release-notes`
-# is accurate locally without exporting anything. The repo variable still wins
-# when set — see docs/RELEASING.md.
-#
-#   VERSION_NAME=1.2.3 ./scripts/release/notes.sh > notes.md
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 resolve_version
 ARTIFACT_DIR="${ARTIFACT_DIR:-artifacts}"
@@ -40,7 +29,6 @@ switching channels requires uninstalling first.
 EOF
 
 if [[ -d "$ARTIFACT_DIR" ]]; then
-  # A pipeline subshell keeps shell functions; find -exec would not.
   sums="$(cd "$ARTIFACT_DIR" \
           && find . -type f \( -name '*.apk' -o -name '*.dmg' -o -name '*.exe' \) \
           | while IFS= read -r f; do sha256 "$f"; done \

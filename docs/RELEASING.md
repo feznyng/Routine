@@ -101,16 +101,22 @@ reason. Without an identity that script falls back to an ad-hoc signature, which
 keeps `just build macos` working for contributors with no Apple Developer
 account — fine locally, not for anything you ship.
 
-### Not wired up: the browser extension
+### The browser extension is dispatch-only
 
-`just build-ext` builds the Firefox and Chrome zips, signs on AMO and publishes
-to the CWS. It is deliberately **not** part of this workflow — the extension
-versions independently of the app (`browser/extension/manifest.json` is at 2.1
-while the app is at 1.0.0), and AMO rejects re-signing a version that already
-exists, so tying it to app tags would fail every release that didn't also bump
-the manifest. Run it by hand, or give it its own workflow on an `ext-v*` tag.
+`just build-ext` runs `scripts/release/extension.sh`, which builds the Firefox
+and Chrome zips, publishes to the CWS and signs on AMO. There is an `extension`
+job in the workflow, but it is deliberately **not** part of `all` and never runs
+on a tag push — the extension versions independently of the app
+(`browser/extension/manifest.json` is at 2.1 while the app is at 1.0.0), and AMO
+rejects re-signing a version that already exists, so tying it to app tags would
+fail every release that didn't also bump the manifest.
 
-Linux is also unwired: `linux/CMakeLists.txt` and `build_native_linux.sh` exist
+To ship one, run the workflow from the Actions tab with **platform: extension**
+and **publish** ticked. With publish off the store credentials are blanked and
+the job degrades to "do the zips still build", which is also what a local run
+with no credentials does.
+
+Linux is still unwired: `linux/CMakeLists.txt` and `build_native_linux.sh` exist
 and `just build linux` works, but there is no Linux job in the workflow yet.
 
 For iOS, `scripts/release/ios.sh` runs the Flutter build and then hands off to
@@ -170,6 +176,9 @@ on their own.
 | `FIREBASE_OPTIONS_DART` | all | contents of `lib/firebase_options.dart` |
 | `GOOGLE_SERVICES_JSON` | Android | contents of `android/app/google-services.json` |
 | `GOOGLE_SERVICE_INFO_PLIST` | iOS | contents of `ios/Runner/GoogleService-Info.plist` |
+| `AMO_JWT_SECRET` | Extension | addons.mozilla.org → Developer Hub → API keys |
+| `CWS_CLIENT_SECRET` | Extension | GCP OAuth client for the Chrome Web Store API |
+| `CWS_REFRESH_TOKEN` | Extension | one-time OAuth consent against that client |
 
 The Android keystore is the one that cannot be rotated: lose or leak it and
 users can never upgrade in place again. Back it up somewhere durable.
@@ -182,6 +191,9 @@ users can never upgrade in place again. Back it up somewhere durable.
 | `ASC_KEY_ID` | iOS, macOS | useless without the `.p8` |
 | `ASC_ISSUER_ID` | iOS, macOS | per-team identifier |
 | `MACOS_SIGNING_IDENTITY` | macOS | e.g. `Developer ID Application: SolidSoft LLC (5P7GGUGK9M)` |
+| `AMO_JWT_ISSUER` | Extension | issued alongside `AMO_JWT_SECRET` |
+| `CWS_CLIENT_ID` | Extension | useless without the client secret |
+| `CWS_EXTENSION_ID` | Extension | the public Chrome Web Store item id |
 
 `MACOS_SIGNING_IDENTITY` is worth moving to a repository **variable**: the value
 is embedded in every binary you sign, so it is not secret, and keeping it as a

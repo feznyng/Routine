@@ -1,28 +1,10 @@
 #!/usr/bin/env bash
-# Build, sign, package and notarize the macOS app into dist/.
-#
-# Degrades gracefully: with no certificate it still produces an unsigned DMG, so
-# you can iterate on packaging locally without credentials. With a certificate in
-# your login keychain, set MACOS_SIGNING_IDENTITY only — the p12 import is for CI.
-#
-#   VERSION_NAME BUILD_NUMBER           required
-#   MACOS_SIGNING_IDENTITY              e.g. "Developer ID Application: … (TEAMID)"
-#   MACOS_CERT_P12_B64 MACOS_CERT_PASSWORD   CI only; imports to a temp keychain
-#   ASC_KEY_ID ASC_ISSUER_ID                 enables notarization, with the
-#   ASC_PRIVATE_KEY or ASC_PRIVATE_KEY_PATH  .p8 as contents or as a path
-#
-#   VERSION_NAME=1.2.3 BUILD_NUMBER=42 ./scripts/release/macos.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 resolve_version
 cd "$REPO_ROOT"
 
 TMP="${RUNNER_TEMP:-$(mktemp -d)}"
 
-# The certificate must be in the keychain BEFORE the build: `just build macos`
-# builds the native messaging host first, and browser/build_native_macos.sh signs
-# it with its own entitlements (app-sandbox=false). Without an identity that
-# script falls back to an ad-hoc signature, which is fine locally but not for
-# anything you ship — hence importing here, ahead of the build.
 if have MACOS_CERT_P12_B64; then
   need MACOS_CERT_PASSWORD
   log "Importing certificate into a temporary keychain"
@@ -34,14 +16,9 @@ if have MACOS_CERT_P12_B64; then
   security import "$TMP/cert.p12" -k "$KEYCHAIN" -P "$MACOS_CERT_PASSWORD" \
     -T /usr/bin/codesign -T /usr/bin/security
   security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k actions "$KEYCHAIN"
-  # shellcheck disable=SC2046
   security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
 fi
 
-# `just build macos` = build-nmh macos + flutter build macos --release.
-# Going straight to `flutter build` would produce an app with no native messaging
-# host — the Xcode copy phase only warns, so the build stays green and browser
-# blocking is silently dead in the shipped artifact.
 log "Building (with native messaging host)"
 just build macos --build-name="$VERSION_NAME" --build-number="$BUILD_NUMBER"
 
@@ -50,7 +27,6 @@ APP="$(ls -d build/macos/Build/Products/Release/*.app | head -1)"
 
 if have MACOS_SIGNING_IDENTITY; then
   log "Signing (hardened runtime, inner bundles first)"
-  # --deep is deprecated by Apple and mis-signs Flutter's Frameworks directory.
   while IFS= read -r -d '' f; do
     codesign --force --timestamp --options runtime \
       --sign "$MACOS_SIGNING_IDENTITY" "$f"

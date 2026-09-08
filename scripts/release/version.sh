@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-# Resolve the version name and build number for this release.
-#
-#   VERSION_NAME   override; otherwise derived from the git tag, else pubspec
-#   BUILD_NUMBER   override; otherwise github.run_number, else pubspec's +N
-#
-# Build numbers must strictly increase for App Store Connect and Play.
-#
-#   ./scripts/release/version.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 pubspec_version() { grep '^version:' "$REPO_ROOT/pubspec.yaml" | sed 's/version: *//'; }

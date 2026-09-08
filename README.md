@@ -12,19 +12,19 @@ App/site blocker for iOS, Android, macOS, and Windows.
 
 ## Screenshots
 
-![Routines on macOS](screenshots/macos-routines.png)
+![Routines on macOS](docs/screenshots/macos-routines.png)
 
 | Routines | Schedule & conditions | Breaks & strict mode |
 | --- | --- | --- |
-| ![Routine list](screenshots/ios-routines.png) | ![Schedule and conditions](screenshots/ios-conditions.png) | ![Breaks and strict mode](screenshots/ios-breaks-strict.png) |
+| ![Routine list](docs/screenshots/ios-routines.png) | ![Schedule and conditions](docs/screenshots/ios-conditions.png) | ![Breaks and strict mode](docs/screenshots/ios-breaks-strict.png) |
 
 | Apps & categories | Blocked websites | Settings |
 | --- | --- | --- |
-| ![App and category picker](screenshots/ios-apps.png) | ![Blocked websites](screenshots/ios-websites.png) | ![Settings](screenshots/ios-settings.png) |
+| ![App and category picker](docs/screenshots/ios-apps.png) | ![Blocked websites](docs/screenshots/ios-websites.png) | ![Settings](docs/screenshots/ios-settings.png) |
 
 | Light | Dark |
 | --- | --- |
-| ![Per-device blocking, light theme](screenshots/ios-routine-detail.png) | ![Per-device blocking, dark theme](screenshots/ios-routine-detail-dark.png) |
+| ![Per-device blocking, light theme](docs/screenshots/ios-routine-detail.png) | ![Per-device blocking, dark theme](docs/screenshots/ios-routine-detail-dark.png) |
 
 ## Support
 

@@ -1,15 +1,4 @@
 #!/usr/bin/env bash
-# Build the release AAB and APK into dist/.
-#
-# With ANDROID_KEYSTORE_B64 set, writes android/key.properties and signs with the
-# upload key. Without it, Gradle falls back to debug signing and the output is
-# NOT distributable — the script says so loudly.
-#
-#   VERSION_NAME BUILD_NUMBER            required
-#   ANDROID_KEYSTORE_B64                 base64 of upload-keystore.jks
-#   ANDROID_STORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD
-#
-#   VERSION_NAME=1.2.3 BUILD_NUMBER=42 ./scripts/release/android.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 resolve_version
 cd "$REPO_ROOT"

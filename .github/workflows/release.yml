@@ -1,13 +1,5 @@
 name: Release
 
-# Tag a release:  git tag v1.0.0 && git push origin v1.0.0
-# Or run manually from the Actions tab to build artifacts without publishing.
-#
-# All build logic lives in scripts/release/*.sh so it can be run and debugged
-# locally. This file only wires up toolchains, secrets and artifacts. Each script
-# degrades gracefully when its credentials are absent, so this workflow runs
-# green on a repo with zero secrets configured — see docs/RELEASING.md.
-
 on:
   push:
     tags: ['v*']
@@ -17,7 +9,7 @@ on:
         description: 'Which platform to build'
         type: choice
         default: all
-        options: [all, ios, macos, android, windows]
+        options: [all, ios, macos, android, windows, extension]
       publish:
         description: 'Upload to TestFlight / Play (otherwise build artifacts only)'
         type: boolean
@@ -28,11 +20,6 @@ permissions:
 
 env:
   PUBLISH: ${{ startsWith(github.ref, 'refs/tags/v') || inputs.publish }}
-
-# Each platform job carries `if: inputs.platform is '' | all | <its own name>`.
-# `platform` only exists on workflow_dispatch, so on a tag push it is '' and
-# every job runs. Job-level `if:` cannot read the `env` context, which is why
-# this is spelled out per job rather than hoisted into a variable.
 
 jobs:
   version:
@@ -45,7 +32,6 @@ jobs:
       - id: v
         run: ./scripts/release/version.sh
 
-  # ---------------------------------------------------------------- Android --
   android:
     needs: version
     if: ${{ inputs.platform == '' || inputs.platform == 'all' || inputs.platform == 'android' }}
@@ -89,7 +75,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: { name: android, path: dist/*.apk }
 
-  # -------------------------------------------------------------------- iOS --
   ios:
     needs: version
     if: ${{ inputs.platform == '' || inputs.platform == 'all' || inputs.platform == 'ios' }}
@@ -100,7 +85,7 @@ jobs:
         with: { channel: stable, cache: true }
       - uses: ruby/setup-ruby@v1
         with: { ruby-version: '3.2', bundler-cache: true, working-directory: ios }
-      - uses: extractions/setup-just@v3   # ios.sh is reached through `just release ios`
+      - uses: extractions/setup-just@v3
 
       - name: Materialise gitignored config
         run: ./scripts/release/bootstrap.sh
@@ -112,13 +97,6 @@ jobs:
 
       - run: flutter pub get
 
-      # One entry point, same as every other platform: `just release ios` runs the
-      # Flutter build and then hands off to fastlane. Reproduce a failure here
-      # by running the identical command locally.
-      #
-      # ios.sh skips the archive and upload when ASC_KEY_ID is empty, which is
-      # exactly the publish gate — so the credentials are blanked on a
-      # non-publishing run and the job degrades to "does it compile".
       - name: Build and upload to TestFlight
         run: just release ios
         env:
@@ -130,7 +108,6 @@ jobs:
           VERSION_NAME: ${{ needs.version.outputs.name }}
           BUILD_NUMBER: ${{ needs.version.outputs.build }}
 
-  # ------------------------------------------------------------------ macOS --
   macos:
     needs: version
     if: ${{ inputs.platform == '' || inputs.platform == 'all' || inputs.platform == 'macos' }}
@@ -139,7 +116,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with: { channel: stable, cache: true }
-      - uses: extractions/setup-just@v3   # scripts delegate to `just build`
+      - uses: extractions/setup-just@v3
 
       - name: Materialise gitignored config
         run: ./scripts/release/bootstrap.sh
@@ -163,7 +140,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: { name: macos, path: dist/*.dmg }
 
-  # ---------------------------------------------------------------- Windows --
   windows:
     needs: version
     if: ${{ inputs.platform == '' || inputs.platform == 'all' || inputs.platform == 'windows' }}
@@ -172,7 +148,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with: { channel: stable, cache: true }
-      - uses: extractions/setup-just@v3   # scripts delegate to `just build`
+      - uses: extractions/setup-just@v3
 
       - name: Materialise gitignored config
         run: ./scripts/release/bootstrap.sh
@@ -190,7 +166,31 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: { name: windows, path: dist/*.exe }
 
-  # ---------------------------------------------------------------- Release --
+  extension:
+    if: ${{ inputs.platform == 'extension' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - uses: extractions/setup-just@v3
+
+      - name: Install web-ext
+        if: ${{ env.PUBLISH == 'true' }}
+        run: npm install -g web-ext
+
+      - run: just build-ext
+        env:
+          AMO_JWT_ISSUER:    ${{ env.PUBLISH == 'true' && secrets.AMO_JWT_ISSUER || '' }}
+          AMO_JWT_SECRET:    ${{ env.PUBLISH == 'true' && secrets.AMO_JWT_SECRET || '' }}
+          CWS_CLIENT_ID:     ${{ env.PUBLISH == 'true' && secrets.CWS_CLIENT_ID || '' }}
+          CWS_CLIENT_SECRET: ${{ env.PUBLISH == 'true' && secrets.CWS_CLIENT_SECRET || '' }}
+          CWS_REFRESH_TOKEN: ${{ env.PUBLISH == 'true' && secrets.CWS_REFRESH_TOKEN || '' }}
+          CWS_EXTENSION_ID:  ${{ env.PUBLISH == 'true' && secrets.CWS_EXTENSION_ID || '' }}
+
+      - uses: actions/upload-artifact@v4
+        with: { name: extension, path: browser/web-ext-artifacts/*.zip }
+
   release:
     needs: [version, android, ios, macos, windows]
     if: startsWith(github.ref, 'refs/tags/v')
