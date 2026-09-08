@@ -15,13 +15,29 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 ## iOS
 
+### ios next_build_number
+
+```sh
+[bundle exec] fastlane ios next_build_number
+```
+
+Write the next unused TestFlight build number to $BUILD_NUMBER_OUT
+
 ### ios beta
 
 ```sh
 [bundle exec] fastlane ios beta
 ```
 
-Push a new beta build to TestFlight
+Push a new beta build to TestFlight (local, interactive)
+
+### ios ci_beta
+
+```sh
+[bundle exec] fastlane ios ci_beta
+```
+
+Build and upload to TestFlight from CI
 
 ----
 

@@ -60,6 +60,11 @@ android/key.properties
 *.mobileprovision
 dist/
 
+# fastlane build output and its regenerated run report
+*.ipa
+*.dSYM.zip
+ios/fastlane/report.xml
+
 # Firebase configuration
 lib/firebase_options.dart
 ios/Runner/GoogleService-Info.plist

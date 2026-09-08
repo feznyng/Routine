@@ -85,4 +85,4 @@ log "Archiving and uploading to TestFlight"
 cd ios
 bundle exec fastlane ci_beta
 
-log "Uploaded $VERSION_NAME ($BUILD_NUMBER) — Apple processes it before it appears"
+log "Uploaded $VERSION_NAME ($BUILD_NUMBER)"
