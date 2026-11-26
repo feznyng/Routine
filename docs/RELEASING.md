@@ -46,9 +46,9 @@ BUILD_NUMBER=42 just release macos`. CI passes them explicitly from the tag.
 iOS is the exception on build numbers. Apple requires them to be unique per
 version string, and pubspec's `+N` goes stale the moment you ship, so with
 credentials set `ios.sh` asks App Store Connect what it has already accepted and
-takes the next one — `just release ios` needs no build number at all. Setting
-`BUILD_NUMBER` still wins, which is both how CI stays deterministic and how you
-pin a specific number by hand.
+takes the next one. CI does the same, so the iOS job is not given the run
+number that the other platforms use, and local and CI uploads never collide.
+Setting `BUILD_NUMBER` still wins, for pinning a specific number by hand.
 
 The scripts are also runnable directly (`./scripts/release/macos.sh`) — `just
 release` is a thin wrapper so there is one entry point on every platform.
