@@ -31,15 +31,27 @@ sha256() {
 }
 
 load_app_store_connect_key() {
+  APP_STORE_CONNECT_API_KEY_KEY_ID="$(tr -d '[:space:]' <<< "$APP_STORE_CONNECT_API_KEY_KEY_ID")"
+  APP_STORE_CONNECT_API_KEY_ISSUER_ID="$(tr -d '[:space:]' <<< "$APP_STORE_CONNECT_API_KEY_ISSUER_ID")"
+  export APP_STORE_CONNECT_API_KEY_KEY_ID APP_STORE_CONNECT_API_KEY_ISSUER_ID
+  [[ "$APP_STORE_CONNECT_API_KEY_KEY_ID" =~ ^[A-Z0-9]{10}$ ]] \
+    || die "\$APP_STORE_CONNECT_API_KEY_KEY_ID should be 10 uppercase letters/digits (got ${#APP_STORE_CONNECT_API_KEY_KEY_ID} characters)"
+  [[ "$APP_STORE_CONNECT_API_KEY_ISSUER_ID" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]] \
+    || die "\$APP_STORE_CONNECT_API_KEY_ISSUER_ID should be a lowercase UUID (got ${#APP_STORE_CONNECT_API_KEY_ISSUER_ID} characters)"
+
   if have APP_STORE_CONNECT_API_KEY_KEY_FILEPATH; then
     [[ -r "$APP_STORE_CONNECT_API_KEY_KEY_FILEPATH" ]] \
       || die "\$APP_STORE_CONNECT_API_KEY_KEY_FILEPATH is not readable: $APP_STORE_CONNECT_API_KEY_KEY_FILEPATH"
   else
     need APP_STORE_CONNECT_API_KEY_KEY
     APP_STORE_CONNECT_API_KEY_KEY_FILEPATH="${RUNNER_TEMP:-$(mktemp -d)}/app_store_connect.p8"
-    printf '%s' "$APP_STORE_CONNECT_API_KEY_KEY" > "$APP_STORE_CONNECT_API_KEY_KEY_FILEPATH"
+    printf '%s\n' "$APP_STORE_CONNECT_API_KEY_KEY" | tr -d '\r' > "$APP_STORE_CONNECT_API_KEY_KEY_FILEPATH"
     chmod 600 "$APP_STORE_CONNECT_API_KEY_KEY_FILEPATH"
   fi
+  [[ "$(head -1 "$APP_STORE_CONNECT_API_KEY_KEY_FILEPATH")" == "-----BEGIN PRIVATE KEY-----" ]] \
+    || die "The App Store Connect key should be the .p8 file's contents, starting with its own -----BEGIN PRIVATE KEY----- line"
+  openssl pkey -in "$APP_STORE_CONNECT_API_KEY_KEY_FILEPATH" -noout 2>/dev/null \
+    || die "The App Store Connect key isn't a readable private key. Re-set it from the .p8 file: gh secret set APP_STORE_CONNECT_API_KEY_KEY < AuthKey_XXXX.p8"
   unset APP_STORE_CONNECT_API_KEY_KEY
   export APP_STORE_CONNECT_API_KEY_KEY_FILEPATH
 }

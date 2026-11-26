@@ -13,6 +13,8 @@ if have CI; then need_for_publish IOS_CERT_P12_B64 IOS_CERT_PASSWORD; fi
 if have APP_STORE_CONNECT_API_KEY_KEY_ID; then
   need APP_STORE_CONNECT_API_KEY_ISSUER_ID
   load_app_store_connect_key
+  log "Checking the App Store Connect API key"
+  (cd ios && bundle exec fastlane verify_api_key)
 fi
 
 if ! have BUILD_NUMBER_PINNED && have APP_STORE_CONNECT_API_KEY_KEY_ID; then
