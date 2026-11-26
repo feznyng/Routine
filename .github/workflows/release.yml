@@ -153,6 +153,7 @@ jobs:
       - uses: extractions/setup-just@v4
 
       - name: Materialise gitignored config
+        shell: bash
         run: ./scripts/release/bootstrap.sh
         env:
           DOTENV:                    ${{ secrets.DOTENV }}
