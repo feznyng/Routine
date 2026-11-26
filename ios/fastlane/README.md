@@ -15,6 +15,14 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 ## iOS
 
+### ios verify_api_key
+
+```sh
+[bundle exec] fastlane ios verify_api_key
+```
+
+Check that App Store Connect accepts the API key
+
 ### ios next_build_number
 
 ```sh
@@ -38,6 +46,19 @@ Push a new beta build to TestFlight (local, interactive)
 ```
 
 Build and upload to TestFlight from CI
+
+----
+
+
+## Mac
+
+### mac developer_id_profile
+
+```sh
+[bundle exec] fastlane mac developer_id_profile
+```
+
+Write the Developer ID provisioning profile to $PROFILE_OUT
 
 ----
 

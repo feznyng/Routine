@@ -133,3 +133,24 @@ platform :ios do
     )
   end
 end
+
+platform :mac do
+  # macos.sh turns Xcode's own signing off and signs with Developer ID itself,
+  # so it needs this profile to embed. Without it the keychain-access-groups
+  # entitlement flutter_secure_storage relies on is not authorised and the app
+  # is killed at launch on any Mac but the developer's.
+  desc "Write the Developer ID provisioning profile to $PROFILE_OUT"
+  lane :developer_id_profile do
+    out = ENV.fetch("PROFILE_OUT")
+    get_provisioning_profile(
+      platform: "macos",
+      developer_id: true,
+      app_identifier: APP_ID,
+      api_key: asc_api_key,
+      skip_install: true,
+      skip_certificate_verification: true,
+      output_path: File.dirname(out),
+      filename: File.basename(out)
+    )
+  end
+end

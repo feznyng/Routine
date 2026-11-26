@@ -81,3 +81,4 @@ firebase.json
 assets/extension/
 
 screenshots/internal
+macos/Runner/Configs/Signing.xcconfig

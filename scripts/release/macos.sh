@@ -9,6 +9,15 @@ need_for_publish MACOS_SIGNING_IDENTITY \
   APP_STORE_CONNECT_API_KEY_KEY_ID APP_STORE_CONNECT_API_KEY_ISSUER_ID
 if have CI; then need_for_publish MACOS_CERT_P12_B64 MACOS_CERT_PASSWORD; fi
 
+if have MACOS_SIGNING_IDENTITY; then
+  have APP_STORE_CONNECT_API_KEY_KEY_ID \
+    || die "Signing needs the App Store Connect key too, to fetch the Developer ID provisioning profile. Set APP_STORE_CONNECT_API_KEY_KEY_ID, _ISSUER_ID and _KEY_FILEPATH."
+  need APP_STORE_CONNECT_API_KEY_ISSUER_ID
+  load_app_store_connect_key
+  TEAM_ID="$(sed -nE 's/.*\(([A-Z0-9]{10})\)$/\1/p' <<< "$MACOS_SIGNING_IDENTITY")"
+  [[ -n "$TEAM_ID" ]] || die "\$MACOS_SIGNING_IDENTITY should end with the team ID in brackets, like \"Developer ID Application: SolidSoft LLC (5P7GGUGK9M)\""
+fi
+
 if have MACOS_CERT_P12_B64; then
   need MACOS_CERT_PASSWORD
   log "Importing certificate into a temporary keychain"
@@ -23,6 +32,12 @@ if have MACOS_CERT_P12_B64; then
   security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
 fi
 
+SIGNING_XCCONFIG="macos/Runner/Configs/Signing.xcconfig"
+if have MACOS_SIGNING_IDENTITY; then
+  printf 'CODE_SIGNING_ALLOWED = NO\nCODE_SIGNING_REQUIRED = NO\n' > "$SIGNING_XCCONFIG"
+  trap 'rm -f "$REPO_ROOT/$SIGNING_XCCONFIG"' EXIT
+fi
+
 log "Building (with native messaging host)"
 just build macos --build-name="$VERSION_NAME" --build-number="$BUILD_NUMBER"
 
@@ -30,6 +45,28 @@ APP="$(ls -d build/macos/Build/Products/Release/*.app | head -1)"
 [[ -d "$APP" ]] || die "no .app produced"
 
 if have MACOS_SIGNING_IDENTITY; then
+  BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist")"
+
+  log "Fetching the Developer ID provisioning profile for $BUNDLE_ID"
+  PROFILE="$TMP/developer_id.mobileprovision"
+  (cd ios && PROFILE_OUT="$PROFILE" bundle exec fastlane mac developer_id_profile)
+  security cms -D -i "$PROFILE" > "$TMP/profile.plist"
+  profile_certs=""
+  for ((i = 0; ; i++)); do
+    der="$(plutil -extract "DeveloperCertificates.$i" raw "$TMP/profile.plist" 2>/dev/null)" || break
+    profile_certs+="$(base64 -d <<< "$der" | openssl x509 -inform der -noout -subject)"$'\n'
+  done
+  grep -qF "CN=$MACOS_SIGNING_IDENTITY" <<< "$profile_certs" \
+    || die "The Developer ID profile doesn't include \"$MACOS_SIGNING_IDENTITY\". It lists: ${profile_certs:-nothing}. Delete the \"$BUNDLE_ID Direct\" profile in the developer portal and rerun."
+  cp "$PROFILE" "$APP/Contents/embedded.provisionprofile"
+
+  ENTITLEMENTS="$TMP/Release.entitlements"
+  sed "s/\$(AppIdentifierPrefix)/$TEAM_ID./g" macos/Runner/Release.entitlements > "$ENTITLEMENTS"
+  /usr/libexec/PlistBuddy \
+    -c "Add :com.apple.application-identifier string $TEAM_ID.$BUNDLE_ID" \
+    -c "Add :com.apple.developer.team-identifier string $TEAM_ID" \
+    "$ENTITLEMENTS"
+
   log "Signing (hardened runtime, inner bundles first)"
   while IFS= read -r -d '' f; do
     codesign --force --timestamp --options runtime \
@@ -38,7 +75,7 @@ if have MACOS_SIGNING_IDENTITY; then
              \( -name '*.framework' -o -name '*.dylib' \) -print0 2>/dev/null)
 
   codesign --force --timestamp --options runtime \
-    --entitlements macos/Runner/Release.entitlements \
+    --entitlements "$ENTITLEMENTS" \
     --sign "$MACOS_SIGNING_IDENTITY" "$APP"
   codesign --verify --strict --verbose=2 "$APP"
 else
@@ -53,9 +90,7 @@ ln -s /Applications dist/stage/Applications
 hdiutil create -volname "Routine" -srcfolder dist/stage -ov -format UDZO "$DMG"
 rm -rf dist/stage
 
-if have MACOS_SIGNING_IDENTITY && have APP_STORE_CONNECT_API_KEY_KEY_ID; then
-  need APP_STORE_CONNECT_API_KEY_ISSUER_ID
-  load_app_store_connect_key
+if have MACOS_SIGNING_IDENTITY; then
   log "Signing and notarizing DMG (this waits on Apple)"
   codesign --force --timestamp --sign "$MACOS_SIGNING_IDENTITY" "$DMG"
   xcrun notarytool submit "$DMG" --wait \
