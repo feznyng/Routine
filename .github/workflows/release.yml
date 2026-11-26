@@ -28,7 +28,7 @@ jobs:
       name: ${{ steps.v.outputs.name }}
       build: ${{ steps.v.outputs.build }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: v
         run: ./scripts/release/version.sh
 
@@ -40,12 +40,12 @@ jobs:
       VERSION_NAME: ${{ needs.version.outputs.name }}
       BUILD_NUMBER: ${{ needs.version.outputs.build }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with: { distribution: temurin, java-version: '17' }
       - uses: subosito/flutter-action@v2
         with: { flutter-version: '3.41.1', channel: stable, cache: true }
-      - uses: extractions/setup-just@v3
+      - uses: extractions/setup-just@v4
 
       - name: Materialise gitignored config
         run: ./scripts/release/bootstrap.sh
@@ -73,7 +73,7 @@ jobs:
           track: internal
           status: completed
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with: { name: android, path: dist/*.apk }
 
   ios:
@@ -81,12 +81,12 @@ jobs:
     if: ${{ inputs.platform == '' || inputs.platform == 'all' || inputs.platform == 'ios' }}
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with: { flutter-version: '3.41.1', channel: stable, cache: true }
       - uses: ruby/setup-ruby@v1
         with: { ruby-version: '3.2', bundler-cache: true, working-directory: ios }
-      - uses: extractions/setup-just@v3
+      - uses: extractions/setup-just@v4
 
       - name: Materialise gitignored config
         run: ./scripts/release/bootstrap.sh
@@ -113,12 +113,12 @@ jobs:
     if: ${{ inputs.platform == '' || inputs.platform == 'all' || inputs.platform == 'macos' }}
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with: { flutter-version: '3.41.1', channel: stable, cache: true }
       - uses: ruby/setup-ruby@v1
         with: { ruby-version: '3.2', bundler-cache: true, working-directory: ios }
-      - uses: extractions/setup-just@v3
+      - uses: extractions/setup-just@v4
 
       - name: Materialise gitignored config
         run: ./scripts/release/bootstrap.sh
@@ -139,7 +139,7 @@ jobs:
           APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_KEY:       ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with: { name: macos, path: dist/*.dmg }
 
   windows:
@@ -147,10 +147,10 @@ jobs:
     if: ${{ inputs.platform == '' || inputs.platform == 'all' || inputs.platform == 'windows' }}
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with: { flutter-version: '3.41.1', channel: stable, cache: true }
-      - uses: extractions/setup-just@v3
+      - uses: extractions/setup-just@v4
 
       - name: Materialise gitignored config
         run: ./scripts/release/bootstrap.sh
@@ -165,17 +165,17 @@ jobs:
           VERSION_NAME: ${{ needs.version.outputs.name }}
           BUILD_NUMBER: ${{ needs.version.outputs.build }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with: { name: windows, path: dist/*.exe }
 
   extension:
     if: ${{ inputs.platform == 'extension' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with: { node-version: '20' }
-      - uses: extractions/setup-just@v3
+      - uses: extractions/setup-just@v4
 
       - name: Install web-ext
         if: ${{ env.PUBLISH == 'true' }}
@@ -190,7 +190,7 @@ jobs:
           CWS_REFRESH_TOKEN: ${{ env.PUBLISH == 'true' && secrets.CWS_REFRESH_TOKEN || '' }}
           CWS_EXTENSION_ID:  ${{ env.PUBLISH == 'true' && secrets.CWS_EXTENSION_ID || '' }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with: { name: extension, path: browser/web-ext-artifacts/*.zip }
 
   release:
@@ -198,8 +198,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with: { path: artifacts }
 
       - run: ./scripts/release/notes.sh > notes.md
@@ -208,7 +208,7 @@ jobs:
           TESTFLIGHT_URL:   ${{ vars.TESTFLIGHT_URL }}
           PLAY_TESTING_URL: ${{ vars.PLAY_TESTING_URL }}
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           name: Routine ${{ needs.version.outputs.name }}
           body_path: notes.md
