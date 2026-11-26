@@ -5,6 +5,10 @@ cd "$REPO_ROOT"
 
 TMP="${RUNNER_TEMP:-$(mktemp -d)}"
 
+need_for_publish MACOS_SIGNING_IDENTITY \
+  APP_STORE_CONNECT_API_KEY_KEY_ID APP_STORE_CONNECT_API_KEY_ISSUER_ID
+if have CI; then need_for_publish MACOS_CERT_P12_B64 MACOS_CERT_PASSWORD; fi
+
 if have MACOS_CERT_P12_B64; then
   need MACOS_CERT_PASSWORD
   log "Importing certificate into a temporary keychain"
@@ -49,13 +53,15 @@ ln -s /Applications dist/stage/Applications
 hdiutil create -volname "Routine" -srcfolder dist/stage -ov -format UDZO "$DMG"
 rm -rf dist/stage
 
-if have MACOS_SIGNING_IDENTITY && have ASC_KEY_ID; then
-  need ASC_ISSUER_ID
-  load_asc_key
+if have MACOS_SIGNING_IDENTITY && have APP_STORE_CONNECT_API_KEY_KEY_ID; then
+  need APP_STORE_CONNECT_API_KEY_ISSUER_ID
+  load_app_store_connect_key
   log "Signing and notarizing DMG (this waits on Apple)"
   codesign --force --timestamp --sign "$MACOS_SIGNING_IDENTITY" "$DMG"
   xcrun notarytool submit "$DMG" --wait \
-    --key "$ASC_KEY_FILE" --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID"
+    --key "$APP_STORE_CONNECT_API_KEY_KEY_FILEPATH" \
+    --key-id "$APP_STORE_CONNECT_API_KEY_KEY_ID" \
+    --issuer "$APP_STORE_CONNECT_API_KEY_ISSUER_ID"
   xcrun stapler staple "$DMG"
   xcrun stapler validate "$DMG"
 else

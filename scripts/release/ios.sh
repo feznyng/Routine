@@ -7,15 +7,15 @@ resolve_version
 cd "$REPO_ROOT"
 TMP="${RUNNER_TEMP:-$(mktemp -d)}"
 
-if have ASC_KEY_ID; then
-  need ASC_ISSUER_ID
-  load_asc_key
-  export APP_STORE_CONNECT_API_KEY_KEY_ID="$ASC_KEY_ID"
-  export APP_STORE_CONNECT_API_KEY_ISSUER_ID="$ASC_ISSUER_ID"
-  export APP_STORE_CONNECT_API_KEY_KEY="$ASC_PRIVATE_KEY"
+need_for_publish APP_STORE_CONNECT_API_KEY_KEY_ID APP_STORE_CONNECT_API_KEY_ISSUER_ID
+if have CI; then need_for_publish IOS_CERT_P12_B64 IOS_CERT_PASSWORD; fi
+
+if have APP_STORE_CONNECT_API_KEY_KEY_ID; then
+  need APP_STORE_CONNECT_API_KEY_ISSUER_ID
+  load_app_store_connect_key
 fi
 
-if ! have BUILD_NUMBER_PINNED && have ASC_KEY_ID; then
+if ! have BUILD_NUMBER_PINNED && have APP_STORE_CONNECT_API_KEY_KEY_ID; then
   log "Asking App Store Connect for the next build number"
   (cd ios && BUILD_NUMBER_OUT="$TMP/build_number" bundle exec fastlane next_build_number)
   BUILD_NUMBER="$(cat "$TMP/build_number")"
@@ -27,9 +27,14 @@ log "Building Flutter artifacts"
 flutter build ios --release --no-codesign \
   --build-name="$VERSION_NAME" --build-number="$BUILD_NUMBER"
 
-if ! have ASC_KEY_ID; then
-  warn "No ASC_KEY_ID — built the app but skipped archive and upload."
-  warn "Set ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY and the IOS_CERT_* vars to publish."
+if ! have APP_STORE_CONNECT_API_KEY_KEY_ID; then
+  warn "Built the app but skipped archive and upload. To publish, set:"
+  printf '      %s\n' \
+    "APP_STORE_CONNECT_API_KEY_KEY_ID" \
+    "APP_STORE_CONNECT_API_KEY_ISSUER_ID" \
+    "APP_STORE_CONNECT_API_KEY_KEY_FILEPATH   path to the .p8 (or APP_STORE_CONNECT_API_KEY_KEY with its contents)" \
+    "IOS_CERT_P12_B64                         CI only; locally your login keychain is used" \
+    "IOS_CERT_PASSWORD                        CI only" >&2
   exit 0
 fi
 

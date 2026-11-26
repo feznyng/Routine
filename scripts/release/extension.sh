@@ -5,6 +5,9 @@ cd "$REPO_ROOT"
 EXT_DIR="browser/extension"
 BUILD_DIR="browser/web-ext-artifacts"
 
+need_for_publish AMO_JWT_ISSUER AMO_JWT_SECRET \
+  CWS_CLIENT_ID CWS_CLIENT_SECRET CWS_REFRESH_TOKEN CWS_EXTENSION_ID
+
 command -v jq >/dev/null || die "jq is not installed - 'brew install jq'"
 
 AMO_SIGN=1

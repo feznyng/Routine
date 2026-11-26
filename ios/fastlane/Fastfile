@@ -15,15 +15,13 @@ TARGETS = {
 }.freeze
 APP_IDS = TARGETS.values.freeze
 
-# Shared by the lanes below. ios.sh maps the shorter ASC_* spelling used
-# everywhere else in scripts/release/ onto these names.
+# Shared by the lanes below. With no arguments, fastlane reads its own
+# APP_STORE_CONNECT_API_KEY_* variables. lib.sh's load_app_store_connect_key
+# runs first and leaves _KEY_FILEPATH as the only description of the key.
+# If _KEY were also set, fastlane would silently prefer it over the file,
+# while notarytool (macOS) reads the file, so the two could use different keys.
 def asc_api_key
-  app_store_connect_api_key(
-    key_id:      ENV.fetch("APP_STORE_CONNECT_API_KEY_KEY_ID"),
-    issuer_id:   ENV.fetch("APP_STORE_CONNECT_API_KEY_ISSUER_ID"),
-    key_content: ENV.fetch("APP_STORE_CONNECT_API_KEY_KEY"),
-    is_key_content_base64: false
-  )
+  app_store_connect_api_key
 end
 
 platform :ios do

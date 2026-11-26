@@ -9,6 +9,16 @@ have() { [[ -n "${!1:-}" ]]; }
 
 need() { for v in "$@"; do have "$v" || die "\$$v is required"; done; }
 
+publishing() { [[ "${PUBLISH:-}" == true ]]; }
+
+need_for_publish() {
+  publishing || return 0
+  local missing=() v
+  for v in "$@"; do have "$v" || missing+=("$v"); done
+  (( ${#missing[@]} == 0 )) && return 0
+  die "PUBLISH=true but these are empty: ${missing[*]}. Add them as GitHub secrets (see docs/RELEASING.md#secrets)."
+}
+
 emit() {
   printf '%s=%s\n' "$1" "$2"
   [[ -n "${GITHUB_OUTPUT:-}" ]] && printf '%s=%s\n' "$1" "$2" >> "$GITHUB_OUTPUT"
@@ -20,19 +30,18 @@ sha256() {
   else shasum -a 256 "$@"; fi
 }
 
-load_asc_key() {
-  if have ASC_PRIVATE_KEY_PATH; then
-    [[ -r "$ASC_PRIVATE_KEY_PATH" ]] \
-      || die "\$ASC_PRIVATE_KEY_PATH is not readable: $ASC_PRIVATE_KEY_PATH"
-    ASC_KEY_FILE="$ASC_PRIVATE_KEY_PATH"
-    ASC_PRIVATE_KEY="$(cat "$ASC_KEY_FILE")"
+load_app_store_connect_key() {
+  if have APP_STORE_CONNECT_API_KEY_KEY_FILEPATH; then
+    [[ -r "$APP_STORE_CONNECT_API_KEY_KEY_FILEPATH" ]] \
+      || die "\$APP_STORE_CONNECT_API_KEY_KEY_FILEPATH is not readable: $APP_STORE_CONNECT_API_KEY_KEY_FILEPATH"
   else
-    need ASC_PRIVATE_KEY
-    ASC_KEY_FILE="${RUNNER_TEMP:-$(mktemp -d)}/asc.p8"
-    printf '%s' "$ASC_PRIVATE_KEY" > "$ASC_KEY_FILE"
-    chmod 600 "$ASC_KEY_FILE"
+    need APP_STORE_CONNECT_API_KEY_KEY
+    APP_STORE_CONNECT_API_KEY_KEY_FILEPATH="${RUNNER_TEMP:-$(mktemp -d)}/app_store_connect.p8"
+    printf '%s' "$APP_STORE_CONNECT_API_KEY_KEY" > "$APP_STORE_CONNECT_API_KEY_KEY_FILEPATH"
+    chmod 600 "$APP_STORE_CONNECT_API_KEY_KEY_FILEPATH"
   fi
-  export ASC_PRIVATE_KEY ASC_KEY_FILE
+  unset APP_STORE_CONNECT_API_KEY_KEY
+  export APP_STORE_CONNECT_API_KEY_KEY_FILEPATH
 }
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

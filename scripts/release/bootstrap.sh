@@ -33,5 +33,6 @@ install_config ios/Runner/GoogleService-Info.plist \
                ios/Runner/GoogleService-Info.example.plist GOOGLE_SERVICE_INFO_PLIST
 
 if (( placeholders )); then
+  publishing && die "PUBLISH=true but a config fell back to its placeholder. Set the secrets listed above."
   warn "One or more configs are placeholders. This build is NOT distributable."
 fi

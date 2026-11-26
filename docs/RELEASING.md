@@ -9,8 +9,10 @@ Pick a single **platform** there to run one job instead of all four — useful
 while bringing a platform up, so you aren't reading three unrelated failures.
 A tag push always runs everything.
 
-Every credential-dependent step is guarded on its secret, so the workflow runs
-green before any secrets exist. Provision them platform by platform.
+A build-only run (dispatch with **publish** off) skips every credential-dependent
+step, so it runs green before any secrets exist. A publishing run (a tag push,
+or dispatch with **publish** on) fails early if a platform's secrets or real
+configs are missing, rather than going green without shipping anything.
 
 ## Run it locally
 
@@ -46,24 +48,28 @@ takes the next one — `just release ios` needs no build number at all. Setting
 pin a specific number by hand.
 
 The scripts are also runnable directly (`./scripts/release/macos.sh`) — `just
-dist` is a thin wrapper so there is one entry point on every platform.
+release` is a thin wrapper so there is one entry point on every platform.
 
 ### Credentials on your laptop
 
-CI passes `ASC_PRIVATE_KEY` because a GitHub secret is a string. Locally, point
-at the `.p8` instead and the key stays out of the environment of every process
-you launch:
+The App Store Connect key uses fastlane's own variable names, so fastlane picks
+them up with no mapping. CI passes `APP_STORE_CONNECT_API_KEY_KEY` (the `.p8`
+contents) because a GitHub secret is a string. Locally, point at the file
+instead and the key stays out of your shell's environment:
 
 ```zsh
-export ASC_KEY_ID=XXXXXXXXXX
-export ASC_ISSUER_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-export ASC_PRIVATE_KEY_PATH=~/Keys/app-store-connect-routine-key.p8
+export APP_STORE_CONNECT_API_KEY_KEY_ID=XXXXXXXXXX
+export APP_STORE_CONNECT_API_KEY_ISSUER_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+export APP_STORE_CONNECT_API_KEY_KEY_FILEPATH=~/Keys/app-store-connect-routine-key.p8
 ```
 
-`load_asc_key` in `lib.sh` takes either form and fills in the other, so iOS gets
-the contents fastlane wants and macOS gets the path `notarytool` wants. Never
-put these in `.env` — `pubspec.yaml` declares it as a Flutter asset, so it ships
-inside the app.
+`load_app_store_connect_key` in `lib.sh` turns either form into a file path,
+since that's what `notarytool` needs, and then unsets `_KEY`. Don't skip that
+unset: with both set, fastlane silently uses `_KEY` and ignores the file, so iOS
+and macOS could sign in with different keys. Never put these in `.env` —
+`pubspec.yaml` declares it as a Flutter asset, so it ships inside the app.
+
+See [SECRETS.md](SECRETS.md) for every variable, grouped by platform.
 
 `macos.sh` uses whatever is in your login keychain when `MACOS_SIGNING_IDENTITY`
 is set; the p12 import path is CI-only. Windows tooling is PowerShell
@@ -121,9 +127,9 @@ and `just build linux` works, but there is no Linux job in the workflow yet.
 
 For iOS, `scripts/release/ios.sh` runs the Flutter build and then hands off to
 fastlane, which is already the extracted layer: `cd ios && bundle exec fastlane
-ci_beta` with the same env the workflow passes. The script exists so the ASC_*
-spelling used everywhere else maps onto the `APP_STORE_CONNECT_API_KEY_*` names
-the Fastfile reads, and so the Flutter build never gets skipped — `build_app`
+ci_beta` with the same env the workflow passes. The script exists so the key is
+normalised to a file before fastlane sees it, and so the Flutter build never
+gets skipped — `build_app`
 archives whatever Xcode can see, and `CFBundleVersion` comes from
 `$(FLUTTER_BUILD_NUMBER)` in `Generated.xcconfig`, which only `flutter build`
 writes.
@@ -167,7 +173,7 @@ on their own.
 | `ANDROID_STORE_PASSWORD` | Android | keystore creation |
 | `ANDROID_KEY_PASSWORD` | Android | keystore creation |
 | `PLAY_SERVICE_ACCOUNT_JSON` | Android | GCP service account, granted access in Play Console |
-| `ASC_PRIVATE_KEY` | iOS, macOS | the downloaded `.p8`, contents verbatim |
+| `APP_STORE_CONNECT_API_KEY_KEY` | iOS, macOS | the downloaded `.p8`, contents verbatim |
 | `IOS_CERT_P12_B64` | iOS | Apple Distribution cert exported from Keychain |
 | `IOS_CERT_PASSWORD` | iOS | the export passphrase |
 | `MACOS_CERT_P12_B64` | macOS | Developer ID Application cert exported from Keychain |
@@ -188,8 +194,8 @@ users can never upgrade in place again. Back it up somewhere durable.
 | Secret | Used by | Note |
 |---|---|---|
 | `ANDROID_KEY_ALIAS` | Android | just a name inside the keystore |
-| `ASC_KEY_ID` | iOS, macOS | useless without the `.p8` |
-| `ASC_ISSUER_ID` | iOS, macOS | per-team identifier |
+| `APP_STORE_CONNECT_API_KEY_KEY_ID` | iOS, macOS | useless without the `.p8` |
+| `APP_STORE_CONNECT_API_KEY_ISSUER_ID` | iOS, macOS | per-team identifier |
 | `MACOS_SIGNING_IDENTITY` | macOS | e.g. `Developer ID Application: SolidSoft LLC (5P7GGUGK9M)` |
 | `AMO_JWT_ISSUER` | Extension | issued alongside `AMO_JWT_SECRET` |
 | `CWS_CLIENT_ID` | Extension | useless without the client secret |
@@ -257,7 +263,7 @@ created per run. Apple caps a team at a handful of distribution certificates, an
 anything that mints them on demand exhausts that cap one release at a time.
 
 Provisioning profiles are not pre-created. `ci_beta` fetches them from App Store
-Connect with the same `ASC_*` key, reusing a valid profile and minting a new one
+Connect with the same API key, reusing a valid profile and minting a new one
 only when it is missing or expired — profiles, unlike certificates, are free and
 disposable. Both App IDs need to exist in the Developer portal first, with the
 Family Controls capability and the `group.routineblocker` app group enabled.

@@ -61,9 +61,10 @@ jobs:
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           ANDROID_KEY_ALIAS:      ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD:   ${{ secrets.ANDROID_KEY_PASSWORD }}
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ env.PUBLISH == 'true' && secrets.PLAY_SERVICE_ACCOUNT_JSON || '' }}
 
       - name: Upload to Play (internal track)
-        if: ${{ env.PUBLISH == 'true' && secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+        if: ${{ env.PUBLISH == 'true' }}
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
@@ -100,9 +101,9 @@ jobs:
       - name: Build and upload to TestFlight
         run: just release ios
         env:
-          ASC_KEY_ID:      ${{ env.PUBLISH == 'true' && secrets.ASC_KEY_ID || '' }}
-          ASC_ISSUER_ID:   ${{ env.PUBLISH == 'true' && secrets.ASC_ISSUER_ID || '' }}
-          ASC_PRIVATE_KEY: ${{ env.PUBLISH == 'true' && secrets.ASC_PRIVATE_KEY || '' }}
+          APP_STORE_CONNECT_API_KEY_KEY_ID:    ${{ env.PUBLISH == 'true' && secrets.APP_STORE_CONNECT_API_KEY_KEY_ID || '' }}
+          APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ env.PUBLISH == 'true' && secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID || '' }}
+          APP_STORE_CONNECT_API_KEY_KEY:       ${{ env.PUBLISH == 'true' && secrets.APP_STORE_CONNECT_API_KEY_KEY || '' }}
           IOS_CERT_P12_B64:  ${{ secrets.IOS_CERT_P12_B64 }}
           IOS_CERT_PASSWORD: ${{ secrets.IOS_CERT_PASSWORD }}
           VERSION_NAME: ${{ needs.version.outputs.name }}
@@ -133,9 +134,9 @@ jobs:
           MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
           MACOS_CERT_P12_B64:     ${{ secrets.MACOS_CERT_P12_B64 }}
           MACOS_CERT_PASSWORD:    ${{ secrets.MACOS_CERT_PASSWORD }}
-          ASC_KEY_ID:             ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID:          ${{ secrets.ASC_ISSUER_ID }}
-          ASC_PRIVATE_KEY:        ${{ secrets.ASC_PRIVATE_KEY }}
+          APP_STORE_CONNECT_API_KEY_KEY_ID:    ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
+          APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_KEY:       ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY }}
 
       - uses: actions/upload-artifact@v4
         with: { name: macos, path: dist/*.dmg }

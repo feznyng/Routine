@@ -3,6 +3,9 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 resolve_version
 cd "$REPO_ROOT"
 
+need_for_publish ANDROID_KEYSTORE_B64 PLAY_SERVICE_ACCOUNT_JSON
+unset PLAY_SERVICE_ACCOUNT_JSON
+
 if have ANDROID_KEYSTORE_B64; then
   need ANDROID_STORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD
   log "Restoring upload keystore"
