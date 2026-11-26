@@ -3,6 +3,9 @@
 `git tag v1.2.3 && git push origin v1.2.3` builds all four platforms, uploads iOS
 to TestFlight and Android to the Play internal track, and opens a **draft** GitHub
 release with the APK, DMG and Windows installer attached.
+The draft's body is the install section from `scripts/release/notes.sh`,
+followed by GitHub's generated **What's Changed** list of PRs merged since the
+previous tag. Edit it before publishing.
 
 `workflow_dispatch` from the Actions tab builds artifacts without publishing.
 Pick a single **platform** there to run one job instead of all four — useful
