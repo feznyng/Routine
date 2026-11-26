@@ -34,6 +34,11 @@ if (-not (Test-Path 'build\windows\x64\runner\Release')) {
     throw 'No Windows build output'
 }
 
+$nmh = 'build\windows\x64\runner\Release\data\flutter_assets\assets\extension\native_windows.exe'
+if (-not (Test-Path $nmh)) {
+    throw "The native messaging host is missing from the bundle ($nmh). Browser blocking would not work; check the build-nmh output above."
+}
+
 # --- Code signing goes here, once the LLC clears Azure Artifact Signing's
 # --- ~3-year organization validation bar. Sign the .exe and .dll files BEFORE
 # --- packaging, then sign the installer produced below.
