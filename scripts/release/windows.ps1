@@ -27,6 +27,7 @@ if (-not $env:SKIP_BUILD) {
     #     Windows (its CMake step downloads the C++ SDK).
     Write-Host '==> Building (via just: NMH + firebase-strip)'
     just build windows --build-name=$version --build-number=$build
+    if ($LASTEXITCODE -ne 0) { throw "Windows build failed (exit $LASTEXITCODE)" }
 }
 
 if (-not (Test-Path 'build\windows\x64\runner\Release')) {
@@ -55,5 +56,6 @@ if (-not $iscc) {
 New-Item -ItemType Directory -Force -Path dist | Out-Null
 Write-Host '==> Packaging installer'
 & $iscc "/DAppVersion=$version" 'windows\packaging\routine.iss'
+if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed (exit $LASTEXITCODE)" }
 
 Write-Host "==> dist\Routine-setup.exe"
