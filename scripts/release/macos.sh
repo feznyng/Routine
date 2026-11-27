@@ -43,6 +43,8 @@ just build macos --build-name="$VERSION_NAME" --build-number="$BUILD_NUMBER"
 
 APP="$(ls -d build/macos/Build/Products/Release/*.app | head -1)"
 [[ -d "$APP" ]] || die "no .app produced"
+NMH="$APP/Contents/Resources/extension/native_macos"
+[[ -x "$NMH" ]] || die "The native messaging host is missing from the bundle ($NMH). Browser blocking would not work; check the build-nmh output above."
 
 if have MACOS_SIGNING_IDENTITY; then
   BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist")"
