@@ -5,22 +5,10 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 )
 
-interface DeleteOperation {
-  table: string;
-  key: string;
-}
-
 interface ErrorDetail {
   error: string;
   message: string;
 }
-
-const operations: DeleteOperation[] = [
-  { table: 'groups', key: 'user_id' },
-  { table: 'routines', key: 'user_id' },
-  { table: 'devices', key: 'user_id' },
-  { table: 'users', key: 'id' }
-];
 
 function createErrorResponse(error: string, message: string): Response {
   return new Response(
@@ -32,23 +20,9 @@ function createErrorResponse(error: string, message: string): Response {
   );
 }
 
-async function deleteFromTable(
-  userId: string,
-  operation: DeleteOperation
-): Promise<void> {
-  const { error } = await supabase
-    .from(operation.table)
-    .delete()
-    .eq(operation.key, userId);
-
-  if (error) {
-    console.error(`Error deleting ${operation.table}:`, error);
-    throw { error: `failed to delete ${operation.table}`, message: error.message } as ErrorDetail;
-  }
-
-  console.log(`Successfully deleted ${operation.table} data`);
-}
-
+// Deleting the auth user removes the user's rows in devices, routines, groups
+// and users through their `on delete cascade` foreign keys. Postgres runs the
+// cascade in the same statement, so either everything is deleted or nothing is.
 async function deleteAuthUser(userId: string): Promise<void> {
   const { error } = await supabase.auth.admin.deleteUser(userId);
 
@@ -91,7 +65,6 @@ async function handleRequest(req: Request): Promise<Response> {
     console.log(`Starting account deletion process for user: ${user.id}`);
 
     try {
-      await Promise.all(operations.map(op => deleteFromTable(user.id, op)))
       await deleteAuthUser(user.id);
     } catch (err) {
       const error = err as ErrorDetail;

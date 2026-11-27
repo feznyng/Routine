@@ -294,23 +294,23 @@ class AuthService {
 
       await SyncService().notifyPeersSignOut();
       
-      final response = await _client.functions.invoke(
+      // invoke() throws FunctionException on any non-2xx response.
+      await _client.functions.invoke(
         'delete-account',
         headers: {'Authorization': 'Bearer ${session.accessToken}'},
       );
-      
-      if (response.status != 200) {
-        final error = response.data['error'] ?? 'Unknown error';
-        final message = response.data['message'] ?? 'Failed to delete account';
-        logger.e('Account deletion error: $error - $message');
-        throw 'Failed to delete account: $message';
-      }
-      
+
       logger.i('Account successfully deleted');
       await clearSignedInFlag();
       await _client.auth.signOut();
 
       return true;
+    } on FunctionException catch (e, st) {
+      final details = e.details;
+      final error = details is Map ? details['error'] ?? 'Unknown error' : 'Unknown error';
+      final message = details is Map ? details['message'] ?? details.toString() : '$details';
+      logger.e('Account deletion error (${e.status}): $error - $message');
+      Util.report('Account deletion failed: $error - $message', e, st);
     } catch (e, st) {
       Util.report('Unexpected account deletion failure', e, st);
     }
